@@ -1,0 +1,22 @@
+{
+  "schema_version": "lifecycle.contract.control-record.v1",
+  "contract_id": "control.delivery.evidence-packet",
+  "record_type": "evidence_packet",
+  "owner_page": "methodology/processes/delivery/control-records/evidence-packet.md",
+  "record_root": "records/control/delivery/evidence",
+  "allowed_states": ["active", "blocked", "landing-ready", "closed", "superseded", "archived"],
+  "field_ownership": {
+    "required": ["id", "state", "owning_delivery_run", "final_work_delta", "tested_commit_version_or_local_delta", "product_judgment_coverage", "proof_obligations_covered", "evidence", "proof_commands", "declared_non_change_evidence", "freshness_status", "reconciliation_result", "open_proof_gaps_and_failure_responses"],
+    "optional": ["proof_receipts", "discipline_evidence", "stale_proof_findings"],
+    "agent_authored": ["id", "state", "owning_delivery_run", "final_work_delta", "tested_commit_version_or_local_delta", "product_judgment_coverage", "proof_obligations_covered", "evidence", "proof_commands", "proof_receipts", "discipline_evidence", "declared_non_change_evidence", "freshness_status", "stale_proof_findings", "reconciliation_result", "open_proof_gaps_and_failure_responses"],
+    "generated": []
+  },
+  "proof_mapping_contract": {
+    "coverage_field": "proof_obligations_covered",
+    "proof_obligation_id_field": "proof_obligation_id",
+    "receipt_reference_field": "proof_receipts",
+    "freshness_field": "freshness_status"
+  },
+  "tool_observation_fields": ["proof_receipts", "stale_proof_findings"],
+  "manual_fallback": "Read the Evidence Packet page and verify product judgment coverage, proof coverage, commands, freshness, reconciliation, and open gaps manually."
+}

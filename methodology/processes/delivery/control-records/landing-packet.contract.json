@@ -1,0 +1,16 @@
+{
+  "schema_version": "lifecycle.contract.control-record.v1",
+  "contract_id": "control.delivery.landing-packet",
+  "record_type": "landing_packet",
+  "owner_page": "methodology/processes/delivery/control-records/landing-packet.md",
+  "record_root": "records/control/delivery/landings",
+  "allowed_states": ["active", "landing-ready", "landed", "closed", "superseded", "archived"],
+  "field_ownership": {
+    "required": ["id", "state", "owning_delivery_run", "work_delta_summary", "evidence_packet", "product_judgment_coverage", "landing_decision", "landing_state", "release_or_merge_handoff", "runtime_exposure", "discipline_proof_status", "rollback_observation_or_follow_up"],
+    "optional": ["landed_commit_version_or_handoff"],
+    "agent_authored": ["id", "state", "owning_delivery_run", "work_delta_summary", "evidence_packet", "product_judgment_coverage", "landing_decision", "landing_state", "release_or_merge_handoff", "landed_commit_version_or_handoff", "runtime_exposure", "discipline_proof_status", "rollback_observation_or_follow_up"],
+    "generated": []
+  },
+  "stable_references": ["evidence_packet", "product_judgment_coverage", "release_or_merge_handoff", "rollback_observation_or_follow_up"],
+  "manual_fallback": "Read the Landing Packet page and verify current evidence, product judgment coverage, handoff, landing state, and runtime exposure manually."
+}

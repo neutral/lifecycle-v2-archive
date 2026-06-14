@@ -1,0 +1,16 @@
+{
+  "schema_version": "lifecycle.contract.control-record.v1",
+  "contract_id": "control.delivery.release-summary",
+  "record_type": "release_summary",
+  "owner_page": "methodology/processes/delivery/control-records/release-summary.md",
+  "record_root": "records/control/delivery/releases",
+  "allowed_states": ["active", "landed", "closed", "archived"],
+  "field_ownership": {
+    "required": ["id", "state", "owning_delivery_run", "exposed_change", "release_surface", "observation_plan_status", "runtime_observations", "classified_outputs"],
+    "optional": ["follow_up_signals"],
+    "agent_authored": ["id", "state", "owning_delivery_run", "exposed_change", "release_surface", "observation_plan_status", "runtime_observations", "classified_outputs", "follow_up_signals"],
+    "generated": []
+  },
+  "stable_references": ["classified_outputs", "follow_up_signals"],
+  "manual_fallback": "Read the Release Summary page and verify runtime output classification, product judgment learning candidates when present, and follow-up pointers manually."
+}

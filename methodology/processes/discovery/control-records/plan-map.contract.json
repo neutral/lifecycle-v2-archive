@@ -1,0 +1,28 @@
+{
+  "schema_version": "lifecycle.contract.control-record.v1",
+  "contract_id": "control.discovery.plan-map",
+  "record_type": "plan_map",
+  "owner_page": "methodology/processes/discovery/control-records/plan-map.md",
+  "record_root": "records/control/discovery/maps",
+  "allowed_states": ["active", "blocked", "deferred", "closed", "superseded", "archived"],
+  "field_ownership": {
+    "required": ["id", "state", "planning_scope", "active_items", "blocked_items", "deferred_items", "selected_items", "closed_or_superseded_items", "dependency_clusters", "last_review_basis"],
+    "optional": [],
+    "agent_authored": ["id", "state", "planning_scope", "active_items", "blocked_items", "deferred_items", "selected_items", "closed_or_superseded_items", "dependency_clusters", "last_review_basis"],
+    "generated": []
+  },
+  "stable_references": ["active_items", "blocked_items", "deferred_items", "selected_items", "closed_or_superseded_items"],
+  "sibling_relationships": [
+    {
+      "field": "active_items",
+      "target_record_type": "plan_item",
+      "required_when": "active Discovery attention exists"
+    },
+    {
+      "field": "selected_items",
+      "target_record_type": "plan_item",
+      "required_when": "Discovery selected possible work"
+    }
+  ],
+  "manual_fallback": "Read the plan map page and verify item pointers, dependency clusters, and last review basis manually."
+}

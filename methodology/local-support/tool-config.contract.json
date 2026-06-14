@@ -1,0 +1,25 @@
+{
+  "schema_version": "lifecycle.contract.tool-config.v1",
+  "contract_id": "local-support.tool-config",
+  "owner_page": "methodology/local-support/tooling-support.md",
+  "authority_boundary": "Tool config affects tool behavior only. Missing or invalid config blocks only the tool command that needs it.",
+  "shared_config_candidate": "lifecycle.tools.json",
+  "local_config_candidate": ".lifecycle/tooling/config.local.json",
+  "fields": {
+    "schema_version": "required when config exists",
+    "proof_commands": "optional stable proof command definitions",
+    "checks": "optional check enablement and disablement",
+    "profiles": "optional check profile ids",
+    "include": "optional inspection include rules",
+    "exclude": "optional inspection exclude rules",
+    "output": "optional output defaults",
+    "local_overrides": "optional local-only override metadata"
+  },
+  "proof_command_contract": {
+    "required": ["id", "command", "description", "expected_evidence"],
+    "optional": ["cwd", "env", "covers", "stale_when", "timeout_ms"],
+    "id_rule": "Use stable ids that Evidence Packets and receipts can cite.",
+    "execution_boundary": "Configured commands do not authorize execution outside the active Work Boundary."
+  },
+  "manual_fallback": "When config is absent, record exact proof commands directly in the Evidence Packet and run methodology checks manually."
+}
