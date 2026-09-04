@@ -1,0 +1,359 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:execution-specification:v1",
+  "title": "Lifecycle Execution Specification v1",
+  "description": "One immutable Runtime-derived instruction for one exact Agent Attempt or deterministic Check owner.",
+  "$comment": "Semantic validation recomputes digest over the complete value without digest, proves that owner is the exact finalized Agent Attempt or deterministic Check subject, proves that backendProfile, image, and inputSet resolve under their selected schema and digest, and requires all capabilities and effective limits to be restrictions of the owning logical contract and selected Backend Profile. Environment names are unique and canonically ordered, declaredOutputRoots are non-overlapping and canonically ordered, every runner argument and logical output root is free of host or Runtime-private physical paths, and every credential binding is a non-secret policy identity whose value is supplied only to the fixed runner or isolated broker. A builder has Candidate-write capability and exactly one candidate-output root whose required member is false so terminal failure may omit Candidate output; no other owner has either. When populated, that root denotes a complete successor repository tree rather than a delta or one carried file. The Specification contains no Execution Handle, allocation key, endpoint, daemon or container identifier, credential value, mutable materialization identity, Retirement object, Reclamation object, Control family, Journal event, or public operation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "owner",
+    "backendProfile",
+    "image",
+    "inputSet",
+    "operation",
+    "runner",
+    "environment",
+    "capabilities",
+    "networkPolicy",
+    "credentialPolicy",
+    "limits",
+    "outputContract",
+    "terminalPolicy",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.execution-specification.v1" },
+    "owner": { "$ref": "#/$defs/owner" },
+    "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
+    "image": { "$ref": "#/$defs/imageReference" },
+    "inputSet": { "$ref": "#/$defs/inputSetReference" },
+    "operation": { "$ref": "#/$defs/operation" },
+    "runner": { "$ref": "#/$defs/runner" },
+    "environment": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/environmentEntry" }
+    },
+    "capabilities": { "$ref": "#/$defs/capabilities" },
+    "networkPolicy": { "$ref": "#/$defs/networkPolicy" },
+    "credentialPolicy": { "$ref": "#/$defs/credentialPolicy" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "outputContract": { "$ref": "#/$defs/outputContract" },
+    "terminalPolicy": { "$ref": "#/$defs/terminalPolicy" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "owner": {
+            "type": "object",
+            "properties": { "kind": { "const": "agent-attempt" } },
+            "required": ["kind"]
+          }
+        },
+        "required": ["owner"]
+      },
+      "then": {
+        "properties": {
+          "operation": {
+            "type": "object",
+            "properties": { "kind": { "const": "agent-attempt" } },
+            "required": ["kind"]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "operation": {
+            "type": "object",
+            "properties": { "kind": { "const": "check" } },
+            "required": ["kind"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "owner": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "activityId", "attempt"],
+          "properties": {
+            "kind": { "const": "agent-attempt" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "attempt": { "$ref": "#/$defs/attemptReference" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "activityId", "selectionId", "phase", "ownerSubjectDigest"],
+          "properties": {
+            "kind": { "const": "check" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "selectionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "phase": { "enum": ["baseline", "final"] },
+            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "attemptReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "agent-attempt" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "backendProfileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationDigest"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "lifecycle.execution-backend-profile.docker-local.v1",
+            "lifecycle.execution-backend-profile.fault-injection.v1"
+          ]
+        },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imageId", "imageDigest"],
+      "properties": {
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "inputSetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "digest"],
+      "properties": {
+        "profileId": { "const": "lifecycle.execution-input-set.v1" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "role", "providerDescriptorDigest", "adapterImplementationDigest"],
+          "properties": {
+            "kind": { "const": "agent-attempt" },
+            "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+            "providerDescriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "adapterImplementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "phase", "selectionId", "definitionDigest", "bindingDigest", "runnerImplementationDigest", "parserImplementationDigest"],
+          "properties": {
+            "kind": { "const": "check" },
+            "phase": { "enum": ["baseline", "final"] },
+            "selectionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "definitionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "bindingDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "runnerImplementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "parserImplementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractId", "contractDigest", "operationId", "argumentsDigest"],
+      "properties": {
+        "contractId": { "const": "lifecycle.execution-cell-runner.v1" },
+        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "operationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "argumentsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "environmentEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source", "bindingDigest"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Z_][A-Z0-9_]*$"
+        },
+        "source": { "enum": ["fixed-runtime", "input-set", "credential-injection"] },
+        "bindingDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityProfileDigest", "candidateWrites", "temporaryWrites", "subprocesses", "externalEffects", "dockerDaemonAccess"],
+      "properties": {
+        "capabilityProfileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "candidateWrites": { "type": "boolean" },
+        "temporaryWrites": { "type": "boolean" },
+        "subprocesses": { "enum": ["none", "repository-toolchain"] },
+        "externalEffects": { "type": "boolean" },
+        "dockerDaemonAccess": { "const": false }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agentProductNetwork", "agentPolicyDigest", "providerControlPlane", "providerPolicyDigest", "separationRequired"],
+      "properties": {
+        "agentProductNetwork": { "enum": ["none", "loopback", "bounded-egress"] },
+        "agentPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "providerControlPlane": { "enum": ["none", "fixed-service-channel"] },
+        "providerPolicyDigest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          ]
+        },
+        "separationRequired": { "const": true }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "providerControlPlane": { "const": "none" } },
+            "required": ["providerControlPlane"]
+          },
+          "then": { "properties": { "providerPolicyDigest": { "type": "null" } } },
+          "else": { "properties": { "providerPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" } } }
+        }
+      ]
+    },
+    "credentialPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "bindings", "agentAccess", "outputDisclosure"],
+      "properties": {
+        "mode": { "enum": ["none", "fixed-runner", "isolated-broker"] },
+        "bindings": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/credentialBinding" }
+        },
+        "agentAccess": { "const": false },
+        "outputDisclosure": { "const": false }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "none" } },
+            "required": ["mode"]
+          },
+          "then": { "properties": { "bindings": { "maxItems": 0 } } },
+          "else": { "properties": { "bindings": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "credentialBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "policyDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "policyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wallTimeMilliseconds", "processes", "storageBytes", "outputEntries", "outputBytes", "outputEntryBytes", "events"],
+      "properties": {
+        "wallTimeMilliseconds": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "processes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "storageBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "outputEntries": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "outputBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "outputEntryBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "events": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+      }
+    },
+    "outputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestProfile", "declaredOutputRoots", "allowedModeClasses", "extraEntriesAllowed", "digest"],
+      "properties": {
+        "manifestProfile": { "const": "lifecycle.execution-output-manifest.v1" },
+        "declaredOutputRoots": {
+          "description": "Closed non-overlapping logical output boundaries. A candidate-output purpose occurs exactly once when Candidate writes are granted, has required false, and when populated denotes the complete successor repository tree.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/declaredOutputRoot" }
+        },
+        "allowedModeClasses": { "const": ["regular", "executable"] },
+        "extraEntriesAllowed": { "const": false },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "declaredOutputRoot": {
+      "description": "One logical output boundary. For candidate-output, path is a directory prefix only and is never itself a Manifest file path.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "purpose", "required", "allowedModeClasses", "maximumEntries", "maximumBytes"],
+      "properties": {
+        "path": {
+          "description": "Normalized carrier-relative root. Candidate entries map to repository paths by stripping exactly this path plus one slash.",
+          "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+        },
+        "purpose": {
+          "enum": [
+            "candidate-output",
+            "agent-work-product",
+            "check-proof",
+            "raw-provider-output",
+            "raw-check-output",
+            "operational-artifact"
+          ]
+        },
+        "required": { "type": "boolean" },
+        "allowedModeClasses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["regular", "executable"] }
+        },
+        "maximumEntries": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "maximumBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+      }
+    },
+    "terminalPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directObservationRequired", "containmentRequired", "retrievalAfterContainment", "retirementRequired", "reclamation"],
+      "properties": {
+        "directObservationRequired": { "const": true },
+        "containmentRequired": { "const": true },
+        "retrievalAfterContainment": { "const": true },
+        "retirementRequired": { "const": true },
+        "reclamation": { "const": "asynchronous-private" }
+      }
+    }
+  }
+}

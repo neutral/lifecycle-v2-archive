@@ -1,0 +1,19 @@
+{
+  "schema": "lifecycle.material-condition-payload.v1",
+  "profileId": "lifecycle.material-condition.foundation-v1",
+  "conditionClass": "incompatible-product-state-drift",
+  "source": {
+    "kind": "agent-proposal",
+    "conditionId": "condition.product-state-drift",
+    "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "observedFactsDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "blocking": true,
+  "ruleSet": {
+    "id": "rules.material-condition",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "implementationId": "runtime.reducer",
+    "implementationDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "limitations": []
+}

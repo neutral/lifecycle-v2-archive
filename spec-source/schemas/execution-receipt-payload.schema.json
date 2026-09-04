@@ -1,0 +1,504 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:execution-receipt-payload:v3",
+  "title": "Lifecycle Execution Receipt Payload v3",
+  "description": "Truthful Runtime observation of one terminal provider invocation, semantic submission, and optional Candidate successor.",
+  "$comment": "The Receipt binds stable logical execution facts only. It contains no Execution Handle, allocation key, Cell or container identifier, backend endpoint, daemon identity, credential, private environment value, physical path, current Reclamation state, or recovery package. Output Carrier and Manifest fields form a joined availability tuple and are non-null only when exact output was retrieved after Containment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "activityId",
+    "role",
+    "providerEffect",
+    "productiveExecutionStarted",
+    "inputBindings",
+    "provider",
+    "execution",
+    "workspace",
+    "workProduct",
+    "candidate",
+    "containment",
+    "retirement",
+    "rawMaterials",
+    "runtime"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.execution-receipt-payload.v3" },
+    "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+    "providerEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectDigest", "outcome"],
+      "properties": {
+        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "outcome": { "enum": ["completed", "failed", "not-started"] }
+      }
+    },
+    "productiveExecutionStarted": { "type": "boolean" },
+    "inputBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleBriefDigest", "contentInventoryDigest", "inputMaterialDigest"],
+      "properties": {
+        "roleBriefDigest": { "$ref": "#/$defs/nullableDigest" },
+        "contentInventoryDigest": { "$ref": "#/$defs/nullableDigest" },
+        "inputMaterialDigest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptorId",
+        "descriptorDigest",
+        "adapter",
+        "installedIdentityDigest",
+        "observedExecutableIdentity",
+        "model",
+        "sessionId",
+        "firstTrigger",
+        "terminalReason",
+        "stage",
+        "startedAt",
+        "finishedAt",
+        "exitCode",
+        "signal"
+      ],
+      "properties": {
+        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "adapter": { "const": "lifecycle.provider-adapter.v6" },
+        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "observedExecutableIdentity": { "$ref": "#/$defs/nullableDigest" },
+        "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "sessionId": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+          ]
+        },
+        "firstTrigger": {
+          "enum": ["natural", "submission", "timeout", "cancellation", "parent-loss", "security-stop", "runtime-stop", "not-started"]
+        },
+        "terminalReason": {
+          "enum": [
+            "natural-completion",
+            "valid-submission",
+            "invalid-submission",
+            "timeout",
+            "cancelled",
+            "forced-termination",
+            "provider-failure",
+            "capability-refusal",
+            "security-stop",
+            "runtime-failure",
+            "not-started"
+          ]
+        },
+        "stage": {
+          "enum": ["preflight", "compatibility", "dispatch", "running", "result-validation", "evaluated"]
+        },
+        "startedAt": { "$ref": "#/$defs/nullableTime" },
+        "finishedAt": { "$ref": "#/$defs/nullableTime" },
+        "exitCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+          ]
+        },
+        "signal": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Z0-9]+$" }
+          ]
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backendProfile",
+        "image",
+        "inputSet",
+        "specificationDigest",
+        "runnerDigest",
+        "observationDigest",
+        "output"
+      ],
+      "properties": {
+        "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
+        "image": { "$ref": "#/$defs/imageReference" },
+        "inputSet": { "$ref": "#/$defs/inputSetReference" },
+        "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "observationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "output": { "$ref": "#/$defs/outputBinding" }
+      }
+    },
+    "workspace": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableWorkspace" },
+        { "$ref": "#/$defs/unavailableWorkspace" }
+      ]
+    },
+    "workProduct": {
+      "oneOf": [
+        { "$ref": "#/$defs/submittedWorkProduct" },
+        { "$ref": "#/$defs/abandonedWorkProduct" }
+      ]
+    },
+    "candidate": {
+      "oneOf": [
+        { "$ref": "#/$defs/noCandidate" },
+        { "$ref": "#/$defs/inputCandidateOnly" },
+        { "$ref": "#/$defs/builderCandidate" }
+      ]
+    },
+    "containment": { "$ref": "#/$defs/containment" },
+    "retirement": { "$ref": "#/$defs/retirement" },
+    "rawMaterials": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/adjacentFileAvailability" }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementationId", "implementationDigest", "ruleSetId", "ruleSetDigest"],
+      "properties": {
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "productiveExecutionStarted": { "const": true } }, "required": ["productiveExecutionStarted"] },
+      "then": {
+        "properties": {
+          "inputBindings": {
+            "properties": {
+              "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reconnaissance" } }, "required": ["role"] },
+      "then": { "properties": { "candidate": { "$ref": "#/$defs/noCandidate" } } }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reviewer" } }, "required": ["role"] },
+      "then": { "properties": { "candidate": { "$ref": "#/$defs/inputCandidateOnly" } } }
+    },
+    {
+      "if": { "properties": { "role": { "const": "builder" } }, "required": ["role"] },
+      "then": { "properties": { "candidate": { "$ref": "#/$defs/builderCandidate" } } }
+    }
+  ],
+  "$defs": {
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    },
+    "nullableTime": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+      ]
+    },
+    "backendProfileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationDigest"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "lifecycle.execution-backend-profile.docker-local.v1",
+            "lifecycle.execution-backend-profile.fault-injection.v1"
+          ]
+        },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imageId", "imageDigest"],
+      "properties": {
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "inputSetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "digest"],
+      "properties": {
+        "profileId": { "const": "lifecycle.execution-input-set.v1" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "outputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "carrierByteLength", "carrierDigest", "manifestDigest"],
+      "properties": {
+        "availability": { "enum": ["retrieved", "not-produced", "unavailable"] },
+        "carrierByteLength": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          ]
+        },
+        "carrierDigest": { "$ref": "#/$defs/nullableDigest" },
+        "manifestDigest": { "$ref": "#/$defs/nullableDigest" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "availability": { "const": "retrieved" } }, "required": ["availability"] },
+          "then": {
+            "properties": {
+              "carrierByteLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "carrierDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          },
+          "else": {
+            "properties": {
+              "carrierByteLength": { "type": "null" },
+              "carrierDigest": { "type": "null" },
+              "manifestDigest": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "submissionDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "stage", "factsDigest"],
+      "properties": {
+        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "stage": { "enum": ["syntax", "template", "semantic", "compiler"] },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "nullableSubmissionDiagnostic": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/submissionDiagnostic" }
+      ]
+    },
+    "availableWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "rawByteLength",
+        "workspaceRawDigest",
+        "semanticMarkdownDigest",
+        "parseResultDigest",
+        "failureFactsDigest",
+        "submissionDiagnostic",
+        "fixedBindingSubjectDigest",
+        "parserDisposition",
+        "compilerDisposition"
+      ],
+      "properties": {
+        "availability": { "const": "available" },
+        "rawByteLength": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+        "workspaceRawDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "semanticMarkdownDigest": { "$ref": "#/$defs/nullableDigest" },
+        "parseResultDigest": { "$ref": "#/$defs/nullableDigest" },
+        "failureFactsDigest": { "$ref": "#/$defs/nullableDigest" },
+        "submissionDiagnostic": { "$ref": "#/$defs/nullableSubmissionDiagnostic" },
+        "fixedBindingSubjectDigest": { "$ref": "#/$defs/nullableDigest" },
+        "parserDisposition": { "enum": ["valid", "invalid", "not-run"] },
+        "compilerDisposition": { "enum": ["retained", "rejected", "invalid-result", "runtime-failure", "not-run"] }
+      }
+    },
+    "unavailableWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "rawByteLength",
+        "workspaceRawDigest",
+        "semanticMarkdownDigest",
+        "parseResultDigest",
+        "failureFactsDigest",
+        "submissionDiagnostic",
+        "fixedBindingSubjectDigest",
+        "parserDisposition",
+        "compilerDisposition"
+      ],
+      "properties": {
+        "availability": { "const": "unavailable" },
+        "rawByteLength": { "type": "null" },
+        "workspaceRawDigest": { "type": "null" },
+        "semanticMarkdownDigest": { "type": "null" },
+        "parseResultDigest": { "type": "null" },
+        "failureFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "submissionDiagnostic": { "type": "null" },
+        "fixedBindingSubjectDigest": { "type": "null" },
+        "parserDisposition": { "const": "not-run" },
+        "compilerDisposition": { "const": "not-run" }
+      }
+    },
+    "workProductReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "agent-work-product" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "submittedWorkProduct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "reference"],
+      "properties": {
+        "disposition": { "const": "submitted" },
+        "reference": { "$ref": "#/$defs/workProductReference" }
+      }
+    },
+    "abandonedWorkProduct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "reference"],
+      "properties": {
+        "disposition": { "const": "abandoned" },
+        "reference": { "type": "null" }
+      }
+    },
+    "candidateRevisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "carrierManifestDigest"],
+      "properties": {
+        "revision": { "$ref": "#/$defs/candidateRevisionReference" },
+        "carrierManifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "candidateRevisionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "candidate-revision" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "noCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "successorDisposition", "successor", "contentDisposition"],
+      "properties": {
+        "input": { "type": "null" },
+        "successorDisposition": { "type": "null" },
+        "successor": { "type": "null" },
+        "contentDisposition": { "type": "null" }
+      }
+    },
+    "inputCandidateOnly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "successorDisposition", "successor", "contentDisposition"],
+      "properties": {
+        "input": { "$ref": "#/$defs/candidateRevisionBinding" },
+        "successorDisposition": { "type": "null" },
+        "successor": { "type": "null" },
+        "contentDisposition": { "type": "null" }
+      }
+    },
+    "builderCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "successorDisposition", "successor", "contentDisposition"],
+      "properties": {
+        "input": { "$ref": "#/$defs/candidateRevisionBinding" },
+        "successorDisposition": { "enum": ["promoted", "not-produced", "unavailable", "invalid"] },
+        "successor": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/candidateRevisionBinding" }
+          ]
+        },
+        "contentDisposition": {
+          "oneOf": [
+            { "type": "null" },
+            { "enum": ["changed", "unchanged"] }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "successorDisposition": { "const": "promoted" } },
+            "required": ["successorDisposition"]
+          },
+          "then": {
+            "properties": {
+              "successor": { "$ref": "#/$defs/candidateRevisionBinding" },
+              "contentDisposition": { "enum": ["changed", "unchanged"] }
+            }
+          },
+          "else": {
+            "properties": {
+              "successor": { "type": "null" },
+              "contentDisposition": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "containment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest", "cancellationRequested", "forced", "parentLoss"],
+      "properties": {
+        "classification": { "const": "contained" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "cancellationRequested": { "type": "boolean" },
+        "forced": { "type": "boolean" },
+        "parentLoss": { "enum": ["not-observed", "contained"] }
+      }
+    },
+    "retirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest", "residualClass", "residualFactsDigest"],
+      "properties": {
+        "classification": { "const": "retired" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "residualClass": { "enum": ["none", "bounded-non-secret"] },
+        "residualFactsDigest": { "$ref": "#/$defs/nullableDigest" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "residualClass": { "const": "none" } }, "required": ["residualClass"] },
+          "then": { "properties": { "residualFactsDigest": { "type": "null" } } },
+          "else": { "properties": { "residualFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" } } }
+        }
+      ]
+    }
+  }
+}

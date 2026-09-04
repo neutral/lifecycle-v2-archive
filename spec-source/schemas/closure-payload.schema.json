@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:closure-payload:v4",
+  "title": "Lifecycle Closure Payload v4",
+  "description": "Sufficient terminal Delivery facts after one applied Founder-authenticated acceptance or no-ship transaction.",
+  "$comment": "Closure proves final execution disposition, synchronous Containment and Runtime-owned Retirement, and durable handoff of the exact remaining Reclamation obligation set. It contains no Handle, Cell identity, backend coordinate, physical path, handoff payload, current or later Reclamation ledger state, and it does not claim synchronous deletion or secure erasure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "disposition",
+    "transaction",
+    "candidateTreatment",
+    "canonicalResult",
+    "nonIntegrationVerified",
+    "terminalExecutions",
+    "reclamationHandoff",
+    "runtime",
+    "terminalAt"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.closure-payload.v4" },
+    "profileId": { "const": "lifecycle.delivery-closure.foundation-v1" },
+    "disposition": { "enum": ["accepted", "no-ship"] },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectDigest",
+        "outcome",
+        "observationFactsSchema",
+        "observationFactsDigest",
+        "canonicalResultDigest",
+        "observedAt"
+      ],
+      "properties": {
+        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "outcome": { "const": "applied" },
+        "observationFactsSchema": {
+          "enum": [
+            "lifecycle.terminal-acceptance-effect-observation.v1",
+            "lifecycle.terminal-repository-effect-observation.v1"
+          ]
+        },
+        "observationFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "canonicalResultDigest": { "$ref": "#/$defs/nullableDigest" },
+        "observedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+      }
+    },
+    "candidateTreatment": { "enum": ["integrated", "abandoned", "not-created"] },
+    "canonicalResult": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/canonicalResult" }
+      ]
+    },
+    "nonIntegrationVerified": { "type": "boolean" },
+    "terminalExecutions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminalExecutionSetDigest",
+        "executionCount",
+        "containment",
+        "retirement"
+      ],
+      "properties": {
+        "terminalExecutionSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "executionCount": { "$ref": "#/$defs/nonnegativeSafeInteger" },
+        "containment": { "$ref": "#/$defs/terminalFact" },
+        "retirement": { "$ref": "#/$defs/terminalFact" }
+      }
+    },
+    "reclamationHandoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["obligationSetDigest", "obligationCount"],
+      "properties": {
+        "obligationSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "obligationCount": { "$ref": "#/$defs/nonnegativeSafeInteger" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qualification",
+        "repository",
+        "runtimeProtocol",
+        "interfaceProtocol",
+        "provider",
+        "implementationId",
+        "implementationDigest",
+        "ruleSetId",
+        "ruleSetDigest"
+      ],
+      "properties": {
+        "qualification": { "const": "lifecycle.foundation.1.0.0-rc.10" },
+        "repository": { "const": "lifecycle.repository.v15" },
+        "runtimeProtocol": { "const": "lifecycle.runtime.foundation.v10" },
+        "interfaceProtocol": { "const": "lifecycle.interface.foundation.v10" },
+        "provider": { "const": "lifecycle.provider-adapter.v6" },
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "terminalAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "disposition": { "const": "accepted" } }, "required": ["disposition"] },
+      "then": {
+        "properties": {
+          "candidateTreatment": { "const": "integrated" },
+          "canonicalResult": { "$ref": "#/$defs/canonicalResult" },
+          "transaction": {
+            "properties": {
+              "observationFactsSchema": {
+                "const": "lifecycle.terminal-acceptance-effect-observation.v1"
+              },
+              "canonicalResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          },
+          "nonIntegrationVerified": { "const": false }
+        }
+      },
+      "else": {
+        "properties": {
+          "candidateTreatment": { "enum": ["abandoned", "not-created"] },
+          "canonicalResult": { "type": "null" },
+          "transaction": {
+            "properties": {
+              "observationFactsSchema": {
+                "const": "lifecycle.terminal-repository-effect-observation.v1"
+              },
+              "canonicalResultDigest": { "type": "null" }
+            }
+          },
+          "nonIntegrationVerified": { "const": true }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    },
+    "nonnegativeSafeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "terminalFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest"],
+      "properties": {
+        "classification": { "const": "complete" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "canonicalResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parentCommit",
+        "parentTree",
+        "commit",
+        "tree",
+        "candidateDigest",
+        "productStateDigest",
+        "knowledgeSetDigest"
+      ],
+      "properties": {
+        "parentCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "parentTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "candidateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

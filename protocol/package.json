@@ -1,0 +1,39 @@
+{
+  "name": "@neutral/lifecycle-protocol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lifecycle Foundation presentation-neutral interface protocol.",
+  "license": "CC0-1.0 OR 0BSD",
+  "type": "module",
+  "main": "./dist/src/foundation.js",
+  "types": "./dist/src/foundation.d.ts",
+  "files": [
+    "dist/src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/foundation.d.ts",
+      "default": "./dist/src/foundation.js"
+    }
+  },
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && npm run test:built",
+    "test:built": "node --test dist/tests/*.test.js",
+    "prepack": "node scripts/stage-bundled-dependency.mjs prepare",
+    "postpack": "node scripts/stage-bundled-dependency.mjs cleanup"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.4.0",
+    "zod": "4.4.3"
+  },
+  "bundledDependencies": [
+    "@noble/hashes",
+    "zod"
+  ]
+}

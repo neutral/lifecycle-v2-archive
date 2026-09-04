@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
+  "title": "Lifecycle Candidate Revision Carrier Manifest v1",
+  "description": "Digest-bound adjacent Control evidence for one exact Candidate Revision Git object closure retained in the installation Carrier Store.",
+  "$comment": "Semantic validation recomputes the digest over the complete value without digest, requires objectInventory in ascending objectId order with no duplicate object, requires object ids to match objectFormat, parses every object, requires rootTree to be the unique root tree, requires the inventory to equal exactly the blob-and-tree closure reachable from rootTree, refuses every empty reachable tree, permits only tree modes 040000, 100644, and 100755, refuses symlink, Gitlink, commit, tag, special, missing, and unreachable objects, and independently opens carrierArtifact to prove that it contains exactly the declared closure. Every objectDescriptor.byteLength is the uncompressed Git object payload length, excluding the Git object header and every loose-object or pack framing, compression, delta, index, and manifest byte; aggregateObjectBytes is the exact sum of those descriptor lengths. The adjacent manifest uses media type application/vnd.lifecycle.candidate-revision-carrier-manifest+json and is Control evidence; carrierArtifact bytes remain an immutable Carrier Store artifact and no path or store coordinate enters this value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "objectFormat",
+    "rootTree",
+    "allowedTreeModes",
+    "objectInventory",
+    "objectCount",
+    "aggregateObjectBytes",
+    "objectInventoryDigest",
+    "carrierArtifact",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.candidate-revision-carrier-manifest.v1" },
+    "objectFormat": { "enum": ["sha1", "sha256"] },
+    "rootTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+    "allowedTreeModes": { "const": ["040000", "100644", "100755"] },
+    "objectInventory": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/objectDescriptor" }
+    },
+    "objectCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "aggregateObjectBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "objectInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "carrierArtifact": { "$ref": "#/$defs/carrierArtifact" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "objectDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objectId", "objectType", "byteLength"],
+      "properties": {
+        "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "objectType": { "enum": ["blob", "tree"] },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "carrierArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "byteLength", "digest"],
+      "properties": {
+        "format": { "const": "git-pack-v2" },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

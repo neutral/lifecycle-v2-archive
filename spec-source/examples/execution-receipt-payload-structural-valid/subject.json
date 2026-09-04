@@ -1,0 +1,102 @@
+{
+  "schema": "lifecycle.execution-receipt-payload.v3",
+  "activityId": "activity.prepare",
+  "role": "reconnaissance",
+  "providerEffect": {
+    "effectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "outcome": "not-started"
+  },
+  "productiveExecutionStarted": false,
+  "inputBindings": {
+    "roleBriefDigest": null,
+    "contentInventoryDigest": null,
+    "inputMaterialDigest": null
+  },
+  "provider": {
+    "descriptorId": "codex-exec-standard-v6",
+    "descriptorDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "adapter": "lifecycle.provider-adapter.v6",
+    "installedIdentityDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "observedExecutableIdentity": null,
+    "model": "gpt-5.6-sol",
+    "sessionId": null,
+    "firstTrigger": "not-started",
+    "terminalReason": "not-started",
+    "stage": "preflight",
+    "startedAt": null,
+    "finishedAt": null,
+    "exitCode": null,
+    "signal": null
+  },
+  "execution": {
+    "backendProfile": {
+      "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+      "profileDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "implementationDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "image": {
+      "imageId": "lifecycle.execution-image.codex-standard.v1",
+      "imageDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    "inputSet": {
+      "profileId": "lifecycle.execution-input-set.v1",
+      "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "specificationDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runnerDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "observationDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "output": {
+      "availability": "not-produced",
+      "carrierByteLength": null,
+      "carrierDigest": null,
+      "manifestDigest": null
+    }
+  },
+  "workspace": {
+    "availability": "unavailable",
+    "rawByteLength": null,
+    "workspaceRawDigest": null,
+    "semanticMarkdownDigest": null,
+    "parseResultDigest": null,
+    "failureFactsDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "submissionDiagnostic": null,
+    "fixedBindingSubjectDigest": null,
+    "parserDisposition": "not-run",
+    "compilerDisposition": "not-run"
+  },
+  "workProduct": {
+    "disposition": "abandoned",
+    "reference": null
+  },
+  "candidate": {
+    "input": null,
+    "successorDisposition": null,
+    "successor": null,
+    "contentDisposition": null
+  },
+  "containment": {
+    "classification": "contained",
+    "factsDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "cancellationRequested": false,
+    "forced": false,
+    "parentLoss": "not-observed"
+  },
+  "retirement": {
+    "classification": "retired",
+    "factsDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "residualClass": "none",
+    "residualFactsDigest": null
+  },
+  "rawMaterials": [
+    {
+      "availability": "not-retained",
+      "purpose": "provider-final-return"
+    }
+  ],
+  "runtime": {
+    "implementationId": "runtime.foundation",
+    "implementationDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "ruleSetId": "attempt-rules-v6",
+    "ruleSetDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  }
+}

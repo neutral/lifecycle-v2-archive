@@ -1,0 +1,29 @@
+{
+  "schema": "lifecycle.candidate-revision-payload.v2",
+  "profileId": "lifecycle.candidate-revision.observation.v1",
+  "observation": "initialization",
+  "candidateBaseCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "carrierManifest": {
+    "digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "byteLength": 1024,
+    "mediaType": "application/json",
+    "purpose": "candidate-revision-carrier-manifest"
+  },
+  "state": {
+    "tree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "candidateDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "productStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "knowledgeSetDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "diffDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "pathInventoryDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "artifactSetDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "descriptionCoverageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "unchangedFromPredecessor": true,
+    "changedSubjects": []
+  },
+  "observer": {
+    "implementationId": "candidate-observer-v1",
+    "implementationDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "limitations": []
+}

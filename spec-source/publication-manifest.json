@@ -1,0 +1,757 @@
+{
+  "schema": "lifecycle.publication-manifest.v1",
+  "specificationId": "lifecycle",
+  "specificationRevision": "lifecycle.foundation.1.0.0-rc.10",
+  "status": "draft",
+  "documents": [
+    {
+      "path": "GLOSSARY.md",
+      "digest": "sha256:7913e0a0f922561585415951769b973f2a1d947be1696695c82bf9af1653a795",
+      "role": "glossary",
+      "normative": false
+    },
+    {
+      "path": "IMPLEMENTATION.md",
+      "digest": "sha256:4b75f7c3742e2ce9ef7a7a010f0ce97f3add838db8f50715b0328c832b6abe60",
+      "role": "implementation-plan",
+      "normative": false
+    },
+    {
+      "path": "README.md",
+      "digest": "sha256:403cddbda952031bc2a6e7298eca2e75bd40e850d46ef53e7083ad6c04f3ef9a",
+      "role": "publication-guide",
+      "normative": false
+    },
+    {
+      "path": "SPEC.md",
+      "digest": "sha256:a5437a48976ada452c91ce6f9c325b821599c6d889dd92f729ddf4d0c57aa3d2",
+      "role": "conceptual-specification",
+      "normative": false
+    },
+    {
+      "path": "schemas/README.md",
+      "digest": "sha256:c1c724f7bfdfc47d3d3e1dcc097b58140d8cff9c9836d8596586969e834529f7",
+      "role": "schema-guide",
+      "normative": false
+    },
+    {
+      "path": "spec/ATLAS.md",
+      "digest": "sha256:ba18b353f2229ef6e6e508bd35c9d9bc55fd66704b0e45c6276a8a084e262aa3",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/ATTEMPTS.md",
+      "digest": "sha256:75a1d297e79e13e94a5346534d4933ae7cc40021e929304ef338cee0844ca129",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/ATTEMPT_VIEW.md",
+      "digest": "sha256:9f4f16b2c461d1a05a3fa2ce885262c2e0a68f943c40eaa46bce970744691be1",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/AUTHORITY.md",
+      "digest": "sha256:0e2522ce588a8d059c54f26bd792be76e175cc33a37d4ab1a69e8bc761bb2d7e",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/CONFORMANCE.md",
+      "digest": "sha256:8282980891f65e63917aad1082e48408e2a51f8fe50abc8a7081cd819da301e3",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/CONTROL.md",
+      "digest": "sha256:4d2da4af512002f9a011342e353963565ce52e91e9a0acafdad429f8f33a927e",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/DELIVERY.md",
+      "digest": "sha256:823e049cf076f50af9d50800eda0507b3a30b38209d00624e8874c97be8b339b",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/EVIDENCE.md",
+      "digest": "sha256:98093374f603ffc1fcebf21536fb4c0e9450de39446526e19740aeaf19169c29",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/EVOLUTION.md",
+      "digest": "sha256:a9e114a277f1f8f9f1dbdc64c10afe5c3448e9baabab30b6b4194c61a80f4cc5",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/EXECUTION.md",
+      "digest": "sha256:2b12587fe054a4e62be50f33598d862bc4460f2ce822c910db515eff6117746e",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/KNOWLEDGE.md",
+      "digest": "sha256:d2b73011b943580fb14d9f952cdd7221d03b90b26d6ab93fabd41a0b9475efc0",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/PROCESSING.md",
+      "digest": "sha256:8f447787ce654753cf3ca329ec3d6c8f7d8d6a0c02b00f79387ab9c2f79c0b30",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/PROJECTION.md",
+      "digest": "sha256:ef5a3f894ebc443253648cff9ea314bc0479af5a50c045f7943c3b3eecfc900d",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/RELATIONSHIPS.md",
+      "digest": "sha256:fad2fe8998373c600c17023b07e7ac378eb7913e074dd4e90d927597db91bf4b",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/SECURITY.md",
+      "digest": "sha256:b95054fe8eaf213a96e645168b9dfd768d4d4c32b710c95d9f1e62f0f64f18bc",
+      "role": "normative-specification",
+      "normative": true
+    },
+    {
+      "path": "spec/VALIDATION.md",
+      "digest": "sha256:2af1a27b6e24a22ec4a2fec32d7e9aa06b1d0bcebf092dc78078060a7f050e56",
+      "role": "normative-specification",
+      "normative": true
+    }
+  ],
+  "schemas": [
+    {
+      "path": "schemas/agent-attempt-payload.schema.json",
+      "digest": "sha256:0a1138509613ddc7897718bba5abf33c8a2935ea25f7faf9e224705826ce257c",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/agent-work-product-payload.schema.json",
+      "digest": "sha256:4da9b4940d01842135493fd6dda22c00cba724fbb2d2891eafaec1591365f95c",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/atlas-resolution.schema.json",
+      "digest": "sha256:1b031e1b15600fe8b3a6606dcde1ca2d8ebb330b082c78b3a0807a6fb67f44d8",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/atlas-state.schema.json",
+      "digest": "sha256:6296af47fd6620ad00fc6e8874776c9a96ebb88fc7184074863aa965c4ca9069",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/candidate-revision-carrier-manifest.schema.json",
+      "digest": "sha256:2e51eece863d00519bfa1b260f12103618a853c6db03a0895656f9ea77fa85b1",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/candidate-revision-payload.schema.json",
+      "digest": "sha256:87e5c3ea902ac93b05d75e1b4f564ac1ad7df8c8c05062bcf5e7d938be5af3a3",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/candidate-seal-payload.schema.json",
+      "digest": "sha256:1360c0acb1613cbf12867393b1a2221e83e067beca902ea374cb719e5e4ed6f6",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/capability-profile.schema.json",
+      "digest": "sha256:1aec0859547c4fb45b39c3a6d02e94138fb6f7a25ae998e8155f86c7c1aafbde",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/check-receipt-payload.schema.json",
+      "digest": "sha256:c5f26c40d7f87c7fc8cc2bfc14eb3f07c68a9a45ef2595d6d16a6e4a0565c4df",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/closure-payload.schema.json",
+      "digest": "sha256:868f0a5ce57dc25302615d811959576e97b5b3b810b6050911cb43d6e9342326",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/common.schema.json",
+      "digest": "sha256:f58a45cc718e4490db6e441cffc313eb1b71c5ac8e1b123e388fde88ce871105",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/conformance-claim.schema.json",
+      "digest": "sha256:cf9777281b4a8f7b4b463112d36466d39f1f17d54645b21ec3f122ba0d398268",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-lifecycle-profile.schema.json",
+      "digest": "sha256:ce893dbccaa6ae05412ec5c76ef4a5f363aaf6a1a6d1904ea86eb93f6aabb77b",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-event.schema.json",
+      "digest": "sha256:8c50d47d8f4337e080d775cd605e727f81118371fa5edc43e5862045333f3f0f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-file.schema.json",
+      "digest": "sha256:7538097abbd78e6218a5f69d2eeb73f007fc00a622822535f1f1b4ac89ce1eef",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-revision.schema.json",
+      "digest": "sha256:d540d628605e1547a38f8c1a1f66208d687229edf9d477372064bb9abfc338f8",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-store-archive.schema.json",
+      "digest": "sha256:72c35d14bc3f6e813bea96de13730d04f9929f766085b7e7ab9cd39bdc0a4ac8",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-store-seal.schema.json",
+      "digest": "sha256:3b5a552c6e87311ff01bc9684993516e15e1a981a066b35053e486f1d363a60e",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/control-record-store.schema.json",
+      "digest": "sha256:7a3e3543ad3f3fe9fff27c2d418b5829b038df575442a221ba07b3b786d99aed",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/delivery-reduction.schema.json",
+      "digest": "sha256:3e80ce6b3fd515baac6ba2b296ffb292e62bd323102b7aa0a6a459bc6b099d1f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/evidence-packet-payload.schema.json",
+      "digest": "sha256:883580caf8abb0a44131cb8e27f9a39d9ad420c8ed9f3c4bd9c78e424cf85b81",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-backend-profile.schema.json",
+      "digest": "sha256:7ccbe97383da7bdbc439ca886d60a797bfffe30ba88fe518d176c8aa4b35092c",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-image.schema.json",
+      "digest": "sha256:d71687cade84ee243468131ac70cf948d2c8a973c2886085accd3b15dcc438de",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-input-set.schema.json",
+      "digest": "sha256:07f57f64ad66619a7b21e1468a9ae240d81f7dc4e3c5c6da3354b565e82ad2f3",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-observation.schema.json",
+      "digest": "sha256:dcc9cd4510515e26e72d7373e723dd4ef3d51be8b3a540ab80ebbe7a8f594ed1",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-output-manifest.schema.json",
+      "digest": "sha256:eb702f5c2762095dff5f00e25a4e7563eb4cdab7860558a2daab385f16178348",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-receipt-payload.schema.json",
+      "digest": "sha256:de77dcd57fa2263b2c7382974f79dde92a75afc4c500084650f7904df86c105b",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/execution-specification.schema.json",
+      "digest": "sha256:d27db29b4090ac724ee1c866984f1d1fe207e56c810777b92b2fabbe5be9980c",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/fixture-manifest.schema.json",
+      "digest": "sha256:24135e7500100476cd900bc793421ad369aaf0387376d8f8f8015459b68420c3",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/founder-brief-payload.schema.json",
+      "digest": "sha256:b9479f5671d7fbfc0eb99cc2776c48609b4044910910f16e04273053082214d0",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/founder-decision-payload.schema.json",
+      "digest": "sha256:c9cc441bc5bfba5fc52c3a171ec51c2b92be4c0fdd2d326ffa908c36052aef0f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/investment-allocation.schema.json",
+      "digest": "sha256:b5d114032d330d15d96a486682443d98f03b093c20b1c2f5dae837fe18b346da",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/knowledge-projection.schema.json",
+      "digest": "sha256:8c3b7a72a93672c578e74a312aafb82a8ee23aee2e12fb3df00026f266b0193b",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/knowledge-record.schema.json",
+      "digest": "sha256:e91ec9e5407ee39f68d769608d6e0ad8b8943b4bb3524b6c64fee9f53e81c10b",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/material-condition-payload.schema.json",
+      "digest": "sha256:1ad84d5651743630375f8d351b02ed055386fa11a6dd1c48e10d1198e9c31b18",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/product-state.schema.json",
+      "digest": "sha256:fd00b7fdf1ef32812a39103162e38392398836da6b232d1b17bd0b0fbf59312f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/projection-request.schema.json",
+      "digest": "sha256:752185153939faae017441f95e7077301e86b30949608c8da3f1ba2f628c5675",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/provider-descriptor.schema.json",
+      "digest": "sha256:3bf4785e7ff687dd8b175878fec599298a7868f5854854ae69d38fcd86981a7a",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/publication-manifest.schema.json",
+      "digest": "sha256:8c278a9119969995180e78617671974da1c4188dbdfa266f7f16cac2da06c366",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/publication-statement.schema.json",
+      "digest": "sha256:9a0c9fc64550d9d529d1250e0f71242608bb080a194d151fa8a7627f9c4108dc",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/release-notes.schema.json",
+      "digest": "sha256:f3df49e64b4dfd8df7f3b6e5d77b3359e5089cef3d51287671854f7c00a27608",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/repository-contract.schema.json",
+      "digest": "sha256:3920f5da1e40133cc9a2b8f86d37149a76018e7590ac9670b880ad615f0381c5",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/repository-snapshot.schema.json",
+      "digest": "sha256:6b747835509b1ec4cf5b10be0b79c012df38b55ac8ff08550fcbd170236965a7",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/validation-result.schema.json",
+      "digest": "sha256:8270f433c8a55850b483eae58d8c3886d6eb43001538bea2bcaf218cf56c24ab",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/work-boundary-payload.schema.json",
+      "digest": "sha256:37ab5d95bf60442a220c298c47f6665d1d7140963c38f3eeb8531e683922e61e",
+      "role": "json-schema",
+      "normative": true
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "examples/agent-attempt-payload-structural-valid/subject.json",
+      "digest": "sha256:5fc5133f1f9e0b43dc4c4d8f033534191ed13defc378119e9ec842b89d29ed74",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/agent-work-product-payload-structural-valid/subject.json",
+      "digest": "sha256:ae552d5dcbec771fe93fb650dc3e353eca8deafff50aa527f9ac0e62f9bd45a3",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-partial-model-invalid/subject.json",
+      "digest": "sha256:44932a4dbb901b054633a63b3aae6748bc75ba7af158b73e4e128bd484c758c6",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-processor-selection-invalid/subject.json",
+      "digest": "sha256:f99520da7dd7594baadcb030ad31831e7d778f18ba11ccc1efad35aec366c603",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-resource-binding-duplicate-invalid/subject.json",
+      "digest": "sha256:793528e0d0c4a9276c187d2b86728a41721fe12650fc861778d5f91ca80c3c53",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-resource-disposition-invalid/subject.json",
+      "digest": "sha256:df69f4713de90ff643c651219b3ffa63eada346721f97329203315a0d41bd5d3",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-structural-valid/subject.json",
+      "digest": "sha256:0d5a83ccd65f17000d4931ee4b14df9a05b84c627b08cf01b641edc2ba8c4c69",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/atlas-resolution-unsupported-selection-invalid/subject.json",
+      "digest": "sha256:3d9e65005ccb160f3ef08981484e3c986a2a312ec7ab4bedc23c9c87710b9c99",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-revision-carrier-manifest-structural-valid/subject.json",
+      "digest": "sha256:5dde8e746de2ccbca40cff9da12d38802f3ae2897b238c37b1f518e0b5d48228",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-revision-carrier-media-type-invalid/subject.json",
+      "digest": "sha256:7596cbf60e132cfc19743247102dd3dce422be183cc1d7eb5fffacd58de9567d",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-revision-carrier-mode-invalid/subject.json",
+      "digest": "sha256:415f613617c020db2adc1ae1c554eb5ff78856e73de9df414e53f7b9b3b7f2f8",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-revision-carrier-object-invalid/subject.json",
+      "digest": "sha256:c00080f22958a7399b079a994464b62b361bd04e4d1153d5098ec3baca14d096",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-revision-payload-structural-valid/subject.json",
+      "digest": "sha256:37078b7466f586e72c9b2c4d40bdcb642b9d0fa3ab6ef9d703b22bf476e89ae0",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/candidate-seal-payload-structural-valid/subject.json",
+      "digest": "sha256:0749e35027bf7648ed36849c90a117031ef189f08167057004d175ae177f9bd9",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/capability-profile-structural-valid/subject.json",
+      "digest": "sha256:a38f0c7cfab52d44cc1528539ad3562510d5b2f27e5d8e7de411f277a1a36489",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/check-receipt-payload-structural-valid/subject.json",
+      "digest": "sha256:56dc40b1c204288dd3979561261a3229a9ec0af07cc954df27c41021aafac8b4",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/closure-payload-structural-valid/subject.json",
+      "digest": "sha256:8d72b4af93b0f6904167da119847b7a490e9a368e884befe9e149017f83805f8",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-lifecycle-profile-structural-valid/subject.json",
+      "digest": "sha256:645ea778bb6039af1fbb4d11023e47fb8cdb9a0443fc228d1f269bcd1e68baef",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-admission-observation-structural-valid/subject.json",
+      "digest": "sha256:e11a806503f4ccba0c60e34e27f9997fa64a19239057cf87404b1bef3cdc565b",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-observation-facts-omitted-invalid/subject.json",
+      "digest": "sha256:56fdb3246f753ffcc3a352731acea8b3541deae71dc8ee5000fc5bdc6990f36a",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-record-fact-invalid/subject.json",
+      "digest": "sha256:b41f819e38c2e35201b7e7a85483d7a2b525a9e83208c6a86cfb79b74f47ab81",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-structural-valid/subject.json",
+      "digest": "sha256:35c52ecda8da6b141ef0969390966c837d74de7ca92701da8614f74e248dd56a",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-file-structural-valid/subject.json",
+      "digest": "sha256:f61cce9c9a5729d6989737f92fde461f894e3490460eef6318a474f3c52bd3ad",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-revision-structural-valid/subject.json",
+      "digest": "sha256:f9e93523fd322d997700aac0a314ea491a53b01e5e1d227d7fa1957605af5214",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-store-archive-structural-valid/subject.json",
+      "digest": "sha256:6bcef66b78146e67413ea421a00de110c1e9f68f3db59e1f66faf854e3628168",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-store-seal-structural-valid/subject.json",
+      "digest": "sha256:78f56f9921133a53ae35ec42f745d6f8e1c21c0d5d195680a7c9696fa6baac56",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-store-structural-valid/subject.json",
+      "digest": "sha256:ef7b2fce5ff4a6b1ae415ca8f9abbe3b4a86f231e1a973743f6973c6d30b5ec8",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/delivery-reduction-structural-valid/subject.json",
+      "digest": "sha256:0bfe439d850e65a356af269069c2fbe5128b7ec1ddc07f408cd6eac8fef011f2",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/evidence-packet-payload-structural-valid/subject.json",
+      "digest": "sha256:7516675ed8b48bb8484f1b1662cd014af89bb3a24342e94d498c9b2962238c9d",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-backend-profile-structural-valid/subject.json",
+      "digest": "sha256:7d889f6c85dd5d39eaf67e866c75a4dc8c94d866d636dedaac527321c9633aee",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-image-mutable-identity-invalid/subject.json",
+      "digest": "sha256:2e4ab551d0b1fb7129c6ad31451a84e745eb4aeabf4c2ce90ee24528b08c863f",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-image-structural-valid/subject.json",
+      "digest": "sha256:1d468fff136ecfc48616f076b3707f156713a2003d9e7db72b6d01c7087d514c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-input-set-structural-valid/subject.json",
+      "digest": "sha256:f66297ae2f1cd37d7c35e8f8ff71f4a1a86a21752924586e92a3058ffe7f99b6",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-observation-private-retirement-invalid/subject.json",
+      "digest": "sha256:83e6680bb4231ec190686e0b664fb15e56dc002c4a9d78055028d8aaea43d650",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-observation-structural-valid/subject.json",
+      "digest": "sha256:729d2e98a195cf39fa5c3007f24c7ff8b0e0c1ecc80025bcc97e89ffa195cfb9",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-output-manifest-link-invalid/subject.json",
+      "digest": "sha256:ad8ae5a90cba003ba3465549b5d61f53b7d894d086b4867fe2188196589362f2",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-output-manifest-special-invalid/subject.json",
+      "digest": "sha256:9c7d2c4974a07193fc29a03412f1a986c634d7c5dacf106923ad849ad30dfdda",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-output-manifest-structural-valid/subject.json",
+      "digest": "sha256:d838fe7dfb0dc0051f2a7694ea323519de365d4646cb19b22acc58d95a954a74",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-receipt-payload-structural-valid/subject.json",
+      "digest": "sha256:d9c035e903f381f01a10acf99a455db70d60fe8806184536115df87871ea75eb",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-specification-structural-valid/subject.json",
+      "digest": "sha256:3290cdbdaf08052b8ced4329d2a2f82527021afa0b970c4bc102619835c47a90",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/execution-specification-undeclared-output-invalid/subject.json",
+      "digest": "sha256:27ea5dcd59ae2f7097b5db0588d78f2e3a4b5074b14bd1ca8cfb290fd1d91345",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/fixture-manifest.json",
+      "digest": "sha256:71000e02008077e05efed24d8d9a87aa0c71b945fa0f553aec452f1387b6c53c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/founder-brief-payload-structural-valid/subject.json",
+      "digest": "sha256:3dec6aa1be28da7bbf2252cf1bac20535d6b20a5050ff08586227bf9cbf03624",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/founder-decision-payload-structural-valid/subject.json",
+      "digest": "sha256:336e55faee216cd6a504f146d2590ae08275eed5ad1feb744e62545255953eab",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/founder-decision-signature-noncanonical-invalid/subject.json",
+      "digest": "sha256:cd448cf2a19503088ff5b18fa4d5bb716d607455c901804baf70112c0de50e19",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-payload-structural-valid/subject.json",
+      "digest": "sha256:beac52582dbec87403d056c4e3deff6d14fb3c69d77fa159827e03731172c617",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-product-state-drift-invalid/subject.json",
+      "digest": "sha256:5e934a918d39b56bdbf7d038aed2b7363350f9c79b603aa0ad66bc57573affe6",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/parser-fuzz-delivery.md",
+      "digest": "sha256:fcdc3225be93a391871fc53f1df2408ffbcf1852e1488aafa337c18187138c6f",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/provider-descriptor-codex-exec-standard-v6.json",
+      "digest": "sha256:dc900554a83aac0e5b8727aba1ae4c6426dc754779471717e865c8c69db107b6",
+      "role": "provider-descriptor",
+      "normative": true
+    },
+    {
+      "path": "examples/provider-descriptor-structural-valid/subject.json",
+      "digest": "sha256:dc900554a83aac0e5b8727aba1ae4c6426dc754779471717e865c8c69db107b6",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v12-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:bc4fa5a65e26224860f1b338ee3cc05edc6c3b1a93e5a8fdfdc2b237eee5b127",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v14-abandoned-invalid/.lifecycle/repository.json",
+      "digest": "sha256:6c68029753dbc8a2361dc8de0af07ea3e2040df5135ba72403da483a2f273a8b",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v15-environment-overflow-invalid/.lifecycle/repository.json",
+      "digest": "sha256:c0e692e158c69089159c43ac9afbe531320f2b40faf01bc97ed47c8c4cf8b409",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v15-fresh-valid/.lifecycle/repository.json",
+      "digest": "sha256:36d4271ba384c2d702d2cc11d23e44b42398d27af4a9834e48b31afe7407ecd7",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v15-migration-invalid/.lifecycle/repository.json",
+      "digest": "sha256:cf6ad2820c114ab57cde7f8735e802d7e900deee3d30de057d8e93f53ee1bd49",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v15-mixed-state-invalid/.lifecycle/repository.json",
+      "digest": "sha256:b4d815c9e2d0ec415b00253121d8c6b14e44bf1a87f349a389d9910a20e515ce",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v15-mixed-state-invalid/records/control/delivery/work-boundaries/wb.predecessor-attempt.json",
+      "digest": "sha256:9e3cec01de30a1dad97c045118b0a6d75955f28a890e6d37a048cd45aaca7937",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/work-boundary-payload-structural-valid/subject.json",
+      "digest": "sha256:e180d21e869586c4fb453679c2332f5eee658a2a4bc99b720d6f11a3ac9acc32",
+      "role": "conformance-fixture",
+      "normative": false
+    }
+  ],
+  "publicationDigest": "sha256:238bed4f1a0bd2d4ac759e4fd62f2f0f9ba0c7a81c9cd72ac1f4239f07dcb3c3"
+}

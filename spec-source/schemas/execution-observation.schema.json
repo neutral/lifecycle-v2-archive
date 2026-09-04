@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:execution-observation:v1",
+  "title": "Lifecycle Execution Observation v1",
+  "description": "Bounded direct Backend facts about one exact Execution Specification and Cell process boundary.",
+  "$comment": "Semantic validation recomputes digest over the complete value without digest, requires monotonically increasing observationSequence for one Specification, proves every binding against the selected Profile, Image, and Input Set, and treats every reported state as untrusted Backend fact until the Runtime independently reconciles it. A not-started process state is legal only when direct backend evidence excludes start; it cannot be inferred from a lost dispatch response or parent loss. Before dispatch authority is consumed, direct same-binding proof that a retained Handle's allocation is absent, descendants and writers are absent, credentials and provider channels were not granted, output mutation is impossible, and output was not produced can establish inert no-effect Containment; it permits final no-output Retirement but never recreation or dispatch. After dispatch authority is durably consumed but before Backend method entry, only a same-allocation allocated/not-observed/not-started observation with complete direct containment facts can establish that no Backend effect began, and it never restores dispatch authority. Terminal process state does not itself prove Containment. Containment requires the Runtime to evaluate the complete process, writer, credential, provider-channel, and output-mutation facts. This schema contains no Runtime Retirement fact or decision and no Handle, allocation key, endpoint, Docker identifier, credential, private path, Reclamation state, Control family, Journal event, or public operation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "specificationDigest",
+    "backendProfile",
+    "imageDigest",
+    "inputSetDigest",
+    "observationSequence",
+    "observedAt",
+    "allocationState",
+    "dispatchState",
+    "processState",
+    "terminal",
+    "containmentFacts",
+    "output",
+    "resourceFacts",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.execution-observation.v1" },
+    "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
+    "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "inputSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "observationSequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+    "observedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+    "allocationState": { "enum": ["absent", "allocated", "ambiguous", "unavailable"] },
+    "dispatchState": { "enum": ["not-observed", "accepted", "start-observed", "terminal-observed", "ambiguous"] },
+    "processState": { "enum": ["not-observed", "not-started", "running", "terminal", "ambiguous"] },
+    "terminal": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/terminal" }
+      ]
+    },
+    "containmentFacts": { "$ref": "#/$defs/containmentFacts" },
+    "output": { "$ref": "#/$defs/output" },
+    "resourceFacts": { "$ref": "#/$defs/resourceFacts" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "processState": { "const": "terminal" } },
+        "required": ["processState"]
+      },
+      "then": { "properties": { "terminal": { "type": "object" } } },
+      "else": { "properties": { "terminal": { "type": "null" } } }
+    }
+  ],
+  "$defs": {
+    "backendProfileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationDigest"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "lifecycle.execution-backend-profile.docker-local.v1",
+            "lifecycle.execution-backend-profile.fault-injection.v1"
+          ]
+        },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finishedAt", "reason", "exitCode", "signal", "runnerDisposition"],
+      "properties": {
+        "finishedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+        "reason": { "enum": ["exited", "cancelled", "timed-out", "backend-failure", "parent-loss", "unknown"] },
+        "exitCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+          ]
+        },
+        "signal": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Z0-9]+$" }
+          ]
+        },
+        "runnerDisposition": { "enum": ["completed", "refused", "incomplete", "unavailable", "unknown"] }
+      }
+    },
+    "containmentFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rootProcess", "descendants", "writers", "credentials", "providerChannel", "outputMutation"],
+      "properties": {
+        "rootProcess": { "enum": ["not-started", "terminal", "running", "unverified"] },
+        "descendants": { "enum": ["absent", "present", "unverified"] },
+        "writers": { "enum": ["absent", "present", "unverified"] },
+        "credentials": { "enum": ["revoked", "active", "unverified", "not-injected"] },
+        "providerChannel": { "enum": ["unreachable", "reachable", "unverified", "not-granted"] },
+        "outputMutation": { "enum": ["impossible", "possible", "unverified"] }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "manifestDigest", "carrierByteLength"],
+      "properties": {
+        "disposition": { "enum": ["not-produced", "complete", "missing", "partial", "unavailable", "ambiguous"] },
+        "manifestDigest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          ]
+        },
+        "carrierByteLength": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "disposition": { "const": "complete" } },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "carrierByteLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "disposition": { "enum": ["not-produced", "missing", "unavailable"] } },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "manifestDigest": { "type": "null" },
+              "carrierByteLength": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "resourceFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wallTimeMilliseconds", "cpuTimeMilliseconds", "peakMemoryBytes", "storageBytes", "outputBytes", "eventCount", "limitBreaches"],
+      "properties": {
+        "wallTimeMilliseconds": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "cpuTimeMilliseconds": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "peakMemoryBytes": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "storageBytes": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "outputBytes": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "eventCount": { "$ref": "#/$defs/nullableNonnegativeInteger" },
+        "limitBreaches": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["wall-time", "processes", "storage", "output-entries", "output-bytes", "output-entry-bytes", "events"]
+          }
+        }
+      }
+    },
+    "nullableNonnegativeInteger": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "lifecycle.control-record-file.v1",
+  "reference": {
+    "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "byteLength": 1024,
+    "mediaType": "text/plain",
+    "purpose": "raw-check-output"
+  },
+  "createdAt": "2026-08-29T12:30:00Z"
+}

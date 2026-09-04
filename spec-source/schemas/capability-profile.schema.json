@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:capability-profile:v2",
+  "title": "Lifecycle Capability Profile v2",
+  "description": "Repository-registered ceiling for Agent-visible capability inside one Execution Cell.",
+  "$comment": "Docker Engine, daemon, socket, Execution Backend, Runtime custody, provider-control-plane authentication, and physical Cell authority are not Agent capabilities and cannot appear in this value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "candidateWrites",
+    "temporaryWrites",
+    "subprocesses",
+    "network",
+    "credentials",
+    "externalEffects",
+    "digest"
+  ],
+  "properties": {
+    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "candidateWrites": { "type": "boolean" },
+    "temporaryWrites": { "type": "boolean" },
+    "subprocesses": {
+      "type": "string",
+      "enum": ["none", "repository-toolchain"]
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["none", "loopback", "bounded-egress"] }
+      }
+    },
+    "credentials": { "const": "none" },
+    "externalEffects": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  }
+}

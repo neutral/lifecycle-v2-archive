@@ -1,0 +1,31 @@
+{
+  "schema": "lifecycle.candidate-revision-carrier-manifest.v1",
+  "objectFormat": "sha1",
+  "rootTree": "1111111111111111111111111111111111111111",
+  "allowedTreeModes": [
+    "040000",
+    "100644",
+    "100755"
+  ],
+  "objectInventory": [
+    {
+      "objectId": "1111111111111111111111111111111111111111",
+      "objectType": "tree",
+      "byteLength": 36
+    },
+    {
+      "objectId": "2222222222222222222222222222222222222222",
+      "objectType": "blob",
+      "byteLength": 12
+    }
+  ],
+  "objectCount": 2,
+  "aggregateObjectBytes": 48,
+  "objectInventoryDigest": "sha256:0202020202020202020202020202020202020202020202020202020202020202",
+  "carrierArtifact": {
+    "format": "git-pack-v2",
+    "byteLength": 128,
+    "digest": "sha256:0303030303030303030303030303030303030303030303030303030303030303"
+  },
+  "digest": "sha256:0404040404040404040404040404040404040404040404040404040404040404"
+}

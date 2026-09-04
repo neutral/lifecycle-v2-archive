@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-record-revision:v1",
+  "title": "Lifecycle Control Record Revision Envelope v1",
+  "description": "Generic immutable Control revision envelope. The selected Process registry validates payload against the independent schema for recordKind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "processId",
+    "recordId",
+    "recordKind",
+    "revision",
+    "producer",
+    "semanticAuthor",
+    "semanticAuthority",
+    "createdAt",
+    "semanticMarkdown",
+    "payload",
+    "relationships",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.control-record-revision.v1" },
+    "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "recordId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "recordKind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+    "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+    "producer": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlActor" },
+    "semanticAuthor": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlActor" },
+    "semanticAuthority": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlSemanticAuthority" },
+    "createdAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+    "semanticMarkdown": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 1048576,
+      "pattern": "^(?!\\uFEFF)(?=[\\s\\S]*\\S)[^\\u0000\\r]+\\n$"
+    },
+    "payload": {
+      "type": "object",
+      "maxProperties": 16384
+    },
+    "relationships": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["relation", "target"],
+        "properties": {
+          "relation": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+          "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" }
+        }
+      }
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  }
+}

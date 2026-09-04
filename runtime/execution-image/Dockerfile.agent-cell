@@ -1,0 +1,139 @@
+# `scratch` is only a parser-valid fail-closed default. An executable build
+# must supply the selected Node image by digest; without it the first RUN
+# cannot execute and the image cannot be produced.
+ARG LIFECYCLE_NODE_IMAGE=scratch
+
+FROM ${LIFECYCLE_NODE_IMAGE} AS runner-build
+
+RUN test "$(node --version)" = "v24.14.0"
+
+WORKDIR /build
+COPY execution-image/runner-build/package.json execution-image/runner-build/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+
+# The executable is compiled from its tracked TypeScript source. `--noCheck`
+# is deliberate: the repository gate type-checks the complete runtime, while
+# this isolated build needs no ambient source tree merely to erase types.
+COPY src/util/execution-cell-runner-v1.ts /build/source/src/util/execution-cell-runner-v1.ts
+RUN ./node_modules/.bin/tsc \
+      --noCheck \
+      --target ES2022 \
+      --module NodeNext \
+      --moduleResolution NodeNext \
+      --rootDir /build/source \
+      --outDir /build/output \
+      /build/source/src/util/execution-cell-runner-v1.ts
+
+FROM ${LIFECYCLE_NODE_IMAGE} AS codex-source
+
+RUN test "$(node --version)" = "v24.14.0"
+
+WORKDIR /build/codex
+COPY execution-image/package.json execution-image/package-lock.json ./
+RUN npm ci --ignore-scripts --omit=dev --no-audit --no-fund \
+ && case "$(dpkg --print-architecture)" in \
+      amd64) platform="x64"; triple="x86_64-unknown-linux-musl" ;; \
+      arm64) platform="arm64"; triple="aarch64-unknown-linux-musl" ;; \
+      *) exit 64 ;; \
+    esac \
+ && vendor="node_modules/@openai/codex-linux-${platform}/vendor/${triple}" \
+ && test -x "${vendor}/bin/codex" \
+ && mkdir -p /opt/lifecycle-vendor \
+ && cp -a "${vendor}/." /opt/lifecycle-vendor/
+
+FROM ${LIFECYCLE_NODE_IMAGE}
+
+ARG LIFECYCLE_SOURCE_REVISION
+ARG LIFECYCLE_IMAGE_ID
+ARG LIFECYCLE_RUNNER_CONTRACT_DIGEST
+ARG LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST
+ARG LIFECYCLE_TOOL_INVENTORY_DIGEST
+ARG LIFECYCLE_CODEX_EXECUTABLE_IDENTITY
+ARG LIFECYCLE_BUBBLEWRAP_VERSION
+ARG LIFECYCLE_CA_CERTIFICATES_VERSION
+ARG LIFECYCLE_GIT_VERSION
+
+LABEL org.opencontainers.image.source="https://github.com/neutral/lifecycle" \
+      org.opencontainers.image.revision=${LIFECYCLE_SOURCE_REVISION} \
+      org.opencontainers.image.version="1.0.0" \
+      io.lifecycle.execution-image.v1.qualification-revision="lifecycle.foundation.1.0.0-rc.10" \
+      io.lifecycle.execution-image.v1.image-id=${LIFECYCLE_IMAGE_ID} \
+      io.lifecycle.execution-image.v1.runner-contract-id="lifecycle.execution-cell-runner.v1" \
+      io.lifecycle.execution-image.v1.runner-contract-digest=${LIFECYCLE_RUNNER_CONTRACT_DIGEST} \
+      io.lifecycle.execution-image.v1.runner-implementation-digest=${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST} \
+      io.lifecycle.execution-image.v1.tool-inventory-digest=${LIFECYCLE_TOOL_INVENTORY_DIGEST} \
+      io.lifecycle.execution-image.v1.codex-version="0.151.0" \
+      io.lifecycle.execution-image.v1.codex-executable-identity=${LIFECYCLE_CODEX_EXECUTABLE_IDENTITY} \
+      io.lifecycle.execution-image.v1.adapter-implementation-digest=${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST}
+
+RUN test "$(node --version)" = "v24.14.0" \
+ && test -n "${LIFECYCLE_SOURCE_REVISION}" \
+ && test -n "${LIFECYCLE_IMAGE_ID}" \
+ && test -n "${LIFECYCLE_RUNNER_CONTRACT_DIGEST}" \
+ && test -n "${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST}" \
+ && test -n "${LIFECYCLE_TOOL_INVENTORY_DIGEST}" \
+ && test -n "${LIFECYCLE_CODEX_EXECUTABLE_IDENTITY}" \
+ && node -e 'const exact = /^[0-9][A-Za-z0-9.+:~-]{0,159}$/u; if (process.argv.slice(1).length !== 3 || process.argv.slice(1).some((value) => !exact.test(value))) process.exit(64)' \
+      "${LIFECYCLE_BUBBLEWRAP_VERSION}" \
+      "${LIFECYCLE_CA_CERTIFICATES_VERSION}" \
+      "${LIFECYCLE_GIT_VERSION}" \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      "bubblewrap=${LIFECYCLE_BUBBLEWRAP_VERSION}" \
+      "ca-certificates=${LIFECYCLE_CA_CERTIFICATES_VERSION}" \
+      "git=${LIFECYCLE_GIT_VERSION}" \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 65532 lifecycle \
+ && useradd --uid 65532 --gid 65532 --home-dir /nonexistent --shell /usr/sbin/nologin lifecycle
+
+COPY --from=codex-source /opt/lifecycle-vendor/ /opt/lifecycle/
+COPY --from=runner-build /build/output/src/util/execution-cell-runner-v1.js /opt/lifecycle/bin/execution-cell-runner
+COPY execution-image/runner-contract.private.json /opt/lifecycle/runner-contract.private.json
+COPY execution-image/verify-runner-contract.mjs /tmp/verify-runner-contract.mjs
+COPY execution-image/tool-inventory.mjs /tmp/tool-inventory.mjs
+COPY execution-image/package-lock.json /tmp/codex-package-lock.json
+COPY execution-image/tool-inventory.linux-amd64.json /tmp/tool-inventory.linux-amd64.json
+COPY execution-image/tool-inventory.linux-arm64.json /tmp/tool-inventory.linux-arm64.json
+
+RUN ln -s ../bin/codex /opt/lifecycle/codex-path/codex-linux-sandbox \
+ && find /opt/lifecycle -type d -exec chmod 0555 {} + \
+ && find /opt/lifecycle -type f -exec chmod 0444 {} + \
+ && chmod 0555 \
+      /opt/lifecycle/bin/codex \
+      /opt/lifecycle/bin/codex-code-mode-host \
+      /opt/lifecycle/bin/execution-cell-runner \
+      /opt/lifecycle/codex-path/rg \
+      /opt/lifecycle/codex-resources/bwrap \
+      /opt/lifecycle/codex-resources/zsh/bin/zsh \
+ && case "$(dpkg --print-architecture)" in \
+      amd64) architecture="amd64" ;; \
+      arm64) architecture="arm64" ;; \
+      *) exit 64 ;; \
+    esac \
+ && cp "/tmp/tool-inventory.linux-${architecture}.json" /opt/lifecycle/tool-inventory.json \
+ && chmod 0444 /opt/lifecycle/tool-inventory.json \
+ && node /tmp/verify-runner-contract.mjs \
+      /opt/lifecycle/runner-contract.private.json \
+      /opt/lifecycle/bin/execution-cell-runner \
+      "${LIFECYCLE_RUNNER_CONTRACT_DIGEST}" \
+      "${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST}" \
+ && node /tmp/tool-inventory.mjs verify \
+      "${architecture}" \
+      /opt/lifecycle/tool-inventory.json \
+      /opt/lifecycle \
+      /tmp/codex-package-lock.json \
+      "${LIFECYCLE_TOOL_INVENTORY_DIGEST}" \
+      "${LIFECYCLE_CODEX_EXECUTABLE_IDENTITY}" \
+      "${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST}" \
+      "${LIFECYCLE_RUNNER_CONTRACT_DIGEST}" \
+ && rm \
+      /tmp/codex-package-lock.json \
+      /tmp/tool-inventory.linux-amd64.json \
+      /tmp/tool-inventory.linux-arm64.json \
+      /tmp/tool-inventory.mjs \
+      /tmp/verify-runner-contract.mjs \
+ && mkdir -p /lifecycle/input /lifecycle/output \
+ && chown lifecycle:lifecycle /lifecycle/output
+
+USER 65532:65532
+ENTRYPOINT ["/opt/lifecycle/bin/execution-cell-runner"]

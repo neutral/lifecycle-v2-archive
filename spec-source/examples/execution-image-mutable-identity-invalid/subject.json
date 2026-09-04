@@ -1,0 +1,22 @@
+{
+  "schema": "lifecycle.execution-image.v1",
+  "imageId": "lifecycle.execution-image.codex-standard.v1",
+  "manifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+  "manifestDigest": "codex-standard:latest",
+  "configurationDigest": "sha256:0606060606060606060606060606060606060606060606060606060606060606",
+  "platform": {
+    "os": "linux",
+    "architecture": "amd64",
+    "variant": null
+  },
+  "runner": {
+    "contractId": "lifecycle.execution-cell-runner.v1",
+    "implementationId": "runtime.execution-cell-runner",
+    "version": "1.0.0",
+    "implementationDigest": "sha256:0707070707070707070707070707070707070707070707070707070707070707",
+    "contractDigest": "sha256:0808080808080808080808080808080808080808080808080808080808080808"
+  },
+  "tools": [],
+  "toolInventoryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "digest": "sha256:0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+}

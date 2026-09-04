@@ -1,0 +1,512 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-lifecycle-profile:v4",
+  "title": "Lifecycle Control Lifecycle Profile v4",
+  "description": "Exact Foundation profile for the per-Delivery Control Record Store and its twelve closed Delivery record families.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "store", "families"],
+  "properties": {
+    "schema": { "const": "lifecycle.control-lifecycle-profile.v4" },
+    "id": { "const": "foundation-delivery-control-lifecycle-v4" },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "revisionSchema",
+        "eventSchema",
+        "referencedFileSchema",
+        "sealSchema",
+        "archiveSchema",
+        "process",
+        "scope",
+        "standing",
+        "archive",
+        "sqlOwner",
+        "primaryCarrier",
+        "payloadSelection",
+        "postClosureDisposition",
+        "semanticMarkdown",
+        "workingValues",
+        "adjacentDuplicateMarkdown"
+      ],
+      "properties": {
+        "schema": { "const": "lifecycle.control-record-store.v1" },
+        "revisionSchema": { "const": "lifecycle.control-record-revision.v1" },
+        "eventSchema": { "const": "lifecycle.control-record-event.v2" },
+        "referencedFileSchema": { "const": "lifecycle.control-record-file.v1" },
+        "sealSchema": { "const": "lifecycle.control-record-store-seal.v1" },
+        "archiveSchema": { "const": "lifecycle.control-record-store-archive.v1" },
+        "process": { "const": "delivery" },
+        "scope": { "const": "per-delivery" },
+        "standing": { "const": "event-sourced" },
+        "archive": { "const": "off-head-with-delivery" },
+        "sqlOwner": { "const": "runtime" },
+        "primaryCarrier": { "const": "sqlite" },
+        "payloadSelection": { "const": "closed-registry-by-record-kind" },
+        "postClosureDisposition": { "const": "non-event-observation-overlay" },
+        "semanticMarkdown": { "const": "in-record-revision" },
+        "workingValues": { "const": "governed-drafts-retired-before-seal" },
+        "adjacentDuplicateMarkdown": { "const": false }
+      }
+    },
+    "families": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "prefixItems": [
+        {
+          "const": {
+            "kind": "founder-brief",
+            "payloadSchema": "urn:lifecycle:schema:founder-brief-payload:v1",
+            "dossier": "frame",
+            "producer": "runtime",
+            "semanticAuthor": "founder",
+            "semanticAuthority": "founder-supplied",
+            "editor": "founder",
+            "editWindow": "before-activity",
+            "revisionMode": "single",
+            "finalizationEvent": "founder-brief-submitted",
+            "retention": "archive-with-delivery",
+            "relationships": []
+          }
+        },
+        {
+          "const": {
+            "kind": "agent-attempt",
+            "payloadSchema": "urn:lifecycle:schema:agent-attempt-payload:v3",
+            "dossier": "attempt",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-derived",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "agent-attempt-prepared",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "uses-brief",
+                "targetKinds": ["founder-brief"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-boundary",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-candidate",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-seal",
+                "targetKinds": ["candidate-seal"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "agent-work-product",
+            "payloadSchema": "urn:lifecycle:schema:agent-work-product-payload:v2",
+            "dossier": "attempt",
+            "producer": "runtime",
+            "semanticAuthor": "agent",
+            "semanticAuthority": "agent-proposed",
+            "editor": "assigned-agent",
+            "editWindow": "provider-active",
+            "revisionMode": "single",
+            "finalizationEvent": "agent-work-product-submitted",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "result-of",
+                "targetKinds": ["agent-attempt"],
+                "minimum": 1,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "execution-receipt",
+            "payloadSchema": "urn:lifecycle:schema:execution-receipt-payload:v3",
+            "dossier": "attempt",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-observed",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "execution-receipt-recorded",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "observes-attempt",
+                "targetKinds": ["agent-attempt"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "observes-work-product",
+                "targetKinds": ["agent-work-product"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "observes-candidate",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "candidate-revision",
+            "payloadSchema": "urn:lifecycle:schema:candidate-revision-payload:v2",
+            "dossier": "candidate",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-observed",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "successive",
+            "finalizationEvent": "candidate-revision-observed",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "revises",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "result-of",
+                "targetKinds": ["agent-attempt"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "governed-by",
+                "targetKinds": ["work-boundary"],
+                "minimum": 1,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "work-boundary",
+            "payloadSchema": "urn:lifecycle:schema:work-boundary-payload:v4",
+            "dossier": "boundary",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-derived",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "successive",
+            "finalizationEvent": "work-boundary-finalized",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "uses-brief",
+                "targetKinds": ["founder-brief"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "proposed-from",
+                "targetKinds": ["agent-work-product"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "revises",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "resolves",
+                "targetKinds": ["material-condition"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "material-condition",
+            "payloadSchema": "urn:lifecycle:schema:material-condition-payload:v1",
+            "dossier": "boundary",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-derived",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "material-condition-frozen",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "reported-by",
+                "targetKinds": ["agent-work-product"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "observed-in",
+                "targetKinds": ["execution-receipt"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "freezes",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "governed-by",
+                "targetKinds": ["work-boundary"],
+                "minimum": 1,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "founder-decision",
+            "payloadSchema": "urn:lifecycle:schema:founder-decision-payload:v4",
+            "dossier": "decision",
+            "producer": "runtime",
+            "semanticAuthor": "founder",
+            "semanticAuthority": "founder-authenticated",
+            "editor": "founder",
+            "editWindow": "before-authentication",
+            "revisionMode": "single",
+            "finalizationEvent": "founder-decision-authenticated",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "selects-boundary",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "selects-baseline-receipt",
+                "targetKinds": ["check-receipt"],
+                "minimum": 0,
+                "maximum": null
+              },
+              {
+                "relation": "continues-from-boundary",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "resolves",
+                "targetKinds": ["material-condition"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "selects-candidate",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "selects-seal",
+                "targetKinds": ["candidate-seal"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "selects-evidence",
+                "targetKinds": ["evidence-packet"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "candidate-seal",
+            "payloadSchema": "urn:lifecycle:schema:candidate-seal-payload:v2",
+            "dossier": "evidence",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-observed",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "candidate-sealed",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "seals",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "governed-by",
+                "targetKinds": ["work-boundary"],
+                "minimum": 1,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "check-receipt",
+            "payloadSchema": "urn:lifecycle:schema:check-receipt-payload:v2",
+            "dossier": "evidence",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-observed",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "check-receipt-recorded",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "checks-boundary",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "checks-seal",
+                "targetKinds": ["candidate-seal"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "evidence-packet",
+            "payloadSchema": "urn:lifecycle:schema:evidence-packet-payload:v1",
+            "dossier": "evidence",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-derived",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "evidence-packet-finalized",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "governed-by",
+                "targetKinds": ["work-boundary"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "evaluates",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-seal",
+                "targetKinds": ["candidate-seal"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-check",
+                "targetKinds": ["check-receipt"],
+                "minimum": 0,
+                "maximum": null
+              },
+              {
+                "relation": "uses-review",
+                "targetKinds": ["agent-work-product"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-review-receipt",
+                "targetKinds": ["execution-receipt"],
+                "minimum": 1,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "closure",
+            "payloadSchema": "urn:lifecycle:schema:closure-payload:v4",
+            "dossier": "closure",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-derived",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "closure-recorded",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "closes-with",
+                "targetKinds": ["founder-decision"],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "governed-by",
+                "targetKinds": ["work-boundary"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "accepts-candidate",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "accepts-evidence",
+                "targetKinds": ["evidence-packet"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "relation": "abandons-candidate",
+                "targetKinds": ["candidate-revision"],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        }
+      ],
+      "items": false
+    }
+  }
+}

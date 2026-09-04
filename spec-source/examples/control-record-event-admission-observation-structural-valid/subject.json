@@ -1,0 +1,29 @@
+{
+  "schema": "lifecycle.control-record-event.v2",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 9,
+  "eventId": "event.admission-effect-observed",
+  "eventKind": "transaction-effect-observed",
+  "occurredAt": "2026-08-29T12:30:00Z",
+  "actor": { "kind": "runtime", "id": "runtime.foundation" },
+  "subject": {
+    "recordId": "decision.admit.demo",
+    "revision": 1,
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "payload": {
+    "activityId": "activity.admit.demo",
+    "effectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "facts": {
+      "schema": "lifecycle.admission-effect-observation-facts.v2",
+      "outcome": "applied",
+      "disposition": null,
+      "repositoryBasisDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "factsDigest": "sha256:94037c534aea39dc297864c1c27fea0b56e7f57357f913a86cb4086f0fb0ed6c",
+    "outcome": "applied"
+  },
+  "predecessorDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+}

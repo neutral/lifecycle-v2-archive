@@ -1,0 +1,25 @@
+{
+  "schema": "lifecycle.control-record-revision.v1",
+  "processId": "delivery.demo",
+  "recordId": "brief.demo",
+  "recordKind": "founder-brief",
+  "revision": 1,
+  "producer": { "kind": "runtime", "id": "runtime.foundation" },
+  "semanticAuthor": { "kind": "founder", "id": "founder.demo" },
+  "semanticAuthority": "founder-supplied",
+  "createdAt": "2026-08-29T12:00:01Z",
+  "semanticMarkdown": "# Founder Brief\n",
+  "payload": {
+    "schema": "lifecycle.founder-brief-payload.v1",
+    "inputProfile": "delivery.prepare",
+    "templateProfileId": "founder-brief.prepare-v1",
+    "semanticMarkdownDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "submission": {
+      "rawDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "rawByteLength": 16,
+      "normalizedByteLength": 16
+    }
+  },
+  "relationships": [],
+  "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+}

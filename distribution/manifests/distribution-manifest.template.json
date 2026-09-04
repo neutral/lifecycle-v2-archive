@@ -1,0 +1,24 @@
+{
+  "coordinates": {
+    "interfaceProtocol": "lifecycle.interface.foundation.v10",
+    "providerAdapter": "lifecycle.provider-adapter.v6",
+    "qualificationRevision": "lifecycle.foundation.1.0.0-rc.10",
+    "repositoryContract": "lifecycle.repository.v15",
+    "runtimeProtocol": "lifecycle.runtime.foundation.v10"
+  },
+  "distribution": {
+    "nodeMinimum": "24.14.0",
+    "npmPackage": "@neutral/lifecycle",
+    "runtimeInvocationProtocol": "lifecycle.runtime-invocation.private.v1",
+    "version": "1.0.0"
+  },
+  "images": {
+    "execution": {
+      "repository": "ghcr.io/neutral/lifecycle-execution"
+    },
+    "runtime": {
+      "repository": "ghcr.io/neutral/lifecycle-runtime"
+    }
+  },
+  "schema": "lifecycle.distribution-manifest-template.private.v1"
+}

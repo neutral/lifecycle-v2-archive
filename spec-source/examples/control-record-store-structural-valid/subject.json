@@ -1,0 +1,8 @@
+{
+  "schema": "lifecycle.control-record-store.v1",
+  "storeId": "store.delivery.demo",
+  "targetId": "target.demo",
+  "processKind": "delivery",
+  "processId": "delivery.demo",
+  "createdAt": "2026-08-29T12:00:00Z"
+}

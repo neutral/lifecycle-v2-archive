@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:founder-decision-payload:v4",
+  "title": "Lifecycle Founder Decision Payload v4",
+  "description": "Exact Founder-authenticated Delivery decision subject and bounded public authentication facts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profileId", "decision", "semanticDigest", "subject", "subjectDigest", "authentication"],
+  "properties": {
+    "schema": { "const": "lifecycle.founder-decision-payload.v4" },
+    "profileId": { "const": "lifecycle.founder-decision.foundation-v1" },
+    "decision": { "enum": ["admit", "readmit", "accept", "no-ship"] },
+    "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "targetId",
+        "storeId",
+        "processId",
+        "activityId",
+        "operation",
+        "decisionId",
+        "decision",
+        "decisionSemanticDigest",
+        "journalHead",
+        "reducerFactsDigest",
+        "repository",
+        "selectedControl",
+        "coordinates",
+        "principalId",
+        "keyId",
+        "algorithm",
+        "authorizedAt",
+        "expiresAt",
+        "nonce",
+        "candidateDisposition"
+      ],
+      "properties": {
+        "schema": { "const": "lifecycle.founder-decision-subject.v3" },
+        "targetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "storeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "operation": { "enum": ["delivery.admit", "delivery.accept", "delivery.no-ship"] },
+        "decisionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "decision": { "enum": ["admit", "readmit", "accept", "no-ship"] },
+        "decisionSemanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "journalHead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sequence", "digest"],
+          "properties": {
+            "sequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        },
+        "reducerFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repositorySnapshotDigest",
+            "canonicalCommit",
+            "canonicalTree",
+            "productStateDigest",
+            "atlasStateDigest",
+            "atlasResolutionDigest",
+            "atlasNormalizedModelDigest",
+            "atlasResourceBindingsDigest",
+            "repositoryContractDigest",
+            "knowledgeSetDigest",
+            "checkBindingSetDigest"
+          ],
+          "properties": {
+            "repositorySnapshotDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "canonicalCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+            "canonicalTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+            "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "atlasResolutionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "atlasNormalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "atlasResourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "repositoryContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "checkBindingSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        },
+        "selectedControl": {
+          "type": "array",
+          "maxItems": 4100,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["relation", "target"],
+            "properties": {
+              "relation": {
+                "enum": [
+                  "selects-boundary",
+                  "selects-baseline-receipt",
+                  "continues-from-boundary",
+                  "resolves",
+                  "selects-candidate",
+                  "selects-seal",
+                  "selects-evidence"
+                ]
+              },
+              "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" }
+            }
+          }
+        },
+        "coordinates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "qualification",
+            "repository",
+            "provider",
+            "authoritySubject",
+            "transactionRules"
+          ],
+          "properties": {
+            "qualification": { "const": "lifecycle.foundation.1.0.0-rc.10" },
+            "repository": { "const": "lifecycle.repository.v15" },
+            "provider": { "const": "lifecycle.provider-adapter.v6" },
+            "authoritySubject": { "const": "lifecycle.founder-decision-subject.v3" },
+            "transactionRules": { "const": "lifecycle.delivery-transaction-rules.v1" }
+          }
+        },
+        "principalId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
+        "keyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "algorithm": { "const": "ed25519" },
+        "authorizedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+        "expiresAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+          ]
+        },
+        "nonce": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "candidateDisposition": { "enum": ["not-applicable", "no-candidate", "abandon"] }
+      }
+    },
+    "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principalId", "keyId", "algorithm", "signature", "verifiedAt"],
+      "properties": {
+        "principalId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
+        "keyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "algorithm": { "const": "ed25519" },
+        "signature": {
+          "type": "string",
+          "minLength": 94,
+          "maxLength": 94,
+          "pattern": "^ed25519:[A-Za-z0-9_-]{86}$"
+        },
+        "verifiedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "enum": ["admit", "readmit"] } }, "required": ["decision"] },
+      "then": {
+        "properties": {
+          "subject": {
+            "properties": {
+              "operation": { "const": "delivery.admit" },
+              "decision": { "enum": ["admit", "readmit"] },
+              "candidateDisposition": { "const": "not-applicable" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "accept" } }, "required": ["decision"] },
+      "then": {
+        "properties": {
+          "subject": {
+            "properties": {
+              "operation": { "const": "delivery.accept" },
+              "decision": { "const": "accept" },
+              "candidateDisposition": { "const": "not-applicable" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "no-ship" } }, "required": ["decision"] },
+      "then": {
+        "properties": {
+          "subject": {
+            "properties": {
+              "operation": { "const": "delivery.no-ship" },
+              "decision": { "const": "no-ship" },
+              "candidateDisposition": { "enum": ["no-candidate", "abandon"] }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

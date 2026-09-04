@@ -1,0 +1,139 @@
+{
+  "authorityExclusions": [
+    "allocate-cell",
+    "choose-backend",
+    "choose-image",
+    "decide-containment",
+    "decide-retirement",
+    "emit-public-process-transition",
+    "promote-output"
+  ],
+  "contractId": "lifecycle.execution-cell-runner.v1",
+  "fixedPaths": {
+    "inputRoot": "/lifecycle/input",
+    "inputSet": ".lifecycle/input-set.json",
+    "outputManifest": ".lifecycle/output-manifest.json",
+    "outputRoot": "/lifecycle/output",
+    "providerInputRoot": "/tmp/lifecycle-provider-input"
+  },
+  "launchContracts": {
+    "agent": "one-provider-entrypoint-per-agent-attempt",
+    "check": "one-check-entrypoint-per-executed-check"
+  },
+  "limits": {
+    "maximumCandidateEntries": 1000000,
+    "maximumInputEntries": 16384,
+    "maximumProviderAuthBytes": 4194304,
+    "maximumProviderControlConnections": 16,
+    "maximumProviderEventBytes": 8388608,
+    "maximumProviderExecutableBytes": 536870912,
+    "maximumProviderSupportBytes": 65536,
+    "maximumRawStreamBytesPerStream": 4194304
+  },
+  "materializationRules": [
+    "validate-specification-and-input-set-before-productive-start",
+    "materialize-candidate-revision-carrier-object-closure-under-fresh-root",
+    "materialize-curated-provider-visible-input-under-fresh-read-only-root",
+    "materialize-product-base-object-closure-under-fresh-root",
+    "refuse-alias-link-special-or-undeclared-input",
+    "treat-every-materialization-as-disposable"
+  ],
+  "outputLayouts": {
+    "agent": [
+      {
+        "allowedModeClasses": [
+          "regular"
+        ],
+        "maximumEntries": 1,
+        "path": "agent-work-product",
+        "purpose": "agent-work-product",
+        "required": false
+      },
+      {
+        "allowedModeClasses": [
+          "regular"
+        ],
+        "maximumEntries": 1,
+        "path": "provider-result",
+        "purpose": "raw-provider-output",
+        "required": false
+      },
+      {
+        "allowedModeClasses": [
+          "regular"
+        ],
+        "maximumEntries": 1,
+        "path": "provider-terminal",
+        "purpose": "operational-artifact",
+        "required": true
+      }
+    ],
+    "builderAdditional": [
+      {
+        "allowedModeClasses": [
+          "regular",
+          "executable"
+        ],
+        "maximumEntries": "specification-bound",
+        "path": "candidate-output",
+        "purpose": "candidate-output",
+        "required": false
+      }
+    ],
+    "check": [
+      {
+        "allowedModeClasses": [
+          "regular"
+        ],
+        "maximumEntries": 1,
+        "path": "check-proof",
+        "purpose": "check-proof",
+        "required": true
+      },
+      {
+        "allowedModeClasses": [
+          "regular"
+        ],
+        "maximumEntries": 1,
+        "path": "raw-check-output",
+        "purpose": "raw-check-output",
+        "required": true
+      }
+    ],
+    "extraEntriesAllowed": false,
+    "modeClasses": [
+      "regular",
+      "executable"
+    ]
+  },
+  "protocols": {
+    "inputSet": "lifecycle.execution-input-set.v1",
+    "outputManifest": "lifecycle.execution-output-manifest.v1",
+    "specification": "lifecycle.execution-specification.v1"
+  },
+  "runnerExecutable": {
+    "digest": "sha256:81d448e948bec426c7fb93135ee020e09b510702ee3bdaa0bc88ea14024b5b97",
+    "imagePath": "/opt/lifecycle/bin/execution-cell-runner",
+    "repositorySourcePath": "src/util/execution-cell-runner-v1.ts"
+  },
+  "schema": "lifecycle.execution-cell-runner-contract.private.v1",
+  "securityRules": [
+    "provider-credentials-fixed-runner-only",
+    "provider-credentials-excluded-from-agent-process-and-output",
+    "agent-product-permissions-one-named-profile-no-conflicting-sandbox",
+    "agent-product-network-none",
+    "execution-input-transport-denied-to-agent-process",
+    "provider-control-fixed-destination-bounded-service-channel"
+  ],
+  "supportFileInventory": [
+    {
+      "imagePath": "/opt/lifecycle/runner-contract.private.json",
+      "purpose": "exact-contract-carrier"
+    }
+  ],
+  "terminalRules": [
+    "capture-bounded-terminal-facts",
+    "close-selected-output-before-manifest",
+    "write-output-manifest-last"
+  ]
+}

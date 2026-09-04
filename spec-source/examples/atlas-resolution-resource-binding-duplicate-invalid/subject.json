@@ -1,0 +1,45 @@
+{
+  "schema": "lifecycle.atlas-resolution.v2",
+  "selection": {
+    "release": "0.7.0",
+    "specificationRevision": "429fee62966f4d30e91ec2a15d27ecf353f5d68f",
+    "authoredFormat": 1,
+    "processorRevision": "746cbce73c51b28d617b96ca08f18d498ac749c4",
+    "validationProfile": "neutral.atlas-validator.resolved",
+    "validationResultSchema": "urn:atlas:schema:validation-result:1",
+    "normalizedModelSchema": "urn:atlas:schema:normalized:1",
+    "consumerProfile": "lifecycle.atlas-consumer.v1"
+  },
+  "atlasStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "resourceBindings": [
+    {
+      "resourceId": "resource-network",
+      "uri": "https://example.test/context.md",
+      "path": null,
+      "mode": null,
+      "objectId": null,
+      "byteDigest": null,
+      "disposition": "retrieval-denied"
+    },
+    {
+      "resourceId": "resource-network",
+      "uri": "https://example.test/context.md",
+      "path": null,
+      "mode": null,
+      "objectId": null,
+      "byteDigest": null,
+      "disposition": "retrieval-denied"
+    }
+  ],
+  "resourceBindingsDigest": "sha256:44f09aa21faef7641fecb74f2840cd5a5a0f292d93d762ffe469e7bbc8626d38",
+  "processor": {
+    "id": "atlas-reference-validator",
+    "version": "0.7.0",
+    "implementationDigest": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+  },
+  "externalValidationResultDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "normalizedModelDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "complete": true,
+  "valid": true,
+  "digest": "sha256:7cdd836dd0fc0789851d8e11ae381fd31f82b1517fc44d0f4012d789e41ee39b"
+}

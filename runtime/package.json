@@ -1,0 +1,61 @@
+{
+  "name": "@neutral/lifecycle-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lifecycle Foundation runtime.",
+  "license": "CC0-1.0 OR 0BSD",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "files": [
+    "bin",
+    "dist/src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "bin": {
+    "lifecycle": "bin/lifecycle.mjs"
+  },
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "prebuild": "npm run build -w @neutral/lifecycle-protocol",
+    "build": "npm run build:self",
+    "build:self": "node scripts/generate-foundation-schemas.mjs && node scripts/clean.mjs && tsc -p tsconfig.json && npm run check:runner-contract",
+    "check:runner-contract": "node execution-image/verify-runner-source.mjs && node --test execution-image/tool-inventory.test.mjs",
+    "check:schemas": "node scripts/generate-foundation-schemas.mjs --check",
+    "precheck": "npm run build -w @neutral/lifecycle-protocol",
+    "check": "npm run check:self",
+    "check:self": "npm run check:schemas && tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && npm run test:built",
+    "test:built": "node scripts/run-tests.mjs",
+    "test:delivery-exploration:built": "node --test dist/tests/process/exploration/foundation-delivery-reducer-exploration.test.js",
+    "prepack": "node scripts/stage-bundled-dependencies.mjs prepare",
+    "postpack": "node scripts/stage-bundled-dependencies.mjs cleanup",
+    "lifecycle": "node bin/lifecycle.mjs"
+  },
+  "dependencies": {
+    "@neutral/lifecycle-protocol": "1.0.0",
+    "ajv": "8.18.0",
+    "ajv-formats": "3.0.1",
+    "commonmark": "0.31.2",
+    "semver": "7.7.2"
+  },
+  "bundledDependencies": [
+    "@neutral/lifecycle-protocol",
+    "ajv",
+    "ajv-formats",
+    "commonmark",
+    "semver"
+  ],
+  "devDependencies": {
+    "@types/commonmark": "0.27.10",
+    "@types/semver": "7.7.1",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,447 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:projection-request:v4",
+  "title": "Lifecycle Projection Request v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "class",
+    "role",
+    "specificationRevision",
+    "target",
+    "repository",
+    "atlas",
+    "knowledge",
+    "profile",
+    "subject",
+    "features",
+    "retrieval",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.projection-request.v4" },
+    "class": { "enum": ["orientation", "execution"] },
+    "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "target": { "$ref": "#/$defs/target" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "atlas": { "$ref": "#/$defs/atlas" },
+    "knowledge": { "$ref": "#/$defs/knowledge" },
+    "profile": { "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/projectionProfile" },
+    "subject": {
+      "oneOf": [
+        { "$ref": "#/$defs/orientationSubject" },
+        { "$ref": "#/$defs/executionSubject" }
+      ]
+    },
+    "features": { "$ref": "#/$defs/features" },
+    "retrieval": { "$ref": "#/$defs/retrieval" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "patternProperties": {
+    "^x-[a-z0-9]+(?:-[a-z0-9]+)*$": true
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "class": { "const": "orientation" } } },
+      "then": {
+        "properties": {
+          "role": { "const": "reconnaissance" },
+          "profile": { "properties": { "id": { "const": "orientation-standard-v1" } } },
+          "subject": { "$ref": "#/$defs/orientationSubject" },
+          "repository": {
+            "properties": {
+              "repositorySnapshotDigest": { "type": "null" },
+              "validationDigest": { "type": "null" },
+              "complete": { "type": "null" },
+              "valid": { "type": "null" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "role": { "enum": ["builder", "reviewer"] },
+          "profile": { "properties": { "id": { "enum": ["execution-standard-v1", "execution-large-v1"] } } },
+          "subject": { "$ref": "#/$defs/executionSubject" },
+          "repository": {
+            "properties": {
+              "repositorySnapshotDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "validationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "complete": { "const": true },
+              "valid": { "const": true }
+            }
+          },
+          "knowledge": {
+            "properties": {
+              "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "complete": { "const": true },
+              "valid": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "knowledge": {
+            "properties": {
+              "complete": { "const": true },
+              "valid": { "const": true }
+            },
+            "required": ["complete", "valid"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "knowledge": {
+            "properties": {
+              "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "knowledge": {
+            "properties": {
+              "knowledgeSetDigest": { "type": "null" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "knowledge": {
+            "properties": { "valid": { "const": true } },
+            "required": ["valid"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "knowledge": {
+            "properties": { "complete": { "const": true } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "builder" } } },
+      "then": {
+        "properties": {
+          "subject": {
+            "properties": {
+              "candidate": {
+                "type": "object",
+                "properties": {
+                  "sealedTree": { "type": "null" },
+                  "seal": { "type": "null" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reviewer" } } },
+      "then": {
+        "properties": {
+          "subject": {
+            "properties": {
+              "candidate": {
+                "type": "object",
+                "properties": {
+                  "sealedTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+                  "seal": { "$ref": "#/$defs/candidateSealReference" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "retrieval": {
+            "properties": {
+              "externalLocal": { "const": "denied" },
+              "network": { "const": "denied" }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "retrieval": {
+            "properties": {
+              "authoritySubjectDigest": { "type": "null" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "retrieval": {
+            "properties": {
+              "authoritySubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "properties": { "id": { "const": "orientation-standard-v1" } } } } },
+      "then": {
+        "properties": {
+          "profile": {
+            "properties": {
+              "maximumMandatoryItems": { "const": 256 },
+              "maximumMandatoryBytes": { "const": 4194304 },
+              "maximumItemBytes": { "const": 1048576 },
+              "maximumReachableItems": { "const": 4096 },
+              "maximumReachableBytes": { "const": 33554432 },
+              "maximumSourceBytes": { "const": 8388608 },
+              "maximumRelationshipDepth": { "const": 24 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "properties": { "id": { "const": "execution-standard-v1" } } } } },
+      "then": {
+        "properties": {
+          "profile": {
+            "properties": {
+              "maximumMandatoryItems": { "const": 512 },
+              "maximumMandatoryBytes": { "const": 8388608 },
+              "maximumItemBytes": { "const": 1048576 },
+              "maximumReachableItems": { "const": 4096 },
+              "maximumReachableBytes": { "const": 33554432 },
+              "maximumSourceBytes": { "const": 8388608 },
+              "maximumRelationshipDepth": { "const": 32 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "properties": { "id": { "const": "execution-large-v1" } } } } },
+      "then": {
+        "properties": {
+          "profile": {
+            "properties": {
+              "maximumMandatoryItems": { "const": 4096 },
+              "maximumMandatoryBytes": { "const": 67108864 },
+              "maximumItemBytes": { "const": 4194304 },
+              "maximumReachableItems": { "const": 16384 },
+              "maximumReachableBytes": { "const": 134217728 },
+              "maximumSourceBytes": { "const": 33554432 },
+              "maximumRelationshipDepth": { "const": 128 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "generation"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "generation": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "objectFormat",
+        "repositoryEpochDigest",
+        "productStateDigest",
+        "repositoryContractDigest",
+        "repositorySnapshotDigest",
+        "validationDigest",
+        "complete",
+        "valid"
+      ],
+      "properties": {
+        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "objectFormat": { "enum": ["sha1", "sha256"] },
+        "repositoryEpochDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "repositoryContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "repositorySnapshotDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "validationDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "complete": { "type": ["boolean", "null"] },
+        "valid": { "type": ["boolean", "null"] }
+      }
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "entrypoint", "specificationRevision", "processorRevision", "stateDigest", "resolutionDigest", "normalizedModelDigest", "resourceBindingsDigest", "complete", "valid"],
+      "properties": {
+        "root": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "entrypoint": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "specificationRevision": { "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f" },
+        "processorRevision": { "const": "746cbce73c51b28d617b96ca08f18d498ac749c4" },
+        "stateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "resolutionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "normalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "resourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "complete": { "const": true },
+        "valid": { "const": true }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["knowledgeObservationDigest", "knowledgeSetDigest", "knowledgeValidationDigest", "complete", "valid"],
+      "properties": {
+        "knowledgeObservationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "knowledgeSetDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "knowledgeValidationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "complete": { "type": "boolean" },
+        "valid": { "type": "boolean" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "work-boundary" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseCommit", "revision", "stateDigest", "carrierManifestDigest", "sealedTree", "seal"],
+      "properties": {
+        "baseCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "revision": { "$ref": "#/$defs/candidateRevisionReference" },
+        "stateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "carrierManifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "sealedTree": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+            { "type": "null" }
+          ]
+        },
+        "seal": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateSealReference" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "candidateSealReference": {
+      "allOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" },
+        { "properties": { "kind": { "const": "candidate-seal" } } }
+      ]
+    },
+    "candidateRevisionReference": {
+      "allOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" },
+        { "properties": { "kind": { "const": "candidate-revision" } } }
+      ]
+    },
+    "orientationSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "objective", "objectiveDigest"],
+      "properties": {
+        "class": { "const": "orientation" },
+        "objective": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "objectiveDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "executionSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "workBoundary", "candidate"],
+      "properties": {
+        "class": { "const": "execution" },
+        "workBoundary": { "$ref": "#/$defs/boundary" },
+        "candidate": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidate" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["historical", "reachable"],
+      "properties": {
+        "historical": { "type": "boolean" },
+        "reachable": { "type": "boolean" }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["externalLocal", "network", "authoritySubjectDigest", "sources"],
+      "properties": {
+        "externalLocal": { "enum": ["denied", "authorized"] },
+        "network": { "enum": ["denied", "authorized"] },
+        "authoritySubjectDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reference", "revision", "digest"],
+            "properties": {
+              "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+              "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+              "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "lifecycle.control-record-store-seal.v1",
+  "closure": {
+    "recordId": "closure.demo",
+    "revision": 1,
+    "digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "head": {
+    "sequence": 42,
+    "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "logicalInventoryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sealedAt": "2026-08-29T14:00:00Z"
+}

@@ -1,0 +1,128 @@
+{
+  "$id": "urn:lifecycle:schema:distribution-build-selection:private:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "images": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "additionalProperties": false,
+          "properties": {
+            "agentAdapterImplementationDigest": { "$ref": "#/$defs/digest" },
+            "codexVersion": { "const": "0.151.0" },
+            "imageId": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$", "type": "string" },
+            "indexDigest": { "$ref": "#/$defs/digest" },
+            "nonRootUser": { "const": "65532:65532" },
+            "platforms": {
+              "items": false,
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "allOf": [
+                    { "$ref": "#/$defs/executionPlatform" },
+                    { "properties": { "architecture": { "const": "amd64" } }, "type": "object" }
+                  ]
+                },
+                {
+                  "allOf": [
+                    { "$ref": "#/$defs/executionPlatform" },
+                    { "properties": { "architecture": { "const": "arm64" } }, "type": "object" }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "runnerContractDigest": { "$ref": "#/$defs/digest" },
+            "runnerContractId": { "const": "lifecycle.execution-cell-runner.v1" },
+            "runnerImplementationDigest": { "$ref": "#/$defs/digest" }
+          },
+          "required": [
+            "agentAdapterImplementationDigest",
+            "codexVersion",
+            "imageId",
+            "indexDigest",
+            "nonRootUser",
+            "platforms",
+            "runnerContractDigest",
+            "runnerContractId",
+            "runnerImplementationDigest"
+          ],
+          "type": "object"
+        },
+        "runtime": {
+          "additionalProperties": false,
+          "properties": {
+            "indexDigest": { "$ref": "#/$defs/digest" },
+            "platforms": {
+              "items": false,
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "allOf": [
+                    { "$ref": "#/$defs/platform" },
+                    { "properties": { "architecture": { "const": "amd64" } }, "type": "object" }
+                  ]
+                },
+                {
+                  "allOf": [
+                    { "$ref": "#/$defs/platform" },
+                    { "properties": { "architecture": { "const": "arm64" } }, "type": "object" }
+                  ]
+                }
+              ],
+              "type": "array"
+            }
+          },
+          "required": ["indexDigest", "platforms"],
+          "type": "object"
+        }
+      },
+      "required": ["execution", "runtime"],
+      "type": "object"
+    },
+    "schema": { "const": "lifecycle.distribution-build-selection.private.v1" },
+    "sourceRevision": { "pattern": "^[a-f0-9]{40}(?:[a-f0-9]{24})?$", "type": "string" }
+  },
+  "required": ["images", "schema", "sourceRevision"],
+  "type": "object",
+  "$defs": {
+    "digest": { "pattern": "^sha256:[a-f0-9]{64}$", "type": "string" },
+    "executionPlatform": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": { "enum": ["amd64", "arm64"] },
+        "codexExecutableDigest": { "$ref": "#/$defs/digest" },
+        "configurationDigest": { "$ref": "#/$defs/digest" },
+        "manifestDigest": { "$ref": "#/$defs/digest" },
+        "os": { "const": "linux" },
+        "toolInventoryDigest": { "$ref": "#/$defs/digest" },
+        "variant": { "type": "null" }
+      },
+      "required": [
+        "architecture",
+        "codexExecutableDigest",
+        "configurationDigest",
+        "manifestDigest",
+        "os",
+        "toolInventoryDigest",
+        "variant"
+      ],
+      "type": "object"
+    },
+    "platform": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": { "enum": ["amd64", "arm64"] },
+        "configurationDigest": { "$ref": "#/$defs/digest" },
+        "manifestDigest": { "$ref": "#/$defs/digest" },
+        "os": { "const": "linux" },
+        "variant": { "type": "null" }
+      },
+      "required": ["architecture", "configurationDigest", "manifestDigest", "os", "variant"],
+      "type": "object"
+    }
+  }
+}

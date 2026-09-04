@@ -1,0 +1,130 @@
+{
+  "schema": "lifecycle.work-boundary-payload.v4",
+  "profileId": "lifecycle.work-boundary.foundation-v1",
+  "targetId": "target.demo",
+  "proposalKind": "initial",
+  "basis": {
+    "specificationRevision": "lifecycle.foundation.1.0.0-rc.10",
+    "repositoryContract": "lifecycle.repository.v15",
+    "providerAdapter": "lifecycle.provider-adapter.v6",
+    "productBaseCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "productBaseTree": "cccccccccccccccccccccccccccccccccccccccc",
+    "productStateDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "atlasStateDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "atlasResolutionDigest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+    "atlasNormalizedModelDigest": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+    "atlasResourceBindingsDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
+    "repositoryContractDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "knowledgeSetDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "repositorySnapshotDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "knowledge": [
+    {
+      "id": "check.demo",
+      "revision": 1,
+      "sourceDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "semanticDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "externalSources": [],
+  "capabilityProfile": {
+    "id": "capability.standard",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "projectionProfile": {
+    "id": "projection.builder",
+    "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "mandate": {
+    "objective": {
+      "id": "objective.1",
+      "interpretation": "Make the bounded demonstration change.",
+      "fragmentDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "direction": {
+      "id": "direction.1",
+      "selectedMeaning": "Preserve one coherent bounded result.",
+      "whyNow": "The demonstration requires one exact runtime contract.",
+      "included": ["The demonstration behavior is present."],
+      "excluded": [],
+      "authorityFacts": [],
+      "chosenTradeoffs": [],
+      "assumptions": [],
+      "falsifiers": [],
+      "fragmentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "effects": [],
+    "risks": [],
+    "obligations": [
+      {
+        "id": "obligation.1",
+        "kind": "check",
+        "statement": "The required demonstration check passes.",
+        "sourceIds": ["check.demo"],
+        "requiredEvidenceArtifactIds": ["artifact.1"],
+        "severity": "required",
+        "propositionIds": ["proposition.1"],
+        "fragmentDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "artifact.1",
+        "path": "src/demo.ts",
+        "role": "code",
+        "mustChange": true,
+        "obligationIds": ["obligation.1"],
+        "changeRule": "The bounded implementation must carry the demonstrated behavior.",
+        "fragmentDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ],
+    "checks": [
+      {
+        "id": "selection.check.demo",
+        "definition": {
+          "id": "check.demo",
+          "revision": 1,
+          "sourceDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "semanticDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "bindings": [
+          {
+            "id": "binding.check.demo",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "implementationDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "modality": "precondition",
+        "purpose": "Establish the admitted baseline and final result.",
+        "baselineRequired": true,
+        "finalRequired": true,
+        "obligationIds": ["obligation.1"],
+        "environmentRequirements": [],
+        "fragmentDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ],
+    "acceptancePropositions": [
+      {
+        "id": "proposition.1",
+        "claim": "The bounded demonstration outcome is complete.",
+        "evidenceKinds": ["check"],
+        "evidenceArtifactIds": ["artifact.1"],
+        "obligationIds": ["obligation.1"],
+        "effectIds": [],
+        "riskIds": [],
+        "path": "src/demo.ts",
+        "checkId": "selection.check.demo",
+        "allowNotApplicable": false,
+        "notApplicableCondition": null,
+        "fragmentDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    ]
+  },
+  "resolution": null,
+  "compiler": {
+    "profileId": "compiler.work-boundary",
+    "profileDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "implementationId": "runtime.compiler",
+    "implementationDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+  }
+}

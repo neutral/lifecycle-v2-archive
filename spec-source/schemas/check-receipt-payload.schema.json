@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:check-receipt-payload:v2",
+  "title": "Lifecycle Check Receipt Payload v2",
+  "description": "Runtime-observed operational proof facts for one exact Work Boundary or Candidate Seal through the private Execution contract.",
+  "$comment": "An allocated Check binds its exact Backend Profile, Image, Input Set, Specification, Cell runner, terminal Observation, optional retrieved Output Carrier and Manifest, Containment, and Runtime-owned Retirement. A Check classified not-run or unsupported before allocation carries no execution digests and uses not-required Containment and Retirement. No branch may expose a Handle, allocation key, Cell or container identity, endpoint, credential, path, or Reclamation state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "selectionId",
+    "definition",
+    "binding",
+    "phase",
+    "modality",
+    "proofRequestDigest",
+    "startedAt",
+    "finishedAt",
+    "environment",
+    "disposition",
+    "resultFacts",
+    "reasonCode",
+    "notRunAuthorization",
+    "operationalFailure",
+    "execution",
+    "rawMaterials",
+    "subjectIntegrity",
+    "containment",
+    "retirement",
+    "runner",
+    "parser",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.check-receipt-payload.v2" },
+    "profileId": { "const": "lifecycle.check-receipt.foundation-v1" },
+    "selectionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "sourceDigest", "semanticDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest", "implementationDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "phase": { "enum": ["baseline", "final"] },
+    "modality": { "enum": ["precondition", "repair-target", "regression-guard", "postcondition", "diagnostic"] },
+    "proofRequestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "startedAt": { "$ref": "#/$defs/nullableTime" },
+    "finishedAt": { "$ref": "#/$defs/nullableTime" },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identityDigest", "requested", "runtimeEnforced", "founderManaged"],
+      "properties": {
+        "identityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "requested": { "$ref": "#/$defs/conditionSet" },
+        "runtimeEnforced": { "$ref": "#/$defs/conditionSet" },
+        "founderManaged": { "$ref": "#/$defs/conditionSet" }
+      }
+    },
+    "disposition": { "enum": ["pass", "fail", "indeterminate", "not-run", "unsupported", "operational-error"] },
+    "resultFacts": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value"],
+        "properties": {
+          "name": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+          "value": {
+            "anyOf": [
+              { "type": "null" },
+              { "type": "boolean" },
+              { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+              { "type": "number" },
+              { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+            ]
+          }
+        }
+      }
+    },
+    "reasonCode": { "$ref": "#/$defs/nullableReasonCode" },
+    "notRunAuthorization": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/baselinePostconditionAuthorization" },
+        { "$ref": "#/$defs/upstreamConditionAuthorization" }
+      ]
+    },
+    "operationalFailure": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/operationalFailure" }
+      ]
+    },
+    "execution": {
+      "oneOf": [
+        { "$ref": "#/$defs/allocatedExecution" },
+        { "$ref": "#/$defs/notAllocatedExecution" }
+      ]
+    },
+    "rawMaterials": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/adjacentFileAvailability" }
+    },
+    "subjectIntegrity": { "enum": ["unchanged", "changed", "unverified"] },
+    "containment": {
+      "oneOf": [
+        { "$ref": "#/$defs/contained" },
+        { "$ref": "#/$defs/containmentNotRequired" }
+      ]
+    },
+    "retirement": {
+      "oneOf": [
+        { "$ref": "#/$defs/retired" },
+        { "$ref": "#/$defs/retirementNotRequired" }
+      ]
+    },
+    "runner": { "$ref": "#/$defs/implementation" },
+    "parser": { "$ref": "#/$defs/implementation" },
+    "limitations": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "disposition": { "enum": ["pass", "fail", "indeterminate"] } }, "required": ["disposition"] },
+      "then": {
+        "properties": {
+          "reasonCode": { "type": "null" },
+          "notRunAuthorization": { "type": "null" },
+          "operationalFailure": { "type": "null" },
+          "execution": { "$ref": "#/$defs/allocatedExecution" },
+          "subjectIntegrity": { "const": "unchanged" },
+          "containment": { "$ref": "#/$defs/contained" },
+          "retirement": { "$ref": "#/$defs/retired" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "disposition": { "const": "not-run" } }, "required": ["disposition"] },
+      "then": {
+        "properties": {
+          "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+          "notRunAuthorization": { "type": "object" },
+          "operationalFailure": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "disposition": { "const": "unsupported" } }, "required": ["disposition"] },
+      "then": {
+        "properties": {
+          "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+          "notRunAuthorization": { "type": "null" },
+          "operationalFailure": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "disposition": { "const": "operational-error" } }, "required": ["disposition"] },
+      "then": {
+        "properties": {
+          "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+          "notRunAuthorization": { "type": "null" },
+          "operationalFailure": { "$ref": "#/$defs/operationalFailure" },
+          "execution": { "$ref": "#/$defs/allocatedExecution" },
+          "containment": { "$ref": "#/$defs/contained" },
+          "retirement": { "$ref": "#/$defs/retired" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "properties": { "allocation": { "const": "not-allocated" } },
+            "required": ["allocation"]
+          }
+        },
+        "required": ["execution"]
+      },
+      "then": {
+        "properties": {
+          "disposition": { "enum": ["not-run", "unsupported"] },
+          "startedAt": { "type": "null" },
+          "finishedAt": { "type": "null" },
+          "containment": { "$ref": "#/$defs/containmentNotRequired" },
+          "retirement": { "$ref": "#/$defs/retirementNotRequired" }
+        }
+      },
+      "else": {
+        "properties": {
+          "containment": { "$ref": "#/$defs/contained" },
+          "retirement": { "$ref": "#/$defs/retired" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "notRunAuthorization": {
+            "type": "object",
+            "properties": { "kind": { "const": "baseline-postcondition" } },
+            "required": ["kind"]
+          }
+        },
+        "required": ["notRunAuthorization"]
+      },
+      "then": {
+        "properties": {
+          "phase": { "const": "baseline" },
+          "modality": { "const": "postcondition" },
+          "disposition": { "const": "not-run" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": { "const": "baseline" },
+          "modality": { "const": "postcondition" }
+        },
+        "required": ["phase", "modality"]
+      },
+      "then": {
+        "properties": {
+          "disposition": { "const": "not-run" },
+          "notRunAuthorization": { "$ref": "#/$defs/baselinePostconditionAuthorization" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableTime": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+      ]
+    },
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    },
+    "nullableReasonCode": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" }
+      ]
+    },
+    "conditionSet": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+    },
+    "baselinePostconditionAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "const": "baseline-postcondition" } }
+    },
+    "upstreamConditionAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "conditionId", "conditionDigest"],
+      "properties": {
+        "kind": { "const": "upstream-condition" },
+        "conditionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "conditionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "operationalFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "code", "factsDigest"],
+      "properties": {
+        "stage": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "backendProfileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationDigest"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "lifecycle.execution-backend-profile.docker-local.v1",
+            "lifecycle.execution-backend-profile.fault-injection.v1"
+          ]
+        },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imageId", "imageDigest"],
+      "properties": {
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "inputSetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "digest"],
+      "properties": {
+        "profileId": { "const": "lifecycle.execution-input-set.v1" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "outputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "carrierByteLength", "carrierDigest", "manifestDigest"],
+      "properties": {
+        "availability": { "enum": ["retrieved", "not-produced", "unavailable"] },
+        "carrierByteLength": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          ]
+        },
+        "carrierDigest": { "$ref": "#/$defs/nullableDigest" },
+        "manifestDigest": { "$ref": "#/$defs/nullableDigest" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "availability": { "const": "retrieved" } }, "required": ["availability"] },
+          "then": {
+            "properties": {
+              "carrierByteLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "carrierDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          },
+          "else": {
+            "properties": {
+              "carrierByteLength": { "type": "null" },
+              "carrierDigest": { "type": "null" },
+              "manifestDigest": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "allocatedExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allocation",
+        "backendProfile",
+        "image",
+        "inputSet",
+        "specificationDigest",
+        "runnerDigest",
+        "observationDigest",
+        "output",
+        "exitCode",
+        "signal",
+        "timedOut",
+        "parserDisposition"
+      ],
+      "properties": {
+        "allocation": { "const": "allocated" },
+        "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
+        "image": { "$ref": "#/$defs/imageReference" },
+        "inputSet": { "$ref": "#/$defs/inputSetReference" },
+        "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "observationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "output": { "$ref": "#/$defs/outputBinding" },
+        "exitCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+          ]
+        },
+        "signal": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Z0-9]+$" }
+          ]
+        },
+        "timedOut": { "type": "boolean" },
+        "parserDisposition": { "enum": ["passed", "failed", "not-run"] }
+      }
+    },
+    "notAllocatedExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation"],
+      "properties": {
+        "allocation": { "const": "not-allocated" }
+      }
+    },
+    "contained": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest"],
+      "properties": {
+        "classification": { "const": "contained" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "containmentNotRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest"],
+      "properties": {
+        "classification": { "const": "not-required" },
+        "factsDigest": { "type": "null" }
+      }
+    },
+    "retired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest"],
+      "properties": {
+        "classification": { "const": "retired" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "retirementNotRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "factsDigest"],
+      "properties": {
+        "classification": { "const": "not-required" },
+        "factsDigest": { "type": "null" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

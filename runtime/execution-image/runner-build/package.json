@@ -1,0 +1,9 @@
+{
+  "name": "@neutral/lifecycle-execution-cell-runner-build",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "typescript": "5.8.3"
+  }
+}

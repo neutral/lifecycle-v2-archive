@@ -1,0 +1,504 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:agent-work-product-payload:v2",
+  "title": "Lifecycle Agent Work Product Payload v2",
+  "description": "Complete runtime-normalized typed semantics compiled from one valid governed Agent Markdown submission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "role",
+    "disposition",
+    "summary",
+    "uncertainty",
+    "claims",
+    "citations",
+    "limitations",
+    "noProductReason",
+    "roleSemantics",
+    "parseResultDigest",
+    "fixedBindingSubjectDigest",
+    "body"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.agent-work-product-payload.v2" },
+    "profileId": {
+      "enum": [
+        "lifecycle.agent-work-product-body.reconnaissance.v2",
+        "lifecycle.agent-work-product-body.builder.v2",
+        "lifecycle.agent-work-product-body.reviewer.v2"
+      ]
+    },
+    "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+    "disposition": { "enum": ["complete", "partial", "blocked", "no-product"] },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "fragmentDigest"],
+      "properties": {
+        "text": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "fragmentDigest"],
+      "properties": {
+        "level": { "enum": ["none", "bounded", "material", "unknown"] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "citations": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/citation" }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 1024,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/limitation" }
+    },
+    "noProductReason": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "enum": [
+            "missing-mandatory-input",
+            "conflicting-mandatory-input",
+            "inaccessible-required-material",
+            "unsupported-capability",
+            "context-bound-exceeded",
+            "output-bound-exceeded",
+            "no-honest-route",
+            "other-explicit"
+          ]
+        }
+      ]
+    },
+    "roleSemantics": {
+      "oneOf": [
+        { "$ref": "#/$defs/reconnaissanceSemantics" },
+        { "$ref": "#/$defs/builderSemantics" },
+        { "$ref": "#/$defs/reviewerSemantics" }
+      ]
+    },
+    "parseResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "fixedBindingSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "body": {
+      "allOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlBodyBinding" },
+        {
+          "properties": {
+            "fragments": {
+              "items": {
+                "properties": {
+                  "kind": { "enum": ["claim", "citation", "limitation", "condition", "decision", "effect", "proposal", "review"] }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "disposition": { "const": "no-product" } }, "required": ["disposition"] },
+      "then": { "properties": { "noProductReason": { "type": "string" } } },
+      "else": { "properties": { "noProductReason": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reconnaissance" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "profileId": { "const": "lifecycle.agent-work-product-body.reconnaissance.v2" },
+          "roleSemantics": { "$ref": "#/$defs/reconnaissanceSemantics" },
+          "body": { "properties": { "profileId": { "const": "lifecycle.agent-work-product-body.reconnaissance.v2" } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "builder" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "profileId": { "const": "lifecycle.agent-work-product-body.builder.v2" },
+          "roleSemantics": { "$ref": "#/$defs/builderSemantics" },
+          "body": { "properties": { "profileId": { "const": "lifecycle.agent-work-product-body.builder.v2" } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reviewer" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "profileId": { "const": "lifecycle.agent-work-product-body.reviewer.v2" },
+          "roleSemantics": { "$ref": "#/$defs/reviewerSemantics" },
+          "body": { "properties": { "profileId": { "const": "lifecycle.agent-work-product-body.reviewer.v2" } } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "state", "statement", "knowledgeIds", "evidenceIds", "paths", "uncertainty", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "category": { "enum": ["completed", "remaining", "diagnosis", "route", "uncertainty", "limitation"] },
+        "state": { "enum": ["proposed", "observed", "unknown"] },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "knowledgeIds": { "$ref": "#/$defs/knowledgeIdSet" },
+        "evidenceIds": { "$ref": "#/$defs/idSet" },
+        "paths": { "$ref": "#/$defs/pathSet" },
+        "uncertainty": { "enum": ["none", "bounded", "material", "unknown"] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "subjectId", "subjectKind", "subjectDigest", "locator", "authorityClass", "claimIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "subjectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "subjectKind": { "enum": ["knowledge", "source", "projection", "candidate", "evidence", "boundary"] },
+        "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "authorityClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/provenanceClass" },
+        "claimIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "summary", "trigger", "target", "reversibility", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "kind": { "enum": ["local-read", "local-write", "network-request", "external-mutation", "notification", "publication", "spend", "deployment", "other"] },
+        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "trigger": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "reversibility": { "enum": ["read-only", "reversible", "compensatable", "irreversible"] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "reconnaissanceSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "proposal", "conditionIds", "decisionIds", "effectIds", "workBoundary"],
+      "properties": {
+        "role": { "const": "reconnaissance" },
+        "proposal": { "enum": ["work-boundary", "preparation-condition", "split-recommended", "no-product"] },
+        "conditionIds": { "$ref": "#/$defs/idSet" },
+        "decisionIds": { "$ref": "#/$defs/idSet" },
+        "effectIds": { "$ref": "#/$defs/idSet" },
+        "workBoundary": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/workBoundarySemantics" }] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "proposal": { "const": "work-boundary" } }, "required": ["proposal"] },
+          "then": {
+            "properties": {
+              "decisionIds": { "minItems": 1 },
+              "workBoundary": { "$ref": "#/$defs/workBoundarySemantics" }
+            }
+          },
+          "else": { "properties": { "workBoundary": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "proposal": { "const": "preparation-condition" } }, "required": ["proposal"] },
+          "then": { "properties": { "conditionIds": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "proposal": { "const": "split-recommended" } }, "required": ["proposal"] },
+          "then": { "properties": { "decisionIds": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "proposal": { "const": "no-product" } }, "required": ["proposal"] },
+          "then": {
+            "properties": {
+              "conditionIds": { "maxItems": 0 },
+              "decisionIds": { "maxItems": 0 },
+              "effectIds": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "workBoundarySemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selectedKnowledgeIds", "selectedSourceIds", "capabilityProfileId", "projectionProfile", "objective", "mandate", "effects", "risks", "obligations", "artifacts", "checks", "propositions"],
+      "properties": {
+        "selectedKnowledgeIds": { "$ref": "#/$defs/nonemptyKnowledgeIdSet" },
+        "selectedSourceIds": { "$ref": "#/$defs/idSet" },
+        "capabilityProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "projectionProfile": { "enum": ["execution-standard-v1", "execution-large-v1"] },
+        "objective": { "$ref": "#/$defs/boundaryObjective" },
+        "mandate": { "$ref": "#/$defs/boundaryMandate" },
+        "effects": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/effect" } },
+        "risks": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/boundaryRisk" } },
+        "obligations": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/boundaryObligation" } },
+        "artifacts": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/boundaryArtifact" } },
+        "checks": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/boundaryCheck" } },
+        "propositions": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/boundaryProposition" } }
+      }
+    },
+    "boundaryObjective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "interpretation", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "interpretation": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryMandate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "selectedMeaning", "whyNow", "included", "excluded", "authorityFacts", "chosenTradeoffs", "assumptions", "falsifiers", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "selectedMeaning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "whyNow": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "included": { "$ref": "#/$defs/nonemptyTextSet" },
+        "excluded": { "$ref": "#/$defs/textSet" },
+        "authorityFacts": { "$ref": "#/$defs/textSet" },
+        "chosenTradeoffs": { "$ref": "#/$defs/textSet" },
+        "assumptions": { "$ref": "#/$defs/textSet" },
+        "falsifiers": { "$ref": "#/$defs/textSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "effectIds", "treatment", "evidenceArtifactIds", "propositionIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "effectIds": { "$ref": "#/$defs/idSet" },
+        "treatment": { "enum": ["eliminate", "mitigate", "accept"] },
+        "evidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "propositionIds": { "$ref": "#/$defs/idSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryObligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "statement", "sourceIds", "requiredEvidenceArtifactIds", "severity", "propositionIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "kind": { "enum": ["behavior", "assurance", "blueprint", "description", "artifact", "check", "effect", "risk", "exclusion", "acceptance"] },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "sourceIds": { "$ref": "#/$defs/idSet" },
+        "requiredEvidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "severity": { "enum": ["required", "diagnostic"] },
+        "propositionIds": { "$ref": "#/$defs/idSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "role", "mustChange", "obligationIds", "changeRule", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "role": { "enum": ["code", "test", "behavior", "assurance", "blueprint", "description", "check", "documentation", "external-source"] },
+        "mustChange": { "type": "boolean" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "changeRule": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "checkKnowledgeId", "bindingIds", "modality", "purpose", "obligationIds", "baselineRequired", "finalRequired", "environmentRequirements", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "checkKnowledgeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+        "bindingIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "modality": { "enum": ["precondition", "repair-target", "regression-guard", "postcondition", "diagnostic"] },
+        "purpose": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "baselineRequired": { "type": "boolean" },
+        "finalRequired": { "type": "boolean" },
+        "environmentRequirements": { "$ref": "#/$defs/textSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "boundaryProposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "evidenceKinds", "evidenceArtifactIds", "obligationIds", "effectIds", "riskIds", "path", "checkId", "allowNotApplicable", "notApplicableCondition", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "claim": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "evidenceKinds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "enum": ["inspection", "artifact", "check", "diff", "analysis", "mixed"] }
+        },
+        "evidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "effectIds": { "$ref": "#/$defs/idSet" },
+        "riskIds": { "$ref": "#/$defs/idSet" },
+        "path": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }] },
+        "checkId": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }] },
+        "allowNotApplicable": { "type": "boolean" },
+        "notApplicableCondition": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "builderSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "proposal", "conditions", "effects", "remainingObligationIds"],
+      "properties": {
+        "role": { "const": "builder" },
+        "proposal": { "enum": ["progress", "ready-to-evaluate", "material-condition", "unable", "no-product"] },
+        "conditions": { "type": "array", "maxItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/materialCondition" } },
+        "effects": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/effect" } },
+        "remainingObligationIds": { "$ref": "#/$defs/idSet" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "proposal": { "const": "material-condition" } }, "required": ["proposal"] },
+          "then": { "properties": { "conditions": { "minItems": 1, "maxItems": 1 } } },
+          "else": { "properties": { "conditions": { "maxItems": 0 } } }
+        }
+      ]
+    },
+    "materialCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "conditionClass", "statement", "falsifiedMandateIds", "knowledgeIds", "founderJudgmentRequired", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "conditionClass": {
+          "enum": [
+            "meaning-ambiguity",
+            "mandate-falsifier",
+            "scope-change",
+            "effect-change",
+            "risk-change",
+            "architecture-conflict",
+            "assurance-conflict",
+            "founder-tradeoff",
+            "missing-authority",
+            "missing-required-source",
+            "required-capability-unavailable",
+            "projection-closure-exceeded",
+            "no-honest-route"
+          ]
+        },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "falsifiedMandateIds": { "$ref": "#/$defs/idSet" },
+        "knowledgeIds": { "$ref": "#/$defs/knowledgeIdSet" },
+        "founderJudgmentRequired": { "type": "boolean" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "reviewerSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "judgments", "mandateExcess", "missingObligationIds", "conditions"],
+      "properties": {
+        "role": { "const": "reviewer" },
+        "judgments": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/reviewJudgment" } },
+        "mandateExcess": { "type": "boolean" },
+        "missingObligationIds": { "$ref": "#/$defs/idSet" },
+        "conditions": { "type": "array", "maxItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/materialCondition" } }
+      }
+    },
+    "reviewJudgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "propositionId", "disposition", "citationIds", "inspectedSubjectIds", "rationale", "uncertainty", "limitationIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "propositionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "disposition": { "enum": ["accepted", "rejected", "indeterminate", "not-applicable"] },
+        "citationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "inspectedSubjectIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "rationale": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "uncertainty": { "enum": ["none", "bounded", "material", "unknown"] },
+        "limitationIds": { "$ref": "#/$defs/idSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "idSet": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+    },
+    "nonemptyIdSet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+    },
+    "knowledgeIdSet": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" }
+    },
+    "nonemptyKnowledgeIdSet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" }
+    },
+    "pathSet": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }
+    },
+    "textSet": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+    },
+    "nonemptyTextSet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+    }
+  }
+}

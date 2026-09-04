@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-record-store-archive:v1",
+  "title": "Lifecycle Control Record Store Archive Manifest v1",
+  "description": "Retrieval-byte manifest for one complete sealed Delivery Control Record Store archive.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "store", "seal", "database", "files", "archivedAt"],
+  "properties": {
+    "schema": { "const": "lifecycle.control-record-store-archive.v1" },
+    "store": { "$ref": "urn:lifecycle:schema:control-record-store:v1" },
+    "seal": { "$ref": "urn:lifecycle:schema:control-record-store-seal:v1" },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "byteLength", "retrievalDigest"],
+      "properties": {
+        "filename": { "const": "control-record-store.sqlite" },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 17179869184
+        },
+        "retrievalDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["filename", "reference"],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "pattern": "^sha256-[a-f0-9]{64}$"
+          },
+          "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference" }
+        }
+      }
+    },
+    "archivedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+  }
+}

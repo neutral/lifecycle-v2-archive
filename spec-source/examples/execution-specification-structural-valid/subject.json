@@ -1,0 +1,99 @@
+{
+  "schema": "lifecycle.execution-specification.v1",
+  "owner": {
+    "kind": "agent-attempt",
+    "activityId": "activity.prepare",
+    "attempt": {
+      "kind": "agent-attempt",
+      "id": "attempt.prepare.1",
+      "revision": 1,
+      "digest": "sha256:5050505050505050505050505050505050505050505050505050505050505050"
+    }
+  },
+  "backendProfile": {
+    "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+    "profileDigest": "sha256:5151515151515151515151515151515151515151515151515151515151515151",
+    "implementationDigest": "sha256:5252525252525252525252525252525252525252525252525252525252525252"
+  },
+  "image": {
+    "imageId": "lifecycle.execution-image.codex-standard.v1",
+    "imageDigest": "sha256:5353535353535353535353535353535353535353535353535353535353535353"
+  },
+  "inputSet": {
+    "profileId": "lifecycle.execution-input-set.v1",
+    "digest": "sha256:5454545454545454545454545454545454545454545454545454545454545454"
+  },
+  "operation": {
+    "kind": "agent-attempt",
+    "role": "builder",
+    "providerDescriptorDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "adapterImplementationDigest": "sha256:5656565656565656565656565656565656565656565656565656565656565656"
+  },
+  "runner": {
+    "contractId": "lifecycle.execution-cell-runner.v1",
+    "contractDigest": "sha256:5757575757575757575757575757575757575757575757575757575757575757",
+    "operationId": "agent-attempt.builder",
+    "argumentsDigest": "sha256:5858585858585858585858585858585858585858585858585858585858585858"
+  },
+  "environment": [],
+  "capabilities": {
+    "capabilityProfileDigest": "sha256:5959595959595959595959595959595959595959595959595959595959595959",
+    "candidateWrites": true,
+    "temporaryWrites": true,
+    "subprocesses": "repository-toolchain",
+    "externalEffects": false,
+    "dockerDaemonAccess": false
+  },
+  "networkPolicy": {
+    "agentProductNetwork": "none",
+    "agentPolicyDigest": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+    "providerControlPlane": "none",
+    "providerPolicyDigest": null,
+    "separationRequired": true
+  },
+  "credentialPolicy": {
+    "mode": "none",
+    "bindings": [],
+    "agentAccess": false,
+    "outputDisclosure": false
+  },
+  "limits": {
+    "wallTimeMilliseconds": 3600000,
+    "processes": 128,
+    "storageBytes": 1073741824,
+    "outputEntries": 1024,
+    "outputBytes": 1048576,
+    "outputEntryBytes": 1048576,
+    "events": 10000
+  },
+  "outputContract": {
+    "manifestProfile": "lifecycle.execution-output-manifest.v1",
+    "declaredOutputRoots": [
+      {
+        "path": "candidate-output",
+        "purpose": "candidate-output",
+        "required": false,
+        "allowedModeClasses": [
+          "regular",
+          "executable"
+        ],
+        "maximumEntries": 16,
+        "maximumBytes": 1048576
+      }
+    ],
+    "allowedModeClasses": [
+      "regular",
+      "executable"
+    ],
+    "extraEntriesAllowed": false,
+    "digest": "sha256:5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b"
+  },
+  "terminalPolicy": {
+    "directObservationRequired": true,
+    "containmentRequired": true,
+    "retrievalAfterContainment": true,
+    "retirementRequired": true,
+    "reclamation": "asynchronous-private"
+  },
+  "digest": "sha256:5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c"
+}

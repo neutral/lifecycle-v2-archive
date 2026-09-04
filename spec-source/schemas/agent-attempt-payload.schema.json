@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:agent-attempt-payload:v3",
+  "title": "Lifecycle Agent Attempt Payload v3",
+  "description": "Provider-neutral pre-dispatch contract for one independently funded Agent activity executed in one private Cell.",
+  "$comment": "The Runtime compiles the immutable Execution Input Set before this payload and compiles the Execution Specification from the finalized Agent Attempt afterward. This payload therefore binds the exact Backend Profile, Image, and Input Set selections but never a Specification digest, allocation key, Handle, Cell identity, backend coordinate, physical path, credential, or materialization identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "activityId",
+    "operation",
+    "role",
+    "invocationId",
+    "preDispatchStateDigest",
+    "projection",
+    "roleSubjectDigest",
+    "capability",
+    "investment",
+    "provider",
+    "execution",
+    "authoring",
+    "input",
+    "executionPolicy",
+    "adjacentFilePurposes"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.agent-attempt-payload.v3" },
+    "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "operation": {
+      "enum": [
+        "delivery.prepare",
+        "delivery.continue",
+        "delivery.evaluate",
+        "delivery.revise",
+        "delivery.reaffirm"
+      ]
+    },
+    "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+    "invocationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "preDispatchStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "profileId", "digest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "roleSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "effectiveGrantDigest"],
+      "properties": {
+        "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "effectiveGrantDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "investment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest", "model", "reasoning", "wallTimeMs", "limits", "rationale"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "reasoning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "wallTimeMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400000
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tokens", "events", "outputBytes", "toolCalls", "processes", "storageBytes"],
+          "properties": {
+            "tokens": { "$ref": "#/$defs/nullablePositiveSafeInteger" },
+            "events": { "$ref": "#/$defs/nullablePositiveSafeInteger" },
+            "outputBytes": { "$ref": "#/$defs/nullablePositiveSafeInteger" },
+            "toolCalls": { "$ref": "#/$defs/nullablePositiveSafeInteger" },
+            "processes": { "$ref": "#/$defs/nullablePositiveSafeInteger" },
+            "storageBytes": { "$ref": "#/$defs/nullablePositiveSafeInteger" }
+          }
+        },
+        "rationale": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descriptorId", "descriptorDigest", "adapter", "executableIdentityClass", "installedIdentityDigest"],
+      "properties": {
+        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "adapter": { "const": "lifecycle.provider-adapter.v6" },
+        "executableIdentityClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backendProfile", "image", "inputSet"],
+      "properties": {
+        "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
+        "image": { "$ref": "#/$defs/imageReference" },
+        "inputSet": { "$ref": "#/$defs/inputSetReference" }
+      }
+    },
+    "authoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roleBriefDigest",
+        "templateProfileId",
+        "templateDigest",
+        "parserProfileId",
+        "parserProfileDigest",
+        "compilerProfileId",
+        "compilerProfileDigest",
+        "submissionPolicy"
+      ],
+      "properties": {
+        "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "templateProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "templateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "parserProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "parserProfileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "compilerProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "compilerProfileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "submissionPolicy": { "enum": ["explicit", "explicit-or-clean-natural-completion"] }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contentInventoryDigest",
+        "inputMaterialDigest",
+        "citationRegistryDigest",
+        "evidenceSetDigest",
+        "propositionSetDigest"
+      ],
+      "properties": {
+        "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "citationRegistryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "evidenceSetDigest": { "$ref": "#/$defs/nullableDigest" },
+        "propositionSetDigest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "executionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cancellationPolicyDigest",
+        "containmentPolicyDigest",
+        "parentLossPolicyDigest",
+        "retirementPolicyDigest",
+        "recoveryPolicyDigest"
+      ],
+      "properties": {
+        "cancellationPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "containmentPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "parentLossPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "retirementPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "recoveryPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "adjacentFilePurposes": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "role": { "const": "reconnaissance" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "operation": { "enum": ["delivery.prepare", "delivery.revise", "delivery.reaffirm"] },
+          "input": {
+            "properties": {
+              "evidenceSetDigest": { "type": "null" },
+              "propositionSetDigest": { "type": "null" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "builder" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "operation": { "const": "delivery.continue" },
+          "input": {
+            "properties": {
+              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "propositionSetDigest": { "type": "null" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "reviewer" } }, "required": ["role"] },
+      "then": {
+        "properties": {
+          "operation": { "const": "delivery.evaluate" },
+          "input": {
+            "properties": {
+              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "propositionSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "backendProfileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationDigest"],
+      "properties": {
+        "profileId": {
+          "enum": [
+            "lifecycle.execution-backend-profile.docker-local.v1",
+            "lifecycle.execution-backend-profile.fault-injection.v1"
+          ]
+        },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "imageReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imageId", "imageDigest"],
+      "properties": {
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "inputSetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "digest"],
+      "properties": {
+        "profileId": { "const": "lifecycle.execution-input-set.v1" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "nullablePositiveSafeInteger": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+      ]
+    },
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    }
+  }
+}

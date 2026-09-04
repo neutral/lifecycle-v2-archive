@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:execution-image:v1",
+  "title": "Lifecycle Execution Image v1",
+  "description": "Exact immutable OCI execution environment selected for one Execution Specification.",
+  "$comment": "Semantic validation recomputes digest over the complete value without digest, resolves manifestDigest and configurationDigest from the immutable OCI image, proves the exact platform, runner, and tool inventory from image content, and orders tools by id. No mutable tag, registry or daemon endpoint, local image name, pull result, credential, physical path, or backend coordinate is permitted as image identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "imageId",
+    "manifestMediaType",
+    "manifestDigest",
+    "configurationDigest",
+    "platform",
+    "runner",
+    "tools",
+    "toolInventoryDigest",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.execution-image.v1" },
+    "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "manifestMediaType": {
+      "enum": [
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json"
+      ]
+    },
+    "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "configurationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "platform": { "$ref": "#/$defs/platform" },
+    "runner": { "$ref": "#/$defs/runner" },
+    "tools": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "toolInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture", "variant"],
+      "properties": {
+        "os": { "const": "linux" },
+        "architecture": { "enum": ["amd64", "arm64"] },
+        "variant": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+          ]
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractId", "implementationId", "version", "implementationDigest", "contractDigest"],
+      "properties": {
+        "contractId": { "const": "lifecycle.execution-cell-runner.v1" },
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "executableDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "executableDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

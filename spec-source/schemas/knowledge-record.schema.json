@@ -1,0 +1,418 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:knowledge-record:v1",
+  "title": "Lifecycle Knowledge Record v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "id",
+    "title",
+    "status",
+    "revision",
+    "supersedes",
+    "summary",
+    "owners",
+    "sources",
+    "relationships",
+    "conflicts",
+    "tags",
+    "spec"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.knowledge-record.v1" },
+    "kind": {
+      "type": "string",
+      "enum": ["behavior", "assurance", "blueprint", "description", "check"]
+    },
+    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+    "title": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "current", "superseded", "retired"]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "supersedes": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "revision", "sourceDigest", "semanticDigest"],
+          "properties": {
+            "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+            "revision": { "type": "integer", "minimum": 1 },
+            "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+    "owners": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" }
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 128,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sourceBinding" }
+    },
+    "relationships": {
+      "type": "array",
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/relationship" }
+    },
+    "conflicts": {
+      "type": "array",
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/conflict" }
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    },
+    "spec": { "type": "object" }
+  },
+  "patternProperties": {
+    "^x-[a-z0-9]+(?:-[a-z0-9]+)*$": true
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "revision": { "const": 1 } } },
+      "then": { "properties": { "supersedes": { "type": "null" } } },
+      "else": { "properties": { "supersedes": { "type": "object" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "current" } } },
+      "then": { "properties": { "owners": { "minItems": 1 } } }
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "behavior" },
+            "id": { "pattern": "^behavior\\." },
+            "spec": { "$ref": "#/$defs/behaviorSpec" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "assurance" },
+            "id": { "pattern": "^assurance\\." },
+            "spec": { "$ref": "#/$defs/assuranceSpec" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "blueprint" },
+            "id": { "pattern": "^blueprint\\." },
+            "spec": { "$ref": "#/$defs/blueprintSpec" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "description" },
+            "id": { "pattern": "^description\\." },
+            "spec": { "$ref": "#/$defs/descriptionSpec" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "check" },
+            "id": { "pattern": "^check\\." },
+            "spec": { "$ref": "#/$defs/checkSpec" }
+          }
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": { "enum": ["behavior", "description", "check"] }
+        }
+      },
+      "then": {
+        "properties": { "conflicts": { "maxItems": 0 } }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "assurance" } } },
+      "then": {
+        "properties": {
+          "conflicts": {
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/conflict" },
+                {
+                  "properties": {
+                    "type": { "const": "assurance-limit" },
+                    "target": { "pattern": "^assurance\\." }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "blueprint" } } },
+      "then": {
+        "properties": {
+          "conflicts": {
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/conflict" },
+                {
+                  "properties": {
+                    "type": { "const": "blueprint-constraint" },
+                    "target": { "pattern": "^blueprint\\." }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "boundedStringList": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+    },
+    "nonemptyStringList": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["type", "target", "required"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["refines", "constrains", "realizes", "verified-by", "depends-on", "related-to"]
+        },
+        "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+        "required": { "type": "boolean" },
+        "scope": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "type": "null" }
+          ]
+        },
+        "rationale": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "patternProperties": {
+        "^x-[a-z0-9]+(?:-[a-z0-9]+)*$": true
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "related-to" } } },
+          "then": { "properties": { "required": { "const": false } } }
+        }
+      ]
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "target", "localFact", "targetFact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["assurance-limit", "blueprint-constraint"]
+        },
+        "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+        "localFact": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "targetFact": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      }
+    },
+    "behaviorSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "actors", "conditions", "included", "excluded", "examples", "falsifiers"],
+      "properties": {
+        "outcome": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "actors": { "$ref": "#/$defs/nonemptyStringList" },
+        "conditions": { "$ref": "#/$defs/boundedStringList" },
+        "included": { "$ref": "#/$defs/nonemptyStringList" },
+        "excluded": { "$ref": "#/$defs/boundedStringList" },
+        "examples": { "$ref": "#/$defs/boundedStringList" },
+        "falsifiers": { "$ref": "#/$defs/nonemptyStringList" }
+      }
+    },
+    "assuranceSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["obligation", "scope", "failureModes", "limits", "degradation", "falsifiers"],
+      "properties": {
+        "obligation": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "scope": { "$ref": "#/$defs/nonemptyStringList" },
+        "failureModes": { "$ref": "#/$defs/nonemptyStringList" },
+        "limits": { "$ref": "#/$defs/nonemptyStringList" },
+        "degradation": { "$ref": "#/$defs/boundedStringList" },
+        "falsifiers": { "$ref": "#/$defs/nonemptyStringList" }
+      }
+    },
+    "blueprintSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "scope", "components", "constraints", "interfaces", "dataFlows", "tradeoffs", "evolution"],
+      "properties": {
+        "decision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "scope": { "$ref": "#/$defs/nonemptyStringList" },
+        "components": { "$ref": "#/$defs/nonemptyStringList" },
+        "constraints": { "$ref": "#/$defs/nonemptyStringList" },
+        "interfaces": { "$ref": "#/$defs/boundedStringList" },
+        "dataFlows": { "$ref": "#/$defs/boundedStringList" },
+        "tradeoffs": { "$ref": "#/$defs/nonemptyStringList" },
+        "evolution": { "$ref": "#/$defs/boundedStringList" }
+      }
+    },
+    "coverageSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mode", "role", "exclude"],
+      "properties": {
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "mode": { "type": "string", "enum": ["file", "tree"] },
+        "role": { "const": "primary" },
+        "exclude": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "file" } } },
+          "then": { "properties": { "exclude": { "maxItems": 0 } } }
+        }
+      ]
+    },
+    "descriptionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["responsibility", "coverage", "behavior", "boundaries", "invariants", "dependencies", "failure", "rationale"],
+      "properties": {
+        "responsibility": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "coverage": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": { "$ref": "#/$defs/coverageSelector" }
+        },
+        "behavior": { "$ref": "#/$defs/nonemptyStringList" },
+        "boundaries": { "$ref": "#/$defs/nonemptyStringList" },
+        "invariants": { "$ref": "#/$defs/boundedStringList" },
+        "dependencies": { "$ref": "#/$defs/boundedStringList" },
+        "failure": { "$ref": "#/$defs/boundedStringList" },
+        "rationale": { "$ref": "#/$defs/nonemptyStringList" }
+      }
+    },
+    "checkSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "selector"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["knowledge", "implementation", "candidate", "repository", "evidence", "other"]
+        },
+        "selector": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      }
+    },
+    "checkEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "indeterminate", "notRun"],
+      "properties": {
+        "pass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "indeterminate": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "notRun": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subjectBinding", "maximumAgeMs", "environmentBinding"],
+      "properties": {
+        "subjectBinding": { "const": "exact" },
+        "maximumAgeMs": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "environmentBinding": {
+          "type": "string",
+          "enum": ["exact", "class", "declared", "none"]
+        }
+      }
+    },
+    "checkSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposition", "subjects", "evidenceKinds", "requiredBindings", "evaluation", "limits", "freshness", "falsifiers"],
+      "properties": {
+        "proposition": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "subjects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/checkSubject" }
+        },
+        "evidenceKinds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["command", "inspection", "artifact", "diff", "analysis", "mixed"]
+          }
+        },
+        "requiredBindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+        },
+        "evaluation": { "$ref": "#/$defs/checkEvaluation" },
+        "limits": { "$ref": "#/$defs/nonemptyStringList" },
+        "freshness": { "$ref": "#/$defs/freshness" },
+        "falsifiers": { "$ref": "#/$defs/nonemptyStringList" }
+      }
+    }
+  }
+}

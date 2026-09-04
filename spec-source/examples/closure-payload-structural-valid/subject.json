@@ -1,0 +1,44 @@
+{
+  "schema": "lifecycle.closure-payload.v4",
+  "profileId": "lifecycle.delivery-closure.foundation-v1",
+  "disposition": "no-ship",
+  "transaction": {
+    "effectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "outcome": "applied",
+    "observationFactsSchema": "lifecycle.terminal-repository-effect-observation.v1",
+    "observationFactsDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "canonicalResultDigest": null,
+    "observedAt": "2026-08-29T12:00:00.000Z"
+  },
+  "candidateTreatment": "not-created",
+  "canonicalResult": null,
+  "nonIntegrationVerified": true,
+  "terminalExecutions": {
+    "terminalExecutionSetDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "executionCount": 0,
+    "containment": {
+      "classification": "complete",
+      "factsDigest": "sha256:2323232323232323232323232323232323232323232323232323232323232323"
+    },
+    "retirement": {
+      "classification": "complete",
+      "factsDigest": "sha256:2424242424242424242424242424242424242424242424242424242424242424"
+    }
+  },
+  "reclamationHandoff": {
+    "obligationSetDigest": "sha256:2525252525252525252525252525252525252525252525252525252525252525",
+    "obligationCount": 0
+  },
+  "runtime": {
+    "qualification": "lifecycle.foundation.1.0.0-rc.10",
+    "repository": "lifecycle.repository.v15",
+    "runtimeProtocol": "lifecycle.runtime.foundation.v10",
+    "interfaceProtocol": "lifecycle.interface.foundation.v10",
+    "provider": "lifecycle.provider-adapter.v6",
+    "implementationId": "runtime.delivery",
+    "implementationDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "ruleSetId": "rules.delivery",
+    "ruleSetDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "terminalAt": "2026-08-29T12:00:01.000Z"
+}

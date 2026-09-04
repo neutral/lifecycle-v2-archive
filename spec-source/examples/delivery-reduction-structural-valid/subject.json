@@ -1,0 +1,30 @@
+{
+  "schema": "lifecycle.delivery-reduction.v2",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "standing": "framing",
+  "candidateCondition": "absent",
+  "activities": [],
+  "recovery": null,
+  "subjects": {
+    "proposedBoundary": null,
+    "activeBoundary": null,
+    "candidate": null,
+    "materialCondition": null,
+    "seal": null,
+    "evidence": null,
+    "closure": null
+  },
+  "journal": {
+    "eventCount": 1,
+    "headSequence": 1,
+    "headDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "storeDisposition": {
+    "stage": "active",
+    "integrity": "verified",
+    "sealSubjectDigest": null,
+    "archiveManifestDigest": null
+  },
+  "eligibleOperations": ["delivery.prepare"]
+}

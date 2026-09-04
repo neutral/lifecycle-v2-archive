@@ -1,0 +1,17 @@
+{
+  "schema": "lifecycle.candidate-seal-payload.v2",
+  "profileId": "lifecycle.candidate-seal.foundation-v1",
+  "carrierIntegrity": "verified",
+  "carrierReconstruction": "verified",
+  "evaluationSubject": "established",
+  "candidateReobservation": "exact-match",
+  "untrackedProduct": "absent",
+  "controlExclusion": "verified",
+  "sealer": {
+    "implementationId": "runtime.candidate-sealer",
+    "implementationDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "ruleSetId": "rules.candidate-seal",
+    "ruleSetDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "limitations": []
+}

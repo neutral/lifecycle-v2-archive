@@ -1,0 +1,21 @@
+{
+  "schema": "lifecycle.control-record-event.v2",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 16,
+  "eventId": "event.evidence-packet",
+  "eventKind": "evidence-packet-finalized",
+  "occurredAt": "2026-08-29T13:00:00Z",
+  "actor": { "kind": "runtime", "id": "runtime.foundation" },
+  "subject": {
+    "recordId": "evidence.demo",
+    "revision": 1,
+    "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "payload": {
+    "activityId": "activity.evaluate",
+    "readiness": "acceptance-ready"
+  },
+  "predecessorDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+}

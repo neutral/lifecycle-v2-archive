@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:execution-input-set:v1",
+  "title": "Lifecycle Execution Input Set v1",
+  "description": "Exact immutable logical input and ordered content inventory for one Agent Attempt or Check execution.",
+  "$comment": "Semantic validation recomputes digest over the complete value without digest, entryCount and aggregateByteLength from entries, and contentInventoryDigest as digestCanonical over the complete canonically path-ordered unique entries array, and requires subjects in canonical kind/id/revision/digest order. Every owner requires exactly one runner subject whose digest equals runnerContractDigest. For an Agent owner, owner.ownerSubjectDigest equals the singleton exact role-subject digest; for a Check owner it equals the singleton exact check-proof-subject digest. It is never the digest of an Agent Attempt that itself selects this Input Set, preventing an Attempt digest cycle, and no other subject can substitute for either owner binding. Agent owners require their exact Projection, role subject, Founder direction, Role Brief, semantic template, Capability Profile, Provider Descriptor, Investment, and one or more policy subjects; builder and reviewer owners additionally require one exact Candidate Revision and Candidate Revision Carrier manifest and artifact, while reconnaissance forbids them. Final Check owners require one exact Candidate Revision, Candidate Revision Carrier manifest, and Carrier artifact. Baseline Check owners instead require one exact product-base subject and deterministic Git object-closure manifest and artifact binding the exact Work Boundary product-base commit and tree; those bytes are immutable operation input and never Candidate truth. Every Check also requires one exact Check Definition, Binding, proof subject, and runner and may bind zero or more separately resolved policy subjects. Every subject and entry must resolve to independently verified immutable bytes, Candidate Carrier bindings must agree with the selected Revision, and no physical materialization, volume, cache, Cell, backend, credential, private path identity, provider-invoked validator, or live validity claim may enter the value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "owner",
+    "inputMaterialDigest",
+    "subjects",
+    "entries",
+    "entryCount",
+    "aggregateByteLength",
+    "contentInventoryDigest",
+    "runnerContractDigest",
+    "toolInventoryDigest",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.execution-input-set.v1" },
+    "owner": { "$ref": "#/$defs/owner" },
+    "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/logicalSubject" }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000000,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "entryCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "aggregateByteLength": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "runnerContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "toolInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "owner": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "activityId", "attemptId", "role", "ownerSubjectDigest"],
+          "properties": {
+            "kind": { "const": "agent-attempt" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "attemptId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
+            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "activityId", "selectionId", "phase", "ownerSubjectDigest"],
+          "properties": {
+            "kind": { "const": "check" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "selectionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "phase": { "enum": ["baseline", "final"] },
+            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "logicalSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "candidate-revision",
+            "candidate-revision-carrier-manifest",
+            "product-base",
+            "product-base-object-closure-manifest",
+            "projection",
+            "role-subject",
+            "founder-direction",
+            "role-brief",
+            "semantic-template",
+            "capability-profile",
+            "provider-descriptor",
+            "investment",
+            "check-definition",
+            "check-binding",
+            "check-proof-subject",
+            "policy",
+            "runner"
+          ]
+        },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+          ]
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "purpose", "mediaType", "modeClass", "byteLength", "digest", "sourceSubjectDigest"],
+      "properties": {
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "purpose": {
+          "enum": [
+            "candidate-carrier-artifact",
+            "product-base-object-closure-artifact",
+            "projection",
+            "role-brief",
+            "semantic-template",
+            "check-input",
+            "policy",
+            "operation-input"
+          ]
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(?:;[ -~]+)?$"
+        },
+        "modeClass": { "enum": ["regular", "executable"] },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "sourceSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

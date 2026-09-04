@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:provider-descriptor:v6",
+  "title": "Lifecycle Provider Descriptor v6",
+  "description": "Strict provider-adapter-v6 descriptor for provider execution through the fixed Execution Cell runner.",
+  "$comment": "The descriptor declares requirement classes, never a credential value, endpoint, daemon or container identity, Execution Handle, allocation key, physical path, host process group, custody root, or Reclamation coordinate. The Execution Backend and fixed runner own physical allocation, dispatch, containment, retrieval, Retirement, and Reclamation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "adapter",
+    "provider",
+    "execution",
+    "authoring",
+    "capabilitySupport",
+    "controlPlane",
+    "cancellation",
+    "observation",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.provider-descriptor.v6" },
+    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "adapter": { "$ref": "#/$defs/adapter" },
+    "provider": { "$ref": "#/$defs/provider" },
+    "execution": { "$ref": "#/$defs/execution" },
+    "authoring": { "$ref": "#/$defs/authoring" },
+    "capabilitySupport": { "$ref": "#/$defs/capabilitySupport" },
+    "controlPlane": { "$ref": "#/$defs/controlPlane" },
+    "cancellation": { "$ref": "#/$defs/cancellation" },
+    "observation": { "$ref": "#/$defs/observation" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "implementationDigest", "protocol"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "protocol": { "const": "lifecycle.provider-adapter.v6" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "compatibleVersion", "executableIdentityClass"],
+      "properties": {
+        "product": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "compatibleVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "executableIdentityClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "freshInvocation", "runnerRequirements"],
+      "properties": {
+        "mode": { "enum": ["command", "sdk", "service"] },
+        "freshInvocation": { "const": true },
+        "runnerRequirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractId",
+            "productiveStart",
+            "workspace",
+            "output",
+            "containmentMechanism",
+            "containmentDecisionOwner"
+          ],
+          "properties": {
+            "contractId": { "const": "lifecycle.execution-cell-runner.v1" },
+            "productiveStart": { "const": "runner-mediated" },
+            "workspace": { "const": "governed-semantic-workspace" },
+            "output": { "const": "manifested-output-carrier" },
+            "containmentMechanism": { "const": "execution-backend" },
+            "containmentDecisionOwner": { "const": "lifecycle-runtime" }
+          }
+        }
+      }
+    },
+    "authoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspaceFormat",
+        "workspaceFilename",
+        "bodyProfileIds",
+        "parserProfileId",
+        "compilerProfileId",
+        "workProductPayloadSchemaId",
+        "submissionTriggers",
+        "terminalOutputFallback",
+        "maximumBytes"
+      ],
+      "properties": {
+        "workspaceFormat": { "const": "governed-body-only-semantic-markdown" },
+        "workspaceFilename": { "const": "semantic.md" },
+        "bodyProfileIds": {
+          "const": [
+            "lifecycle.agent-work-product-body.builder.v2",
+            "lifecycle.agent-work-product-body.reconnaissance.v2",
+            "lifecycle.agent-work-product-body.reviewer.v2"
+          ]
+        },
+        "parserProfileId": { "const": "lifecycle.agent-work-product-parser.v2" },
+        "compilerProfileId": { "const": "lifecycle.agent-work-product-compiler.v2" },
+        "workProductPayloadSchemaId": { "const": "urn:lifecycle:schema:agent-work-product-payload:v2" },
+        "submissionTriggers": { "const": ["clean-natural-completion", "explicit"] },
+        "terminalOutputFallback": { "const": false },
+        "maximumBytes": { "type": "integer", "minimum": 1, "maximum": 1048576 }
+      }
+    },
+    "capabilitySupport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateWrites", "temporaryWrites", "subprocessModes", "agentProductNetworkModes", "externalEffects"],
+      "properties": {
+        "candidateWrites": { "type": "boolean" },
+        "temporaryWrites": { "type": "boolean" },
+        "subprocessModes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["none", "repository-toolchain"] }
+        },
+        "agentProductNetworkModes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["none", "loopback", "bounded-egress"] }
+        },
+        "externalEffects": { "type": "boolean" }
+      }
+    },
+    "controlPlane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["networkRequirement", "authenticationRequirement", "agentToolAccess", "outputDisclosure"],
+      "properties": {
+        "networkRequirement": { "enum": ["none", "fixed-service-channel"] },
+        "authenticationRequirement": { "enum": ["none", "fixed-runner", "isolated-broker"] },
+        "agentToolAccess": { "const": false },
+        "outputDisclosure": { "const": false }
+      }
+    },
+    "cancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "terminalObservation"],
+      "properties": {
+        "request": { "type": "boolean" },
+        "terminalObservation": { "const": true }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events", "stdout", "stderr", "sessionIdentity", "rawProviderOutput", "workspaceSubmission"],
+      "properties": {
+        "events": { "type": "boolean" },
+        "stdout": { "type": "boolean" },
+        "stderr": { "type": "boolean" },
+        "sessionIdentity": { "type": "boolean" },
+        "rawProviderOutput": { "type": "boolean" },
+        "workspaceSubmission": { "const": true }
+      }
+    }
+  }
+}

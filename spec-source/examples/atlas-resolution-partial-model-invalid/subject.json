@@ -1,0 +1,26 @@
+{
+  "schema": "lifecycle.atlas-resolution.v2",
+  "selection": {
+    "release": "0.7.0",
+    "specificationRevision": "429fee62966f4d30e91ec2a15d27ecf353f5d68f",
+    "authoredFormat": 1,
+    "processorRevision": "746cbce73c51b28d617b96ca08f18d498ac749c4",
+    "validationProfile": "neutral.atlas-validator.resolved",
+    "validationResultSchema": "urn:atlas:schema:validation-result:1",
+    "normalizedModelSchema": "urn:atlas:schema:normalized:1",
+    "consumerProfile": "lifecycle.atlas-consumer.v1"
+  },
+  "atlasStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "resourceBindings": [],
+  "resourceBindingsDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "processor": {
+    "id": "atlas-reference-validator",
+    "version": "0.7.0",
+    "implementationDigest": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+  },
+  "externalValidationResultDigest": null,
+  "normalizedModelDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "complete": false,
+  "valid": false,
+  "digest": "sha256:fafaa3203d12a01d970a654f924c39bd30fdde59bc2af7aa2984bddc7de4fb2f"
+}

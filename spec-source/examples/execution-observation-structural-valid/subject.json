@@ -1,0 +1,46 @@
+{
+  "schema": "lifecycle.execution-observation.v1",
+  "specificationDigest": "sha256:3030303030303030303030303030303030303030303030303030303030303030",
+  "backendProfile": {
+    "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+    "profileDigest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+    "implementationDigest": "sha256:3232323232323232323232323232323232323232323232323232323232323232"
+  },
+  "imageDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "inputSetDigest": "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+  "observationSequence": 3,
+  "observedAt": "2026-08-29T12:00:01.000Z",
+  "allocationState": "allocated",
+  "dispatchState": "terminal-observed",
+  "processState": "terminal",
+  "terminal": {
+    "finishedAt": "2026-08-29T12:00:00.000Z",
+    "reason": "exited",
+    "exitCode": 0,
+    "signal": null,
+    "runnerDisposition": "completed"
+  },
+  "containmentFacts": {
+    "rootProcess": "terminal",
+    "descendants": "absent",
+    "writers": "absent",
+    "credentials": "revoked",
+    "providerChannel": "unreachable",
+    "outputMutation": "impossible"
+  },
+  "output": {
+    "disposition": "complete",
+    "manifestDigest": "sha256:3535353535353535353535353535353535353535353535353535353535353535",
+    "carrierByteLength": 256
+  },
+  "resourceFacts": {
+    "wallTimeMilliseconds": 1000,
+    "cpuTimeMilliseconds": 250,
+    "peakMemoryBytes": 1048576,
+    "storageBytes": 4096,
+    "outputBytes": 256,
+    "eventCount": 4,
+    "limitBreaches": []
+  },
+  "digest": "sha256:3636363636363636363636363636363636363636363636363636363636363636"
+}

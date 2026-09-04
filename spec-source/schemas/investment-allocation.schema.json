@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:investment-allocation:v1",
+  "title": "Lifecycle Investment Allocation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "eligibleOperationId",
+    "role",
+    "providerDescriptorId",
+    "providerDescriptorDigest",
+    "model",
+    "reasoning",
+    "wallTimeMs",
+    "limits",
+    "callerPolicyId",
+    "cumulativePolicyObservationDigest",
+    "rationale",
+    "accountingLabels",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.investment-allocation.v1" },
+    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "eligibleOperationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "role": {
+      "type": "string",
+      "enum": ["reconnaissance", "builder", "reviewer"]
+    },
+    "providerDescriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "providerDescriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "reasoning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "wallTimeMs": { "type": "integer", "minimum": 1, "maximum": 86400000 },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokens", "events", "outputBytes", "toolCalls"],
+      "properties": {
+        "tokens": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "events": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "outputBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+        "toolCalls": { "$ref": "#/$defs/nullablePositiveInteger" }
+      }
+    },
+    "callerPolicyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "cumulativePolicyObservationDigest": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "enum": [
+        "initial-probe",
+        "continue-known-local-gap",
+        "repair-failed-obligation",
+        "complete-proof-preparation",
+        "clarify-material-uncertainty",
+        "higher-capability-escalation",
+        "lower-cost-routine-implementation",
+        "independent-review",
+        "recovery",
+        "other-explicit"
+      ]
+    },
+    "accountingLabels": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": { "type": "string", "maxLength": 256 },
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "nullablePositiveInteger": {
+      "oneOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "null" }
+      ]
+    }
+  }
+}

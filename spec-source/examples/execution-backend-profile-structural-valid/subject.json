@@ -1,0 +1,111 @@
+{
+  "schema": "lifecycle.execution-backend-profile.v1",
+  "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+  "backendKind": "docker-local",
+  "usage": "production",
+  "implementation": {
+    "id": "runtime.execution-backend.docker",
+    "version": "1.0.0",
+    "implementationDigest": "sha256:1010101010101010101010101010101010101010101010101010101010101010",
+    "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "engineContract": {
+    "kind": "docker-engine",
+    "compatibilityProfileId": "docker-engine-api-v1-47",
+    "compatibleVersion": ">=27.0.0 <28.0.0",
+    "contractDigest": "sha256:1212121212121212121212121212121212121212121212121212121212121212"
+  },
+  "platforms": [
+    {
+      "os": "linux",
+      "architecture": "amd64",
+      "variant": null
+    },
+    {
+      "os": "linux",
+      "architecture": "arm64",
+      "variant": null
+    }
+  ],
+  "isolation": {
+    "mechanism": "oci-container",
+    "nonRootRunner": true,
+    "privileged": false,
+    "hostPidNamespace": false,
+    "hostNetworkNamespace": false,
+    "dockerSocket": false,
+    "canonicalRepositoryMount": false,
+    "runtimeCustodyMount": false,
+    "completeProcessBoundary": true,
+    "productionIsolationClaim": true
+  },
+  "lifecycleGuarantees": {
+    "deterministicAllocation": true,
+    "oneCellPerSpecification": true,
+    "oneTimeDispatch": true,
+    "directObservation": true,
+    "monotonicCancellation": true,
+    "retrievalAfterContainment": true,
+    "retirementBeforeCompletion": true,
+    "reclamationAfterRetirement": true
+  },
+  "imagePolicy": {
+    "immutableDigestRequired": true,
+    "mutableTagsAllowed": false,
+    "platformVerification": true,
+    "runnerAndToolInventoryVerification": true
+  },
+  "transferPolicy": {
+    "inputModes": [
+      "bounded-archive"
+    ],
+    "outputModes": [
+      "bounded-archive"
+    ],
+    "contentValidation": "runtime-independent",
+    "physicalIdentityIsLogicalInput": false
+  },
+  "networkPolicy": {
+    "providerControlPlaneModes": [
+      "none",
+      "fixed-service-channel"
+    ],
+    "agentProductNetworkModes": [
+      "none",
+      "loopback",
+      "bounded-egress"
+    ],
+    "separationRequired": true
+  },
+  "credentialPolicy": {
+    "injectionModes": [
+      "none",
+      "fixed-runner",
+      "isolated-broker"
+    ],
+    "agentAccess": false,
+    "outputDisclosure": false,
+    "diagnosticDisclosure": false
+  },
+  "limits": {
+    "maximumWallTimeMilliseconds": 86400000,
+    "maximumProcesses": 1024,
+    "maximumStorageBytes": 10737418240,
+    "maximumOutputEntries": 100000,
+    "maximumOutputBytes": 1073741824,
+    "maximumOutputEntryBytes": 268435456,
+    "maximumEvents": 1000000
+  },
+  "outputPolicy": {
+    "manifestProfile": "lifecycle.execution-output-manifest.v1",
+    "allowedModeClasses": [
+      "regular",
+      "executable"
+    ],
+    "linksAllowed": false,
+    "specialFilesAllowed": false,
+    "extraEntriesAllowed": false
+  },
+  "qualificationClaims": [],
+  "digest": "sha256:1313131313131313131313131313131313131313131313131313131313131313"
+}

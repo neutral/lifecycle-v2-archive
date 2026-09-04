@@ -1,0 +1,150 @@
+import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import test from "node:test";
+import * as foundation from "../src/foundation.js";
+
+const EXPECTED_FOUNDATION_RUNTIME_EXPORTS = Object.freeze([
+  "FOUNDATION_ATTEMPT_VIEW_PROFILE_ID",
+  "FOUNDATION_ATTEMPT_VIEW_SCHEMA",
+  "FOUNDATION_CONTROL_DOSSIERS",
+  "FOUNDATION_CONTROL_EVENT_KINDS",
+  "FOUNDATION_CONTROL_RECORD_KINDS",
+  "FOUNDATION_DELIVERY_DIFF_SCHEMA",
+  "FOUNDATION_DELIVERY_GENERATION_SCHEMA",
+  "FOUNDATION_DELIVERY_INBOX_SCHEMA",
+  "FOUNDATION_DELIVERY_OPERATIONS",
+  "FOUNDATION_DELIVERY_RECOVERY_STEPS",
+  "FOUNDATION_DELIVERY_REDUCER_ID",
+  "FOUNDATION_DELIVERY_VIEW_SCHEMA",
+  "FOUNDATION_INTERFACE_PROTOCOL",
+  "FOUNDATION_RUNTIME_FACADE_SCHEMA",
+  "FOUNDATION_RUNTIME_OBSERVATION_SCHEMA",
+  "FOUNDATION_RUNTIME_OPERATION_KINDS",
+  "FOUNDATION_RUNTIME_PROTOCOL",
+  "FOUNDATION_RUNTIME_RESULT_SCHEMA",
+  "FOUNDATION_RUNTIME_VERSION_EXPECTATION",
+  "FOUNDATION_SEMANTIC_MARKDOWN_MAXIMUM_BYTES",
+  "FoundationAttemptViewSchema",
+  "FoundationAttemptViewSelectionSchema",
+  "FoundationCandidateChangeSchema",
+  "FoundationChangeFactsSchema",
+  "FoundationCliErrorSchema",
+  "FoundationCliErrorValueSchema",
+  "FoundationControlActorSchema",
+  "FoundationControlChangeSchema",
+  "FoundationControlEventKindSchema",
+  "FoundationControlEventReferenceSchema",
+  "FoundationControlEventSchema",
+  "FoundationControlFamilySummarySchema",
+  "FoundationControlRecordKindSchema",
+  "FoundationControlReferenceSchema",
+  "FoundationControlRelationshipSchema",
+  "FoundationControlRevisionSchema",
+  "FoundationDecisionReadinessSchema",
+  "FoundationDeliveryActivityPresentationSchema",
+  "FoundationDeliveryActivitySchema",
+  "FoundationDeliveryDiffSchema",
+  "FoundationDeliveryGenerationSchema",
+  "FoundationDeliveryInboxRowSchema",
+  "FoundationDeliveryInboxSchema",
+  "FoundationDeliveryJournalSummarySchema",
+  "FoundationDeliveryOperationSchema",
+  "FoundationDeliveryRecoverySchema",
+  "FoundationDeliveryRecoveryStepSchema",
+  "FoundationDeliveryStateSchema",
+  "FoundationDeliveryStoreDispositionSchema",
+  "FoundationDeliverySubjectsSchema",
+  "FoundationDeliveryViewSchema",
+  "FoundationDiagnosticSchema",
+  "FoundationDiffResultSchema",
+  "FoundationExportResultSchema",
+  "FoundationExportSelectionSchema",
+  "FoundationGitObjectSchema",
+  "FoundationInboxResultSchema",
+  "FoundationInspectQuerySchema",
+  "FoundationInspectionResultSchema",
+  "FoundationJsonObjectSchema",
+  "FoundationJsonValueSchema",
+  "FoundationNextPassRequirementSchema",
+  "FoundationOpaqueIdSchema",
+  "FoundationProtocolError",
+  "FoundationPublicFactsSchema",
+  "FoundationRepositoryAtlasObservationSchema",
+  "FoundationRepositoryChangeSchema",
+  "FoundationRepositoryObservationSchema",
+  "FoundationRfc3339Schema",
+  "FoundationRuntimeAcceptRequestSchema",
+  "FoundationRuntimeAdmitRequestSchema",
+  "FoundationRuntimeContinueRequestSchema",
+  "FoundationRuntimeDiffRequestSchema",
+  "FoundationRuntimeEvaluateRequestSchema",
+  "FoundationRuntimeExportRequestSchema",
+  "FoundationRuntimeInboxRequestSchema",
+  "FoundationRuntimeInitializeInputSchema",
+  "FoundationRuntimeInitializeRequestSchema",
+  "FoundationRuntimeInspectRequestSchema",
+  "FoundationRuntimeNoShipRequestSchema",
+  "FoundationRuntimeObservationSchema",
+  "FoundationRuntimeOperationKindSchema",
+  "FoundationRuntimeOperationRequestSchema",
+  "FoundationRuntimeOperationResultSchema",
+  "FoundationRuntimePrepareRequestSchema",
+  "FoundationRuntimeReaffirmRequestSchema",
+  "FoundationRuntimeRecoverRequestSchema",
+  "FoundationRuntimeResultValueSchema",
+  "FoundationRuntimeReviseRequestSchema",
+  "FoundationRuntimeStatusRequestSchema",
+  "FoundationRuntimeValidateRequestSchema",
+  "FoundationRuntimeVersionSchema",
+  "FoundationRuntimeWatchRequestSchema",
+  "FoundationSemanticMarkdownSchema",
+  "FoundationSemanticStatementSchema",
+  "FoundationSha256Schema",
+  "FoundationSubmissionDiagnosticSchema",
+  "FoundationTypedSemanticsSchema",
+  "FoundationWatchResultSchema",
+  "canonicalFoundationJson",
+  "canonicalFoundationJsonLine",
+  "createFoundationRuntimeOperationRequest",
+  "createFoundationRuntimeOperationResult",
+  "digestFoundationCanonical",
+  "digestFoundationRuntimeOperationRequest",
+  "parseFoundationCliError",
+  "parseFoundationCliErrorJson",
+  "parseFoundationRuntimeOperationRequest",
+  "parseFoundationRuntimeOperationRequestJson",
+  "parseFoundationRuntimeOperationResult",
+  "parseFoundationRuntimeOperationResultForRequest",
+  "parseFoundationRuntimeOperationResultJson",
+  "parseFoundationRuntimeVersion",
+  "parseFoundationRuntimeVersionJson",
+  "parseFoundationStrictJson",
+  "selfDigestFoundationCarrier",
+  "serializeFoundationRuntimeOperationRequest",
+  "serializeFoundationRuntimeOperationResult",
+]);
+
+test("the Foundation barrel retains the exact runtime export surface", () => {
+  assert.deepEqual(Object.keys(foundation).sort(), EXPECTED_FOUNDATION_RUNTIME_EXPORTS);
+});
+
+async function javascriptFiles(root: URL): Promise<URL[]> {
+  const files: URL[] = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const selected = new URL(entry.isDirectory() ? `${entry.name}/` : entry.name, root);
+    if (entry.isDirectory()) files.push(...await javascriptFiles(selected));
+    else if (entry.name.endsWith(".js")) files.push(selected);
+  }
+  return files;
+}
+
+test("the built public protocol imports no Node builtin", async () => {
+  const sourceRoot = new URL("../src/", import.meta.url);
+  for (const file of await javascriptFiles(sourceRoot)) {
+    assert.doesNotMatch(
+      await readFile(file, "utf8"),
+      /(?:from\s+|import\s*\()["']node:/u,
+      `${file.pathname} imports a Node builtin`,
+    );
+  }
+});

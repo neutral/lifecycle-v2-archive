@@ -1,0 +1,82 @@
+{
+  "schema": "lifecycle.agent-attempt-payload.v3",
+  "activityId": "activity.prepare",
+  "operation": "delivery.prepare",
+  "role": "reconnaissance",
+  "invocationId": "invocation.prepare",
+  "preDispatchStateDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "projection": {
+    "id": "projection.orientation",
+    "profileId": "orientation-v1",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "roleSubjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "capability": {
+    "profileId": "capability.reconnaissance",
+    "profileDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "effectiveGrantDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "investment": {
+    "id": "investment.prepare",
+    "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "model": "gpt-5.6-sol",
+    "reasoning": "high",
+    "wallTimeMs": 3600000,
+    "limits": {
+      "tokens": null,
+      "events": null,
+      "outputBytes": 1048576,
+      "toolCalls": null,
+      "processes": 128,
+      "storageBytes": 1073741824
+    },
+    "rationale": "initial-probe"
+  },
+  "provider": {
+    "descriptorId": "codex-exec-standard-v6",
+    "descriptorDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "adapter": "lifecycle.provider-adapter.v6",
+    "executableIdentityClass": "oci-image-tool",
+    "installedIdentityDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "execution": {
+    "backendProfile": {
+      "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+      "profileDigest": "sha256:4545454545454545454545454545454545454545454545454545454545454545",
+      "implementationDigest": "sha256:4646464646464646464646464646464646464646464646464646464646464646"
+    },
+    "image": {
+      "imageId": "lifecycle.execution-image.codex-standard.v1",
+      "imageDigest": "sha256:4747474747474747474747474747474747474747474747474747474747474747"
+    },
+    "inputSet": {
+      "profileId": "lifecycle.execution-input-set.v1",
+      "digest": "sha256:4848484848484848484848484848484848484848484848484848484848484848"
+    }
+  },
+  "authoring": {
+    "roleBriefDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "templateProfileId": "lifecycle.agent-work-product-body.reconnaissance.v2",
+    "templateDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "parserProfileId": "lifecycle.agent-work-product-parser.v2",
+    "parserProfileDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "compilerProfileId": "lifecycle.agent-work-product-compiler.v2",
+    "compilerProfileDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "submissionPolicy": "explicit-or-clean-natural-completion"
+  },
+  "input": {
+    "contentInventoryDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "inputMaterialDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "citationRegistryDigest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "evidenceSetDigest": null,
+    "propositionSetDigest": null
+  },
+  "executionPolicy": {
+    "cancellationPolicyDigest": "sha256:5151515151515151515151515151515151515151515151515151515151515151",
+    "containmentPolicyDigest": "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "parentLossPolicyDigest": "sha256:5252525252525252525252525252525252525252525252525252525252525252",
+    "retirementPolicyDigest": "sha256:5353535353535353535353535353535353535353535353535353535353535353",
+    "recoveryPolicyDigest": "sha256:5454545454545454545454545454545454545454545454545454545454545454"
+  },
+  "adjacentFilePurposes": ["raw-provider-output"]
+}

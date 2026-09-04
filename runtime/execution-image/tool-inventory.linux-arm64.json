@@ -1,0 +1,87 @@
+{
+  "codexPackage": {
+    "integrity": "sha512-mhtWmOZRdmWD1jPbLDnQb59BsaVP/V+lXe/OFNR9ZcLZU0UCiBwn98Fcav1ss7sDIlHkuqj6nWd44IPeXoOhJA==",
+    "name": "@openai/codex",
+    "platformIntegrity": "sha512-CsLgFeX4TQ6I2Gdrxd2r5UbgIbDLCdtcLAlnMYjr06bCL057MTNGec7Ewb3+Z2DBiMuXCljdTBGqLOePkMV0sQ==",
+    "platformPackage": "@openai/codex-linux-arm64",
+    "platformVersion": "0.151.0-linux-arm64",
+    "version": "0.151.0"
+  },
+  "entries": [
+    {
+      "byteLength": 233773456,
+      "digest": "sha256:56f026015ccc3ebc12895282200d89c216892bf6fa15fa7f228e6e0c6ad6ce76",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/bin/codex",
+      "role": "codex-vendor"
+    },
+    {
+      "byteLength": 63316120,
+      "digest": "sha256:b7eb4262936dc2185407327be40c15092d17e5d6ca53676ce76ea6621a28eed7",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/bin/codex-code-mode-host",
+      "role": "codex-vendor"
+    },
+    {
+      "byteLength": 118300,
+      "digest": "sha256:81d448e948bec426c7fb93135ee020e09b510702ee3bdaa0bc88ea14024b5b97",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/bin/execution-cell-runner",
+      "role": "runner"
+    },
+    {
+      "byteLength": 206,
+      "digest": "sha256:c2fbe0eb420d56538ce132475ef7b71f285e6a649f587c506907755909240d7b",
+      "kind": "regular",
+      "mode": "0444",
+      "path": "/opt/lifecycle/codex-package.json",
+      "role": "codex-vendor"
+    },
+    {
+      "kind": "symlink",
+      "path": "/opt/lifecycle/codex-path/codex-linux-sandbox",
+      "role": "codex-vendor",
+      "target": "../bin/codex"
+    },
+    {
+      "byteLength": 4506992,
+      "digest": "sha256:e36d0eb52e70696bdf1781392722e05a21bb91d3b7b762ef5ec20e5df2ec687b",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/codex-path/rg",
+      "role": "codex-vendor"
+    },
+    {
+      "byteLength": 529168,
+      "digest": "sha256:c6949b5053988498976467bd9972c5d3695ecaac64a5f2de09af20f579fb7e31",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/codex-resources/bwrap",
+      "role": "codex-vendor"
+    },
+    {
+      "byteLength": 878056,
+      "digest": "sha256:7feeacd883e1dc749847936948c378653c80a69ec4a9542f0f126b411882c179",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/codex-resources/zsh/bin/zsh",
+      "role": "codex-vendor"
+    },
+    {
+      "byteLength": 4115,
+      "digest": "sha256:fc08419d767b3ae027a9977e6d1f1730c4ef4776ae3d07226172dbd2ad3bf240",
+      "kind": "regular",
+      "mode": "0444",
+      "path": "/opt/lifecycle/runner-contract.private.json",
+      "role": "runner-contract"
+    }
+  ],
+  "platform": {
+    "architecture": "arm64",
+    "os": "linux"
+  },
+  "schema": "lifecycle.execution-image-tool-inventory.private.v1"
+}

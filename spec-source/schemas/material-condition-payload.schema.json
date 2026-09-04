@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:material-condition-payload:v1",
+  "title": "Lifecycle Material Condition Payload v1",
+  "description": "Runtime-derived fact that the active mandate can no longer govern productive Candidate work honestly.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "conditionClass",
+    "source",
+    "observedFactsDigest",
+    "blocking",
+    "ruleSet",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.material-condition-payload.v1" },
+    "profileId": { "const": "lifecycle.material-condition.foundation-v1" },
+    "conditionClass": {
+      "enum": [
+        "meaning-ambiguity",
+        "mandate-falsifier",
+        "scope-change",
+        "effect-change",
+        "risk-change",
+        "architecture-conflict",
+        "assurance-conflict",
+        "founder-tradeoff",
+        "missing-authority",
+        "missing-required-source",
+        "required-capability-unavailable",
+        "projection-closure-exceeded",
+        "no-honest-route"
+      ]
+    },
+    "source": { "$ref": "#/$defs/agentProposalSource" },
+    "observedFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "blocking": { "const": true },
+    "ruleSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest", "implementationId", "implementationDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+    }
+  },
+  "$defs": {
+    "agentProposalSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "conditionId", "fragmentDigest"],
+      "properties": {
+        "kind": { "const": "agent-proposal" },
+        "conditionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  }
+}

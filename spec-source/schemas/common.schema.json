@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:common:v1",
+  "title": "Lifecycle Common Definitions",
+  "type": "object",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "gitObject": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "controlId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "controlRecordKind": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "positiveSafeInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "canonicalTime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$"
+    },
+    "controlActor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["agent", "founder", "runtime"] },
+        "id": { "$ref": "#/$defs/controlId" }
+      }
+    },
+    "controlSemanticAuthority": {
+      "enum": [
+        "agent-proposed",
+        "founder-supplied",
+        "founder-authenticated",
+        "runtime-observed",
+        "runtime-derived"
+      ]
+    },
+    "controlRevisionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/controlRecordKind" },
+        "id": { "$ref": "#/$defs/controlId" },
+        "revision": { "$ref": "#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "retainedFileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest", "byteLength", "mediaType", "purpose"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/sha256" },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(?:;[ -~]+)?$"
+        },
+        "purpose": { "$ref": "#/$defs/controlId" }
+      }
+    },
+    "adjacentFileAvailability": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "reference"],
+          "properties": {
+            "availability": { "const": "retained" },
+            "reference": { "$ref": "#/$defs/retainedFileReference" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "purpose"],
+          "properties": {
+            "availability": { "enum": ["not-retained", "unavailable"] },
+            "purpose": { "$ref": "#/$defs/controlId" }
+          }
+        }
+      ]
+    },
+    "knowledgeId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^(?:behavior|assurance|blueprint|description|check)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+    },
+    "ownerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "singleLine": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]+$"
+    },
+    "plainText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "pattern": "^[^\\u0000]+$"
+    },
+    "normalizedPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//)[^\\u0000]+$"
+    },
+    "uriReference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "format": "uri-reference",
+      "pattern": "^[^\\u0000]+$"
+    },
+    "controlDocumentFormat": {
+      "const": "lifecycle.control-document.v1"
+    },
+    "anchor": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "provenanceClass": {
+      "type": "string",
+      "enum": [
+        "repository-authored",
+        "runtime-observed",
+        "runtime-derived",
+        "agent-proposed",
+        "founder-supplied",
+        "founder-authenticated"
+      ]
+    },
+    "identityReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/opaqueId" },
+        "id": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "documentReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "digest"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/opaqueId" },
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "fragmentReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "digest", "anchor", "fragmentDigest"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/opaqueId" },
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "fragmentDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "documentProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "producer"],
+      "properties": {
+        "class": { "$ref": "#/$defs/provenanceClass" },
+        "producer": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "bodyFragment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "anchor", "digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "kind": { "$ref": "#/$defs/opaqueId" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "controlBodyBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "digest", "fragments"],
+      "properties": {
+        "profileId": { "$ref": "#/$defs/opaqueId" },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "fragments": {
+          "type": "array",
+          "maxItems": 16384,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/bodyFragment" }
+        }
+      }
+    },
+    "controlHeaderBase": {
+      "type": "object",
+      "required": ["documentFormat", "schema", "kind", "id", "body"],
+      "properties": {
+        "documentFormat": { "$ref": "#/$defs/controlDocumentFormat" },
+        "schema": { "$ref": "#/$defs/opaqueId" },
+        "kind": { "$ref": "#/$defs/opaqueId" },
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "body": { "$ref": "#/$defs/controlBodyBinding" }
+      }
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "required", "reference", "revision", "digest", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "required": { "type": "boolean" },
+        "reference": { "$ref": "#/$defs/uriReference" },
+        "revision": {
+          "oneOf": [
+            { "$ref": "#/$defs/opaqueId" },
+            { "type": "null" }
+          ]
+        },
+        "digest": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "decision",
+            "research",
+            "policy",
+            "incident",
+            "atlas-context",
+            "external-standard",
+            "repository-reality",
+            "other"
+          ]
+        }
+      }
+    },
+    "contentLocator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "text", "digest"],
+          "properties": {
+            "mode": { "const": "inline" },
+            "text": {
+              "type": "string",
+              "maxLength": 1048576,
+              "pattern": "^[^\\u0000]*$"
+            },
+            "digest": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "path", "digest"],
+          "properties": {
+            "mode": { "const": "mounted" },
+            "path": { "$ref": "#/$defs/normalizedPath" },
+            "digest": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "extensionProperties": {
+      "type": "object",
+      "patternProperties": {
+        "^x-[a-z0-9]+(?:-[a-z0-9]+)*$": true
+      },
+      "additionalProperties": false
+    }
+  }
+}

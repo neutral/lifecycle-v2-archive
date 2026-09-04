@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:candidate-seal-payload:v2",
+  "title": "Lifecycle Candidate Seal Payload v2",
+  "description": "Runtime-observed Carrier and evaluation-subject facts for the exact immutable Candidate Revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "carrierIntegrity",
+    "carrierReconstruction",
+    "evaluationSubject",
+    "candidateReobservation",
+    "untrackedProduct",
+    "controlExclusion",
+    "sealer",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.candidate-seal-payload.v2" },
+    "profileId": { "const": "lifecycle.candidate-seal.foundation-v1" },
+    "carrierIntegrity": { "const": "verified" },
+    "carrierReconstruction": { "const": "verified" },
+    "evaluationSubject": { "const": "established" },
+    "candidateReobservation": { "const": "exact-match" },
+    "untrackedProduct": { "const": "absent" },
+    "controlExclusion": { "const": "verified" },
+    "sealer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementationId", "implementationDigest", "ruleSetId", "ruleSetDigest"],
+      "properties": {
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+    }
+  }
+}

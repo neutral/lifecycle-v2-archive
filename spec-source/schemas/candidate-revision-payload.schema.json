@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:candidate-revision-payload:v2",
+  "title": "Lifecycle Candidate Revision Payload v2",
+  "description": "Exact valid and reconstructible state of Delivery's continuing reversible Candidate.",
+  "$comment": "Semantic validation reopens the exact adjacent Candidate Revision Carrier manifest and its complete Git object closure before retaining the Revision, requires the Carrier root tree and every reproduced Candidate digest to equal state, and requires the observation-specific relationships and atomic publication rules. Invalid, unavailable, missing, or provisional output never creates this payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "observation",
+    "candidateBaseCommit",
+    "carrierManifest",
+    "state",
+    "observer",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.candidate-revision-payload.v2" },
+    "profileId": { "const": "lifecycle.candidate-revision.observation.v1" },
+    "observation": { "enum": ["initialization", "builder-successor", "readmission-rebind"] },
+    "candidateBaseCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+    "carrierManifest": { "$ref": "#/$defs/carrierManifestReference" },
+    "state": { "$ref": "#/$defs/state" },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementationId", "implementationDigest"],
+      "properties": {
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+    }
+  },
+  "$defs": {
+    "carrierManifestReference": {
+      "allOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference" },
+        {
+          "type": "object",
+          "required": ["mediaType", "purpose"],
+          "properties": {
+            "mediaType": {
+              "const": "application/vnd.lifecycle.candidate-revision-carrier-manifest+json"
+            },
+            "purpose": { "const": "candidate-revision-carrier-manifest" }
+          }
+        }
+      ]
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tree",
+        "candidateDigest",
+        "productStateDigest",
+        "knowledgeSetDigest",
+        "diffDigest",
+        "pathInventoryDigest",
+        "artifactSetDigest",
+        "descriptionCoverageDigest",
+        "unchangedFromPredecessor",
+        "changedSubjects"
+      ],
+      "properties": {
+        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "candidateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "diffDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "pathInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "artifactSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "descriptionCoverageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "unchangedFromPredecessor": { "type": "boolean" },
+        "changedSubjects": {
+          "type": "array",
+          "maxItems": 16384,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "change", "beforeDigest", "afterDigest"],
+            "properties": {
+              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+              "change": { "enum": ["added", "modified", "deleted", "renamed", "mode-changed", "type-changed"] },
+              "beforeDigest": { "$ref": "#/$defs/nullableDigest" },
+              "afterDigest": { "$ref": "#/$defs/nullableDigest" }
+            }
+          }
+        }
+      }
+    },
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    }
+  }
+}

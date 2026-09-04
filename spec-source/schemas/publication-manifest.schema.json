@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:publication-manifest:v1",
+  "title": "Lifecycle Publication Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "specificationId", "specificationRevision", "status", "documents", "schemas", "fixtures", "publicationDigest"],
+  "properties": {
+    "schema": { "const": "lifecycle.publication-manifest.v1" },
+    "specificationId": { "const": "lifecycle" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "status": {
+      "description": "The common maturity of the inventoried specification documents, distinct from publication lifecycle status in an authenticated publication statement.",
+      "type": "string",
+      "enum": ["outline", "draft", "accepted"]
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "schemas": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "role", "normative"],
+      "properties": {
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "role": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "normative": { "type": "boolean" }
+      }
+    }
+  }
+}

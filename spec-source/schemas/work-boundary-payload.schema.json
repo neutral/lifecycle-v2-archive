@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:work-boundary-payload:v4",
+  "title": "Lifecycle Work Boundary Payload v4",
+  "description": "Complete runtime-compiled mandate and proof-plan facts for one immutable Work Boundary revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profileId", "targetId", "proposalKind", "basis", "knowledge", "externalSources", "capabilityProfile", "projectionProfile", "mandate", "resolution", "compiler"],
+  "properties": {
+    "schema": { "const": "lifecycle.work-boundary-payload.v4" },
+    "profileId": { "const": "lifecycle.work-boundary.foundation-v1" },
+    "targetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "proposalKind": { "enum": ["initial", "revision", "reaffirmation"] },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["specificationRevision", "repositoryContract", "providerAdapter", "productBaseCommit", "productBaseTree", "productStateDigest", "atlasStateDigest", "atlasResolutionDigest", "atlasNormalizedModelDigest", "atlasResourceBindingsDigest", "repositoryContractDigest", "knowledgeSetDigest", "repositorySnapshotDigest"],
+      "properties": {
+        "specificationRevision": { "const": "lifecycle.foundation.1.0.0-rc.10" },
+        "repositoryContract": { "const": "lifecycle.repository.v15" },
+        "providerAdapter": { "const": "lifecycle.provider-adapter.v6" },
+        "productBaseCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "productBaseTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "atlasResolutionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "atlasNormalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "atlasResourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "repositoryContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "repositorySnapshotDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "knowledge": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16384,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/knowledgeReference" }
+    },
+    "externalSources": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/externalSource" }
+    },
+    "capabilityProfile": { "$ref": "#/$defs/profileReference" },
+    "projectionProfile": { "$ref": "#/$defs/profileReference" },
+    "mandate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objective", "direction", "effects", "risks", "obligations", "artifacts", "checks", "acceptancePropositions"],
+      "properties": {
+        "objective": { "$ref": "#/$defs/objective" },
+        "direction": { "$ref": "#/$defs/direction" },
+        "effects": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/effect" } },
+        "risks": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/risk" } },
+        "obligations": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/obligation" } },
+        "artifacts": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/artifact" } },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/checkSelection" },
+          "allOf": [
+            { "contains": { "type": "object", "properties": { "baselineRequired": { "const": true } }, "required": ["baselineRequired"] }, "minContains": 1 },
+            { "contains": { "type": "object", "properties": { "finalRequired": { "const": true } }, "required": ["finalRequired"] }, "minContains": 1 }
+          ]
+        },
+        "acceptancePropositions": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "#/$defs/proposition" } }
+      }
+    },
+    "resolution": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "rationaleDigest", "changedMandateFields"],
+          "properties": {
+            "kind": { "enum": ["revise", "reaffirm"] },
+            "rationaleDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "changedMandateFields": {
+              "type": "array",
+              "maxItems": 11,
+              "uniqueItems": true,
+              "items": { "enum": ["/knowledge", "/externalSources", "/capabilityProfile", "/mandate/objective", "/mandate/direction", "/mandate/effects", "/mandate/risks", "/mandate/obligations", "/mandate/artifacts", "/mandate/checks", "/mandate/acceptancePropositions"] }
+            }
+          }
+        }
+      ]
+    },
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "profileDigest", "implementationId", "implementationDigest"],
+      "properties": {
+        "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "proposalKind": { "const": "initial" } }, "required": ["proposalKind"] },
+      "then": { "properties": { "resolution": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "proposalKind": { "const": "revision" } }, "required": ["proposalKind"] },
+      "then": { "properties": { "resolution": { "type": "object", "properties": { "kind": { "const": "revise" }, "changedMandateFields": { "type": "array", "minItems": 1 } } } } }
+    },
+    {
+      "if": { "properties": { "proposalKind": { "const": "reaffirmation" } }, "required": ["proposalKind"] },
+      "then": { "properties": { "resolution": { "type": "object", "properties": { "kind": { "const": "reaffirm" }, "changedMandateFields": { "type": "array", "maxItems": 0 } } } } }
+    }
+  ],
+  "$defs": {
+    "profileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "knowledgeReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "sourceDigest", "semanticDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "externalSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerKind", "ownerId", "sourceId", "revision", "digest"],
+      "properties": {
+        "ownerKind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
+        "ownerId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "sourceId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }] },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "interpretation", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "interpretation": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "selectedMeaning", "whyNow", "included", "excluded", "authorityFacts", "chosenTradeoffs", "assumptions", "falsifiers", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "selectedMeaning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "whyNow": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "included": { "$ref": "#/$defs/nonemptyTextSet" },
+        "excluded": { "$ref": "#/$defs/textSet" },
+        "authorityFacts": { "$ref": "#/$defs/textSet" },
+        "chosenTradeoffs": { "$ref": "#/$defs/textSet" },
+        "assumptions": { "$ref": "#/$defs/textSet" },
+        "falsifiers": { "$ref": "#/$defs/textSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "summary", "trigger", "target", "reversibility", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "kind": { "enum": ["local-read", "local-write", "network-request", "external-mutation", "notification", "publication", "spend", "deployment", "other"] },
+        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "trigger": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "reversibility": { "enum": ["read-only", "reversible", "compensatable", "irreversible"] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "effectIds", "treatment", "evidenceArtifactIds", "propositionIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "effectIds": { "$ref": "#/$defs/idSet" },
+        "treatment": { "enum": ["eliminate", "mitigate", "accept"] },
+        "evidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "propositionIds": { "$ref": "#/$defs/idSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "obligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "statement", "sourceIds", "requiredEvidenceArtifactIds", "severity", "propositionIds", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "kind": { "enum": ["behavior", "assurance", "blueprint", "description", "artifact", "check", "effect", "risk", "exclusion", "acceptance"] },
+        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "sourceIds": { "$ref": "#/$defs/idSet" },
+        "requiredEvidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "severity": { "enum": ["required", "diagnostic"] },
+        "propositionIds": { "$ref": "#/$defs/idSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "role", "mustChange", "obligationIds", "changeRule", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "role": { "enum": ["code", "test", "behavior", "assurance", "blueprint", "description", "check", "documentation", "external-source"] },
+        "mustChange": { "type": "boolean" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "changeRule": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "checkSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "definition", "bindings", "modality", "purpose", "baselineRequired", "finalRequired", "obligationIds", "environmentRequirements", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "definition": { "$ref": "#/$defs/knowledgeReference" },
+        "bindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "digest", "implementationDigest"],
+            "properties": {
+              "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+              "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        },
+        "modality": { "enum": ["precondition", "repair-target", "regression-guard", "postcondition", "diagnostic"] },
+        "purpose": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "baselineRequired": { "type": "boolean" },
+        "finalRequired": { "type": "boolean" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "environmentRequirements": { "$ref": "#/$defs/textSet" },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "proposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "evidenceKinds", "evidenceArtifactIds", "obligationIds", "effectIds", "riskIds", "path", "checkId", "allowNotApplicable", "notApplicableCondition", "fragmentDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "claim": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "evidenceKinds": { "type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": { "enum": ["inspection", "artifact", "check", "diff", "analysis", "mixed"] } },
+        "evidenceArtifactIds": { "$ref": "#/$defs/idSet" },
+        "obligationIds": { "$ref": "#/$defs/nonemptyIdSet" },
+        "effectIds": { "$ref": "#/$defs/idSet" },
+        "riskIds": { "$ref": "#/$defs/idSet" },
+        "path": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }] },
+        "checkId": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }] },
+        "allowNotApplicable": { "type": "boolean" },
+        "notApplicableCondition": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }] },
+        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "idSet": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" } },
+    "nonemptyIdSet": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" } },
+    "textSet": { "type": "array", "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" } },
+    "nonemptyTextSet": { "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" } }
+  }
+}

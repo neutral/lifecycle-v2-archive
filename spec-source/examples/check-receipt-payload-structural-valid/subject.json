@@ -1,0 +1,92 @@
+{
+  "schema": "lifecycle.check-receipt-payload.v2",
+  "profileId": "lifecycle.check-receipt.foundation-v1",
+  "selectionId": "selection.check.demo",
+  "definition": {
+    "id": "check.demo",
+    "revision": 1,
+    "sourceDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "semanticDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "binding": {
+    "id": "binding.check.demo",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "implementationDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "phase": "baseline",
+  "modality": "precondition",
+  "proofRequestDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "startedAt": "2026-08-29T12:00:00.000Z",
+  "finishedAt": "2026-08-29T12:00:01.000Z",
+  "environment": {
+    "identityDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "requested": [],
+    "runtimeEnforced": [],
+    "founderManaged": []
+  },
+  "disposition": "pass",
+  "resultFacts": [
+    { "name": "exit-code", "value": 0 }
+  ],
+  "reasonCode": null,
+  "notRunAuthorization": null,
+  "operationalFailure": null,
+  "execution": {
+    "allocation": "allocated",
+    "backendProfile": {
+      "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+      "profileDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "implementationDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "image": {
+      "imageId": "lifecycle.execution-image.check-standard.v1",
+      "imageDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "inputSet": {
+      "profileId": "lifecycle.execution-input-set.v1",
+      "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "specificationDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "runnerDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "observationDigest": "sha256:abababababababababababababababababababababababababababababababab",
+    "output": {
+      "availability": "retrieved",
+      "carrierByteLength": 2,
+      "carrierDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "manifestDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "parserDisposition": "passed"
+  },
+  "rawMaterials": [
+    {
+      "availability": "retained",
+      "reference": {
+        "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "byteLength": 2,
+        "mediaType": "text/plain",
+        "purpose": "raw-check-output"
+      }
+    }
+  ],
+  "subjectIntegrity": "unchanged",
+  "containment": {
+    "classification": "contained",
+    "factsDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "retirement": {
+    "classification": "retired",
+    "factsDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "runner": {
+    "id": "runtime.check-runner",
+    "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "parser": {
+    "id": "runtime.check-parser",
+    "digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "limitations": []
+}

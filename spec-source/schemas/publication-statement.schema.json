@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:publication-statement:v1",
+  "title": "Lifecycle Publication Statement v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "subject", "subjectDigest", "authority", "digest"],
+  "properties": {
+    "schema": { "const": "lifecycle.publication-statement.v1" },
+    "subject": { "$ref": "#/$defs/subject" },
+    "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "authority": { "$ref": "#/$defs/authority" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "statementId",
+        "specificationId",
+        "specificationVersion",
+        "specificationRevision",
+        "sourceRevision",
+        "publicationDigest",
+        "status",
+        "previousStatementDigest",
+        "releaseNotes",
+        "issuedAt",
+        "reason"
+      ],
+      "properties": {
+        "schema": { "const": "lifecycle.publication-statement-subject.v1" },
+        "statementId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "specificationId": { "const": "lifecycle" },
+        "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "sourceRevision": {
+          "description": "The immutable Git object identity of the source revision containing the exact publication manifest and inventoried bytes.",
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "candidate", "released", "superseded", "withdrawn"]
+        },
+        "previousStatementDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "releaseNotes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["locator", "digest"],
+          "properties": {
+            "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          }
+        },
+        "issuedAt": { "type": "string", "format": "date-time" },
+        "reason": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["superseded", "withdrawn"] }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "reason": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+            }
+          }
+        }
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principalId", "keyId", "algorithm", "signature"],
+      "properties": {
+        "principalId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
+        "keyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "algorithm": { "const": "ed25519" },
+        "signature": {
+          "type": "string",
+          "pattern": "^ed25519:[A-Za-z0-9_-]+$",
+          "maxLength": 256
+        }
+      }
+    }
+  }
+}

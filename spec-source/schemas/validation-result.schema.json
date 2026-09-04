@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:validation-result:v1",
+  "title": "Lifecycle Validation Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "specificationRevision",
+    "publicationDigest",
+    "profile",
+    "subject",
+    "complete",
+    "valid",
+    "stages",
+    "diagnostics",
+    "implementation",
+    "limits",
+    "observedAt",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.validation-result.v1" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "publicationDigest": { "$ref": "#/$defs/nullableDigest" },
+    "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "subject": { "$ref": "#/$defs/subject" },
+    "complete": { "type": "boolean" },
+    "valid": { "type": "boolean" },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "implementation": { "$ref": "#/$defs/implementation" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["complete"],
+        "properties": { "complete": { "const": false } }
+      },
+      "then": {
+        "required": ["valid"],
+        "properties": { "valid": { "const": false } }
+      }
+    }
+  ],
+  "$defs": {
+    "nullableDigest": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "digest", "revision", "locator"],
+      "properties": {
+        "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "digest": { "$ref": "#/$defs/nullableDigest" },
+        "revision": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "locator": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "complete", "valid", "diagnosticCount", "durationMs"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "complete": { "type": "boolean" },
+        "valid": { "type": "boolean" },
+        "diagnosticCount": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["complete"],
+            "properties": { "complete": { "const": false } }
+          },
+          "then": {
+            "required": ["valid"],
+            "properties": { "valid": { "const": false } }
+          }
+        }
+      ]
+    },
+    "digestStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "complete", "valid"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "complete": { "type": "boolean" },
+        "valid": { "type": "boolean" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "jsonPointer", "line", "column", "length"],
+      "properties": {
+        "locator": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "type": "null" }
+          ]
+        },
+        "jsonPointer": {
+          "oneOf": [
+            { "type": "string", "maxLength": 4096 },
+            { "type": "null" }
+          ]
+        },
+        "line": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "column": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "length": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "related": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "digest", "location"],
+      "properties": {
+        "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "digest": { "$ref": "#/$defs/nullableDigest" },
+        "location": { "$ref": "#/$defs/location" }
+      }
+    },
+    "diagnosticProperties": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?:lifecycle|[a-z0-9]+(?:-[a-z0-9]+)*)\\.[A-Za-z0-9._-]+$"
+        },
+        "severity": { "type": "string", "enum": ["error", "warning", "information"] },
+        "stage": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "location": { "$ref": "#/$defs/location" },
+        "related": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/related" }
+        },
+        "facts": {
+          "type": "object",
+          "maxProperties": 256,
+          "additionalProperties": true
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "stage", "location", "related", "facts"],
+      "properties": {
+        "code": { "$ref": "#/$defs/diagnosticProperties/properties/code" },
+        "severity": { "$ref": "#/$defs/diagnosticProperties/properties/severity" },
+        "message": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "stage": { "$ref": "#/$defs/diagnosticProperties/properties/stage" },
+        "location": { "$ref": "#/$defs/diagnosticProperties/properties/location" },
+        "related": { "$ref": "#/$defs/diagnosticProperties/properties/related" },
+        "facts": { "$ref": "#/$defs/diagnosticProperties/properties/facts" }
+      }
+    },
+    "digestDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "stage", "location", "related", "facts"],
+      "properties": {
+        "code": { "$ref": "#/$defs/diagnosticProperties/properties/code" },
+        "severity": { "$ref": "#/$defs/diagnosticProperties/properties/severity" },
+        "stage": { "$ref": "#/$defs/diagnosticProperties/properties/stage" },
+        "location": { "$ref": "#/$defs/diagnosticProperties/properties/location" },
+        "related": { "$ref": "#/$defs/diagnosticProperties/properties/related" },
+        "facts": { "$ref": "#/$defs/diagnosticProperties/properties/facts" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "digest", "claimedClass", "supportedProfiles", "schemaEngine", "formatAssertion", "extensions"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "claimedClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "supportedProfiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+        },
+        "schemaEngine": { "$ref": "#/$defs/schemaEngine" },
+        "formatAssertion": { "type": "boolean" },
+        "extensions": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+        }
+      }
+    },
+    "schemaEngine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version", "dialect", "formats", "schemaSetDigest"],
+      "properties": {
+        "implementation": { "const": "ajv" },
+        "version": { "const": "8.18.0" },
+        "dialect": { "const": "https://json-schema.org/draft/2020-12/schema" },
+        "formats": { "const": "ajv-formats-full-3.0.1" },
+        "schemaSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "maxProperties": 1024,
+      "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "digestSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "specificationRevision",
+        "publicationDigest",
+        "profile",
+        "subject",
+        "complete",
+        "valid",
+        "stages",
+        "diagnostics",
+        "limits"
+      ],
+      "properties": {
+        "schema": { "const": "lifecycle.validation-result.v1" },
+        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "publicationDigest": { "$ref": "#/$defs/nullableDigest" },
+        "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "subject": { "$ref": "#/$defs/subject" },
+        "complete": { "type": "boolean" },
+        "valid": { "type": "boolean" },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/digestStage" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": { "$ref": "#/$defs/digestDiagnostic" }
+        },
+        "limits": { "$ref": "#/$defs/limits" }
+      }
+    }
+  }
+}

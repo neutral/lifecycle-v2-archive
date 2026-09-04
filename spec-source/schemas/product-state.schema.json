@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:product-state:v1",
+  "title": "Lifecycle Product State v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entries", "digest"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "maxItems": 1000000,
+      "items": { "$ref": "#/$defs/entry" },
+      "contains": {
+        "type": "object",
+        "required": ["path", "mode", "role"],
+        "properties": {
+          "path": { "const": ".lifecycle/repository.json" },
+          "mode": { "const": "100644" },
+          "role": { "const": "repository-contract" }
+        }
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mode", "objectId", "role"],
+      "properties": {
+        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "mode": { "type": "string", "enum": ["100644", "100755"] },
+        "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "role": {
+          "type": "string",
+          "enum": [
+            "repository-contract",
+            "atlas",
+            "knowledge",
+            "governed-implementation",
+            "declared-product"
+          ]
+        }
+      }
+    }
+  }
+}

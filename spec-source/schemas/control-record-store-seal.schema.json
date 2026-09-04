@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-record-store-seal:v1",
+  "title": "Lifecycle Control Record Store Seal v1",
+  "description": "Immutable logical-inventory seal for one Closure-headed Delivery Control Record Store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "closure", "head", "logicalInventoryDigest", "sealedAt"],
+  "properties": {
+    "schema": { "const": "lifecycle.control-record-store-seal.v1" },
+    "closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recordId", "revision", "digest"],
+      "properties": {
+        "recordId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "digest"],
+      "properties": {
+        "sequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "logicalInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "sealedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "lifecycle.execution-input-set.v1",
+  "owner": {
+    "kind": "agent-attempt",
+    "activityId": "activity.prepare",
+    "attemptId": "attempt.prepare.1",
+    "role": "reconnaissance",
+    "ownerSubjectDigest": "sha256:2020202020202020202020202020202020202020202020202020202020202020"
+  },
+  "inputMaterialDigest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+  "subjects": [
+    {
+      "kind": "projection",
+      "id": "projection.orientation",
+      "revision": 1,
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "entries": [
+    {
+      "path": "inputs/projection.json",
+      "purpose": "projection",
+      "mediaType": "application/json",
+      "modeClass": "regular",
+      "byteLength": 128,
+      "digest": "sha256:2323232323232323232323232323232323232323232323232323232323232323",
+      "sourceSubjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "entryCount": 1,
+  "aggregateByteLength": 128,
+  "contentInventoryDigest": "sha256:2424242424242424242424242424242424242424242424242424242424242424",
+  "runnerContractDigest": "sha256:2525252525252525252525252525252525252525252525252525252525252525",
+  "toolInventoryDigest": "sha256:2626262626262626262626262626262626262626262626262626262626262626",
+  "digest": "sha256:2727272727272727272727272727272727272727272727272727272727272727"
+}

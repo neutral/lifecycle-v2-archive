@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:atlas-resolution:v2",
+  "title": "Lifecycle Atlas Resolution v2",
+  "description": "Lifecycle binding over one exact raw Atlas State and one selected external resolved-validation outcome.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "selection",
+    "atlasStateDigest",
+    "resourceBindings",
+    "resourceBindingsDigest",
+    "processor",
+    "externalValidationResultDigest",
+    "normalizedModelDigest",
+    "complete",
+    "valid",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.atlas-resolution.v2" },
+    "selection": {
+      "description": "The complete exact Atlas 0.7.0 selection fixed by repository contract v15.",
+      "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/atlasSelection"
+    },
+    "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "resourceBindings": {
+      "description": "Ordered Resource bindings. JSON Schema uniqueItems rejects repeated complete binding values; Resource-id uniqueness and Unicode code-point ordering require semantic validation.",
+      "type": "array",
+      "maxItems": 262144,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/resourceBinding" }
+    },
+    "resourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "processor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "implementationDigest"],
+      "properties": {
+        "id": { "const": "atlas-reference-validator" },
+        "version": { "const": "0.7.0" },
+        "implementationDigest": {
+          "description": "Canonical digest of the exact installed processor file manifest selected for execution, excluding caches and mutable runtime support.",
+          "const": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+        }
+      }
+    },
+    "externalValidationResultDigest": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "normalizedModelDigest": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "complete": { "type": "boolean" },
+    "valid": { "type": "boolean" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "oneOf": [
+    {
+      "description": "A complete valid outcome carries both complete external-result and normalized-model identities.",
+      "properties": {
+        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "normalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "complete": { "const": true },
+        "valid": { "const": true }
+      }
+    },
+    {
+      "description": "A complete invalid outcome carries the complete external result but no normalized model.",
+      "properties": {
+        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "normalizedModelDigest": { "type": "null" },
+        "complete": { "const": true },
+        "valid": { "const": false }
+      }
+    },
+    {
+      "description": "An incomplete outcome is invalid and carries no partial normalized model; it may bind a bounded external result only when one was produced.",
+      "properties": {
+        "normalizedModelDigest": { "type": "null" },
+        "complete": { "const": false },
+        "valid": { "const": false }
+      }
+    }
+  ],
+  "$defs": {
+    "nullablePath": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        { "type": "null" }
+      ]
+    },
+    "nullableGitObject": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        { "type": "null" }
+      ]
+    },
+    "nullableDigest": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "resourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceId", "uri", "path", "mode", "objectId", "byteDigest", "disposition"],
+      "properties": {
+        "resourceId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "uri": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "path": { "$ref": "#/$defs/nullablePath" },
+        "mode": { "oneOf": [{ "const": "100644" }, { "type": "null" }] },
+        "objectId": { "$ref": "#/$defs/nullableGitObject" },
+        "byteDigest": { "$ref": "#/$defs/nullableDigest" },
+        "disposition": { "enum": ["resolved", "retrieval-denied", "missing", "unreadable", "path-invalid"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "disposition": { "const": "resolved" } }, "required": ["disposition"] },
+          "then": {
+            "properties": {
+              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+              "mode": { "const": "100644" },
+              "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+              "byteDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "disposition": { "enum": ["missing", "unreadable"] } },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+              "mode": { "type": "null" },
+              "objectId": { "type": "null" },
+              "byteDigest": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "disposition": { "enum": ["retrieval-denied", "path-invalid"] } },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "path": { "type": "null" },
+              "mode": { "type": "null" },
+              "objectId": { "type": "null" },
+              "byteDigest": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

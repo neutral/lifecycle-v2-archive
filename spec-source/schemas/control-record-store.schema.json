@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-record-store:v1",
+  "title": "Lifecycle Control Record Store Identity v1",
+  "description": "Immutable identity of one runtime-owned Delivery Control Record Store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "storeId", "targetId", "processKind", "processId", "createdAt"],
+  "properties": {
+    "schema": { "const": "lifecycle.control-record-store.v1" },
+    "storeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "targetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "processKind": { "const": "delivery" },
+    "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "createdAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+  }
+}

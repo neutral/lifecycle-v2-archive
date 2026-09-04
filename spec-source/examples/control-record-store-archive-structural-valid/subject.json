@@ -1,0 +1,42 @@
+{
+  "schema": "lifecycle.control-record-store-archive.v1",
+  "store": {
+    "schema": "lifecycle.control-record-store.v1",
+    "storeId": "store.delivery.demo",
+    "targetId": "target.demo",
+    "processKind": "delivery",
+    "processId": "delivery.demo",
+    "createdAt": "2026-08-29T12:00:00Z"
+  },
+  "seal": {
+    "schema": "lifecycle.control-record-store-seal.v1",
+    "closure": {
+      "recordId": "closure.demo",
+      "revision": 1,
+      "digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    "head": {
+      "sequence": 42,
+      "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "logicalInventoryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sealedAt": "2026-08-29T14:00:00Z"
+  },
+  "database": {
+    "filename": "control-record-store.sqlite",
+    "byteLength": 4096,
+    "retrievalDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "files": [
+    {
+      "filename": "sha256-7777777777777777777777777777777777777777777777777777777777777777",
+      "reference": {
+        "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        "byteLength": 1024,
+        "mediaType": "text/plain",
+        "purpose": "raw-check-output"
+      }
+    }
+  ],
+  "archivedAt": "2026-08-29T14:00:01Z"
+}

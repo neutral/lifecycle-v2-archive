@@ -1,0 +1,42 @@
+{
+  "name": "@neutral/lifecycle",
+  "version": "1.0.0",
+  "description": "Container-distributed Lifecycle Foundation launcher.",
+  "license": "CC0-1.0 OR 0BSD",
+  "type": "module",
+  "files": [
+    "README.md",
+    "bin",
+    "dist/src",
+    "manifest"
+  ],
+  "bin": {
+    "lifecycle": "bin/lifecycle.mjs",
+    "lifecycle-tui": "bin/lifecycle-tui.mjs"
+  },
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neutral/lifecycle.git",
+    "directory": "distribution/package"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "node ../scripts/clean-package.mjs",
+    "build": "npm run build:self",
+    "build:self": "npm run clean && tsc -p tsconfig.json",
+    "check": "npm run check:self",
+    "check:self": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && npm run test:built",
+    "test:built": "node --test dist/tests/*.test.js",
+    "prepack": "node ../scripts/refuse-direct-pack.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:control-record-file:v1",
+  "title": "Lifecycle Control Referenced File Descriptor v1",
+  "description": "Exact descriptor for one bounded content-addressed operational file retained beside a Delivery Control Record Store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "reference", "createdAt"],
+  "properties": {
+    "schema": { "const": "lifecycle.control-record-file.v1" },
+    "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference" },
+    "createdAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+  }
+}

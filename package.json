@@ -1,0 +1,43 @@
+{
+  "name": "@neutral/lifecycle-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lifecycle Foundation public source workspace.",
+  "license": "CC0-1.0 OR 0BSD",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "workspaces": [
+    "protocol",
+    "runtime",
+    "clients/tui",
+    "distribution/package"
+  ],
+  "scripts": {
+    "build": "npm run build -w @neutral/lifecycle-protocol && npm run build:self -w @neutral/lifecycle-runtime && npm run build:self -w @neutral/lifecycle-tui && npm run build:self -w @neutral/lifecycle",
+    "refresh:fixture-manifest": "node spec-source/tools/refresh-fixture-manifest.mjs",
+    "check:fixture-manifest": "node spec-source/tools/refresh-fixture-manifest.mjs --check",
+    "refresh:publication-manifest": "node spec-source/tools/refresh-publication-manifest.mjs",
+    "check:publication-manifest": "node spec-source/tools/refresh-publication-manifest.mjs --check",
+    "refresh:qualification-manifests": "npm run refresh:fixture-manifest && npm run refresh:publication-manifest",
+    "check:built": "npm run check -w @neutral/lifecycle-protocol && npm run check:self -w @neutral/lifecycle-runtime && npm run check:self -w @neutral/lifecycle-tui && npm run check:self -w @neutral/lifecycle",
+    "check": "npm run build -w @neutral/lifecycle-protocol && npm run check:built",
+    "test:built": "npm run test:built -w @neutral/lifecycle-protocol && npm run test:built -w @neutral/lifecycle-runtime && npm run test:built -w @neutral/lifecycle-tui && npm run test:built -w @neutral/lifecycle",
+    "test:delivery-exploration:built": "npm run test:delivery-exploration:built -w @neutral/lifecycle-runtime",
+    "test": "npm run build && npm run test:built",
+    "qualify:foundation-setup": "npm run build -w @neutral/lifecycle-runtime && node --test runtime/dist/tests/integration/foundation-setup-qualification.test.js",
+    "qualify:foundation-installed": "node qualification/installed/qualify.mjs",
+    "qualify:foundation-provider": "npm run build -w @neutral/lifecycle-runtime && node qualification/provider/qualify.mjs",
+    "pack:distribution": "node distribution/scripts/pack-distribution.mjs",
+    "lifecycle": "npm run lifecycle -w @neutral/lifecycle-runtime --"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "ajv": "8.18.0",
+    "ajv-formats": "3.0.1",
+    "typescript": "5.8.3"
+  },
+  "overrides": {
+    "fast-uri": "3.1.6"
+  }
+}

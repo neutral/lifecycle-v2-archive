@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:delivery-reduction:v2",
+  "title": "Lifecycle Delivery Reduction v2",
+  "description": "Ephemeral Delivery-only state derived from the complete validated event chain, exact revisions, and post-Closure store observations; private Execution Cell and Reclamation state never enters this value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "storeId",
+    "processId",
+    "standing",
+    "candidateCondition",
+    "activities",
+    "recovery",
+    "subjects",
+    "journal",
+    "storeDisposition",
+    "eligibleOperations"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.delivery-reduction.v2" },
+    "storeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "standing": {
+      "description": "Mandate-governance projection. Active requires a current admitted Boundary and can precede the initial Candidate observation.",
+      "enum": ["framing", "awaiting-admission", "active", "boundary-paused", "awaiting-readmission", "decision-ready", "closed"]
+    },
+    "candidateCondition": {
+      "description": "Candidate-subject projection. It is absent whenever no current Candidate exists, distinguishes eligible recoverable pre-effect in-progress work from post-preparation terminal recovery under the owning precedence rules, and retains accepted, abandoned, or absent through post-Closure Store-disposition recovery.",
+      "enum": [
+        "absent",
+        "ready-for-work",
+        "in-progress",
+        "needs-correction",
+        "paused-for-boundary",
+        "sealed-under-evaluation",
+        "ready-for-decision",
+        "terminal-recovery",
+        "accepted",
+        "abandoned"
+      ]
+    },
+    "activities": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "operation", "family", "stage"],
+        "properties": {
+          "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+          "operation": { "$ref": "#/$defs/operation" },
+          "family": { "enum": ["agent", "transaction"] },
+          "stage": { "enum": ["started", "prepared", "effect-intended", "effect-observed", "submitted", "finalizing", "completed"] }
+        }
+      }
+    },
+    "recovery": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/recovery" }
+      ]
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposedBoundary", "activeBoundary", "candidate", "materialCondition", "seal", "evidence", "closure"],
+      "properties": {
+        "proposedBoundary": { "$ref": "#/$defs/nullableReference" },
+        "activeBoundary": { "$ref": "#/$defs/nullableReference" },
+        "candidate": { "$ref": "#/$defs/nullableReference" },
+        "materialCondition": { "$ref": "#/$defs/nullableReference" },
+        "seal": { "$ref": "#/$defs/nullableReference" },
+        "evidence": { "$ref": "#/$defs/nullableReference" },
+        "closure": { "$ref": "#/$defs/nullableReference" }
+      }
+    },
+    "journal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventCount", "headSequence", "headDigest"],
+      "properties": {
+        "eventCount": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "headSequence": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+          ]
+        },
+        "headDigest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+          ]
+        }
+      }
+    },
+    "storeDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "integrity", "sealSubjectDigest", "archiveManifestDigest"],
+      "properties": {
+        "stage": { "enum": ["active", "closure-recorded", "sealed", "archived"] },
+        "integrity": { "enum": ["verified", "unverified", "invalid"] },
+        "sealSubjectDigest": { "$ref": "#/$defs/nullableDigest" },
+        "archiveManifestDigest": { "$ref": "#/$defs/nullableDigest" }
+      }
+    },
+    "eligibleOperations": {
+      "type": "array",
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "$defs": {
+    "operation": {
+      "enum": [
+        "delivery.prepare",
+        "delivery.admit",
+        "delivery.continue",
+        "delivery.evaluate",
+        "delivery.revise",
+        "delivery.reaffirm",
+        "delivery.accept",
+        "delivery.no-ship",
+        "delivery.recover"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "digest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      }
+    },
+    "nullableReference": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/reference" }
+      ]
+    },
+    "nullableDigest": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+      ]
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "activityId", "kind", "resumesAt", "exactEffectDigest"],
+      "properties": {
+        "scope": { "enum": ["activity", "store-disposition"] },
+        "activityId": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+          ]
+        },
+        "kind": { "enum": ["provider", "candidate-observation", "transaction", "finalization"] },
+        "resumesAt": {
+          "enum": [
+            "candidate-sealed",
+            "agent-attempt-prepared",
+            "provider-effect-intended",
+            "provider-effect-observed",
+            "work-product-observation",
+            "candidate-revision-observed",
+            "execution-receipt-recorded",
+            "work-boundary-finalized",
+            "baseline-checks",
+            "evaluation-checks",
+            "activity-finalization",
+            "activity-completed",
+            "founder-decision-authenticated",
+            "transaction-effect-intended",
+            "transaction-effect-observed",
+            "transaction-finalization",
+            "store-seal",
+            "store-archive"
+          ]
+        },
+        "exactEffectDigest": { "$ref": "#/$defs/nullableDigest" }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "kind": { "const": "provider" },
+                "resumesAt": { "const": "provider-effect-observed" }
+              }
+            },
+            {
+              "properties": {
+                "kind": { "const": "candidate-observation" },
+                "resumesAt": { "const": "candidate-revision-observed" }
+              }
+            },
+            {
+              "properties": {
+                "kind": { "const": "transaction" },
+                "resumesAt": { "const": "transaction-effect-observed" }
+              }
+            },
+            {
+              "properties": {
+                "kind": { "const": "finalization" },
+                "resumesAt": {
+                  "enum": [
+                    "candidate-sealed",
+                    "agent-attempt-prepared",
+                    "provider-effect-intended",
+                    "work-product-observation",
+                    "execution-receipt-recorded",
+                    "work-boundary-finalized",
+                    "baseline-checks",
+                    "evaluation-checks",
+                    "activity-finalization",
+                    "activity-completed",
+                    "founder-decision-authenticated",
+                    "transaction-effect-intended",
+                    "transaction-finalization",
+                    "store-seal",
+                    "store-archive"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "scope": { "const": "activity" },
+                "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+                "resumesAt": {
+                  "not": { "enum": ["store-seal", "store-archive"] }
+                }
+              }
+            },
+            {
+              "properties": {
+                "scope": { "const": "store-disposition" },
+                "activityId": { "type": "null" },
+                "kind": { "const": "finalization" },
+                "resumesAt": { "enum": ["store-seal", "store-archive"] },
+                "exactEffectDigest": { "type": "null" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

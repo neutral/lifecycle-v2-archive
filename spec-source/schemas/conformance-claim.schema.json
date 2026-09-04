@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:conformance-claim:v2",
+  "title": "Lifecycle Conformance Claim v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "claimId",
+    "specificationId",
+    "specificationVersion",
+    "specificationRevision",
+    "publicationDigest",
+    "publicationStatementDigest",
+    "releaseNotesDigest",
+    "issuer",
+    "issuedAt",
+    "implementation",
+    "claims",
+    "schemaEngine",
+    "limits",
+    "retrievalPolicies",
+    "extensions",
+    "evidence",
+    "environment",
+    "knownDeviations",
+    "maturity",
+    "digest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.conformance-claim.v2" },
+    "claimId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "specificationId": { "const": "lifecycle" },
+    "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "publicationStatementDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "releaseNotesDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "issuer": { "$ref": "#/$defs/issuer" },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "implementation": { "$ref": "#/$defs/implementation" },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/classClaim" }
+    },
+    "schemaEngine": { "$ref": "#/$defs/schemaEngine" },
+    "limits": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 256,
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "integer", "minimum": 0 },
+          { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+          { "type": "boolean" }
+        ]
+      },
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
+    },
+    "retrievalPolicies": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+    },
+    "extensions": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+    },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "knownDeviations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/deviation" }
+    },
+    "maturity": {
+      "type": "string",
+      "enum": ["experimental", "qualified", "production-qualified"]
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+  },
+  "$defs": {
+    "idList": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "contact"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
+        "name": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "contact": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "buildId", "artifactDigest", "sourceRevision"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "buildId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "artifactDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "sourceRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      }
+    },
+    "classClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "profiles", "recordKinds", "roles", "providers", "capabilityProfiles", "repositoryProfiles", "complete", "deviationIds"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "enum": [
+            "knowledge-authoring-tool",
+            "knowledge-processor",
+            "repository-validator",
+            "projection-compiler",
+            "provider-adapter",
+            "execution-backend",
+            "agent-attempt-host",
+            "evidence-engine",
+            "delivery-runtime",
+            "runtime-facade",
+            "interface-adapter",
+            "conforming-repository",
+            "complete-lifecycle-system"
+          ]
+        },
+        "profiles": { "$ref": "#/$defs/idList" },
+        "recordKinds": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["behavior", "assurance", "blueprint", "description", "check"] }
+        },
+        "roles": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["reconnaissance", "builder", "reviewer"] }
+        },
+        "providers": { "$ref": "#/$defs/idList" },
+        "capabilityProfiles": { "$ref": "#/$defs/idList" },
+        "repositoryProfiles": { "$ref": "#/$defs/idList" },
+        "complete": { "type": "boolean" },
+        "deviationIds": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "schemaEngine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "draft", "formatAssertion", "vocabularies"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "draft": { "const": "2020-12" },
+        "formatAssertion": { "type": "boolean" },
+        "vocabularies": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "evidenceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "digest", "locator", "complete"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["validation-results", "fixture-results", "operated-scenarios", "security-report", "limits", "known-deviations", "artifact-digests", "other"]
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "validationBundleDigest", "fixtureBundleDigest", "operatedBundleDigest"],
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/evidenceArtifact" }
+        },
+        "validationBundleDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "fixtureBundleDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "operatedBundleDigest": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platforms", "filesystems", "runtimes", "toolchains", "providers"],
+      "properties": {
+        "platforms": { "$ref": "#/$defs/idList" },
+        "filesystems": { "$ref": "#/$defs/idList" },
+        "runtimes": { "$ref": "#/$defs/idList" },
+        "toolchains": { "$ref": "#/$defs/idList" },
+        "providers": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "deviation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "requirement", "detail", "consequence", "workaround", "plannedResolution"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "requirement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "detail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "consequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "workaround": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "type": "null" }
+          ]
+        },
+        "plannedResolution": {
+          "oneOf": [
+            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}
