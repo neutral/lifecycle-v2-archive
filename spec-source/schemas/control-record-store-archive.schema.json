@@ -8,7 +8,7 @@
   "required": ["schema", "store", "seal", "database", "files", "archivedAt"],
   "properties": {
     "schema": { "const": "lifecycle.control-record-store-archive.v1" },
-    "store": { "$ref": "urn:lifecycle:schema:control-record-store:v1" },
+    "store": { "$ref": "urn:lifecycle:schema:control-record-store:v2" },
     "seal": { "$ref": "urn:lifecycle:schema:control-record-store-seal:v1" },
     "database": {
       "type": "object",
@@ -21,7 +21,7 @@
           "minimum": 1,
           "maximum": 17179869184
         },
-        "retrievalDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "retrievalDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "files": {
@@ -37,10 +37,10 @@
             "type": "string",
             "pattern": "^sha256-[a-f0-9]{64}$"
           },
-          "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference" }
+          "reference": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/retainedFileReference" }
         }
       }
     },
-    "archivedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+    "archivedAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" }
   }
 }

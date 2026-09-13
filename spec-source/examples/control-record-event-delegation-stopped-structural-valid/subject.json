@@ -1,0 +1,25 @@
+{
+  "schema": "lifecycle.control-record-event.v6",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 2,
+  "eventId": "event.delegation.demo",
+  "eventKind": "work-delegation-stopped",
+  "occurredAt": "2026-09-06T20:00:00.000Z",
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
+  "subject": {
+    "recordId": "delegation.demo",
+    "revision": 1,
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "payload": {
+    "requestDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "requestedBy": "director.demo",
+    "requestedAt": "2026-09-06T19:59:59.000Z"
+  },
+  "predecessorDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "digest": "sha256:117b249f66737226da4d83402453838106dd35973c0af54ec0839e4e7bdfe32c"
+}

@@ -1,5 +1,7 @@
+import { foundationMandatoryProjectionRefusalV1 } from "../../src/foundation/projection/compiler.js";
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -15,7 +17,9 @@ import {
   selectProjectionReachablePrefix,
 } from "../../src/foundation/projection/orientation.js";
 import { atlasResourceSourceId } from "../../src/foundation/projection/source-context.js";
-import { projectionRepositoryEpochDigest } from "../../src/foundation/projection/request.js";
+import { parseProjectionRequest, projectionRepositoryEpochDigest } from "../../src/foundation/projection/request.js";
+import { FOUNDATION_ORIENTATION_OBJECTIVE_MAXIMUM_BYTES } from "../../src/foundation/projection/orientation-objective.js";
+import { writeRepositoryContract } from "../../src/foundation/repository/contract.js";
 import type { FoundationCompiledProjection, FoundationOrientationProjectionRequest } from "../../src/foundation/projection/types.js";
 import {
   materializeProjectionBundle,
@@ -33,15 +37,22 @@ import type { FoundationLoadedRepositoryEpoch } from "../../src/foundation/repos
 import { validateLoadedRepositorySnapshot } from "../../src/foundation/repository/validate.js";
 import { canonicalJson, digestCanonical, selfDigest, sha256Bytes } from "../../src/foundation/validation/canonical.js";
 import { FOUNDATION_GENERATED_PUBLICATION_DIGEST } from "../../src/foundation/validation/generated-schemas.js";
+import { validateFoundationSchema } from "../../src/foundation/validation/schema-engine.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
+import {
+  foundationDisciplineAdoptionFixture,
+  TEST_DISCIPLINE_ID,
+  TEST_DISCIPLINE_PATH,
+  TEST_DISCIPLINE_WORK_TYPE_ID,
+} from "../helpers/foundation-discipline-fixture.js";
 import { MINIMAL_ATLAS_FILES, writeMinimalAtlas } from "../helpers/atlas-fixture.js";
 
 const SECRET = "projection-test-secret-that-is-at-least-thirty-two-bytes";
 const PUBLICATION_DIGEST = FOUNDATION_GENERATED_PUBLICATION_DIGEST;
 
-function checkKnowledge(): string {
+function checkKnowledge(overrides: Readonly<Record<string, unknown>> = {}): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "check",
     id: "check.delivery-prepare",
     title: "Delivery preparation check",
@@ -49,7 +60,7 @@ function checkKnowledge(): string {
     revision: 1,
     supersedes: null,
     summary: "Observe the bounded preparation route.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -77,7 +88,7 @@ function checkKnowledge(): string {
   const sections = ["Proposition", "Evaluation", "Evidence", "Limits"]
     .map((section) => `## ${section}\n\n${section} details.`)
     .join("\n\n");
-  return `---\n${JSON.stringify(frontMatter, null, 2)}\n---\n\n# Delivery preparation check\n\n${sections}\n`;
+  return `---\n${JSON.stringify({ ...frontMatter, ...overrides }, null, 2)}\n---\n\n# Delivery preparation check\n\n${sections}\n`;
 }
 
 async function write(root: string, path: string, content: string): Promise<void> {
@@ -85,7 +96,13 @@ async function write(root: string, path: string, content: string): Promise<void>
   await writeFile(join(root, path), content, "utf8");
 }
 
-async function target(options: { implementation?: boolean; binding?: boolean; oversizedAtlasEntrypoint?: boolean; atlasResource?: boolean } = {}): Promise<string> {
+async function target(options: {
+  implementation?: boolean;
+  binding?: boolean;
+  discipline?: boolean;
+  oversizedAtlasEntrypoint?: boolean;
+  atlasResource?: boolean;
+} = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "lifecycle-foundation-projection-"));
   const home = await mkdtemp(join(tmpdir(), "lifecycle-foundation-projection-home-"));
   await git(root, ["init", "-b", "main"]);
@@ -93,19 +110,13 @@ async function target(options: { implementation?: boolean; binding?: boolean; ov
   await git(root, ["config", "user.email", "lifecycle@example.invalid"]);
   await writeMinimalAtlas(root);
   if (options.atlasResource) {
-    const atlas = MINIMAL_ATLAS_FILES["atlas/atlas.md"].replace(
-      "---\n\n# Target Atlas",
-      `resources:
-- id: architecture
-  uri: sources/architecture.md
-  title: Target architecture
-  media-type: text/markdown
-content:
-- resource: architecture
----
-
-# Target Atlas`,
-    );
+    const original = MINIMAL_ATLAS_FILES["atlas/atlas.md"];
+    const close = original.indexOf("\n---", 4);
+    const header = JSON.parse(original.slice(4, close));
+    const atlas = `---\n${JSON.stringify({ ...header,
+      resources: [{ id: "architecture", uri: "sources/architecture.md", title: "Target architecture", "media-type": "text/markdown" }],
+      content: [{ resource: "architecture" }],
+    }, null, 2)}${original.slice(close)}`;
     await write(root, "atlas/atlas.md", atlas);
     await write(root, "atlas/sources/architecture.md", "# Target architecture\n\nThe exact Resource bytes reach the provider through the admitted Projection.\n");
   }
@@ -124,9 +135,9 @@ content:
   });
   await initializeRepository(root, {
     targetId: "projection-target",
-    founderPrincipal: "founder",
+    directorPrincipal: "director",
     home,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: PUBLICATION_DIGEST,
     implementationRoots: options.implementation ? ["src"] : [],
     checkBindings: options.binding ? { [binding.id]: binding } : {},
@@ -138,6 +149,13 @@ content:
   if (options.implementation) await write(root, "src/application.ts", "export const application = true;\n");
   await git(root, ["add", "--", "."]);
   await git(root, ["commit", "-m", "Attach Lifecycle"]);
+  if (options.discipline) {
+    const adopted = foundationDisciplineAdoptionFixture((await loadRepositoryEpoch(root)).contract);
+    await write(root, TEST_DISCIPLINE_PATH, adopted.document);
+    await write(root, "records/disciplines/registry.json", adopted.registryDocument);
+    await git(root, ["add", "--", TEST_DISCIPLINE_PATH, "records/disciplines/registry.json"]);
+    await git(root, ["commit", "-m", "Adopt focused Go review Discipline"]);
+  }
   return root;
 }
 
@@ -148,7 +166,7 @@ function request(
 ): FoundationOrientationProjectionRequest {
   const observation = knowledge.observation;
   const base = {
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     class: "orientation" as const,
     role: "reconnaissance" as const,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -191,6 +209,142 @@ function request(
   };
   return Object.freeze({ ...base, digest: selfDigest(base) });
 }
+
+test("Orientation carries complete observed-sized context and enforces the same UTF-8 subject bound on requests and results", async () => {
+  // Finite domain: exact 36,409-byte context; ASCII, two-byte and four-byte
+  // scalars at max-1, max and max+1 bytes. No provider or Delivery is simulated.
+  const root = await target({ binding: true });
+  const epoch = await loadRepositoryEpoch(root);
+  const knowledge = await validateKnowledgeSet(epoch);
+  const fixture = JSON.parse(await readFile(new URL(
+    "../../../../spec-source/examples/projection-request-orientation-context-valid/subject.json", import.meta.url,
+  ), "utf8")) as FoundationOrientationProjectionRequest;
+  const objective = fixture.subject.objective;
+  assert.equal(Buffer.byteLength(objective, "utf8"), 36_409);
+  const facts = JSON.parse(objective.slice(objective.indexOf("{")));
+  assert.equal(facts.governingBoundaryContext.schema, "lifecycle.work-boundary-payload.v6");
+  assert.equal(facts.frozenConditionContext.payload.schema, "lifecycle.material-condition-payload.v4");
+  assert.match(facts.directorRationale, /Preserve the exact governing selections/);
+  assert.deepEqual(validateFoundationSchema("urn:lifecycle:schema:projection-request:v5", fixture, "fixture"), []);
+  const observedRequest = request(epoch, knowledge, objective);
+  assert.equal(parseProjectionRequest(observedRequest).class, "orientation");
+  const observed = await compileKnowledgeProjection({ request: observedRequest, repository: epoch, knowledge });
+  assert.equal(observed.validation.valid, true, canonicalJson(observed.validation.diagnostics));
+  assert(observed.projection !== null && observed.projection.manifest.core.class === "orientation");
+  assert.equal(observed.projection.manifest.core.objective, objective);
+  assert.equal(observed.projection.manifest.basis.requestDigest, observedRequest.digest);
+  assert.equal(observed.projection.manifest.counts.coreBytes, Buffer.byteLength(canonicalJson(observed.projection.manifest.core), "utf8"));
+  assert(observed.projection.manifest.counts.coreBytes > 36_409);
+  verifyCompiledProjection(observed.projection);
+
+  const maximumBytes = 1_048_576;
+  assert.equal(FOUNDATION_ORIENTATION_OBJECTIVE_MAXIMUM_BYTES, maximumBytes);
+  for (const value of ["", "invalid\0objective"]) {
+    const selected = request(epoch, knowledge, value);
+    assert(validateFoundationSchema("urn:lifecycle:schema:projection-request:v5", selected, "invalid text").length > 0);
+    assert.throws(() => parseProjectionRequest(selected), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.schema.invalid");
+  }
+  for (const { id, scalar, scalarBytes } of [
+    { id: "ASCII", scalar: "x", scalarBytes: 1 },
+    { id: "two-byte", scalar: "é", scalarBytes: 2 },
+    { id: "four-byte", scalar: "🧭", scalarBytes: 4 },
+  ]) {
+    const exact = scalar.repeat(maximumBytes / scalarBytes);
+    const below = scalar.repeat((maximumBytes / scalarBytes) - 1) + "x".repeat(scalarBytes - 1);
+    for (const value of [below, exact]) {
+      assert.equal(Buffer.byteLength(value, "utf8"), value === exact ? maximumBytes : maximumBytes - 1, id);
+      const selected = request(epoch, knowledge, value);
+      assert.deepEqual(validateFoundationSchema("urn:lifecycle:schema:projection-request:v5", selected, id), []);
+      assert.equal(parseProjectionRequest(selected).digest, selected.digest, id);
+    }
+    const compiled = await compileKnowledgeProjection({ request: request(epoch, knowledge, exact), repository: epoch, knowledge });
+    assert.equal(compiled.validation.valid, true, `${id}: ${canonicalJson(compiled.validation.diagnostics)}`);
+    assert(compiled.projection !== null && compiled.projection.manifest.core.class === "orientation");
+    const retainedProjection = compiled.projection;
+    assert.equal(compiled.projection.manifest.core.objective, exact, id);
+    verifyCompiledProjection(compiled.projection);
+
+    const excess = exact + "x";
+    assert.equal(Buffer.byteLength(excess, "utf8"), maximumBytes + 1);
+    const substituted = request(epoch, knowledge, excess);
+    const structural = validateFoundationSchema("urn:lifecycle:schema:projection-request:v5", substituted, id);
+    // JSON Schema counts characters; the shared owner closes its byte-only gap.
+    assert.equal(structural.length > 0, id === "ASCII", id);
+    assert.throws(() => parseProjectionRequest(substituted), (error: unknown) =>
+      error instanceof FoundationError && error.code === (id === "ASCII" ? "lifecycle.schema.invalid" : "lifecycle.projection.request-invalid"), id);
+    const core = { ...compiled.projection.manifest.core, objective: excess };
+    const coreBytes = Buffer.byteLength(canonicalJson(core), "utf8");
+    const changed = { ...compiled.projection.manifest, core, counts: {
+      ...compiled.projection.manifest.counts, coreBytes,
+      totalBytes: compiled.projection.manifest.counts.totalBytes - compiled.projection.manifest.counts.coreBytes + coreBytes,
+    } };
+    const changedManifest = { ...changed, digest: selfDigest(changed) };
+    assert.equal(validateFoundationSchema("urn:lifecycle:schema:knowledge-projection:v6", changedManifest, id).length > 0, id === "ASCII");
+    assert.throws(() => verifyCompiledProjection({ ...retainedProjection, manifest: changedManifest }), (error: unknown) =>
+      error instanceof FoundationError && error.code === (id === "ASCII" ? "lifecycle.schema.invalid" : "lifecycle.projection.request-invalid"), id);
+  }
+});
+
+test("Orientation core encoding counts against the actual selected mandatory budget", async () => {
+  const root = await target();
+  const epoch = await loadRepositoryEpoch(root);
+  const knowledge = await validateKnowledgeSet(epoch);
+  // One valid NUL-free byte per scalar becomes six bytes in canonical JSON.
+  // Raw objective fits its 1 MiB bound; complete mandatory core exceeds 4 MiB.
+  const objective = "\u0001".repeat(800_000);
+  const standard = request(epoch, knowledge, objective);
+  assert.equal(parseProjectionRequest(standard).digest, standard.digest);
+  const refused = await compileKnowledgeProjection({ request: standard, repository: epoch, knowledge });
+  assert.equal(refused.projection, null);
+  const witness = foundationMandatoryProjectionRefusalV1(refused);
+  assert(witness !== null);
+  assert.equal(witness.profile.maximumMandatoryBytes, 4 * 1024 * 1024);
+  const diagnostic = refused.validation.diagnostics.find(({ code }) => code === "lifecycle.projection.mandatory-too-large");
+  assert(diagnostic !== undefined);
+  assert(Number(diagnostic.facts.mandatoryBytes) > 4 * 1024 * 1024);
+  assert.deepEqual(diagnostic.facts.oversized, []);
+  const selected = { ...standard, profile: epoch.contract.projectionProfiles["orientation-large-v1"]! };
+  const larger = { ...selected, digest: selfDigest(selected) };
+  const continued = await compileKnowledgeProjection({ request: larger, repository: epoch, knowledge });
+  assert.equal(continued.validation.valid, true, canonicalJson(continued.validation.diagnostics));
+  assert(continued.projection !== null && continued.projection.manifest.core.class === "orientation");
+  assert.equal(continued.projection.manifest.core.objective, objective);
+  assert.equal(continued.projection.manifest.profileDigest, larger.profile.digest);
+  assert(continued.projection.manifest.counts.coreBytes > 4 * 1024 * 1024);
+  assert.equal(larger.profile.maximumMandatoryBytes, 8 * 1024 * 1024);
+  verifyCompiledProjection(continued.projection);
+});
+
+test("Orientation preserves an explicit larger profile and rejects altered exact bounds", async () => {
+  const root = await target({ binding: true });
+  const original = await loadRepositoryEpoch(root);
+  const selected = {
+    ...original.contract,
+    defaults: { ...original.contract.defaults, orientationProjectionProfileId: "orientation-large-v1" },
+  };
+  await writeRepositoryContract(root, { ...selected, digest: selfDigest(selected) });
+  await git(root, ["add", "--", ".lifecycle/repository.json"]);
+  await git(root, ["commit", "-m", "Select larger Orientation explicitly"]);
+  const epoch = await loadRepositoryEpoch(root);
+  const knowledge = await validateKnowledgeSet(epoch);
+  const selectedRequest = request(epoch, knowledge);
+  assert.equal(parseProjectionRequest(selectedRequest).profile.id, "orientation-large-v1");
+  const result = await compileKnowledgeProjection({ request: selectedRequest, repository: epoch, knowledge });
+  assert.equal(result.validation.complete, true, canonicalJson(result.validation.diagnostics));
+  assert.equal(result.validation.valid, true, canonicalJson(result.validation.diagnostics));
+  assert.equal(result.projection!.manifest.profile, "orientation-large-v1");
+  assert.equal(result.projection!.manifest.profileDigest, selectedRequest.profile.digest);
+  assert.equal(result.projection!.manifest.omission.bounds.maximumMandatoryItems, 512);
+  assert.equal(result.projection!.manifest.omission.mandatoryOmissions, 0);
+  assert.equal(epoch.contract.projectionProfiles["orientation-standard-v1"]!.maximumMandatoryItems, 256);
+  for (const field of ["maximumMandatoryItems", "maximumMandatoryBytes", "maximumItemBytes",
+    "maximumReachableItems", "maximumReachableBytes", "maximumSourceBytes", "maximumRelationshipDepth"] as const) {
+    const altered = { ...selectedRequest.profile, [field]: selectedRequest.profile[field] + 1 };
+    const substituted = { ...selectedRequest, profile: { ...altered, digest: selfDigest(altered) } };
+    assert.throws(() => parseProjectionRequest({ ...substituted, digest: selfDigest(substituted) }),
+      (error: unknown) => error instanceof FoundationError, field);
+  }
+});
 
 test("Orientation deterministically compiles exact indexes, every registered Binding, and immutable retrieval bytes", async () => {
   const root = await target({ binding: true });
@@ -273,12 +427,14 @@ test("Orientation deterministically compiles exact indexes, every registered Bin
       credentials: "none" as const,
       externalEffects: Object.freeze([]),
     }),
-    founderSemanticMarkdown: "Orient to the current repository and propose a bounded delivery.\n",
+    directorSemanticMarkdown: "Orient to the current repository and propose a bounded delivery.\n",
   });
   const checkCitation = providerInput.citationRegistry.find(({ id }) => id === "check.delivery-prepare");
   assert(checkCitation !== undefined);
   assert.equal(checkCitation.kind, "knowledge");
-  assert.equal(checkCitation.digest, projectedCheck.semanticDigest);
+  assert.equal(checkCitation.digest, projectedCheck.sourceDigest);
+  assert.equal(checkCitation.knowledgeIdentity, projectedCheck.sourceIdentity);
+  assert.equal(providerInput.citationRegistry.find(({ id }) => id === projectedCheck.id)?.digest, projectedCheck.sourceDigest);
   assert.equal(checkCitation.authorityClass, "repository-authored");
 
   assert.equal(first.projection.manifest.reachable.some((entry) => entry.category === "atlas-context"), false);
@@ -300,6 +456,79 @@ test("Orientation deterministically compiles exact indexes, every registered Bin
     inventory: [{ ...firstInventory, bytes: Buffer.from("corrupt").toString("base64") }, ...first.projection.inventory.slice(1)],
   };
   assert.throws(() => verifyCompiledProjection(corrupt), /corrupt|digest/u);
+});
+
+test("Orientation exposes adopted Discipline work types and exact advisory bytes", async () => {
+  const root = await target({ discipline: true });
+  const epoch = await loadRepositoryEpoch(root);
+  const knowledge = await validateKnowledgeSet(epoch);
+  assert.equal(knowledge.validation.complete, true, canonicalJson(knowledge.validation.diagnostics));
+  assert.equal(knowledge.validation.valid, true, canonicalJson(knowledge.validation.diagnostics));
+  const compiled = await compileKnowledgeProjection({
+    request: request(epoch, knowledge),
+    repository: epoch,
+    knowledge,
+  });
+  assert.equal(compiled.validation.valid, true, canonicalJson(compiled.validation.diagnostics));
+  assert(compiled.projection !== null);
+  if (compiled.projection.manifest.core.class !== "orientation") {
+    assert.fail("Discipline discovery requires an Orientation Projection");
+  }
+  assert.deepEqual(compiled.projection.manifest.core.disciplineIndex.workTypes, [{
+    id: TEST_DISCIPLINE_WORK_TYPE_ID,
+    title: "Go development",
+    description: "Implementation and review of Go software.",
+    disciplineIds: [TEST_DISCIPLINE_ID],
+  }]);
+  const discipline = compiled.projection.manifest.mandatory.find(
+    ({ sourceIdentity }) => sourceIdentity === TEST_DISCIPLINE_ID,
+  );
+  assert(discipline !== undefined);
+  assert.equal(discipline.authority, "discipline-guidance");
+  assert.equal(discipline.locator, TEST_DISCIPLINE_PATH);
+  assert.match(discipline.useLimit ?? "", /advisory|judgment/u);
+  const disciplineContent = discipline.content;
+  assert.equal(disciplineContent.mode, "mounted");
+  if (disciplineContent.mode !== "mounted") assert.fail("Adopted Discipline bytes were not mounted");
+  const projected = compiled.projection.inventory.find(({ path }) => path === disciplineContent.path);
+  assert(projected !== undefined);
+  assert.equal(
+    Buffer.from(projected.bytes, "base64").toString("utf8"),
+    knowledge.knowledgeSet?.index.currentByIdentity.get(TEST_DISCIPLINE_ID)?.sourceText,
+  );
+
+  const providerInput = compileProviderInputV4({
+    projection: compiled.projection,
+    operation: "delivery.prepare",
+    roleSubjectDigest: sha256Bytes("orientation-discipline-role-subject"),
+    rootTokenSetDigest: sha256Bytes("orientation-discipline-root-tokens"),
+    capability: Object.freeze({
+      candidateWrites: false,
+      temporaryWrites: true,
+      subprocesses: "none" as const,
+      network: "none" as const,
+      credentials: "none" as const,
+      externalEffects: Object.freeze([]),
+    }),
+    directorSemanticMarkdown: "Discover advisory practices for a bounded Delivery.\n",
+  });
+  const mandatory = compiled.projection.manifest.mandatory.map((item) => {
+    if (item.sourceIdentity !== TEST_DISCIPLINE_ID) return item;
+    const { itemDigest: _digest, ...subject } = item;
+    const changed = { ...subject, authority: "product-knowledge" as const };
+    return { ...changed, itemDigest: digestCanonical(changed) };
+  });
+  const escalated = { ...compiled.projection.manifest, mandatory };
+  assert.throws(() => verifyCompiledProjection({
+    ...compiled.projection!, inventory: compiled.projection!.inventory ?? [],
+    manifest: { ...escalated, digest: selfDigest(escalated) },
+  }), (error: unknown) => error instanceof Error && "code" in error && ["lifecycle.projection.discipline-invalid", "lifecycle.schema.invalid"].includes(String(error.code)));
+  assert.match(providerInput.roleBrief.markdown, /## Discipline Discovery/u);
+  assert.match(providerInput.roleBrief.markdown, new RegExp(TEST_DISCIPLINE_WORK_TYPE_ID, "u"));
+  assert.match(providerInput.roleBrief.markdown, new RegExp(TEST_DISCIPLINE_ID.replace(".", "\\."), "u"));
+  const disciplineCitation = providerInput.citationRegistry.find(({ id }) => id === TEST_DISCIPLINE_ID);
+  assert(disciplineCitation !== undefined);
+  assert.match(providerInput.roleBrief.markdown, new RegExp(disciplineCitation.locator.replaceAll("/", "\\/"), "u"));
 });
 
 test("Orientation binds an exactly referenced Atlas Resource as provider-readable source bytes", async () => {
@@ -338,7 +567,7 @@ test("Orientation binds an exactly referenced Atlas Resource as provider-readabl
       credentials: "none" as const,
       externalEffects: Object.freeze([]),
     }),
-    founderSemanticMarkdown: "Use the exact Atlas Resource while proposing the Boundary.\n",
+    directorSemanticMarkdown: "Use the exact Atlas Resource while proposing the Boundary.\n",
   });
   const citation = providerInput.citationRegistry.find(({ id }) => id === sourceId);
   assert(citation !== undefined);
@@ -356,10 +585,10 @@ test("historical Projection source resolution keeps admitted Atlas Resource byte
   await write(
     root,
     "atlas/sources/architecture.md",
-    "# Target architecture\n\nA later Founder-managed Atlas revision must not replace admitted context.\n",
+    "# Target architecture\n\nA later Director-managed Atlas revision must not replace admitted context.\n",
   );
   await git(root, ["add", "--", "atlas/sources/architecture.md"]);
-  await git(root, ["commit", "-m", "Advance Founder-managed Atlas"]);
+  await git(root, ["commit", "-m", "Advance Director-managed Atlas"]);
   const current = await loadRepositoryEpoch(root);
   assert.notEqual(current.atlasState.digest, admitted.atlasState.digest);
 
@@ -388,7 +617,7 @@ test("historical Projection source resolution keeps admitted Atlas Resource byte
       credentials: "none" as const,
       externalEffects: Object.freeze([]),
     }),
-    founderSemanticMarkdown: "Use only the Atlas Resource bytes admitted with this context.\n",
+    directorSemanticMarkdown: "Use only the Atlas Resource bytes admitted with this context.\n",
   });
   const sourceId = atlasResourceSourceId(historical.atlas.model.atlas.id, "architecture");
   const citation = providerInput.citationRegistry.find(({ id }) => id === sourceId);
@@ -425,6 +654,36 @@ test("Orientation reports an invalid partial Knowledge observation without claim
     compiled.projection.manifest.core.conditions.some((condition) => condition.code === "lifecycle.description.coverage-missing"));
   assert(compiled.projection.manifest.core.class === "orientation" &&
     compiled.projection.manifest.core.coverageIndex.summary.missingItems === 1);
+});
+
+test("Orientation resolves historical diagnostic paths to Knowledge identities while retaining warnings", async () => {
+  const root = await target({ binding: true });
+  const historicalPath = "records/checks/retired.md";
+  await write(root, historicalPath, checkKnowledge({ id: "check.retired", status: "retired" }));
+  await write(root, "records/checks/delivery-prepare.md", checkKnowledge({ relationships: [
+    { type: "related-to", target: "check.retired", required: false },
+  ] }));
+  await git(root, ["add", "--", "records/checks"]);
+  await git(root, ["commit", "-m", "Retain an optional historical Check reference"]);
+  const epoch = await loadRepositoryEpoch(root);
+  const knowledge = await validateKnowledgeSet(epoch);
+  const warning = knowledge.validation.diagnostics.find(({ code }) =>
+    code === "lifecycle.relationship.optional-target-historical");
+  assert(warning !== undefined);
+  assert.equal(warning.severity, "warning");
+  assert.deepEqual(warning.related.map(({ kind, id }) => ({ kind, id })), [
+    { kind: "repository-path", id: historicalPath },
+  ]);
+  const originalDiagnostic = canonicalJson(warning);
+  const compiled = await compileKnowledgeProjection({ request: request(epoch, knowledge), repository: epoch, knowledge });
+  assert.equal(compiled.validation.complete, true, canonicalJson(compiled.validation.diagnostics));
+  assert.equal(compiled.validation.valid, true, canonicalJson(compiled.validation.diagnostics));
+  assert(compiled.projection !== null && compiled.projection.manifest.core.class === "orientation");
+  assert.deepEqual(compiled.projection.manifest.core.conditions.find(({ code }) => code === warning.code), {
+    code: warning.code, severity: warning.severity, detail: warning.message, sourceIds: ["check.retired"],
+  });
+  assert.equal(compiled.projection.manifest.basis.knowledgeValidationDigest, knowledge.validation.digest);
+  assert.equal(canonicalJson(warning), originalDiagnostic, "Exact diagnostic location/provenance remains unchanged");
 });
 
 test("Orientation rejects a prior-commit Knowledge observation from the same repository", async () => {
@@ -517,16 +776,37 @@ test("Orientation returns a typed incomplete Validation Result when exact Tier-2
   assert.equal(oversized.length, 1);
   assert.match(oversized[0]!.id, /^atlas\.atlas\./u);
   assert(oversized[0]!.bytes > epoch.contract.projectionProfiles[epoch.contract.defaults.orientationProjectionProfileId]!.maximumItemBytes);
+  const measured = foundationMandatoryProjectionRefusalV1(compiled);
+  assert(measured !== null);
+  assert.equal(measured.requestDigest, request(epoch, knowledge).digest);
+  assert.equal(measured.profile.digest, request(epoch, knowledge).profile.digest);
+  assert.equal(foundationMandatoryProjectionRefusalV1(measured.error), measured);
+  assert.equal(foundationMandatoryProjectionRefusalV1({ ...compiled }), null);
+  assert.equal(foundationMandatoryProjectionRefusalV1(new FoundationError(measured.error.code, measured.error.message)), null);
   assert.equal(compiled.validation.limits.observedMandatoryBytes, diagnostic.facts.mandatoryBytes);
   assert.equal(compiled.validation.stages.find((stage) => stage.id === "content")?.complete, true);
   assert.equal(compiled.validation.stages.find((stage) => stage.id === "bounds")?.complete, false);
 });
 
-test("the common compiler emits one exact verified builder Execution Projection", async () => {
-  const root = await target();
+test("the common compiler gives a builder one directly selected adopted Discipline with no selected Work Type", async () => {
+  const root = await target({ discipline: true });
   const epoch = await loadRepositoryEpoch(root);
   const knowledgeResult = await validateKnowledgeSet(epoch);
   if (knowledgeResult.knowledgeSet === null) assert.fail("empty exact Knowledge Set is invalid");
+  const discipline = knowledgeResult.knowledgeSet.index.currentByIdentity.get(TEST_DISCIPLINE_ID);
+  if (discipline === undefined) assert.fail("adopted Discipline is absent from the Knowledge Set");
+  const disciplineFact = Object.freeze({
+    id: discipline.frontMatter.id,
+    revision: discipline.frontMatter.revision,
+    sourceDigest: discipline.sourceDigest,
+    semanticDigest: discipline.semanticDigest,
+  });
+  const selectedDiscipline = Object.freeze({
+    ...disciplineFact,
+    title: discipline.frontMatter.title,
+    summary: discipline.frontMatter.summary,
+    path: discipline.path,
+  });
   const loaded = await bindRepositorySnapshot(epoch, knowledgeResult.knowledgeSet);
   const repositoryValidation = await validateLoadedRepositorySnapshot(loaded, { knowledge: knowledgeResult.knowledgeSet });
   assert.equal(repositoryValidation.valid, true, canonicalJson(repositoryValidation.diagnostics));
@@ -543,9 +823,10 @@ test("the common compiler emits one exact verified builder Execution Projection"
     carrierManifestDigest: sha256Bytes("empty-builder-candidate-carrier-manifest"),
     sealedTree: null,
     seal: null,
+    integration: null,
   });
   const requestBase = {
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     class: "execution" as const,
     role: "builder" as const,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -600,6 +881,11 @@ test("the common compiler emits one exact verified builder Execution Projection"
     excluded: ["unadmitted work"],
     assumptions: [],
     falsifiers: ["the boundary identity changes"],
+    disciplines: {
+      registryDigest: knowledgeResult.knowledgeSet.disciplineRegistry.digest,
+      workTypeIds: [],
+      records: [selectedDiscipline],
+    },
     obligations: [{ id: "obligation.empty-builder", kind: "acceptance" as const, statement: "Preserve the exact boundary.", sourceIds: [], requiredEvidenceIds: [] }],
     requiredArtifacts: [],
     effects: [],
@@ -617,7 +903,7 @@ test("the common compiler emits one exact verified builder Execution Projection"
   const subjectBase = {
     workBoundary: projectionRequest.subject.workBoundary,
     core,
-    knowledgeRoots: [],
+    knowledgeRoots: [Object.freeze({ ...disciplineFact, reason: "directly selected advisory Discipline" })],
     implementationRoots: [],
     sourceRoots: [],
     candidate,
@@ -635,10 +921,12 @@ test("the common compiler emits one exact verified builder Execution Projection"
     payload: Object.freeze({
       ...workBoundaryPayload,
       targetId: loaded.contract.targetId,
+      knowledge: Object.freeze([Object.freeze({ ...disciplineFact })]),
+      disciplines: Object.freeze({ registryDigest: knowledgeResult.knowledgeSet.disciplineRegistry.digest, workTypeIds: Object.freeze([]), records: Object.freeze([Object.freeze({ ...disciplineFact })]) }),
       basis: Object.freeze({
         specificationRevision: loaded.contract.specification.revision,
-        repositoryContract: "lifecycle.repository.v15",
-        providerAdapter: "lifecycle.provider-adapter.v6",
+        repositoryContract: "lifecycle.repository.v22",
+        providerAdapter: "lifecycle.provider-adapter.v7",
         productBaseCommit: loaded.snapshot.commit,
         productBaseTree: loaded.snapshot.tree,
         productStateDigest: loaded.snapshot.productStateDigest,
@@ -655,7 +943,7 @@ test("the common compiler emits one exact verified builder Execution Projection"
       Object.freeze({
         relation: "uses-brief",
         target: Object.freeze({
-          kind: "founder-brief",
+          kind: "director-brief",
           id: "brief.projection-orientation-builder",
           revision: 1,
           digest: sha256Bytes("brief.projection-orientation-builder"),
@@ -736,6 +1024,70 @@ test("the common compiler emits one exact verified builder Execution Projection"
     allowNotApplicable: false,
     notApplicableCondition: null,
   }]);
+  assert.deepEqual(result.projection.manifest.core.disciplines.workTypeIds, []);
+  assert.deepEqual(result.projection.manifest.core.disciplines.records, [selectedDiscipline]);
+  const projectedDiscipline = result.projection.manifest.mandatory.find(
+    ({ sourceIdentity }) => sourceIdentity === TEST_DISCIPLINE_ID,
+  );
+  assert(projectedDiscipline !== undefined);
+  assert.equal(projectedDiscipline.authority, "discipline-guidance");
+  const projectedDisciplineContent = projectedDiscipline.content;
+  assert.equal(projectedDisciplineContent.mode, "mounted");
+  if (projectedDisciplineContent.mode !== "mounted") assert.fail("Builder Discipline bytes were not mounted");
+  const mountedDiscipline = result.projection.inventory.find(
+    ({ path }) => path === projectedDisciplineContent.path,
+  );
+  assert(mountedDiscipline !== undefined);
+  assert.equal(Buffer.from(mountedDiscipline.bytes, "base64").toString("utf8"), discipline.sourceText);
+  const providerInput = compileProviderInputV4({
+    projection: result.projection,
+    operation: "delivery.continue",
+    roleSubjectDigest: sha256Bytes("builder-discipline-role-subject"),
+    rootTokenSetDigest: sha256Bytes("builder-discipline-root-tokens"),
+    capability: Object.freeze({
+      candidateWrites: true,
+      temporaryWrites: true,
+      subprocesses: "repository-toolchain" as const,
+      network: "none" as const,
+      credentials: "none" as const,
+      externalEffects: Object.freeze([]),
+    }),
+    directorSemanticMarkdown: "Continue the bounded work with the selected advisory Discipline.\n",
+  });
+  assert.match(providerInput.roleBrief.markdown, /## Selected Disciplines/u);
+  assert.match(providerInput.roleBrief.markdown, /Selected work types: none/u);
+  assert.match(providerInput.roleBrief.markdown, new RegExp(TEST_DISCIPLINE_ID.replace(".", "\\."), "u"));
+  const disciplineCitation = providerInput.citationRegistry.find(({ id }) => id === TEST_DISCIPLINE_ID);
+  assert(disciplineCitation !== undefined);
+  assert.match(providerInput.roleBrief.markdown, new RegExp(disciplineCitation.locator.replaceAll("/", "\\/"), "u"));
+  for (const record of [
+    { ...selectedDiscipline, revision: selectedDiscipline.revision + 1 },
+    { ...selectedDiscipline, sourceDigest: sha256Bytes("wrong Discipline source") },
+    { ...selectedDiscipline, semanticDigest: sha256Bytes("wrong Discipline semantics") },
+    { ...selectedDiscipline, path: "records/disciplines/another.md" },
+  ]) {
+    const manifest = {
+      ...result.projection.manifest,
+      core: { ...result.projection.manifest.core, disciplines: {
+        ...result.projection.manifest.core.disciplines, records: [record],
+      } },
+    };
+    const forged = { ...result.projection, inventory: result.projection.inventory ?? [], manifest: { ...manifest, digest: selfDigest(manifest) } };
+    assert.throws(() => verifyCompiledProjection(forged),
+      (error: unknown) => error instanceof Error && "code" in error && ["lifecycle.projection.discipline-invalid", "lifecycle.schema.invalid"].includes(String(error.code)));
+  }
+  const mandatory = result.projection.manifest.mandatory.map((item) => {
+    if (item.sourceIdentity !== TEST_DISCIPLINE_ID) return item;
+    const { itemDigest: _digest, ...subject } = item;
+    const changed = { ...subject, authority: "product-knowledge" as const };
+    return { ...changed, itemDigest: digestCanonical(changed) };
+  });
+  const escalated = { ...result.projection.manifest, mandatory };
+  const escalatedProjection: FoundationCompiledProjection = {
+    ...result.projection, manifest: { ...escalated, digest: selfDigest(escalated) },
+  };
+  assert.throws(() => verifyCompiledProjection(escalatedProjection),
+    (error: unknown) => error instanceof Error && "code" in error && ["lifecycle.projection.discipline-invalid", "lifecycle.schema.invalid"].includes(String(error.code)));
   const tampered = (field: "requestDigest" | "workBoundaryDigest") => {
     const { digest: _digest, ...manifestSubject } = result.projection!.manifest;
     const manifestBase = {

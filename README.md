@@ -11,19 +11,18 @@ Its invariant is:
 > only admitted behavior can ship
 
 This repository contains the Lifecycle Foundation `1.0.0` specification,
-protocol, runtime, command-line interface, terminal client, distribution
-source, and qualification harnesses.
+protocol, runtime, canonical command-line interface, distribution source, and
+qualification harnesses. The selected Foundation revision is rc.17.
 
 ## Build from source
 
 Lifecycle requires Git, Node.js `24.14.0` or newer, and npm.
 
 ```sh
-git clone https://github.com/neutral/lifecycle.git
+git clone https://github.com/neutral/lifecycle-v2-archive.git lifecycle
 cd lifecycle
 npm ci
-npm run build -w @neutral/lifecycle-protocol
-npm run build:self -w @neutral/lifecycle-runtime
+npm run build
 npm run lifecycle -- version
 ```
 
@@ -38,12 +37,13 @@ See [installation](docs/installation.md) for the source setup and
   models, digests, and validation contracts.
 - [`runtime/`](runtime/overview.md) — Foundation runtime, canonical CLI,
   repository contract, Delivery Process, Evidence, authority, and recovery.
-- [`clients/`](clients/overview.md) — terminal client source.
 - [`distribution/`](distribution/overview.md) — npm launcher and Runtime and
   Execution Image assembly source.
 - [`qualification/`](qualification/overview.md) — installed-package and
   operated provider-boundary harnesses.
 - [`docs/`](docs/overview.md) — installation and usage guidance.
+- [`third-party/atlas-reference-validator/`](third-party/atlas-reference-validator/PROVENANCE.json)
+  — the exact Atlas 0.8 processor dependency and its provenance.
 
 ## License
 

@@ -6,20 +6,21 @@ import {
 } from "../constants.js";
 import type { ControlRecordStore } from "../control/store.js";
 import type { ControlJsonObject, ControlJsonValue, ControlRecordRevision } from "../control/types.js";
-import type { WorkBoundaryRepositoryBasis } from "../control/work-boundary.js";
+import type {
+  WorkBoundaryReference,
+  WorkBoundaryRepositoryBasis,
+} from "../control/work-boundary.js";
 import { FoundationError } from "../error.js";
-import { validateKnowledgeSet } from "../knowledge/knowledge-set.js";
 import type { FoundationKnowledgeSet, FoundationKnowledgeSetResult } from "../knowledge/types.js";
-import {
-  bindHistoricalRepositorySnapshot,
-  loadRepositoryEpochAtCommit,
-} from "../repository/snapshot.js";
+import { openFoundationDeliveryGitBasisV1 } from "../repository/delivery-git-basis.js";
 import type {
   FoundationLoadedRepositoryEpoch,
   FoundationLoadedRepositorySnapshot,
   FoundationRepositorySnapshot,
 } from "../repository/types.js";
 import { canonicalJson, digestCanonical, type Sha256 } from "../validation/canonical.js";
+import type { FoundationContextSelection } from "@neutral/lifecycle-protocol";
+import { resolveFoundationInspectionSelection } from "./inspection-selection.js";
 
 const GIT_OBJECT = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
@@ -47,6 +48,8 @@ export type FoundationDeliveryQueryRepositoryBasis = Readonly<WorkBoundaryReposi
   providerAdapter: typeof FOUNDATION_PROVIDER_PROTOCOL;
 }>;
 
+export type FoundationDeliveryQueryBoundaryReference = WorkBoundaryReference<"work-boundary">;
+
 export type FoundationDeliveryQueryBasisOwners = Readonly<{
   loadRepositoryEpochAtCommit: (
     target: string,
@@ -68,12 +71,6 @@ export type FoundationDeliveryQueryBasis = Readonly<{
   knowledge: FoundationKnowledgeSet;
   repository: FoundationLoadedRepositorySnapshot;
 }>;
-
-const DEFAULT_OWNERS: FoundationDeliveryQueryBasisOwners = Object.freeze({
-  loadRepositoryEpochAtCommit,
-  validateKnowledgeSet,
-  bindHistoricalRepositorySnapshot,
-});
 
 function fail(
   code: string,
@@ -130,7 +127,7 @@ function digest(value: ControlJsonValue | undefined, label: string): Sha256 {
 function retainedBasis(boundary: ControlRecordRevision): FoundationDeliveryQueryRepositoryBasis {
   if (
     boundary.payload.schema !== FOUNDATION_WORK_BOUNDARY_PAYLOAD_SCHEMA ||
-    boundary.payload.profileId !== "lifecycle.work-boundary.foundation-v1"
+    boundary.payload.profileId !== "lifecycle.work-boundary.foundation-v3"
   ) {
     fail("basis-invalid", "Selected Work Boundary does not use the current Foundation payload profile");
   }
@@ -186,17 +183,72 @@ function selectedBoundary(store: QueryControlStore): Readonly<{
   if (selected === null) {
     fail("boundary-absent", "Delivery has no proposed or active Work Boundary to query");
   }
-  const revision = store.getRevision(selected.id, selected.revision);
+  return retainedBoundary(store, {
+    role: state.subjects.proposedBoundary === null ? "active" : "proposed",
+    reference: selected,
+  });
+}
+
+function sameBoundaryReference(
+  left: Readonly<{ id: string; revision: number; digest: Sha256 }> | null,
+  right: FoundationDeliveryQueryBoundaryReference,
+): boolean {
+  return left !== null &&
+    left.id === right.id &&
+    left.revision === right.revision &&
+    left.digest === right.digest;
+}
+
+function selectedBoundaryReference(
+  store: QueryControlStore,
+  reference: FoundationDeliveryQueryBoundaryReference,
+): Readonly<{
+  role: "proposed" | "active";
+  revision: ControlRecordRevision;
+}> {
+  if (reference.kind !== "work-boundary") {
+    fail("boundary-substituted", "Requested Boundary reference must have kind work-boundary", {
+      requested: reference,
+    });
+  }
+  const state = store.state();
+  const proposed = sameBoundaryReference(state.subjects.proposedBoundary, reference);
+  const active = sameBoundaryReference(state.subjects.activeBoundary, reference);
+  if (proposed === active) {
+    fail("boundary-substituted", "Requested Work Boundary does not select exactly one current Boundary", {
+      requested: reference,
+      proposedBoundary: state.subjects.proposedBoundary,
+      activeBoundary: state.subjects.activeBoundary,
+    });
+  }
+  return retainedBoundary(store, {
+    role: proposed ? "proposed" : "active",
+    reference,
+  });
+}
+
+function retainedBoundary(
+  store: QueryControlStore,
+  selected: Readonly<{
+    role: "proposed" | "active";
+    reference: Readonly<{ id: string; revision: number; digest: Sha256 }>;
+  }>,
+): Readonly<{
+  role: "proposed" | "active";
+  revision: ControlRecordRevision;
+}> {
+  const reference = selected.reference;
+  const revision = store.getRevision(reference.id, reference.revision);
   if (
     revision === null ||
     revision.processId !== store.identity.processId ||
     revision.recordKind !== "work-boundary" ||
-    revision.recordId !== selected.id ||
-    revision.revision !== selected.revision ||
-    revision.digest !== selected.digest
+    revision.recordId !== reference.id ||
+    revision.revision !== reference.revision ||
+    revision.digest !== reference.digest
   ) {
     fail("boundary-substituted", "Derived Delivery state does not resolve one exact retained Work Boundary", {
-      selected,
+      selected: reference,
       retained: revision === null ? null : {
         processId: revision.processId,
         recordKind: revision.recordKind,
@@ -210,7 +262,7 @@ function selectedBoundary(store: QueryControlStore): Readonly<{
     fail("boundary-substituted", "Selected Work Boundary targets another repository identity");
   }
   return Object.freeze({
-    role: state.subjects.proposedBoundary === null ? "active" : "proposed",
+    role: selected.role,
     revision,
   });
 }
@@ -255,7 +307,7 @@ function assertEpochBasis(
 function assertKnowledgeBasis(
   expected: FoundationDeliveryQueryRepositoryBasis,
   loaded: FoundationLoadedRepositoryEpoch,
-  result: FoundationKnowledgeSetResult,
+  result: Pick<FoundationKnowledgeSetResult, "knowledgeSet" | "validation">,
 ): FoundationKnowledgeSet {
   const knowledge = result.knowledgeSet;
   if (
@@ -386,36 +438,86 @@ function assertSnapshotBasis(
   }
 }
 
-/**
- * Reopen the immutable repository, Atlas, and Knowledge basis selected by the
- * current proposed-or-active Work Boundary. This compiler intentionally adds
- * no live-branch continuity requirement: the historical repository loader
- * owns the attached-epoch guards needed to reopen immutable Git authority.
- */
-export async function compileFoundationDeliveryQueryBasis(input: Readonly<{
+async function compileSelectedDeliveryQueryBasis(input: Readonly<{
+  machineHome: string;
   target: string;
   store: QueryControlStore;
+  selected: Readonly<{
+    role: "proposed" | "active";
+    revision: ControlRecordRevision;
+  }>;
   owners?: FoundationDeliveryQueryBasisOwners;
 }>): Promise<FoundationDeliveryQueryBasis> {
-  const owners = input.owners ?? DEFAULT_OWNERS;
-  const selected = selectedBoundary(input.store);
-  const boundary = selected.revision;
+  const boundary = input.selected.revision;
   const basis = retainedBasis(boundary);
-  const loaded = await owners.loadRepositoryEpochAtCommit(input.target, basis.productBaseCommit);
+  const retained = input.owners === undefined
+    ? await openFoundationDeliveryGitBasisV1({ machineHome: input.machineHome, repository: input.target,
+        store: input.store, boundary })
+    : null;
+  const loaded = retained?.loaded ?? await input.owners!.loadRepositoryEpochAtCommit(input.target, basis.productBaseCommit);
   assertEpochBasis(basis, loaded, input.store.identity.targetId);
   const knowledge = assertKnowledgeBasis(
     basis,
     loaded,
-    await owners.validateKnowledgeSet(loaded),
+    retained === null ? await input.owners!.validateKnowledgeSet(loaded)
+      : { knowledgeSet: retained.knowledge, validation: retained.knowledgeValidation },
   );
-  const bound = await owners.bindHistoricalRepositorySnapshot(loaded, knowledge);
+  const bound = retained?.loaded ?? await input.owners!.bindHistoricalRepositorySnapshot(loaded, knowledge);
   assertSnapshotBasis(basis, loaded, bound);
   const repository = Object.freeze({ ...loaded, snapshot: bound.snapshot });
   return Object.freeze({
-    boundaryRole: selected.role,
+    boundaryRole: input.selected.role,
     boundary,
     basis,
     knowledge,
     repository,
+  });
+}
+
+/**
+ * Reopen the immutable repository, Atlas, and Knowledge basis selected by the
+ * current proposed Work Boundary, or the active Boundary when no proposal is
+ * current. Runtime custody reopens the selected history independently of live
+ * canonical HEAD, checkout content, and later canonical garbage collection.
+ */
+export async function compileFoundationDeliveryQueryBasis(input: Readonly<{
+  machineHome: string;
+  target: string;
+  store: QueryControlStore;
+  owners?: FoundationDeliveryQueryBasisOwners;
+}>): Promise<FoundationDeliveryQueryBasis> {
+  return compileSelectedDeliveryQueryBasis({
+    ...input,
+    selected: selectedBoundary(input.store),
+  });
+}
+
+/** Reopen an exact current Boundary, or a provenance-verified retained inspection Boundary. */
+export async function compileFoundationDeliveryQueryBasisForBoundaryReference(input: Readonly<{
+  machineHome: string;
+  target: string;
+  store: QueryControlStore;
+  boundary: FoundationDeliveryQueryBoundaryReference;
+  inspectionSelection?: FoundationContextSelection;
+  owners?: FoundationDeliveryQueryBasisOwners;
+}>): Promise<FoundationDeliveryQueryBasis> {
+  const selected = input.inspectionSelection === undefined
+    ? selectedBoundaryReference(input.store, input.boundary)
+    : (() => {
+        if (!("listEvents" in input.store) || typeof input.store.listEvents !== "function") {
+          fail("boundary-substituted", "Historical inspection requires the retained Journal owner");
+        }
+        resolveFoundationInspectionSelection(input.store as ControlRecordStore, input.inspectionSelection);
+        if (canonicalJson(input.boundary) !== canonicalJson(input.inspectionSelection.boundary.reference)) {
+          fail("boundary-substituted", "Requested Boundary differs from its historical inspection selection");
+        }
+        return retainedBoundary(input.store, input.inspectionSelection.boundary);
+      })();
+  return compileSelectedDeliveryQueryBasis({
+    machineHome: input.machineHome,
+    target: input.target,
+    store: input.store,
+    owners: input.owners,
+    selected,
   });
 }

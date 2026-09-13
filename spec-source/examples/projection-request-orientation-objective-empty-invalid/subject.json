@@ -1,0 +1,68 @@
+{
+  "schema": "lifecycle.projection-request.v5",
+  "class": "orientation",
+  "role": "reconnaissance",
+  "specificationRevision": "lifecycle.foundation.1.0.0-rc.17",
+  "target": {
+    "id": "orientation-fixture",
+    "generation": 1
+  },
+  "repository": {
+    "commit": "1111111111111111111111111111111111111111",
+    "tree": "2222222222222222222222222222222222222222",
+    "objectFormat": "sha1",
+    "repositoryEpochDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "productStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "repositoryContractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "repositorySnapshotDigest": null,
+    "validationDigest": null,
+    "complete": null,
+    "valid": null
+  },
+  "atlas": {
+    "root": "atlas",
+    "entrypoint": "atlas/atlas.md",
+    "specificationRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
+    "processorRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
+    "stateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "resolutionDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "normalizedModelDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "resourceBindingsDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "complete": true,
+    "valid": true
+  },
+  "knowledge": {
+    "knowledgeObservationDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "knowledgeSetDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "knowledgeValidationDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "complete": true,
+    "valid": true
+  },
+  "profile": {
+    "id": "orientation-standard-v1",
+    "maximumMandatoryItems": 256,
+    "maximumMandatoryBytes": 4194304,
+    "maximumItemBytes": 1048576,
+    "maximumReachableItems": 4096,
+    "maximumReachableBytes": 33554432,
+    "maximumSourceBytes": 8388608,
+    "maximumRelationshipDepth": 24,
+    "digest": "sha256:13a576b6b96d8372e77541f49d81951483f9c7a4a60edce86faa9e5307dfa177"
+  },
+  "subject": {
+    "class": "orientation",
+    "objective": "",
+    "objectiveDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "features": {
+    "historical": true,
+    "reachable": true
+  },
+  "retrieval": {
+    "externalLocal": "denied",
+    "network": "denied",
+    "authoritySubjectDigest": null,
+    "sources": []
+  },
+  "digest": "sha256:53016feb5837f5065a04bcdfaca253d9342673523710b0412553d0325dc883bb"
+}

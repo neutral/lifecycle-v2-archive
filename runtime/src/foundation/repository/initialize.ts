@@ -2,14 +2,16 @@ import { randomUUID } from "node:crypto";
 import { chmod, lstat, readFile, readdir, realpath, rm, rmdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { FoundationError } from "../error.js";
+import { assertIndependentGitRepository } from "./independent-git.js";
 import { FOUNDATION_REPOSITORY_SCHEMA } from "../constants.js";
+import { createEmptyDisciplineRegistry, FOUNDATION_DISCIPLINE_REGISTRY_PATH } from "../knowledge/discipline-registry.js";
 import { resolveAtlas } from "../atlas/resolution.js";
-import { digestCanonical, selfDigest, type Sha256 } from "../validation/canonical.js";
+import { canonicalPrettyJson, digestCanonical, selfDigest, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import { parseStrictJson } from "../validation/strict-json.js";
 import { opaqueId } from "../validation/value.js";
 import { atomicWrite, ensureDirectory } from "../support/filesystem.js";
-import { createFoundationAuthority } from "./authority.js";
+import { createFoundationAuthority, type FoundationAuthorityCredential } from "./authority.js";
 import {
   assertClean,
   attachedHead,
@@ -35,6 +37,7 @@ const RECORD_DIRECTORIES = [
   "records/assurance",
   "records/blueprint",
   "records/checks",
+  "records/disciplines",
 ] as const;
 
 const MAXIMUM_CARRIER_BYTES = 4 * 1024 * 1024;
@@ -160,6 +163,7 @@ function initializationDirectoryPaths(repository: string): readonly string[] {
     "records/assurance",
     "records/blueprint",
     "records/checks",
+  "records/disciplines",
   ].map((path) => join(repository, path)));
 }
 
@@ -209,6 +213,7 @@ async function initializationJournal(options: {
     fileSnapshots: Object.freeze([
       ...await Promise.all(RECORD_DIRECTORIES
         .map(async (directory) => await fileSnapshot(join(options.repository, directory, ".gitkeep")))),
+      await fileSnapshot(join(options.repository, FOUNDATION_DISCIPLINE_REGISTRY_PATH)),
     ]),
     repository: options.repository,
     repositoryDirectories: Object.freeze(await Promise.all(
@@ -340,7 +345,7 @@ async function refusePredecessorOrMixedState(repository: string, contractPath: s
   if (contract === "successor" && control.length > 0) {
     throw new FoundationError(
       "lifecycle.repository.epoch-mixed",
-      "Fresh repository v15 initialization refuses tracked or live records/control beside a current repository contract",
+      "Fresh repository v22 initialization refuses tracked or live records/control beside a current repository contract",
       { observedFacts: { control } },
     );
   }
@@ -351,7 +356,7 @@ async function refusePredecessorOrMixedState(repository: string, contractPath: s
     ].sort(compareCodePoints));
     throw new FoundationError(
       "lifecycle.repository.predecessor-unsupported",
-      "Fresh repository v15 initialization refuses predecessor repository or tracked Control state",
+      "Fresh repository v22 initialization refuses predecessor repository or tracked Control state",
       { observedFacts: { predecessor } },
     );
   }
@@ -368,6 +373,14 @@ async function createLayout(repository: string): Promise<void> {
       await atomicWrite(join(root, ".gitkeep"), "", 0o644);
     }
   }
+  const registryPath = join(repository, FOUNDATION_DISCIPLINE_REGISTRY_PATH);
+  if (await exists(registryPath)) {
+    throw new FoundationError(
+      "lifecycle.repository.exists",
+      `Fresh repository initialization refuses existing ${FOUNDATION_DISCIPLINE_REGISTRY_PATH}`,
+    );
+  }
+  await atomicWrite(registryPath, canonicalPrettyJson(createEmptyDisciplineRegistry()), 0o644);
 }
 
 async function validateAtlas(repository: string): Promise<void> {
@@ -438,15 +451,16 @@ export function commandCheckBinding(options: {
 
 export async function initializeRepository(path: string, options: {
   targetId?: string;
-  founderPrincipal?: string;
+  directorPrincipal?: string;
   home: string;
-  authoritySecret: string;
+  authorityCredential: FoundationAuthorityCredential;
   publicationDigest: Sha256;
   implementationRoots?: readonly string[];
   checkBindings?: Readonly<Record<string, FoundationCheckBinding>>;
   stage?: boolean;
 }): Promise<FoundationRepositoryContract> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   const contractPath = join(repository, ".lifecycle", "repository.json");
   await refusePredecessorOrMixedState(repository, contractPath);
   await validateAtlas(repository);
@@ -457,7 +471,7 @@ export async function initializeRepository(path: string, options: {
   const authorityHome = await canonicalMachineHome(options.home, repository);
   const journal = await initializationJournal({ authorityHome, contractPath, repository, targetId });
   try {
-    const authority = await createFoundationAuthority(authorityHome, targetId, options.authoritySecret, options.founderPrincipal ?? "founder");
+    const authority = await createFoundationAuthority(authorityHome, targetId, options.authorityCredential, options.directorPrincipal ?? "director");
     const contract = createRepositoryContract({
       targetId,
       canonicalBranch: head.branch,

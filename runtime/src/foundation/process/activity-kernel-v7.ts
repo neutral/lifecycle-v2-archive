@@ -176,6 +176,8 @@ export type FoundationActivityKernelCheckpointFileCommitV7 = Readonly<{
   expected: ControlRecordOperationSupportCoordinate;
   checkpoint: ControlJsonObject | null;
   append: ControlRecordStoreAppend;
+  /** Subsequent same-Activity appends, validated in order by the Store reducer. */
+  followingAppends?: readonly ControlRecordStoreAppend[];
   files: readonly ControlRecordFileInput[];
 }>;
 
@@ -916,12 +918,19 @@ export function createFoundationActivityKernelCheckpointAdapterV7<
     ): Promise<FoundationActivityKernelCheckpointResultV7<Plan, Checkpoint>> {
       const prepared = prepare(mutation);
       assertCheckpointAppend(prepared.current, mutation.append);
+      const following = mutation.followingAppends ?? [];
+      for (const append of following) {
+        if (append.event.payload.activityId !== activityId ||
+          append.event.eventKind === "activity-completed" || append.event.eventKind === "closure-recorded") {
+          fail("checkpoint-activity", "Ordered file appends must remain inside this exact unfinished Activity");
+        }
+      }
       if (mutation.files.length < 1) {
         fail("checkpoint-files", "A file-bound checkpoint must supply at least one file");
       }
       const committed = await input.store.commitOperationBatchWithFiles({
         files: Object.freeze([...mutation.files]),
-        appends: Object.freeze([mutation.append]),
+        appends: Object.freeze([mutation.append, ...following]),
         supportMutations: Object.freeze([prepared.put]),
       });
       return result(
@@ -954,26 +963,26 @@ function transactionActivityDecisionKind(
   activityId: string,
 ): FoundationTransactionDecisionKindV7 {
   const decisions = allEvents(store).filter((event) =>
-    event.eventKind === "founder-decision-authenticated" &&
+    event.eventKind === "director-decision-authenticated" &&
     event.payload.activityId === activityId);
   const selected = decisions.length === 1 ? decisions[0]!.subject : null;
   if (selected === null) {
-    fail("transaction-decision", "Transaction activity lacks one exact Founder Decision subject");
+    fail("transaction-decision", "Transaction activity lacks one exact Director Decision subject");
   }
   const revision = store.getRevision(selected.recordId, selected.revision);
   if (
     revision === null ||
-    revision.recordKind !== "founder-decision" ||
+    revision.recordKind !== "director-decision" ||
     revision.digest !== selected.digest
   ) {
-    fail("transaction-decision", "Transaction activity Founder Decision does not resolve exactly");
+    fail("transaction-decision", "Transaction activity Director Decision does not resolve exactly");
   }
   const decision = revision.payload.decision;
   if (
     decision !== "admit" && decision !== "readmit" &&
     decision !== "accept" && decision !== "no-ship"
   ) {
-    fail("transaction-decision", "Transaction activity Founder Decision kind is unsupported");
+    fail("transaction-decision", "Transaction activity Director Decision kind is unsupported");
   }
   return decision;
 }

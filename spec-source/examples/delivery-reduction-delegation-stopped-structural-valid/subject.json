@@ -1,0 +1,53 @@
+{
+  "schema": "lifecycle.delivery-reduction.v5",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "standing": "framing",
+  "candidateCondition": "absent",
+  "activities": [],
+  "recovery": null,
+  "subjects": {
+    "proposedBoundary": null,
+    "activeBoundary": null,
+    "candidate": null,
+    "materialCondition": null,
+    "seal": null,
+    "evidence": null,
+    "closure": null,
+    "integrationAssessment": null
+  },
+  "journal": {
+    "eventCount": 1,
+    "headSequence": 1,
+    "headDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "storeDisposition": {
+    "stage": "active",
+    "integrity": "verified",
+    "sealSubjectDigest": null,
+    "archiveManifestDigest": null
+  },
+  "eligibleOperations": [
+    "delivery.prepare"
+  ],
+  "delegation": {
+    "admission": {
+      "id": "decision.admission.demo",
+      "revision": 1,
+      "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "current": {
+      "reference": {
+        "id": "delegation.demo",
+        "revision": 1,
+        "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "stopped": true
+    },
+    "charged": {
+      "operations": 3,
+      "agentAttempts": 2,
+      "reservedCellWallTimeMs": 6000
+    }
+  }
+}

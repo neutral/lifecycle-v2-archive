@@ -189,6 +189,7 @@ function fakeStore(): FakeStore {
         ? Object.freeze([])
         : Object.freeze([selectedActivity]),
       subjects: Object.freeze({
+        integrationAssessment: null,
         proposedBoundary: null,
         activeBoundary: null,
         candidate: null,
@@ -197,6 +198,7 @@ function fakeStore(): FakeStore {
         evidence: null,
         closure: null,
       }),
+      delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
       journal: Object.freeze({
         eventCount: head?.sequence ?? 0,
         headDigest: head?.digest ?? null,
@@ -248,11 +250,11 @@ function fakeStore(): FakeStore {
         recovery(
           "finalization",
           operation === "delivery.no-ship"
-            ? "founder-decision-authenticated"
+            ? "director-decision-authenticated"
             : "agent-attempt-prepared",
         ),
       );
-    } else if (event.eventKind === "founder-decision-authenticated") {
+    } else if (event.eventKind === "director-decision-authenticated") {
       assert(selectedActivity !== null);
       selectedActivity = Object.freeze({
         ...selectedActivity,
@@ -459,21 +461,21 @@ function openTransaction(selected: FakeStore) {
   });
   const decisionInput: ControlRecordRevisionInput = Object.freeze({
     recordId: "decision-activity-kernel-v7",
-    recordKind: "founder-decision",
+    recordKind: "director-decision",
     revision: 1,
     producer: Object.freeze({ kind: "runtime", id: RUNTIME }),
-    semanticAuthor: Object.freeze({ kind: "founder", id: "founder" }),
-    semanticAuthority: "founder-authenticated",
+    semanticAuthor: Object.freeze({ kind: "director", id: "director" }),
+    semanticAuthority: "director-authenticated",
     createdAt: CREATED,
-    semanticMarkdown: "# Founder Decision\n\nDo not ship this Delivery.\n",
-    payload: validDeliveryControlPayload("founder-decision"),
+    semanticMarkdown: "# Director Decision\n\nDo not ship this Delivery.\n",
+    payload: validDeliveryControlPayload("director-decision"),
   });
   const decision = compileControlRecordRevision(identity.processId, decisionInput);
   selected.store.append(Object.freeze({
     revision: decisionInput,
     event: Object.freeze({
-      eventId: "event-founder-decision-activity-kernel-v7",
-      eventKind: "founder-decision-authenticated",
+      eventId: "event-director-decision-activity-kernel-v7",
+      eventKind: "director-decision-authenticated",
       occurredAt: CREATED,
       actor: Object.freeze({ kind: "runtime" as const, id: RUNTIME }),
       subject: Object.freeze({
@@ -543,14 +545,14 @@ test("a real Control Store commits opening facts and support in one reducer-vali
     });
     const briefInput: ControlRecordRevisionInput = Object.freeze({
       recordId: "brief-activity-kernel-v7",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: Object.freeze({ kind: "runtime", id: RUNTIME }),
-      semanticAuthor: Object.freeze({ kind: "founder", id: "founder" }),
-      semanticAuthority: "founder-supplied",
+      semanticAuthor: Object.freeze({ kind: "director", id: "director" }),
+      semanticAuthority: "director-supplied",
       createdAt: "2026-08-29T20:00:01.000Z",
-      semanticMarkdown: "# Founder Brief\n\nOpen one kernel-owned preparation activity.\n",
-      payload: validDeliveryControlPayload("founder-brief"),
+      semanticMarkdown: "# Director Brief\n\nOpen one kernel-owned preparation activity.\n",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: ACTIVITY } },
     });
     const brief = compileControlRecordRevision(store.identity.processId, briefInput);
     const opened = openFoundationActivityKernelV7({
@@ -564,8 +566,8 @@ test("a real Control Store commits opening facts and support in one reducer-vali
       appends: Object.freeze([Object.freeze({
         revision: briefInput,
         event: Object.freeze({
-          eventId: "event-founder-brief-activity-kernel-v7",
-          eventKind: "founder-brief-submitted",
+          eventId: "event-director-brief-activity-kernel-v7",
+          eventKind: "director-brief-submitted",
           occurredAt: briefInput.createdAt,
           actor: Object.freeze({ kind: "runtime" as const, id: RUNTIME }),
           subject: Object.freeze({

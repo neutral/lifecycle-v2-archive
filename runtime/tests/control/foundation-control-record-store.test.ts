@@ -122,14 +122,14 @@ function activityOpeningBatch(
   const activityId = `prepare-batch-${suffix}`;
   const briefInput: ControlRecordRevisionInput = Object.freeze({
     recordId: `brief-batch-${suffix}`,
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     revision: 1,
     producer: Object.freeze({ kind: "runtime", id: "foundation-runtime" }),
-    semanticAuthor: Object.freeze({ kind: "founder", id: `founder-${suffix}` }),
-    semanticAuthority: "founder-supplied",
+    semanticAuthor: Object.freeze({ kind: "director", id: `director-${suffix}` }),
+    semanticAuthority: "director-supplied",
     createdAt: "2026-08-29T04:00:01.000Z",
-    semanticMarkdown: "# Founder Brief\n\nOpen one exact activity.\n",
-    payload: validDeliveryControlPayload("founder-brief"),
+    semanticMarkdown: "# Director Brief\n\nOpen one exact activity.\n",
+    payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: activityId } },
   });
   const brief = compileControlRecordRevision(store.identity.processId, briefInput);
   const attemptInput: ControlRecordRevisionInput = Object.freeze({
@@ -161,7 +161,7 @@ function activityOpeningBatch(
     revision: briefInput,
     event: Object.freeze({
       eventId: `event-brief-batch-${suffix}`,
-      eventKind: "founder-brief-submitted",
+      eventKind: "director-brief-submitted",
       occurredAt: briefInput.createdAt,
       actor: Object.freeze({ kind: "runtime", id: "foundation-runtime" }),
       subject: Object.freeze({
@@ -226,15 +226,15 @@ function prepareFailedAgentActivity(
   });
   const brief = appendFinalizedRevision(store, {
     recordId: `brief-${suffix}`,
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     revision: 1,
     producer: { kind: "runtime", id: "foundation-runtime" },
-    semanticAuthor: { kind: "founder", id: `founder-${suffix}` },
-    semanticAuthority: "founder-supplied",
+    semanticAuthor: { kind: "director", id: `director-${suffix}` },
+    semanticAuthority: "director-supplied",
     createdAt: "2026-08-29T03:00:02.000Z",
-    semanticMarkdown: "# Founder Brief\n\nExercise adjacent-file custody.\n",
-    payload: validDeliveryControlPayload("founder-brief"),
-  }, `event-brief-${suffix}`, "founder-brief-submitted", activityId);
+    semanticMarkdown: "# Director Brief\n\nExercise adjacent-file custody.\n",
+    payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: activityId } },
+  }, `event-brief-${suffix}`, "director-brief-submitted", activityId);
   store.append({
     event: {
       eventId: `event-activity-started-${suffix}`,
@@ -384,26 +384,26 @@ test("common Control values reject unbounded typed payloads before retention", (
 
   assert.throws(() => compileControlRecordRevision("delivery-bounds", {
     recordId: "brief-bounds",
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     revision: 1,
     producer: { kind: "runtime", id: "foundation-runtime" },
-    semanticAuthor: { kind: "founder", id: "founder-bounds" },
-    semanticAuthority: "founder-supplied",
+    semanticAuthor: { kind: "director", id: "director-bounds" },
+    semanticAuthority: "director-supplied",
     createdAt: "2026-08-29T00:00:00Z",
-    semanticMarkdown: "# Founder Brief\n\nBound the input.\n",
+    semanticMarkdown: "# Director Brief\n\nBound the input.\n",
     payload: { oversized: "x".repeat(2 * 1024 * 1024) },
   }), code("json-bounds"));
 
   const mutablePayload = { nested: { value: "before" }, list: ["one"] };
   const immutableRevision = compileControlRecordRevision("delivery-immutable-value", {
     recordId: "brief-immutable-value",
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     revision: 1,
     producer: { kind: "runtime", id: "foundation-runtime" },
-    semanticAuthor: { kind: "founder", id: "founder-immutable-value" },
-    semanticAuthority: "founder-supplied",
+    semanticAuthor: { kind: "director", id: "director-immutable-value" },
+    semanticAuthority: "director-supplied",
     createdAt: "2026-08-29T00:00:01Z",
-    semanticMarkdown: "# Founder Brief\n\nRetain immutable values.\n",
+    semanticMarkdown: "# Director Brief\n\nRetain immutable values.\n",
     payload: mutablePayload,
   });
   mutablePayload.nested.value = "after";
@@ -900,14 +900,14 @@ test("retains immutable revisions and one append-only logical event chain", asyn
     });
     const firstInput = Object.freeze({
       recordId: "brief-one",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: Object.freeze({ kind: "runtime" as const, id: "foundation-runtime" }),
-      semanticAuthor: Object.freeze({ kind: "founder" as const, id: "founder-one" }),
-      semanticAuthority: "founder-supplied" as const,
+      semanticAuthor: Object.freeze({ kind: "director" as const, id: "director-one" }),
+      semanticAuthority: "director-supplied" as const,
       createdAt: "2026-08-29T01:00:01.000Z",
       semanticMarkdown: "# Objective\r\n\r\nBuild the exact thing.\r\n\r\n",
-      payload: validDeliveryControlPayload("founder-brief"),
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: "activity-one" } },
       relationships: Object.freeze([]),
     });
     const compiledFirst = compileControlRecordRevision(selectedIdentity.processId, firstInput);
@@ -915,7 +915,7 @@ test("retains immutable revisions and one append-only logical event chain", asyn
       revision: firstInput,
       event: {
         eventId: "event-one",
-        eventKind: "founder-brief-submitted",
+        eventKind: "director-brief-submitted",
         occurredAt: "2026-08-29T01:00:01.000Z",
         actor: { kind: "runtime", id: "foundation-runtime" },
         subject: {
@@ -934,7 +934,7 @@ test("retains immutable revisions and one append-only logical event chain", asyn
       revision: firstInput,
       event: {
         eventId: "event-one",
-        eventKind: "founder-brief-submitted",
+        eventKind: "director-brief-submitted",
         occurredAt: "2026-08-29T01:00:01.000Z",
         actor: { kind: "runtime", id: "foundation-runtime" },
         subject: {
@@ -974,7 +974,7 @@ test("retains immutable revisions and one append-only logical event chain", asyn
       relationships: Object.freeze([{
         relation: "uses-brief",
         target: {
-          kind: "founder-brief",
+          kind: "director-brief",
           id: compiledFirst.recordId,
           revision: compiledFirst.revision,
           digest: compiledFirst.digest,
@@ -1170,7 +1170,7 @@ test("appendBatch refuses an ambiguous partially retained boundary", async () =>
     assert.throws(() => store.appendBatch(opening.items), code("batch-partial"));
     assert.deepEqual(
       store.listEvents().map(({ eventKind }) => eventKind),
-      ["delivery-created", "founder-brief-submitted"],
+      ["delivery-created", "director-brief-submitted"],
     );
     assert.equal(store.getRevision(opening.brief.recordId, 1)?.digest, opening.brief.digest);
     assert.equal(store.getRevision(opening.attempt.recordId, 1), null);
@@ -1305,21 +1305,21 @@ test("rejects revision gaps, identity reuse, and unretained event subjects", asy
 
     const briefInput: ControlRecordRevisionInput = {
       recordId: "brief-refusal",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: { kind: "runtime", id: "foundation-runtime" },
-      semanticAuthor: { kind: "founder", id: "founder-refusal" },
-      semanticAuthority: "founder-supplied",
+      semanticAuthor: { kind: "director", id: "director-refusal" },
+      semanticAuthority: "director-supplied",
       createdAt: "2026-08-29T02:00:02.000Z",
-      semanticMarkdown: "# Founder Brief\n\nExercise exact refusals.\n",
-      payload: validDeliveryControlPayload("founder-brief"),
+      semanticMarkdown: "# Director Brief\n\nExercise exact refusals.\n",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: "event-brief-refusal" } },
     };
     assert.throws(
       () => appendFinalizedRevision(
         store,
         briefInput,
         "event-brief-refusal",
-        "founder-brief-submitted",
+        "director-brief-submitted",
       ),
       reducerCode("order"),
       "a semantically illegal first event must roll back its revision and event",
@@ -1346,7 +1346,7 @@ test("rejects revision gaps, identity reuse, and unretained event subjects", asy
         store,
         invalidPayloadBrief,
         "event-brief-invalid-payload",
-        "founder-brief-submitted",
+        "director-brief-submitted",
       ),
       schemaCode,
     );
@@ -1356,7 +1356,7 @@ test("rejects revision gaps, identity reuse, and unretained event subjects", asy
       store,
       briefInput,
       "event-brief-refusal",
-      "founder-brief-submitted",
+      "director-brief-submitted",
     );
     const nullTargetAttempt = {
       recordId: "attempt-null-target",
@@ -1863,21 +1863,21 @@ test("SQLite guards refuse mutation and opening reapplies the closed event descr
     });
     const revisionInput = {
       recordId: "brief-immutable",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: { kind: "runtime" as const, id: "foundation-runtime" },
-      semanticAuthor: { kind: "founder" as const, id: "founder-immutable" },
-      semanticAuthority: "founder-supplied" as const,
+      semanticAuthor: { kind: "director" as const, id: "director-immutable" },
+      semanticAuthority: "director-supplied" as const,
       createdAt: "2026-08-29T04:00:00.000Z",
       semanticMarkdown: "# Objective\n\nStay immutable.\n",
-      payload: validDeliveryControlPayload("founder-brief"),
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: "activity-immutable" } },
     };
     const revision = compileControlRecordRevision(selectedIdentity.processId, revisionInput);
     store.append({
       revision: revisionInput,
       event: {
         eventId: "event-immutable",
-        eventKind: "founder-brief-submitted",
+        eventKind: "director-brief-submitted",
         occurredAt: "2026-08-29T04:00:00.000Z",
         actor: { kind: "runtime", id: "foundation-runtime" },
         subject: { recordId: revision.recordId, revision: 1, digest: revision.digest },
@@ -1962,15 +1962,15 @@ test("seals one exact Closure inventory and atomically archives the complete sto
     const prepareActivity = "prepare-archive";
     const brief = appendFinalizedRevision(store, {
       recordId: "brief-archive",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: { kind: "runtime", id: "foundation-runtime" },
-      semanticAuthor: { kind: "founder", id: "founder-archive" },
-      semanticAuthority: "founder-supplied",
+      semanticAuthor: { kind: "director", id: "director-archive" },
+      semanticAuthority: "director-supplied",
       createdAt: "2026-08-29T05:00:01Z",
-      semanticMarkdown: "# Founder Brief\n\nAttempt one bounded reconnaissance pass.\n",
-      payload: validDeliveryControlPayload("founder-brief"),
-    }, "event-brief-archive", "founder-brief-submitted", prepareActivity);
+      semanticMarkdown: "# Director Brief\n\nAttempt one bounded reconnaissance pass.\n",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: prepareActivity } },
+    }, "event-brief-archive", "director-brief-submitted", prepareActivity);
     store.append({
       event: {
         eventId: "event-prepare-started-archive",
@@ -2100,15 +2100,15 @@ test("seals one exact Closure inventory and atomically archives the complete sto
     });
     const decision = appendFinalizedRevision(store, {
       recordId: "decision-archive",
-      recordKind: "founder-decision",
+      recordKind: "director-decision",
       revision: 1,
       producer: { kind: "runtime", id: "foundation-runtime" },
-      semanticAuthor: { kind: "founder", id: "founder-archive" },
-      semanticAuthority: "founder-authenticated",
+      semanticAuthor: { kind: "director", id: "director-archive" },
+      semanticAuthority: "director-authenticated",
       createdAt: "2026-08-29T05:00:10Z",
-      semanticMarkdown: "# Founder Decision\n\nNo-ship is authenticated.\n",
-      payload: validDeliveryControlPayload("founder-decision"),
-    }, "event-decision-archive", "founder-decision-authenticated", noShipActivity);
+      semanticMarkdown: "# Director Decision\n\nNo-ship is authenticated.\n",
+      payload: validDeliveryControlPayload("director-decision"),
+    }, "event-decision-archive", "director-decision-authenticated", noShipActivity);
     const transactionEffect = sha256Bytes("transaction-effect-archive");
     const transactionFacts = Object.freeze({
       schema: "lifecycle.terminal-repository-effect-observation.v1",

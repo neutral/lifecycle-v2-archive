@@ -1,20 +1,25 @@
-# Scripts
+# Local distribution source tools
 
-These scripts implement the local distribution artifact pipeline. Image
-builders require one clean exact source revision and explicit digest-selected
-base images and package versions. They clone the selected immutable commit into
-a fresh detached temporary source snapshot, and Docker receives only that
-snapshot as build context. Published-image inspection derives platform and
-configuration identities from GHCR rather than accepting manual digest
-transcription. Manifest verification, release-source verification, and package
-staging remain separate gates.
+The image builders require one clean exact Git revision, explicit
+digest-selected base images, exact package versions, and an output tag. They
+materialize that commit in a detached temporary snapshot and pass only that
+snapshot to Docker. These local builders run separately from default source
+checks.
 
-The image builders disable implicit provenance and SBOM attestations. The
-current published-image inspector accepts exactly two runnable platform
-manifests; a release publisher must preserve `--provenance=false --sbom=false`
-until attestation identities are added deliberately.
+`create-manifest.mjs` constructs a private manifest from explicit image
+selections. `verify-distribution.mjs` checks its schema, source structure, and
+launcher tests. The fixed template supplies package and protocol coordinates;
+actual image identities come from the build selection.
 
-No script in this folder publishes to npm or GHCR. `pack-distribution.mjs`
-creates a release-shaped tarball only from a clean exact source.
-`pack-qualification-fixture.mjs` creates a private, visibly non-release package
-for installed-path testing from an in-progress checkout.
+`verify-release-source.mjs` checks that the manifest selects the exact clean
+checked-out commit. `pack-distribution.mjs` builds that commit in a detached
+temporary snapshot and stages the CLI package with the selected manifest and
+digest sidecar. Invoke it through `npm run pack:distribution -- --manifest PATH
+--destination DIRECTORY`, with an empty destination outside the source checkout.
+
+`pack-qualification-fixture.mjs` stages the installed harness's private
+`0.0.0-qualification` artifact and refuses a publishable identity. This helper
+runs separately from default source builds and checks.
+
+The [distribution overview](../overview.md) identifies source owners and
+[provenance limits](../provenance/overview.md) describe the image-source boundary.

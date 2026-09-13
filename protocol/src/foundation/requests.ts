@@ -13,6 +13,11 @@ import {
   FoundationPublicFactsSchema,
   FoundationSemanticMarkdownSchema,
   FoundationSha256Schema,
+  FoundationWorkDelegationTimeSchema,
+  FoundationWorkDelegationAgentSelectionSchema,
+  FoundationWorkDelegationAllowedOperationsSchema,
+  FoundationWorkDelegationCeilingsSchema,
+  FoundationWorkDelegationReferenceSchema,
   canonicalFoundationJsonLine,
   digestFoundationCanonical,
   type FoundationSha256,
@@ -22,6 +27,7 @@ import {
   FoundationTargetSchema,
   protocolParse,
 } from "./internal.js";
+import { FoundationContextInspectionSelectorSchema } from "./context-inspection.js";
 
 const FoundationRuntimeRequestBaseSchema = z.object({
   schema: z.literal(FOUNDATION_RUNTIME_FACADE_SCHEMA),
@@ -30,7 +36,7 @@ const FoundationRuntimeRequestBaseSchema = z.object({
 
 export const FoundationRuntimeInitializeInputSchema = z.object({
   targetId: FoundationOpaqueIdSchema.optional(),
-  founderPrincipal: FoundationOpaqueIdSchema.optional(),
+  directorPrincipal: FoundationOpaqueIdSchema.optional(),
   implementationRoots: z.array(z.string().min(1).max(4_096)).max(4_096).optional(),
   checkBindings: FoundationPublicFactsSchema.optional(),
   stage: z.boolean().optional(),
@@ -81,10 +87,15 @@ function semanticDeliveryRequest<
     operation: z.literal(operation),
     input: z.object({
       semanticMarkdown: FoundationSemanticMarkdownSchema,
-      expectedGeneration: FoundationSha256Schema.optional(),
+      expectedGeneration: FoundationSha256Schema,
     }).strict(),
   }).strict();
 }
+
+export const FoundationRuntimeIntegrateRequestSchema = FoundationDeliveryRequestBaseSchema.extend({
+  operation: z.literal("delivery.integrate"),
+  input: z.object({ expectedGeneration: FoundationSha256Schema }).strict(),
+}).strict();
 
 export const FoundationRuntimeContinueRequestSchema = semanticDeliveryRequest("delivery.continue");
 export const FoundationRuntimeEvaluateRequestSchema = semanticDeliveryRequest("delivery.evaluate");
@@ -106,6 +117,36 @@ export const FoundationRuntimeNoShipRequestSchema = FoundationDeliveryRequestBas
 export const FoundationRuntimeRecoverRequestSchema = FoundationDeliveryRequestBaseSchema.extend({
   operation: z.literal("delivery.recover"),
   input: z.null(),
+}).strict();
+
+const FoundationWorkAgentChoiceSchema = FoundationWorkDelegationAgentSelectionSchema.pick({ model: true, reasoning: true });
+export const FoundationRuntimeWorkInputSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("set"), expectedGeneration: FoundationSha256Schema,
+    allowedOperations: FoundationWorkDelegationAllowedOperationsSchema,
+    directions: z.object({ continue: FoundationSemanticMarkdownSchema.nullable(),
+      evaluate: FoundationSemanticMarkdownSchema.nullable() }).strict(),
+    agentChoices: z.object({ builder: FoundationWorkAgentChoiceSchema.nullable(),
+      reviewer: FoundationWorkAgentChoiceSchema.nullable() }).strict(),
+    ceilings: FoundationWorkDelegationCeilingsSchema, expiresAt: FoundationWorkDelegationTimeSchema.nullable(),
+  }).strict(),
+  z.object({ action: z.literal("run"), expectedGeneration: FoundationSha256Schema,
+    delegation: FoundationWorkDelegationReferenceSchema }).strict(),
+  z.object({ action: z.literal("stop"), delegation: FoundationWorkDelegationReferenceSchema }).strict(),
+]).superRefine((value, context) => {
+  if (value.action !== "set") return;
+  const builder = value.allowedOperations.includes("delivery.continue");
+  const reviewer = value.allowedOperations.includes("delivery.evaluate");
+  if ((value.directions.continue !== null) !== builder || (value.agentChoices.builder !== null) !== builder ||
+      (value.directions.evaluate !== null) !== reviewer || (value.agentChoices.reviewer !== null) !== reviewer) {
+    context.addIssue({ code: "custom", message: "Delegated Agent operations require exactly their original direction and model/reasoning choice" });
+  }
+  if ((builder || reviewer) && (value.ceilings.agentAttempts < 1 || value.ceilings.reservedCellWallTimeMs < 1)) {
+    context.addIssue({ code: "custom", path: ["ceilings"], message: "Agent work requires finite positive attempt and Cell wall-time allowances" });
+  }
+});
+export const FoundationRuntimeWorkRequestSchema = FoundationDeliveryRequestBaseSchema.extend({
+  operation: z.literal("delivery.work"), input: FoundationRuntimeWorkInputSchema,
 }).strict();
 
 export const FoundationAttemptViewSelectionSchema = z.discriminatedUnion("kind", [
@@ -151,6 +192,7 @@ export const FoundationInspectQuerySchema = z.discriminatedUnion("kind", [
     afterRevision: FoundationNonnegativeSafeIntegerSchema,
     limit: z.number().int().min(1).max(200),
   }).strict(),
+  ...FoundationContextInspectionSelectorSchema.options,
 ]);
 
 export const FoundationRuntimeInspectRequestSchema = FoundationDeliveryRequestBaseSchema.extend({
@@ -198,12 +240,14 @@ export const FoundationRuntimeOperationRequestSchema = z.discriminatedUnion("ope
   FoundationRuntimePrepareRequestSchema,
   FoundationRuntimeAdmitRequestSchema,
   FoundationRuntimeContinueRequestSchema,
+  FoundationRuntimeIntegrateRequestSchema,
   FoundationRuntimeEvaluateRequestSchema,
   FoundationRuntimeReviseRequestSchema,
   FoundationRuntimeReaffirmRequestSchema,
   FoundationRuntimeAcceptRequestSchema,
   FoundationRuntimeNoShipRequestSchema,
   FoundationRuntimeRecoverRequestSchema,
+  FoundationRuntimeWorkRequestSchema,
   FoundationRuntimeInspectRequestSchema,
   FoundationRuntimeDiffRequestSchema,
   FoundationRuntimeWatchRequestSchema,
@@ -216,6 +260,7 @@ export type FoundationRuntimeInboxRequest = z.output<typeof FoundationRuntimeInb
 export type FoundationRuntimeStatusRequest = z.output<typeof FoundationRuntimeStatusRequestSchema>;
 export type FoundationRuntimePrepareRequest = z.output<typeof FoundationRuntimePrepareRequestSchema>;
 export type FoundationRuntimeAdmitRequest = z.output<typeof FoundationRuntimeAdmitRequestSchema>;
+export type FoundationRuntimeIntegrateRequest = z.output<typeof FoundationRuntimeIntegrateRequestSchema>;
 export type FoundationRuntimeContinueRequest = z.output<typeof FoundationRuntimeContinueRequestSchema>;
 export type FoundationRuntimeEvaluateRequest = z.output<typeof FoundationRuntimeEvaluateRequestSchema>;
 export type FoundationRuntimeReviseRequest = z.output<typeof FoundationRuntimeReviseRequestSchema>;
@@ -223,6 +268,7 @@ export type FoundationRuntimeReaffirmRequest = z.output<typeof FoundationRuntime
 export type FoundationRuntimeAcceptRequest = z.output<typeof FoundationRuntimeAcceptRequestSchema>;
 export type FoundationRuntimeNoShipRequest = z.output<typeof FoundationRuntimeNoShipRequestSchema>;
 export type FoundationRuntimeRecoverRequest = z.output<typeof FoundationRuntimeRecoverRequestSchema>;
+export type FoundationRuntimeWorkRequest = z.output<typeof FoundationRuntimeWorkRequestSchema>;
 export type FoundationRuntimeInspectRequest = z.output<typeof FoundationRuntimeInspectRequestSchema>;
 export type FoundationRuntimeDiffRequest = z.output<typeof FoundationRuntimeDiffRequestSchema>;
 export type FoundationRuntimeWatchRequest = z.output<typeof FoundationRuntimeWatchRequestSchema>;

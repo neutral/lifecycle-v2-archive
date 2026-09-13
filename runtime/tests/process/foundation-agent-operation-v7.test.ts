@@ -1,3 +1,12 @@
+import { installedHarness, type InstalledHarness, type AgentCellFixtureOutputProducer } from "../support/agent-cell-runtime-fixture.js";
+import { FoundationError } from "../../src/foundation/error.js";
+import { createFoundationDockerExecutionBackend, type FoundationDockerEngineDriverV1 } from "../../src/foundation/execution/docker-backend.js";
+import { foundationDockerExecutionBackendProfileV1 } from "../../src/foundation/execution/docker-profile-v1.js";
+import { createFoundationAgentCellOperatorV1, FoundationAgentCellInputTransportRegistryV1 } from "../../src/foundation/execution/installed-agent-runtime-v1.js";
+import { createFoundationExecutionOutputStoreV1 } from "../../src/foundation/execution/output-store-v1.js";
+import type { FoundationExecutionBackend } from "../../src/foundation/execution/backend.js";
+import { openFoundationExecutionReclamationLedgerV1 } from "../../src/foundation/execution/reclamation-ledger-v1.js";
+import { preDispatchAbsenceBackend } from "../support/pre-dispatch-absence-backend.js";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,7 +17,6 @@ import {
 } from "../../src/foundation/attempt/provider-input-v4.js";
 import {
   operateFoundationAgentCellV1,
-  type FoundationAgentCellInstalledInputsV1,
 } from "../../src/foundation/attempt/execution-cell-v1.js";
 import {
   retainExecutionReceipt,
@@ -21,28 +29,6 @@ import {
   CONTROL_RECORD_STORE_SCHEMA,
   type ControlJsonObject,
 } from "../../src/foundation/control/types.js";
-import type {
-  FoundationExecutionBackend,
-  FoundationExecutionHandle,
-  FoundationRetrievedExecutionOutputV1,
-} from "../../src/foundation/execution/backend.js";
-import type {
-  FoundationExecutionOutputManifestEntryV1,
-  FoundationExecutionSpecificationV1,
-} from "../../src/foundation/execution/contracts.js";
-import {
-  createFoundationExecutionOutputStoreV1,
-} from "../../src/foundation/execution/output-store-v1.js";
-import {
-  openFoundationExecutionReclamationLedgerV1,
-} from "../../src/foundation/execution/reclamation-ledger-v1.js";
-import type {
-  FoundationCompiledInstalledAgentCellInputsV1,
-  FoundationOpenedInstalledAgentRuntimeV1,
-} from "../../src/foundation/execution/installed-agent-runtime-v1.js";
-import {
-  FoundationAgentCellInputTransportRegistryV1,
-} from "../../src/foundation/execution/installed-agent-runtime-v1.js";
 import {
   inspectFoundationAgentActivityV7,
   operateFoundationAgentActivityV7,
@@ -66,18 +52,12 @@ import {
   type Sha256,
 } from "../../src/foundation/validation/canonical.js";
 import {
-  FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1,
-} from "../../src/util/agent-execution-cell-operation-v1.js";
-import {
   foundationAttemptProjectionFixture,
   type FoundationAttemptProjectionOrientationSubject,
 } from "../helpers/foundation-attempt-projection-fixture.js";
 import {
   executionContractFixture,
 } from "../support/execution-contract-fixture.js";
-import {
-  InMemoryExecutionBackendEngine,
-} from "../support/in-memory-execution-backend.js";
 
 const RUNTIME = "foundation-runtime";
 const TARGET = "agent-operation-v7-target";
@@ -140,314 +120,15 @@ async function freshStore(root: string): Promise<ControlRecordStore> {
   return store;
 }
 
-function providerTerminalBytes(input: Readonly<{
-  specification: FoundationExecutionSpecificationV1;
-  executableIdentity: Sha256;
-  runnerImplementationDigest: Sha256;
-}>): Uint8Array {
-  if (input.specification.owner.kind !== "agent-attempt" ||
-      input.specification.operation.kind !== "agent-attempt") {
-    throw new TypeError("Agent operation test received another Execution Specification owner");
-  }
-  const subject = Object.freeze({
-    schema: "lifecycle.agent-execution-cell-provider-terminal-observation.private.v1" as const,
-    attemptDigest: input.specification.owner.attempt.digest,
-    specificationDigest: input.specification.digest,
-    providerDescriptorDigest: input.specification.operation.providerDescriptorDigest,
-    adapterImplementationDigest: input.specification.operation.adapterImplementationDigest,
-    imageDigest: input.specification.image.imageDigest,
-    runnerContractDigest: input.specification.runner.contractDigest,
-    runnerImplementationDigest: input.runnerImplementationDigest,
-    preparedAt: "2026-09-01T00:00:00.010Z",
-    startedAt: "2026-09-01T00:00:00.020Z",
-    finishedAt: "2026-09-01T00:00:00.030Z",
-    executableIdentity: input.executableIdentity,
-    outcome: "natural-return" as const,
-    stage: "evaluated" as const,
-    productiveStarted: true,
-    firstTrigger: "natural-return" as const,
-    exitCode: 0,
-    signal: null,
-    sessionId: "agent-operation-v7-session",
-  });
-  return Uint8Array.from(Buffer.from(
-    canonicalJsonLine({ ...subject, digest: selfDigest(subject) }),
-    "utf8",
-  ));
-}
-
-function executionOutput(input: Readonly<{
-  specification: FoundationExecutionSpecificationV1;
-  executableIdentity: Sha256;
-  runnerImplementationDigest: Sha256;
-  invalidAuthoringCarrier?: boolean;
-}>): FoundationRetrievedExecutionOutputV1 {
-  const terminalBytes = providerTerminalBytes(input);
-  const semanticBytes = Uint8Array.from(Buffer.from(
-    "# Reconnaissance Work Product\n\n## Outcome\n\nObserved.\n",
-    "utf8",
-  ));
-  const values = [
-    Object.freeze({
-      path: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerTerminalObservationPath,
-      purpose: "operational-artifact" as const,
-      mediaType:
-        FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerTerminalObservationMediaType,
-      modeClass: "regular" as const,
-      bytes: terminalBytes,
-    }),
-    ...(input.invalidAuthoringCarrier === true ? [Object.freeze({
-      path: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.semanticWorkspacePath,
-      purpose: "agent-work-product" as const,
-      mediaType: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.semanticWorkspaceMediaType,
-      modeClass: "regular" as const,
-      bytes: semanticBytes,
-    })] : []),
-  ].sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
-  const entries: readonly FoundationExecutionOutputManifestEntryV1[] = Object.freeze(
-    values.map((value) => Object.freeze({
-      path: value.path,
-      entryKind: "file" as const,
-      purpose: value.purpose,
-      mediaType: value.mediaType,
-      modeClass: value.modeClass,
-      byteLength: value.bytes.byteLength,
-      digest: sha256Bytes(value.bytes),
-    })),
-  );
-  const aggregateByteLength = entries.reduce((sum, entry) => sum + entry.byteLength, 0);
-  const manifestSubject = Object.freeze({
-    schema: "lifecycle.execution-output-manifest.v1" as const,
-    specificationDigest: input.specification.digest,
-    inputSetDigest: input.specification.inputSet.digest,
-    imageDigest: input.specification.image.imageDigest,
-    outputContractDigest: input.specification.outputContract.digest,
-    runnerDigest: input.specification.runner.contractDigest,
-    completedAt: "2026-09-01T00:00:00.100Z",
-    entries,
-    entryCount: entries.length,
-    aggregateByteLength,
-    entryInventoryDigest: digestCanonical(entries),
-  });
-  return Object.freeze({
-    manifest: Object.freeze({ ...manifestSubject, digest: selfDigest(manifestSubject) }),
-    carrierByteLength: aggregateByteLength,
-    async *entries() {
-      for (let index = 0; index < entries.length; index += 1) {
-        const descriptor = entries[index]!;
-        const bytes = values[index]!.bytes;
-        yield Object.freeze({
-          path: descriptor.path,
-          byteLength: descriptor.byteLength,
-          digest: descriptor.digest,
-          async *read() {
-            yield Uint8Array.from(bytes);
-          },
-        });
-      }
-    },
-  });
-}
-
-function outputBackend(input: Readonly<{
-  engine: InMemoryExecutionBackendEngine;
-  installed: FoundationAgentCellInstalledInputsV1;
-  onSpecification(specification: FoundationExecutionSpecificationV1): void;
-  invalidAuthoringCarrier?: boolean;
-  onDispatch?(): void;
-}>): FoundationExecutionBackend {
-  const delegate = input.engine.facade(input.installed.profile);
-  let specification: FoundationExecutionSpecificationV1 | null = null;
-  let supplied = false;
-  return Object.freeze({
-    profile: delegate.profile,
-    async allocate(
-      selected: FoundationExecutionSpecificationV1,
-      allocationKey: Parameters<FoundationExecutionBackend["allocate"]>[1],
-    ) {
-      specification = selected;
-      input.onSpecification(selected);
-      return await delegate.allocate(selected, allocationKey);
-    },
-    async dispatch(handle: FoundationExecutionHandle) {
-      input.onDispatch?.();
-      if (!supplied) {
-        assert(specification !== null);
-        await input.engine.provideOutput(specification, executionOutput({
-          specification,
-          executableIdentity: input.installed.provider.installedIdentityDigest,
-          runnerImplementationDigest: input.installed.image.runnerImplementationDigest,
-          invalidAuthoringCarrier: input.invalidAuthoringCarrier,
-        }));
-        supplied = true;
-      }
-      return await delegate.dispatch(handle);
-    },
-    observe: delegate.observe.bind(delegate),
-    cancel: delegate.cancel.bind(delegate),
-    async retrieve(
-      handle: Parameters<FoundationExecutionBackend["retrieve"]>[0],
-      observation: Parameters<FoundationExecutionBackend["retrieve"]>[1],
-    ) {
-      const retrieved = await delegate.retrieve(handle, observation);
-      if (input.invalidAuthoringCarrier !== true || retrieved.disposition !== "complete") {
-        return retrieved;
-      }
-      const source = retrieved.output;
-      return Object.freeze({
-        ...retrieved,
-        output: Object.freeze({
-          manifest: source.manifest,
-          carrierByteLength: source.carrierByteLength,
-          async *entries() {
-            for await (const reader of source.entries()) {
-              if (reader.path !==
-                  FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.semanticWorkspacePath) {
-                yield reader;
-                continue;
-              }
-              yield Object.freeze({
-                path: reader.path,
-                byteLength: reader.byteLength,
-                digest: reader.digest,
-                async *read() {
-                  yield new Uint8Array();
-                  yield* reader.read();
-                },
-              });
-            }
-          },
-        }),
-      });
-    },
-    createReclamationBinding: delegate.createReclamationBinding.bind(delegate),
-    reclaim: delegate.reclaim.bind(delegate),
-  });
-}
-
-type InstalledHarness = Readonly<{
-  engine: InMemoryExecutionBackendEngine;
-  options: FoundationAgentOperationV7Options;
-  specificationDigest(): Sha256 | null;
-  dispatchCount(): number;
-  reclamationCount(): Promise<number>;
-}>;
-
-function installedHarness(input: Readonly<{
-  machineHome: string;
-  now: () => string;
-  invalidAuthoringCarrier?: boolean;
-}>): InstalledHarness {
-  const contract = executionContractFixture("agent-operation-v7");
-  const image = Object.freeze({
-    ...contract.image,
-    runnerContractDigest: digest("runner-contract"),
-    runnerImplementationDigest: digest("runner-implementation"),
-    toolInventoryDigest: digest("tool-inventory"),
-  });
-  const engine = new InMemoryExecutionBackendEngine("1".repeat(64));
-  let selectedSpecification: Sha256 | null = null;
-  let dispatches = 0;
-  const options: FoundationAgentOperationV7Options = Object.freeze({
-    now: input.now,
-    compileInstalled(selected): FoundationCompiledInstalledAgentCellInputsV1 {
-      assert.equal(
-        selected.provider.descriptorDigest,
-        FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.digest,
-      );
-      const installed: FoundationAgentCellInstalledInputsV1 = Object.freeze({
-        profile: contract.profile,
-        image,
-        provider: Object.freeze({ ...selected.provider }),
-        adapterImplementationDigest: image.runnerImplementationDigest,
-        environment: Object.freeze([]),
-        capabilities: Object.freeze({
-          temporaryWrites: true,
-          subprocesses: "repository-toolchain" as const,
-          externalEffects: false,
-        }),
-        networkPolicy: Object.freeze({
-          agentProductNetwork: "none" as const,
-          agentPolicyDigest: selected.executionPolicy.containmentPolicyDigest,
-          providerControlPlane: "none" as const,
-          providerPolicyDigest: null,
-          separationRequired: true as const,
-        }),
-        credentialPolicy: Object.freeze({
-          mode: "none" as const,
-          bindings: Object.freeze([]),
-          agentAccess: false,
-          outputDisclosure: false,
-        }),
-      });
-      return Object.freeze({
-        installed,
-        executionPolicy: Object.freeze({ ...selected.executionPolicy }),
-        policyDigests: Object.freeze(Object.values(selected.executionPolicy)),
-      });
-    },
-    async openInstalled(selected): Promise<FoundationOpenedInstalledAgentRuntimeV1> {
-      const inputTransport = new FoundationAgentCellInputTransportRegistryV1();
-      const ledger = await openFoundationExecutionReclamationLedgerV1({
-        machineHome: input.machineHome,
-        installationId: "installation-agent-operation-v7",
-        create: true,
-        clock: Object.freeze({ now: input.now }),
-      });
-      const backend = outputBackend({
-        engine,
-        installed: selected.installed,
-        onSpecification(specification) { selectedSpecification = specification.digest; },
-        invalidAuthoringCarrier: input.invalidAuthoringCarrier,
-        onDispatch() { dispatches += 1; },
-      });
-      return Object.freeze({
-        runtime: Object.freeze({
-          machineHome: input.machineHome,
-          backend,
-          registerOperation(): void {},
-          outputStore: createFoundationExecutionOutputStoreV1({
-            machineHome: input.machineHome,
-          }),
-          reclamation: ledger,
-          clock: Object.freeze({ now: input.now }),
-          pollMilliseconds: 0,
-        }),
-        installed: selected.installed,
-        inputTransport,
-        registerInput(compiledInput): void {
-          inputTransport.register(compiledInput.inputSet, compiledInput.resolver);
-        },
-        ledger,
-        async reclaimNext(): Promise<boolean> { return false; },
-        close(): void { ledger.close(); },
-      });
-    },
-  });
-  return Object.freeze({
-    engine,
-    options,
-    specificationDigest: () => selectedSpecification,
-    dispatchCount: () => dispatches,
-    async reclamationCount(): Promise<number> {
-      const ledger = await openFoundationExecutionReclamationLedgerV1({
-        machineHome: input.machineHome,
-        installationId: "installation-agent-operation-v7",
-        clock: Object.freeze({ now: input.now }),
-      });
-      try {
-        return ledger.list().length;
-      } finally {
-        ledger.close();
-      }
-    },
-  });
-}
-
 async function fixture(
   t: TestContext,
   salt: string,
-  options: Readonly<{ invalidAuthoringCarrier?: boolean }> = Object.freeze({}),
+  options: Readonly<{
+    invalidAuthoringCarrier?: boolean;
+    produceOutput?: AgentCellFixtureOutputProducer;
+    now?: () => string;
+    wrapBackend?: (backend: FoundationExecutionBackend) => FoundationExecutionBackend;
+  }> = Object.freeze({}),
 ): Promise<Readonly<{
   store: ControlRecordStore;
   request: FoundationPreparationAgentOperationV7Input;
@@ -474,7 +155,7 @@ async function fixture(
     candidate: null,
     seal: null,
   });
-  const founderSemanticMarkdown =
+  const directorSemanticMarkdown =
     "# Frame\n\nReconnoiter the fresh target and propose one coherent boundary.\n";
   const providerInput = compileProviderInputV4({
     projection,
@@ -489,7 +170,7 @@ async function fixture(
       credentials: "none" as const,
       externalEffects: Object.freeze([]),
     }),
-    founderSemanticMarkdown,
+    directorSemanticMarkdown,
   });
   const investmentValue = Object.freeze({
     id: "investment-agent-operation-v7",
@@ -507,7 +188,7 @@ async function fixture(
     rationale: "execution-cell-orchestration",
   });
   const selectedImage = executionContractFixture("agent-operation-v7").image;
-  const now = clock();
+  const now = options.now ?? clock();
   const request: FoundationPreparationAgentOperationV7Input = Object.freeze({
     store,
     configuration: Object.freeze({
@@ -535,7 +216,7 @@ async function fixture(
           runnerImplementationDigest: digest("runner-implementation"),
           toolInventoryDigest: digest("tool-inventory"),
           agentProvider: Object.freeze({
-            codexVersion: "0.151.0",
+            codexVersion: "0.153.4",
             executableIdentity: digest("agent-executable"),
             adapterImplementationDigest: digest("runner-implementation"),
           }),
@@ -544,14 +225,24 @@ async function fixture(
     }),
     activityId: `activity-prepare-${salt}`,
     operation: "delivery.prepare",
+    preparationBasis: (() => {
+      const snapshot = Object.freeze({
+        targetId: TARGET, commit: "1".repeat(40), tree: "2".repeat(40), objectFormat: "sha1" as const,
+        contractDigest: digest("contract"), productStateDigest: digest("product"),
+        atlasStateDigest: digest("atlas"), atlasResolutionDigest: digest("atlas-resolution"),
+        atlasNormalizedModelDigest: digest("atlas-normalized"), atlasResourceBindingsDigest: digest("atlas-resources"),
+        knowledgeSetDigest: digest("knowledge"),
+      });
+      return Object.freeze({ snapshot: Object.freeze({ ...snapshot, digest: digestCanonical(snapshot) }), basisDigest: digest("preparation-basis") });
+    })(),
     runtimeId: RUNTIME,
     agentId: "agent-reconnaissance-test",
     opening: Object.freeze({
-      semanticMarkdown: founderSemanticMarkdown,
+      semanticMarkdown: directorSemanticMarkdown,
       submittedAt: "2026-09-01T00:00:00.001Z",
       startedAt: "2026-09-01T00:00:00.002Z",
       attemptCreatedAt: "2026-09-01T00:00:00.003Z",
-      founderId: "founder-test",
+      directorId: "director-test",
     }),
     boundary: null,
     candidate: null,
@@ -575,6 +266,8 @@ async function fixture(
     machineHome,
     now,
     invalidAuthoringCarrier: options.invalidAuthoringCarrier,
+    produceOutput: options.produceOutput,
+    wrapBackend: options.wrapBackend,
   });
   t.after(async () => {
     try { store.close(); } catch { /* already closed */ }
@@ -608,10 +301,10 @@ test("Agent orchestration runs one exact Attempt through a retired Execution Cel
   const receiptContainment = object(receipt.payload.containment, "Receipt containment facts");
   const receiptRetirement = object(receipt.payload.retirement, "Receipt retirement facts");
   assert.equal(attempt.payload.schema, "lifecycle.agent-attempt-payload.v3");
-  assert.equal(attemptProvider.adapter, "lifecycle.provider-adapter.v6");
+  assert.equal(attemptProvider.adapter, "lifecycle.provider-adapter.v7");
   assert.equal(attemptProvider.executableIdentityClass,
     FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.provider.executableIdentityClass);
-  assert.equal(attemptInputSet.profileId, "lifecycle.execution-input-set.v1");
+  assert.equal(attemptInputSet.profileId, "lifecycle.execution-input-set.v2");
   assert.deepEqual(Object.keys(attemptExecutionPolicy).sort(), [
     "cancellationPolicyDigest",
     "containmentPolicyDigest",
@@ -650,9 +343,24 @@ test("Agent recovery observes the same dispatched Handle without redispatch", as
   );
   assert.equal(interrupted.stage, "effect-intended");
   assert.notEqual(interrupted.execution?.dispatchAuthorityConsumedAt, null);
+  assert.notEqual(interrupted.executionSelection,null);
+  const oldImage = interrupted.executionSelection!.image;
+  const configuration = Object.freeze({...selected.request.configuration,model:"new-default-model",reasoning:"new-default-reasoning",
+    execution:Object.freeze({image:Object.freeze({...selected.request.configuration.execution!.image,
+      imageId:"image.new-default",imageDigest:digest("new-default-image"),
+      immutableReference:`registry.example/new@${digest("new-default-image")}`,
+      configurationDigest:digest("new-default-image-configuration"),
+    })})});
   const recovered = await recoverFoundationAgentActivityV7(
-    selected.request,
-    selected.harness.options,
+    {...selected.request,configuration},
+    {...selected.harness.options,
+      compileInstalled:() => {throw new Error("Recovery must not reselect today's installed defaults");},
+      openInstalled:async (input) => {
+        assert.deepEqual(input.image,oldImage);
+        assert.deepEqual(input.installed,interrupted.executionSelection!.compiled.installed);
+        return selected.harness.options.openInstalled!(input);
+      },
+    },
   );
   const receipt = selected.store.getRevision(recovered.receipt.id, recovered.receipt.revision)!;
   const specificationDigest = object(
@@ -676,7 +384,7 @@ test("pre-intent refusal remains subjectless and allocates no productive executi
   });
   await assert.rejects(
     operateFoundationAgentActivityV7(request, selected.harness.options),
-    /pre-intent revalidation refusal/u,
+    /pre-intent refusal/u,
   );
   const events = activityEvents(selected.store, request.activityId);
   const refusal = events.filter(({ eventKind }) => eventKind === "agent-pre-intent-refused");
@@ -689,6 +397,259 @@ test("pre-intent refusal remains subjectless and allocates no productive executi
   assert.notEqual(specificationDigest, null);
   assert.equal(selected.harness.engine.productiveStartCount(specificationDigest!), 0);
   assert.equal(selected.store.getOperationSupport(request.activityId), null);
+});
+
+test("delayed recovery before dispatch abandons through one subjectless refusal and permits fresh work", async (t) => {
+  let milliseconds = Date.parse("2026-09-01T00:00:01.000Z");
+  const selected = await fixture(t, "delayed-before-dispatch", {
+    now: () => new Date(milliseconds += 1).toISOString(),
+  });
+  let interrupted = false;
+  const options: FoundationAgentOperationV7Options = {
+    ...selected.harness.options,
+    async openInstalled(selection) {
+      const opened = await selected.harness.options.openInstalled!(selection);
+      return {
+        ...opened,
+        async operate(input) {
+          const delegate = input.activityOwner;
+          return await opened.operate({
+            ...input,
+            activityOwner: {
+              ...delegate,
+              async commitSupport(mutation) {
+                const retained = await delegate.commitSupport(mutation);
+                if (!interrupted && mutation.checkpoint.handle === null) {
+                  interrupted = true;
+                  throw new Error("Interrupted after durable Cell opening");
+                }
+                return retained;
+              },
+            },
+          });
+        },
+      };
+    },
+  };
+  await assert.rejects(operateFoundationAgentActivityV7(selected.request, options));
+  const original = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare");
+  assert.equal(original.stage, "activity-opened");
+  assert.equal(original.execution?.handle, null);
+  assert.equal(original.execution?.dispatchAuthorityConsumedAt, null);
+  milliseconds += 47 * 60 * 1000;
+  await assert.rejects(recoverFoundationAgentActivityV7(selected.request, options), (error: unknown) =>
+    error instanceof FoundationError && error.code === "lifecycle.agent-execution-cell-v1.pre-intent-contained");
+  const events = activityEvents(selected.store, selected.request.activityId);
+  const refusals = events.filter(({ eventKind }) => eventKind === "agent-pre-intent-refused");
+  assert.equal(refusals.length, 1);
+  assert.equal(refusals[0]!.subject, null);
+  assert.equal(refusals[0]!.payload.resolution, "none");
+  const recovery = events.find(({ eventKind }) => eventKind === "activity-recovery-recorded")!;
+  assert(Date.parse(refusals[0]!.occurredAt) >= Date.parse(recovery.occurredAt));
+  assert.equal(events.find(({ eventKind }) => eventKind === "activity-completed")!.payload.outcome, "abandoned");
+  assert.equal(events.filter(({ eventKind }) => [
+    "agent-attempt-prepared", "provider-effect-intended", "execution-receipt-recorded",
+  ].includes(eventKind)).length, 0);
+  assert.equal(selected.harness.dispatchCount(), 0);
+  assert.equal(await selected.harness.reclamationCount(), 1);
+  assert.equal(selected.store.getOperationSupport(selected.request.activityId), null);
+
+  const fresh = await fixture(t, "fresh-after-delayed-refusal");
+  const result = await operateFoundationAgentActivityV7(fresh.request, fresh.harness.options);
+  assert.notEqual(result.receipt, null);
+  assert.equal(fresh.harness.dispatchCount(), 1);
+});
+
+test("direct pre-dispatch absence abandons without inventing a containment request", async (t) => {
+  const absence: { value: ReturnType<typeof preDispatchAbsenceBackend> | null } = { value: null };
+  const selected = await fixture(t, "absent-before-dispatch", {
+    wrapBackend(delegate) {
+      absence.value = preDispatchAbsenceBackend({
+        delegate,
+        remove: (handle) => selected.harness.engine.removePhysicalAllocationWithoutObservation(handle),
+      });
+      return absence.value.backend;
+    },
+  });
+  let removed = false;
+  let terminal: ReturnType<typeof inspectFoundationAgentActivityV7>["execution"] = null;
+  const options: FoundationAgentOperationV7Options = {
+    ...selected.harness.options,
+    async openInstalled(selection) {
+      const opened = await selected.harness.options.openInstalled!(selection);
+      return {
+        ...opened,
+        async operate(input) {
+          const delegate = input.activityOwner;
+          const result = await opened.operate({
+            ...input,
+            activityOwner: {
+              ...delegate,
+              async commitSupport(mutation) {
+                const retained = await delegate.commitSupport(mutation);
+                if (!removed && mutation.checkpoint.handle !== null) {
+                  removed = true;
+                  assert(absence.value !== null);
+                  absence.value.markAbsent();
+                }
+                return retained;
+              },
+            },
+          });
+          terminal = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare").execution;
+          return result;
+        },
+      };
+    },
+  };
+  await assert.rejects(operateFoundationAgentActivityV7(selected.request, options), (error: unknown) =>
+    error instanceof FoundationError && error.code === "lifecycle.agent-execution-cell-v1.pre-intent-contained");
+  assert(terminal !== null);
+  const retained = terminal as NonNullable<ReturnType<typeof inspectFoundationAgentActivityV7>["execution"]>;
+  assert.equal(retained.containmentRequestedAt, null);
+  assert.equal(retained.observation?.allocationState, "absent");
+  assert.equal(retained.retirement?.dispatchAuthorityConsumed, false);
+  const events = activityEvents(selected.store, selected.request.activityId);
+  assert.equal(events.filter(({ eventKind }) => eventKind === "agent-pre-intent-refused").length, 1);
+  assert.equal(events.find(({ eventKind }) => eventKind === "activity-completed")!.payload.outcome, "abandoned");
+  assert.equal(events.filter(({ eventKind }) => [
+    "agent-attempt-prepared", "provider-effect-intended", "execution-receipt-recorded",
+  ].includes(eventKind)).length, 0);
+  assert.equal(selected.harness.dispatchCount(), 0);
+  assert.equal(await selected.harness.reclamationCount(), 1);
+  assert.equal(selected.store.getOperationSupport(selected.request.activityId), null);
+});
+
+test("unavailable selected execution custody preserves the retained Cell for a later recovery", async (t) => {
+  const selected = await fixture(t, "selected-resource-unavailable");
+  selected.harness.engine.armFault("dispatch-after-start-before-return");
+  await assert.rejects(operateFoundationAgentActivityV7(selected.request, selected.harness.options));
+  const before = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare");
+  const eventCount = activityEvents(selected.store, selected.request.activityId).length;
+  await assert.rejects(recoverFoundationAgentActivityV7(selected.request, {
+    ...selected.harness.options,
+    compileInstalled: () => { throw new Error("Recovery must not choose replacement execution resources"); },
+    openInstalled: async (input) => {
+      assert.deepEqual(input.image, before.executionSelection!.image);
+      throw new Error("selected immutable execution resource is temporarily unavailable");
+    },
+  }), /selected immutable execution resource is temporarily unavailable/u);
+  const after = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare");
+  assert.deepEqual(after.executionSelection, before.executionSelection);
+  assert.deepEqual(after.execution, before.execution);
+  assert.deepEqual(activityEvents(selected.store, selected.request.activityId).slice(eventCount)
+    .map(({eventKind}) => eventKind), ["activity-recovery-recorded"]);
+  assert.equal(selected.harness.engine.snapshot().allocations.length, 1);
+  const recovered = await recoverFoundationAgentActivityV7(selected.request, selected.harness.options);
+  const receipt = selected.store.getRevision(recovered.receipt.id, recovered.receipt.revision)!;
+  assert.equal(selected.harness.engine.productiveStartCount(
+    object(receipt.payload.execution, "Recovered selected Cell").specificationDigest as Sha256,
+  ), 1);
+  assert.equal(activityEvents(selected.store, selected.request.activityId)
+    .filter(({eventKind}) => eventKind === "provider-effect-intended").length, 1);
+  assert.equal(object(receipt.payload.containment,"Recovered Cell containment").classification,"contained");
+  assert.equal(object(receipt.payload.retirement,"Recovered Cell Retirement").classification,"retired");
+  assert.equal(selected.store.getOperationSupport(selected.request.activityId),null);
+});
+
+test("unallocated image refusal settles its original selection and a fresh Delivery can execute", async (t) => {
+  const selected = await fixture(t, "unallocated-image-refusal");
+  const profile = foundationDockerExecutionBackendProfileV1();
+  let imageFailure: unknown = new Error("temporarily unavailable image observation");
+  let interruptCompletion = false;
+  let imageReads = 0;
+  let absenceReads = 0;
+  let creates = 0;
+  const never = async (): Promise<never> => { throw new Error("No physical Cell operation is allowed"); };
+  const driver: FoundationDockerEngineDriverV1 = {
+    async describe() { return {
+      schema: "lifecycle.docker-engine-description.private.v1",
+      engineIdentityDigest: digest("unallocated-engine"),
+      contractDigest: profile.engineContract.contractDigest,
+      compatibilityProfileId: profile.engineContract.compatibilityProfileId,
+      compatibleVersion: profile.engineContract.compatibleVersion,
+      platform: profile.platforms[0]!,
+    }; },
+    async inspectImage() { imageReads += 1; throw imageFailure; },
+    async allocationResourcesAbsent() { absenceReads += 1; return true; },
+    async findCells() { return { cells: [], truncated: false }; },
+    inspectCell: never,
+    async createCell() { creates += 1; return await never(); },
+    consumeDispatch: never, startCell: never, cancelCell: never,
+    retrieveOutput: never, removeCell: never,
+  };
+  const options: FoundationAgentOperationV7Options = {
+    ...selected.harness.options,
+    now() {
+      if (interruptCompletion && activityEvents(selected.store, selected.request.activityId)
+        .some(({eventKind}) => eventKind === "agent-pre-intent-refused")) {
+        throw new Error("interrupted after refusal retention before completion");
+      }
+      return selected.harness.options.now!();
+    },
+    compileInstalled(input) {
+      const compiled = selected.harness.options.compileInstalled!(input);
+      return { ...compiled, installed: { ...compiled.installed, profile } };
+    },
+    async openInstalled(input) {
+      assert.equal(input.image.imageDigest, selected.request.configuration.execution!.image.imageDigest);
+      const ledger = await openFoundationExecutionReclamationLedgerV1({
+        machineHome: selected.request.configuration.machineHome,
+        installationId: "installation-agent-operation-v7", create: true,
+        clock: { now: input.now },
+      });
+      const backend = await createFoundationDockerExecutionBackend({ profile, driver, now: input.now });
+      const operator = createFoundationAgentCellOperatorV1({
+        installed: input.installed,
+        inputTransport: new FoundationAgentCellInputTransportRegistryV1(),
+        runtime: {
+          machineHome: selected.request.configuration.machineHome, backend,
+          registerOperation() {},
+          outputStore: createFoundationExecutionOutputStoreV1({ machineHome: selected.request.configuration.machineHome }),
+          reclamation: ledger, clock: { now: input.now }, pollMilliseconds: 0,
+        },
+      });
+      return { ...operator, async reclaimNext() { return false; }, close() { ledger.close(); } };
+    },
+  };
+  await assert.rejects(operateFoundationAgentActivityV7(selected.request, options));
+  const original = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare");
+  assert.equal(original.stage, "activity-opened");
+  assert.equal(original.execution!.handle, null);
+  assert.equal(absenceReads, 0);
+  imageFailure = new FoundationError("lifecycle.execution.docker-cli-driver.image-substitution", "Exact installed Image is invalid");
+  interruptCompletion = true;
+  const changedDefaults = { ...selected.request, configuration: {
+    ...selected.request.configuration, execution: { image: {
+      ...selected.request.configuration.execution!.image,
+      imageId: "corrected-image-default", imageDigest: digest("corrected-image-default"),
+    } },
+  } };
+  await assert.rejects(recoverFoundationAgentActivityV7(changedDefaults, options), /interrupted after refusal/u);
+  const refused = inspectFoundationAgentActivityV7(selected.store, selected.request.activityId, "delivery.prepare");
+  assert.equal(refused.stage, "pre-intent-refused");
+  assert.deepEqual(refused.executionSelection, original.executionSelection);
+  assert.deepEqual(refused.execution, original.execution);
+  const readsAtRefusal = imageReads;
+  interruptCompletion = false;
+  await assert.rejects(recoverFoundationAgentActivityV7(changedDefaults, {
+    ...options,
+    compileInstalled() { throw new Error("Retained refusal must not select new defaults"); },
+    openInstalled: never,
+  }), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.execution.docker-cli-driver.image-substitution");
+  assert.equal(imageReads, readsAtRefusal);
+  assert.equal(absenceReads, 1);
+  assert.equal(creates, 0);
+  assert.equal(selected.store.getOperationSupport(selected.request.activityId), null);
+  const events = activityEvents(selected.store, selected.request.activityId);
+  assert.equal(events.filter(({eventKind}) => eventKind === "agent-pre-intent-refused").length, 1);
+  assert.equal(events.find(({eventKind}) => eventKind === "activity-completed")!.payload.outcome, "abandoned");
+  assert.equal(events.filter(({eventKind}) => ["agent-attempt-prepared", "provider-effect-intended", "execution-receipt-recorded"].includes(eventKind)).length, 0);
+  assert.equal(await selected.harness.reclamationCount(), 0);
+  const corrected = await fixture(t, "corrected-image-selection");
+  const next = await operateFoundationAgentActivityV7(corrected.request, corrected.harness.options);
+  assert.notEqual(next.receipt, null);
+  assert.equal(corrected.harness.dispatchCount(), 1);
 });
 
 test("lost refusal commit response resumes the same inert Cell through Retirement", async (t) => {
@@ -704,26 +665,32 @@ test("lost refusal commit response resumes the same inert Cell through Retiremen
   });
   const options: FoundationAgentOperationV7Options = Object.freeze({
     ...selected.harness.options,
-    async operateCell(input) {
-      const delegate = input.activityOwner;
-      return await operateFoundationAgentCellV1(Object.freeze({
-        ...input,
-        activityOwner: Object.freeze({
-          read: delegate.read.bind(delegate),
-          commitSupport: delegate.commitSupport.bind(delegate),
-          ownerCommitDispatch: delegate.ownerCommitDispatch.bind(delegate),
-          async ownerCommitPreIntentRefusal(
-            mutation: Parameters<typeof delegate.ownerCommitPreIntentRefusal>[0],
-          ) {
-            const retained = await delegate.ownerCommitPreIntentRefusal(mutation);
-            if (!lostResponse) {
-              lostResponse = true;
-              throw new Error("injected-lost-refusal-owner-response");
-            }
-            return retained;
-          },
-        }),
-      }));
+    async openInstalled(selection) {
+      const opened = await selected.harness.options.openInstalled!(selection);
+      return Object.freeze({
+        ...opened,
+        async operate(input) {
+          const delegate = input.activityOwner;
+          return await opened.operate(Object.freeze({
+            ...input,
+            activityOwner: Object.freeze({
+              read: delegate.read.bind(delegate),
+              commitSupport: delegate.commitSupport.bind(delegate),
+              ownerCommitDispatch: delegate.ownerCommitDispatch.bind(delegate),
+              async ownerCommitPreIntentRefusal(
+                mutation: Parameters<typeof delegate.ownerCommitPreIntentRefusal>[0],
+              ) {
+                const retained = await delegate.ownerCommitPreIntentRefusal(mutation);
+                if (!lostResponse) {
+                  lostResponse = true;
+                  throw new Error("injected-lost-refusal-owner-response");
+                }
+                return retained;
+              },
+            }),
+          }));
+        },
+      });
     },
   });
   await assert.rejects(operateFoundationAgentActivityV7(request, options));
@@ -744,7 +711,7 @@ test("lost refusal commit response resumes the same inert Cell through Retiremen
 
   await assert.rejects(
     recoverFoundationAgentActivityV7(request, options),
-    /pre-intent revalidation refusal/u,
+    /pre-intent refusal/u,
   );
   assert.equal(revalidations, 1);
   assert.equal(selected.harness.engine.snapshot().allocations.length, 1);
@@ -793,6 +760,54 @@ test("lost Receipt owner response reuses one Receipt and one productive Cell", a
   assert.equal(selected.store.getOperationSupport(selected.request.activityId), null);
 });
 
+test("provider failure detail survives a lost Receipt return and disk reopen without another dispatch", async (t) => {
+  const bytes = Uint8Array.from(Buffer.from(canonicalJsonLine({
+    schema: "lifecycle.agent-provider-failure-diagnostic.private.v1", source: "provider-reported",
+    observation: "untrusted-operational-material", truncated: false,
+    entries: [{ stream: "stdout-json", eventType: "turn.failed", message: "Selected provider model is unavailable." }],
+  }), "utf8"));
+  const selected = await fixture(t, "provider-failure-retained", { produceOutput: async () => ({
+    providerOutcome: "provider-failure", providerExitCode: 1, entries: [{
+      path: "provider-result/failure.json", purpose: "raw-provider-output", mediaType: "application/json",
+      modeClass: "regular", bytes,
+    }],
+  }) });
+  let lost = false;
+  const options: FoundationAgentOperationV7Options = {
+    ...selected.harness.options,
+    async retainReceipt(input) {
+      const retained = await retainExecutionReceipt(input);
+      if (!lost) { lost = true; throw new Error("lost-provider-failure-receipt-return"); }
+      return retained;
+    },
+  };
+  await assert.rejects(operateFoundationAgentActivityV7(selected.request, options), /lost-provider-failure-receipt-return/u);
+  const firstDescriptor = selected.store.listRetainedFiles().find(({ digest }) => digest === sha256Bytes(bytes));
+  assert(firstDescriptor);
+  const storeRoot = selected.store.paths.root;
+  const identity = selected.store.identity;
+  selected.store.close();
+  const reopened = await openControlRecordStore({ root: storeRoot, identity, create: false });
+  t.after(() => reopened.close());
+  const result = await recoverFoundationAgentActivityV7({ ...selected.request, store: reopened }, options);
+  const receipt = reopened.getRevision(result.receipt.id, result.receipt.revision)!;
+  const materials = receipt.payload.rawMaterials;
+  assert(Array.isArray(materials));
+  assert.deepEqual(materials, [{ availability: "retained", reference: {
+    digest: sha256Bytes(bytes), byteLength: bytes.byteLength, mediaType: "application/json", purpose: "raw-provider-output",
+  } }]);
+  assert.doesNotMatch(receipt.semanticMarkdown, /Selected provider model is unavailable/u);
+  assert.match(receipt.semanticMarkdown, /untrusted operational material/u);
+  const retained = await reopened.readRetainedFile(sha256Bytes(bytes));
+  assert.deepEqual(retained, { descriptor: firstDescriptor, bytes });
+  assert.equal(object(receipt.payload.provider, "Provider facts").terminalReason, "provider-failure");
+  assert.equal(selected.harness.engine.productiveStartCount(
+    object(receipt.payload.execution, "Execution").specificationDigest as Sha256), 1);
+  assert.equal(activityEvents(reopened, selected.request.activityId)
+    .filter(({ eventKind }) => eventKind === "execution-receipt-recorded").length, 1);
+  assert.equal(reopened.getOperationSupport(selected.request.activityId), null);
+});
+
 test("invalid authoring Carrier retains exact terminal Receipt facts through recovery", async (t) => {
   const selected = await fixture(t, "invalid-authoring-receipt-recovery", {
     invalidAuthoringCarrier: true,
@@ -801,10 +816,16 @@ test("invalid authoring Carrier retains exact terminal Receipt facts through rec
   const cellResults: Awaited<ReturnType<typeof operateFoundationAgentCellV1>>[] = [];
   const options: FoundationAgentOperationV7Options = Object.freeze({
     ...selected.harness.options,
-    async operateCell(input) {
-      const result = await operateFoundationAgentCellV1(input);
-      cellResults.push(result);
-      return result;
+    async openInstalled(selection) {
+      const opened = await selected.harness.options.openInstalled!(selection);
+      return Object.freeze({
+        ...opened,
+        async operate(input) {
+          const result = await opened.operate(input);
+          cellResults.push(result);
+          return result;
+        },
+      });
     },
     async retainReceipt(input) {
       const retained = await retainExecutionReceipt(input);
@@ -930,6 +951,46 @@ test("invalid authoring Carrier retains exact terminal Receipt facts through rec
   assert.equal(events.filter(({ eventKind }) => eventKind === "candidate-revision-observed").length, 0);
   assert.equal(events.filter(({ eventKind }) => eventKind === "activity-completed").length, 1);
   assert.equal(selected.store.getOperationSupport(selected.request.activityId), null);
+});
+
+test("execution operator refuses a substituted installed selection before allocation", async (t) => {
+  const selected = await fixture(t, "execution-operator-substitution");
+  const options: FoundationAgentOperationV7Options = Object.freeze({
+    ...selected.harness.options,
+    async openInstalled(selection) {
+      const opened = await selected.harness.options.openInstalled!(selection);
+      return Object.freeze({
+        ...opened,
+        operate: async (request) => await opened.operate({
+          ...request,
+          installed: Object.freeze({
+            ...request.installed,
+            image: Object.freeze({
+              ...request.installed.image,
+              imageDigest: digest("substituted-execution-image"),
+            }),
+          }),
+        }),
+      });
+    },
+  });
+  await assert.rejects(
+    operateFoundationAgentActivityV7(selected.request, options),
+    /Agent execution request selected another installed Cell/u,
+  );
+  assert.equal(selected.harness.engine.snapshot().allocations.length, 0);
+  assert.equal(selected.harness.dispatchCount(), 0);
+});
+
+test("missing execution owner refuses without opening production mechanics", async (t) => {
+  const selected = await fixture(t, "execution-owner-unavailable");
+  const { openInstalled: _openInstalled, ...options } = selected.harness.options;
+  await assert.rejects(
+    operateFoundationAgentActivityV7(selected.request, options),
+    /Agent execution requires the installed execution owner/u,
+  );
+  assert.equal(selected.harness.engine.snapshot().allocations.length, 0);
+  assert.equal(selected.harness.dispatchCount(), 0);
 });
 
 test("missing Execution Backend refuses without a Runtime-host fallback", async (t) => {

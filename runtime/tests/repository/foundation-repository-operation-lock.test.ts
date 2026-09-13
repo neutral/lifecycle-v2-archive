@@ -116,7 +116,7 @@ test("operation lock selects exact descriptor providers for supported Runtime ho
   );
 });
 
-test("operation lock serializes linked worktrees, not independent repositories, and releases with its owner", {
+test("operation lock refuses linked targets, serializes one independent target, and releases with its owner", {
   skip: process.platform === "darwin" || process.platform === "linux"
     ? false
     : "Foundation operation locking requires the installed macOS or Linux descriptor-lock provider",
@@ -154,6 +154,17 @@ test("operation lock serializes linked worktrees, not independent repositories, 
   assert.equal(linkedCommon, canonicalCommon);
   assert.notEqual(independentCommon, canonicalCommon);
 
+  let linkedEntered = false;
+  await assert.rejects(withTargetOperationLock(linked, "test-linked", async () => {
+    linkedEntered = true;
+  }), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.repository.physical");
+  assert.equal(linkedEntered, false);
+  await assert.rejects(lstat(join(canonicalCommon, "lifecycle")), { code: "ENOENT" });
+  await assert.rejects(withTargetOperationLock(canonical, "test-shared-primary", async () => {
+    assert.fail("A primary repository with linked registrations cannot enter the target lock");
+  }), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.repository.physical");
+  await git(canonical, ["worktree", "remove", linked]);
+
   holder = await startHolder(canonical);
   const supportPath = join(canonicalCommon, "lifecycle", "operation.lock");
   const supportWhileOwned = await lstat(supportPath);
@@ -165,15 +176,15 @@ test("operation lock serializes linked worktrees, not independent repositories, 
   });
   assert.equal(independentEntered, true);
 
-  let linkedEntered = false;
-  const failure = await withTargetOperationLock(linked, "test-linked", async () => {
-    linkedEntered = true;
+  let targetEntered = false;
+  const failure = await withTargetOperationLock(canonical, "test-target", async () => {
+    targetEntered = true;
   }).then(() => null, (error: unknown) => error);
-  assert.equal(linkedEntered, false);
+  assert.equal(targetEntered, false);
   assert(failure instanceof FoundationError);
   assert.equal(failure.code, "operation.busy");
   assert.equal(failure.retryable, true);
-  assert.match(failure.message, /Git common-directory operation domain, possibly through a linked worktree/u);
+  assert.match(failure.message, /target Git operation domain/u);
   assert.deepEqual(failure.observedFacts, { operationDomain: "git-common-directory" });
   assert(!JSON.stringify(failure.toJSON()).includes(root));
 
@@ -185,11 +196,11 @@ test("operation lock serializes linked worktrees, not independent repositories, 
   assert.equal(supportAfterOwnerExit.dev, supportWhileOwned.dev);
   assert.equal(supportAfterOwnerExit.ino, supportWhileOwned.ino);
 
-  let linkedEnteredAfterRelease = false;
-  await withTargetOperationLock(linked, "test-linked-retry", async () => {
-    linkedEnteredAfterRelease = true;
+  let targetEnteredAfterRelease = false;
+  await withTargetOperationLock(canonical, "test-target-retry", async () => {
+    targetEnteredAfterRelease = true;
   });
-  assert.equal(linkedEnteredAfterRelease, true);
+  assert.equal(targetEnteredAfterRelease, true);
 
   const permanentSupport = await lstat(supportPath);
   assert.equal(permanentSupport.isFile(), true);

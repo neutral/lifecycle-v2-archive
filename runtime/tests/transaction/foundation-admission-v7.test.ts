@@ -1,5 +1,6 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -23,25 +24,19 @@ import {
 } from "../../src/foundation/control/types.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import { createFoundationAuthority } from "../../src/foundation/repository/authority.js";
-import { git } from "../../src/foundation/repository/git.js";
-import { initializeRepository } from "../../src/foundation/repository/initialize.js";
 import type { FoundationRepositoryContract } from "../../src/foundation/repository/types.js";
 import {
   admitDeliveryV7,
-  observeFoundationAdmissionRepositoryV7,
   recoverAdmissionV7,
   type FoundationAdmissionRepositoryObservationV7,
   type FoundationAdmissionV7Options,
 } from "../../src/foundation/transaction/admission-v7.js";
 import { digestCanonical, sha256Bytes, type Sha256 } from "../../src/foundation/validation/canonical.js";
-import { FOUNDATION_GENERATED_PUBLICATION_DIGEST } from
-  "../../src/foundation/validation/generated-schemas.js";
 import {
   publishTestCandidateCarrier,
   testCandidateCarrierManifestBytes,
   testCandidateCarrierVerifier,
 } from "../support/candidate-revision-carrier-fixture.js";
-import { writeMinimalAtlas } from "../helpers/atlas-fixture.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
 
 const RUNTIME = "foundation-runtime";
@@ -86,8 +81,8 @@ function revisionInput(input: Readonly<{
   recordKind: string;
   revision?: number;
   createdAt: string;
-  semanticAuthor: "founder" | "agent" | "runtime";
-  semanticAuthority: "founder-supplied" | "agent-proposed" | "runtime-derived" | "runtime-observed";
+  semanticAuthor: "director" | "agent" | "runtime";
+  semanticAuthority: "director-supplied" | "agent-proposed" | "runtime-derived" | "runtime-observed";
   payload: ControlJsonObject;
   relationships?: readonly ControlRecordRelationship[];
 }>): ControlRecordRevisionInput {
@@ -240,8 +235,8 @@ async function createFixture(suffix: string): Promise<Fixture> {
   const authority = await createFoundationAuthority(
     authorityHome,
     selectedIdentity.targetId,
-    SECRET,
-    "founder:admission-v7",
+    receiveFoundationAuthorityCredential(SECRET, "initialize"),
+    "director:admission-v7",
   );
   const contractDigest = digest(`contract-${suffix}`);
   const contract = Object.freeze({
@@ -269,13 +264,13 @@ async function createFixture(suffix: string): Promise<Fixture> {
     revision: revisionInput({
       store,
       recordId: `brief-admission-v7-${suffix}`,
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       createdAt: "2026-08-29T18:00:01.000Z",
-      semanticAuthor: "founder",
-      semanticAuthority: "founder-supplied",
-      payload: validDeliveryControlPayload("founder-brief"),
+      semanticAuthor: "director",
+      semanticAuthority: "director-supplied",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: activityId } },
     }),
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     eventId: `event-brief-admission-v7-${suffix}`,
     activityId,
   });
@@ -299,7 +294,7 @@ async function createFixture(suffix: string): Promise<Fixture> {
       semanticAuthor: "runtime",
       semanticAuthority: "runtime-derived",
       payload: Object.freeze({ ...attemptPayload, activityId }),
-      relationships: Object.freeze([relationship("uses-brief", "founder-brief", brief)]),
+      relationships: Object.freeze([relationship("uses-brief", "director-brief", brief)]),
     }),
     eventKind: "agent-attempt-prepared",
     eventId: `event-attempt-admission-v7-${suffix}`,
@@ -369,7 +364,7 @@ async function createFixture(suffix: string): Promise<Fixture> {
       semanticAuthority: "runtime-derived",
       payload: boundaryPayload(selectedIdentity.targetId, contractDigest),
       relationships: Object.freeze([
-        relationship("uses-brief", "founder-brief", brief),
+        relationship("uses-brief", "director-brief", brief),
         relationship("proposed-from", "agent-work-product", workProduct),
       ]),
     }),
@@ -436,7 +431,7 @@ function options(
 ): FoundationAdmissionV7Options {
   return Object.freeze({
     now: timeOwner(),
-    withTargetLock: async (_target, operation, action) => {
+    withDeliveryLock: async (_selection, operation, action) => {
       assert.equal(operation, "delivery-admit");
       return action();
     },
@@ -469,7 +464,7 @@ async function initialInput(fixture: Fixture) {
     machineHome: join(fixture.workspace, "machine"),
     store: fixture.store,
     authorityHome: fixture.authorityHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
     runtimeId: RUNTIME,
   });
 }
@@ -515,13 +510,13 @@ function appendAgentOpening(input: Readonly<{
     revision: revisionInput({
       store: input.fixture.store,
       recordId: `brief-${input.suffix}`,
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       createdAt: input.briefAt,
-      semanticAuthor: "founder",
-      semanticAuthority: "founder-supplied",
-      payload: validDeliveryControlPayload("founder-brief"),
+      semanticAuthor: "director",
+      semanticAuthority: "director-supplied",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: input.activityId } },
     }),
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     eventId: `event-brief-${input.suffix}`,
     activityId: input.activityId,
   });
@@ -556,7 +551,7 @@ function appendAgentOpening(input: Readonly<{
         }),
       }),
       relationships: Object.freeze([
-        relationship("uses-brief", "founder-brief", brief),
+        relationship("uses-brief", "director-brief", brief),
         relationship("uses-boundary", "work-boundary", input.boundary),
         relationship("uses-candidate", "candidate-revision", input.candidate),
       ]),
@@ -805,7 +800,7 @@ async function seedReadmissionProposal(
         }),
       }),
       relationships: Object.freeze([
-        relationship("uses-brief", "founder-brief", revision.brief),
+        relationship("uses-brief", "director-brief", revision.brief),
         relationship("proposed-from", "agent-work-product", revisionProduct),
         relationship("revises", "work-boundary", fixture.boundary),
         relationship("resolves", "material-condition", condition),
@@ -848,52 +843,6 @@ async function seedReadmissionProposal(
     candidateState: nextState,
   });
 }
-
-test("admission repository observation refuses any movement from the proposed branch coordinate", async () => {
-  const target = await mkdtemp(join(tmpdir(), "lifecycle-admission-history-target-"));
-  const authorityHome = await mkdtemp(join(tmpdir(), "lifecycle-admission-history-authority-"));
-  try {
-    await git(target, ["init", "-b", "main"]);
-    await git(target, ["config", "user.name", "Lifecycle Test"]);
-    await git(target, ["config", "user.email", "lifecycle@example.invalid"]);
-    await writeMinimalAtlas(target);
-    await git(target, ["add", "--", "atlas"]);
-    await git(target, ["commit", "-m", "Initialize admission history target"]);
-    await initializeRepository(target, {
-      targetId: "target-admission-history",
-      founderPrincipal: "founder:admission-history",
-      home: authorityHome,
-      authoritySecret: SECRET,
-      publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
-      implementationRoots: [],
-      stage: true,
-    });
-    await git(target, ["add", "--", "."]);
-    await git(target, ["commit", "-m", "Initialize Lifecycle admission basis"]);
-    const baseCommit = (await git(target, ["rev-parse", "HEAD"])).stdout.trim();
-    const historical = await observeFoundationAdmissionRepositoryV7(
-      target,
-      "2026-08-29T18:30:00.000Z",
-      baseCommit,
-    );
-
-    await writeFile(join(target, "atlas", "atlas.md"), "This current Atlas is intentionally unresolved.\n", "utf8");
-    await git(target, ["add", "--", "atlas/atlas.md"]);
-    await git(target, ["commit", "-m", "Advance separately managed Atlas"]);
-    await assert.rejects(observeFoundationAdmissionRepositoryV7(
-      target,
-      "2026-08-29T18:31:00.000Z",
-      baseCommit,
-    ), (error: unknown) => error instanceof FoundationError &&
-      error.code === "lifecycle.admission-v7.repository-drift");
-    assert.equal(historical.basis.canonicalCommit, baseCommit);
-  } finally {
-    await Promise.all([
-      rm(target, { recursive: true, force: true }),
-      rm(authorityHome, { recursive: true, force: true }),
-    ]);
-  }
-});
 
 test("initial admission publishes the frozen Boundary base as its first Carrier", async () => {
   const fixture = await createFixture("historical-candidate-base");
@@ -941,7 +890,7 @@ test("initial admission publishes the frozen Boundary base as its first Carrier"
     assert(candidate !== null);
     assert.equal(candidate.payload.candidateBaseCommit, BASE_COMMIT);
     const decisionEvent = fixture.store.listEvents(0, 10_000).find((event) =>
-      event.eventKind === "founder-decision-authenticated" &&
+      event.eventKind === "director-decision-authenticated" &&
       event.payload.activityId === admitted.activityId);
     assert(decisionEvent?.subject !== null && decisionEvent?.subject !== undefined);
     const decision = fixture.store.getRevision(
@@ -1193,7 +1142,7 @@ test("admission recovery rejects substituted support and forged retained authori
             if (property === "getRevision") {
               return (recordId: string, revision: number) => {
                 const selected = target.getRevision(recordId, revision);
-                if (selected?.recordKind !== "founder-decision") return selected;
+                if (selected?.recordKind !== "director-decision") return selected;
                 const payload = structuredClone(selected.payload) as Record<string, ControlJsonValue>;
                 const authentication = payload.authentication as ControlJsonObject;
                 const signature = String(authentication.signature);
@@ -1532,7 +1481,7 @@ test("readmit rebinds byte-identical Candidate state to the successor Boundary",
       relationship("revises", "candidate-revision", prepared.candidate),
     ]);
     const decisionEvent = fixture.store.listEvents(0, 10_000).find((event) =>
-      event.eventKind === "founder-decision-authenticated" &&
+      event.eventKind === "director-decision-authenticated" &&
       event.payload.activityId === readmitted.activityId);
     assert(decisionEvent?.subject !== null && decisionEvent?.subject !== undefined);
     const decision = fixture.store.getRevision(

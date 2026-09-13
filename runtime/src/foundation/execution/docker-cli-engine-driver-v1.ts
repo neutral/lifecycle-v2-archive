@@ -20,10 +20,12 @@ import type {
   FoundationExecutionSpecificationV1,
 } from "./contracts.js";
 import type { FoundationExecutionInputSetV1 } from "./input-set.js";
+import { assertFoundationDockerCellInspectionV1 } from "./docker-backend.js";
 import type {
   FoundationDockerCellCreateRequestV1,
   FoundationDockerCellDirectObservationV1,
   FoundationDockerCellDiscoveryV1,
+  FoundationDockerCellIdentityDiscoveryV1,
   FoundationDockerCellInspectionV1,
   FoundationDockerEngineDescriptionV1,
   FoundationDockerEngineDriverV1,
@@ -36,6 +38,9 @@ const RUNNER_CONTRACT_ID = "lifecycle.execution-cell-runner.v1" as const;
 const RUNNER_ENTRYPOINT = "/opt/lifecycle/bin/execution-cell-runner";
 const INPUT_ROOT = "/lifecycle/input";
 const OUTPUT_ROOT = "/lifecycle/output";
+// A distinct volume remains durable despite its position beneath Cell tmpfs.
+const PROVIDER_STATE_ROOT = "/tmp/lifecycle-provider-state";
+const PROVIDER_CREDENTIAL_FRAME_MAGIC = Buffer.from("LCPCRV1\0", "binary");
 const SPECIFICATION_PATH = ".lifecycle/specification.json";
 const INPUT_SET_PATH = ".lifecycle/input-set.json";
 const OUTPUT_MANIFEST_PATH = ".lifecycle/output-manifest.json";
@@ -48,6 +53,7 @@ const MAXIMUM_EXECUTABLE_BYTES = 512 * 1024 * 1024;
 const MAXIMUM_CONFIGURATION_LABEL_BYTES = 256 * 1024;
 const MAXIMUM_INPUT_ENTRIES = 16_384;
 const TAR_BLOCK_BYTES = 512;
+const MAXIMUM_PAX_HEADER_BYTES = 8192;
 const MAXIMUM_PROVIDER_AUTH_BYTES = 4 * 1024 * 1024;
 const PROVIDER_SUPPORT_SCHEMA = "lifecycle.agent-provider-support.private.v1";
 const PROVIDER_SUPPORT_FRAME_MAGIC = Buffer.from("LCPSV1!\0", "binary");
@@ -60,6 +66,7 @@ const PRIVATE_LABELS = Object.freeze({
   configurationDigest: `${PRIVATE_LABEL_PREFIX}configuration-digest`,
   inputVolume: `${PRIVATE_LABEL_PREFIX}input-volume`,
   outputVolume: `${PRIVATE_LABEL_PREFIX}output-volume`,
+  providerStateVolume: `${PRIVATE_LABEL_PREFIX}provider-state-volume`,
   imageId: `${PRIVATE_LABEL_PREFIX}image-id`,
   imageDigest: `${PRIVATE_LABEL_PREFIX}image-digest`,
   specificationDigest: `${PRIVATE_LABEL_PREFIX}specification-digest`,
@@ -103,7 +110,21 @@ export type FoundationDockerAgentCredentialReaderV1 = Readonly<{
   read(): AsyncIterable<Uint8Array>;
 }>;
 
-/** Installation-private provider support; secret bytes open only at exact Cell dispatch. */
+export type FoundationDockerProviderCredentialSubjectV1 = Readonly<{
+  specificationDigest: Sha256;
+  engineIdentityDigest: Sha256;
+  allocationName: string;
+}>;
+export type FoundationDockerProviderCredentialSelectionV1 = Readonly<{
+  subject: FoundationDockerProviderCredentialSubjectV1;
+  credentialBinding: Readonly<{ id: string; policyDigest: Sha256 }>;
+}>;
+export type FoundationDockerProviderCredentialOutcomeV1 =
+  | Readonly<{ kind: "updated"; bytes: Uint8Array }>
+  | Readonly<{ kind: "unused" }>
+  | Readonly<{ kind: "lost" }>;
+
+/** Installation-private provider support, claimed for one exact allocation. */
 export interface FoundationDockerAgentProviderSupportResolverV1 {
   readonly installation: Readonly<{
     providerDescriptorDigest: Sha256;
@@ -113,10 +134,14 @@ export interface FoundationDockerAgentProviderSupportResolverV1 {
     model: string;
     reasoning: string;
   }>;
-  openCredential(input: Readonly<{
-    specificationDigest: Sha256;
-    credentialBinding: Readonly<{ id: string; policyDigest: Sha256 }>;
-  }>): Promise<FoundationDockerAgentCredentialReaderV1>;
+  claimCredential(input: FoundationDockerProviderCredentialSelectionV1): Promise<void>;
+  hasCredentialClaim(input: FoundationDockerProviderCredentialSelectionV1): Promise<boolean>;
+  openCredential(input: FoundationDockerProviderCredentialSelectionV1): Promise<FoundationDockerAgentCredentialReaderV1>;
+  credentialSettlement(input: FoundationDockerProviderCredentialSelectionV1): Promise<boolean>;
+  settleCredential(input: FoundationDockerProviderCredentialSelectionV1 & Readonly<{
+    outcome: FoundationDockerProviderCredentialOutcomeV1;
+  }>): Promise<void>;
+  forgetCredentialSettlement(input: FoundationDockerProviderCredentialSelectionV1): Promise<void>;
 }
 
 export type FoundationDockerInputEntryReaderV1 = Readonly<{
@@ -215,6 +240,7 @@ type CellMetadata = Readonly<{
   publicLabels: Readonly<Record<string, string>>;
   inputVolume: string;
   outputVolume: string;
+  providerStateVolume: string | null;
   image: FoundationDockerCliImageInstallationV1;
   providerSupport: AgentProviderSupport | null;
   providerNetwork: string | null;
@@ -225,24 +251,6 @@ type CellMetadata = Readonly<{
 function fail(code: string, message: string, retryable = false): never {
   throw new FoundationError(`lifecycle.execution.docker-cli-driver.${code}`, message, {
     retryable,
-  });
-}
-
-function installedImageLabels(
-  image: FoundationDockerCliImageInstallationV1,
-): Readonly<Record<string, string>> {
-  return Object.freeze({
-    [`${IMAGE_LABEL_PREFIX}image-id`]: image.imageId,
-    [`${IMAGE_LABEL_PREFIX}runner-contract-id`]: image.runnerContractId,
-    [`${IMAGE_LABEL_PREFIX}runner-contract-digest`]: image.runnerContractDigest,
-    [`${IMAGE_LABEL_PREFIX}runner-implementation-digest`]: image.runnerImplementationDigest,
-    [`${IMAGE_LABEL_PREFIX}tool-inventory-digest`]: image.toolInventoryDigest,
-    ...(image.agentProvider === undefined ? {} : {
-      [`${IMAGE_LABEL_PREFIX}codex-version`]: image.agentProvider.codexVersion,
-      [`${IMAGE_LABEL_PREFIX}codex-executable-identity`]: image.agentProvider.executableIdentity,
-      [`${IMAGE_LABEL_PREFIX}adapter-implementation-digest`]:
-        image.agentProvider.adapterImplementationDigest,
-    }),
   });
 }
 
@@ -357,6 +365,7 @@ class SpawnDockerCliCommandExecutor implements FoundationDockerCliCommandExecuto
         fail("command-unavailable", "The exact configured Docker executable could not start", true);
       }
       const stdout: Buffer[] = [];
+      const stdin = request.stdin === null ? null : Buffer.from(request.stdin);
       let stdoutBytes = 0;
       let stderrBytes = 0;
       let stderrTruncated = false;
@@ -365,6 +374,9 @@ class SpawnDockerCliCommandExecutor implements FoundationDockerCliCommandExecuto
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        stdin?.fill(0);
+        for (const chunk of stdout) chunk.fill(0);
+        stdout.length = 0;
         if (error !== undefined) rejectResult(error);
         else resolveResult(result!);
       };
@@ -386,25 +398,34 @@ class SpawnDockerCliCommandExecutor implements FoundationDockerCliCommandExecuto
         "The exact configured Docker executable became unavailable",
       ));
       child.stdout.on("data", (chunk: Buffer) => {
-        stdoutBytes += chunk.byteLength;
-        if (stdoutBytes > request.maximumStdoutBytes) {
-          abort("command-output-bound", "Docker Engine output exceeded its fixed byte bound");
-          return;
-        }
-        stdout.push(Buffer.from(chunk));
+        try {
+          if (settled) return;
+          stdoutBytes += chunk.byteLength;
+          if (stdoutBytes > request.maximumStdoutBytes) {
+            abort("command-output-bound", "Docker Engine output exceeded its fixed byte bound");
+            return;
+          }
+          stdout.push(Buffer.from(chunk));
+        } finally { chunk.fill(0); }
       });
       child.stderr.on("data", (chunk: Buffer) => {
-        stderrBytes += chunk.byteLength;
-        if (stderrBytes > request.maximumStderrBytes) stderrTruncated = true;
+        if (!settled) {
+          stderrBytes += chunk.byteLength;
+          if (stderrBytes > request.maximumStderrBytes) stderrTruncated = true;
+        }
+        chunk.fill(0);
       });
-      child.once("close", (exitCode, signal) => finish(Object.freeze({
-        exitCode,
-        signal,
-        stdout: Uint8Array.from(Buffer.concat(stdout)),
-        stderrTruncated,
-      })));
-      if (request.stdin === null) child.stdin.end();
-      else child.stdin.end(Buffer.from(request.stdin));
+      child.once("close", (exitCode, signal) => {
+        if (settled) return;
+        const bytes = new Uint8Array(stdoutBytes);
+        let offset = 0;
+        for (const chunk of stdout) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+        finish(Object.freeze({ exitCode, signal, stdout: bytes, stderrTruncated }));
+      });
+      child.stdin.once("error", () => { stdin?.fill(0); abort("command-unavailable", "Private Docker command input became unavailable"); });
+      child.stdin.once("close", () => stdin?.fill(0));
+      if (stdin === null) child.stdin.end();
+      else child.stdin.end(stdin, () => stdin.fill(0));
     });
   }
 }
@@ -469,25 +490,7 @@ function validateOptions(options: FoundationDockerCliEngineDriverOptionsV1): voi
   }
   const identities = new Set<string>();
   for (const image of options.images) {
-    const repositoryDigestReference =
-      image.immutableReference.endsWith(`@${image.imageDigest}`);
-    const localImageIdReference =
-      image.immutableReference === image.imageDigest &&
-      image.configurationDigest === image.imageDigest;
-    if (!isSha256(image.imageDigest) || !isSha256(image.configurationDigest) ||
-        !isSha256(image.runnerContractDigest) || !isSha256(image.runnerImplementationDigest) ||
-        !isSha256(image.toolInventoryDigest) || image.runnerContractId !== RUNNER_CONTRACT_ID ||
-        (!repositoryDigestReference && !localImageIdReference) ||
-        image.nonRootUser === "" || /^(?:0|root)(?::0)?$/u.test(image.nonRootUser) ||
-        image.platform.os !== "linux") {
-      fail("configuration", "Docker image installation is incomplete or mutable");
-    }
-    if (image.agentProvider !== undefined &&
-        (!/^\d+\.\d+\.\d+$/u.test(image.agentProvider.codexVersion) ||
-          !isSha256(image.agentProvider.executableIdentity) ||
-          !isSha256(image.agentProvider.adapterImplementationDigest))) {
-      fail("configuration", "Docker Agent image provider installation is incomplete");
-    }
+    assertFoundationDockerCliImageInstallationV1(image);
     const identity = `${image.imageId}\0${image.imageDigest}`;
     if (identities.has(identity)) fail("configuration", "Docker image installation is duplicated");
     identities.add(identity);
@@ -501,6 +504,44 @@ function validateOptions(options: FoundationDockerCliEngineDriverOptionsV1): voi
         !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(provider.model) ||
         !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(provider.reasoning))) {
     fail("configuration", "Installed Agent provider support selection is invalid");
+  }
+}
+
+/** The immutable Image installation contract is shared by fresh binding and retained recovery. */
+export function assertFoundationDockerCliImageInstallationV1(image:FoundationDockerCliImageInstallationV1):void {
+  if (image === null || typeof image !== "object" || Array.isArray(image) ||
+      canonicalJson(Object.keys(image).sort()) !== canonicalJson([
+        "imageId","imageDigest","immutableReference","configurationDigest","platform","nonRootUser",
+        "runnerContractId","runnerContractDigest","runnerImplementationDigest","toolInventoryDigest",
+        ...(image.agentProvider === undefined ? [] : ["agentProvider"]),
+      ].sort()) || typeof image.imageId !== "string" || image.imageId === "" ||
+      typeof image.immutableReference !== "string" || typeof image.nonRootUser !== "string" ||
+      image.platform === null || typeof image.platform !== "object" ||
+      canonicalJson(Object.keys(image.platform).sort()) !== canonicalJson(["architecture","os","variant"]) ||
+      !["amd64","arm64"].includes(image.platform.architecture) ||
+      (image.platform.variant !== null && typeof image.platform.variant !== "string")) {
+    fail("configuration", "Docker image installation is incomplete or mutable");
+  }
+  const repositoryDigestReference =
+    image.immutableReference.endsWith(`@${image.imageDigest}`);
+  const localImageIdReference =
+    image.immutableReference === image.imageDigest &&
+    image.configurationDigest === image.imageDigest;
+  if (!isSha256(image.imageDigest) || !isSha256(image.configurationDigest) ||
+      !isSha256(image.runnerContractDigest) || !isSha256(image.runnerImplementationDigest) ||
+      !isSha256(image.toolInventoryDigest) || image.runnerContractId !== RUNNER_CONTRACT_ID ||
+      (!repositoryDigestReference && !localImageIdReference) ||
+      image.nonRootUser === "" || /^(?:0|root)(?::0)?$/u.test(image.nonRootUser) ||
+      image.platform.os !== "linux") {
+    fail("configuration", "Docker image installation is incomplete or mutable");
+  }
+  if (image.agentProvider !== undefined &&
+      (image.agentProvider === null || typeof image.agentProvider !== "object" ||
+        canonicalJson(Object.keys(image.agentProvider).sort()) !== canonicalJson(["adapterImplementationDigest","codexVersion","executableIdentity"]) ||
+        !/^\d+\.\d+\.\d+$/u.test(image.agentProvider.codexVersion) ||
+        !isSha256(image.agentProvider.executableIdentity) ||
+        !isSha256(image.agentProvider.adapterImplementationDigest))) {
+    fail("configuration", "Docker Agent image provider installation is incomplete");
   }
 }
 
@@ -552,7 +593,52 @@ function readOctal(field: Uint8Array, label: string): number {
 }
 
 function readTarString(field: Uint8Array): string {
-  return Buffer.from(field).toString("utf8").replace(/\0.*$/u, "");
+  const bytes = Buffer.from(field);
+  const end = bytes.indexOf(0);
+  const selected = end < 0 ? bytes : bytes.subarray(0, end);
+  const value = selected.toString("utf8");
+  if (!Buffer.from(value, "utf8").equals(selected)) fail("transport", "Docker archive text is not valid UTF-8");
+  return value;
+}
+
+function paxPath(bytes: Uint8Array): string | null {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAXIMUM_PAX_HEADER_BYTES) {
+    fail("transport", "Docker extended archive header exceeds its fixed bound");
+  }
+  const input = Buffer.from(bytes);
+  const keys = new Set<string>();
+  let offset = 0;
+  let path: string | null = null;
+  while (offset < input.byteLength) {
+    const space = input.indexOf(0x20, offset);
+    if (space < 0 || space - offset > 5) fail("transport", "Docker extended archive record has no bounded length");
+    const digits = input.subarray(offset, space).toString("ascii");
+    if (!/^[1-9][0-9]*$/u.test(digits) || input.subarray(offset, space).some((byte) => byte < 0x30 || byte > 0x39)) {
+      fail("transport", "Docker extended archive record length is invalid");
+    }
+    const length = Number(digits);
+    const end = offset + length;
+    if (end > input.byteLength || end <= space + 2 || input[end - 1] !== 0x0a) {
+      fail("transport", "Docker extended archive record is truncated");
+    }
+    const recordBytes = input.subarray(space + 1, end - 1);
+    const record = recordBytes.toString("utf8");
+    if (!Buffer.from(record, "utf8").equals(recordBytes) || record.includes("\0")) {
+      fail("transport", "Docker extended archive record text is invalid");
+    }
+    const equals = record.indexOf("=");
+    const key = record.slice(0, equals);
+    const value = record.slice(equals + 1);
+    if (equals <= 0 || keys.has(key)) fail("transport", "Docker extended archive record key is invalid or repeated");
+    keys.add(key);
+    if (key === "path") {
+      path = value;
+    } else if (!["mtime", "atime", "ctime"].includes(key) || !/^-?[0-9]{1,20}(?:\.[0-9]{1,20})?$/u.test(value)) {
+      fail("transport", "Docker extended archive header contains unsupported metadata");
+    }
+    offset = end;
+  }
+  return path;
 }
 
 function tarChecksum(block: Uint8Array): number {
@@ -572,6 +658,7 @@ function parseBoundedTar(input: Uint8Array, maximumEntries: number, maximumBytes
   let offset = 0;
   let aggregate = 0;
   let ended = false;
+  let extended: Readonly<{ path: string | null }> | null = null;
   while (offset + TAR_BLOCK_BYTES <= input.byteLength) {
     const header = input.subarray(offset, offset + TAR_BLOCK_BYTES);
     offset += TAR_BLOCK_BYTES;
@@ -583,13 +670,20 @@ function parseBoundedTar(input: Uint8Array, maximumEntries: number, maximumBytes
     if (tarChecksum(header) !== expectedChecksum) fail("transport", "Docker archive checksum is invalid");
     const name = readTarString(header.subarray(0, 100));
     const prefix = readTarString(header.subarray(345, 500));
-    let path = prefix === "" ? name : `${prefix}/${name}`;
+    let path = extended?.path ?? (prefix === "" ? name : `${prefix}/${name}`);
     while (path.startsWith("./")) path = path.slice(2);
     const type = header[156] === 0 ? "0" : String.fromCharCode(header[156]!);
     const size = readOctal(header.subarray(124, 136), "Tar entry size");
     const mode = readOctal(header.subarray(100, 108), "Tar entry mode");
     const padded = Math.ceil(size / TAR_BLOCK_BYTES) * TAR_BLOCK_BYTES;
     if (offset + padded > input.byteLength) fail("transport", "Docker archive is truncated");
+    if (type === "x") {
+      if (extended !== null) fail("transport", "Docker archive repeats a pending extended header");
+      extended = Object.freeze({ path: paxPath(input.subarray(offset, offset + size)) });
+      offset += padded;
+      continue;
+    }
+    extended = null;
     if (type === "5") {
       if (size !== 0) fail("transport", "Docker archive directory carries bytes");
       offset += padded;
@@ -610,13 +704,13 @@ function parseBoundedTar(input: Uint8Array, maximumEntries: number, maximumBytes
     }));
     offset += padded;
   }
-  if (!ended || input.subarray(offset).some((byte) => byte !== 0)) {
+  if (!ended || extended !== null || input.subarray(offset).some((byte) => byte !== 0)) {
     fail("transport", "Docker archive has no exact zero-padded end");
   }
   return Object.freeze(entries);
 }
 
-function tarPath(path: string): Readonly<{ name: string; prefix: string }> {
+function tarPath(path: string): Readonly<{ name: string; prefix: string }> | null {
   const bytes = Buffer.byteLength(path, "utf8");
   if (bytes <= 100) return Object.freeze({ name: path, prefix: "" });
   for (let index = path.lastIndexOf("/"); index > 0; index = path.lastIndexOf("/", index - 1)) {
@@ -626,7 +720,7 @@ function tarPath(path: string): Readonly<{ name: string; prefix: string }> {
       return Object.freeze({ name, prefix });
     }
   }
-  fail("transport", "Docker archive path exceeds the fixed ustar name bound");
+  return null;
 }
 
 function writeTarText(header: Buffer, offset: number, length: number, value: string): void {
@@ -646,22 +740,22 @@ function buildBoundedTar(
   ownership: Readonly<{ uid: number; gid: number }> = Object.freeze({ uid: 0, gid: 0 }),
 ): Uint8Array {
   const chunks: Buffer[] = [];
-  for (const entry of entries) {
+  const append = (split: Readonly<{ name: string; prefix: string }>, bytes: Uint8Array,
+    mode: number, type: "0" | "x"): void => {
     const header = Buffer.alloc(TAR_BLOCK_BYTES);
-    const split = tarPath(entry.path);
     writeTarText(header, 0, 100, split.name);
     writeTarOctal(
       header,
       100,
       8,
-      entry.portableMode ?? (entry.modeClass === "executable" ? 0o755 : 0o644),
+      mode,
     );
     writeTarOctal(header, 108, 8, ownership.uid);
     writeTarOctal(header, 116, 8, ownership.gid);
-    writeTarOctal(header, 124, 12, entry.bytes.byteLength);
+    writeTarOctal(header, 124, 12, bytes.byteLength);
     writeTarOctal(header, 136, 12, 0);
     header.fill(0x20, 148, 156);
-    header[156] = "0".charCodeAt(0);
+    header[156] = type.charCodeAt(0);
     writeTarText(header, 257, 6, "ustar\0");
     writeTarText(header, 263, 2, "00");
     writeTarText(header, 345, 155, split.prefix);
@@ -669,9 +763,27 @@ function buildBoundedTar(
     writeTarText(header, 148, 6, checksum);
     header[154] = 0;
     header[155] = 0x20;
-    chunks.push(header, Buffer.from(entry.bytes));
-    const padding = (TAR_BLOCK_BYTES - (entry.bytes.byteLength % TAR_BLOCK_BYTES)) % TAR_BLOCK_BYTES;
+    chunks.push(header, Buffer.from(bytes));
+    const padding = (TAR_BLOCK_BYTES - (bytes.byteLength % TAR_BLOCK_BYTES)) % TAR_BLOCK_BYTES;
     if (padding > 0) chunks.push(Buffer.alloc(padding));
+  };
+  for (const [index, entry] of entries.entries()) {
+    safePath(entry.path, "Docker archive");
+    let split = tarPath(entry.path);
+    if (split === null) {
+      // POSIX PAX preserves the exact logical path while retaining the fixed
+      // 4096-byte path and archive bounds. No input identity is shortened.
+      const suffix = ` path=${entry.path}\n`;
+      let length = Buffer.byteLength(suffix, "utf8") + 1;
+      while (String(length).length + Buffer.byteLength(suffix, "utf8") !== length) {
+        length = String(length).length + Buffer.byteLength(suffix, "utf8");
+      }
+      const bytes = Buffer.from(`${length}${suffix}`, "utf8");
+      if (bytes.byteLength > MAXIMUM_PAX_HEADER_BYTES) fail("transport", "Docker extended archive header exceeds its fixed bound");
+      append({ name: `PaxHeaders/${index}`, prefix: "" }, bytes, 0o644, "x");
+      split = { name: `PaxEntry.${index}`, prefix: "" };
+    }
+    append(split, entry.bytes, entry.portableMode ?? (entry.modeClass === "executable" ? 0o755 : 0o644), "0");
   }
   chunks.push(Buffer.alloc(TAR_BLOCK_BYTES * 2));
   return Uint8Array.from(Buffer.concat(chunks));
@@ -679,6 +791,7 @@ function buildBoundedTar(
 
 async function agentProviderSupportFrame(
   metadata: CellMetadata,
+  subject: FoundationDockerProviderCredentialSubjectV1,
   resolver: FoundationDockerAgentProviderSupportResolverV1 | undefined,
 ): Promise<Uint8Array | null> {
   const support = metadata.providerSupport;
@@ -693,7 +806,7 @@ async function agentProviderSupportFrame(
     fail("provider-support", "Retained Agent Cell no longer matches the installed Provider selection");
   }
   const reader = await resolver.openCredential({
-    specificationDigest: support.specificationDigest,
+    subject,
     credentialBinding: support.credentialBinding,
   });
   if (!isRecord(reader) || !Number.isSafeInteger(reader.byteLength) ||
@@ -701,34 +814,32 @@ async function agentProviderSupportFrame(
       typeof reader.read !== "function") {
     fail("provider-support", "Installed provider authentication is not one bounded private reader");
   }
-  const chunks: Buffer[] = [];
+  const auth = Buffer.alloc(reader.byteLength);
   let byteLength = 0;
-  for await (const raw of reader.read()) {
-    if (!(raw instanceof Uint8Array) || raw.byteLength === 0) {
-      fail("provider-support", "Installed provider authentication yielded invalid private bytes");
-    }
-    byteLength += raw.byteLength;
-    if (!Number.isSafeInteger(byteLength) || byteLength > reader.byteLength ||
-        byteLength > MAXIMUM_PROVIDER_AUTH_BYTES) {
-      fail("provider-support", "Installed provider authentication exceeded its private byte bound");
-    }
-    chunks.push(Buffer.from(raw));
-  }
-  if (byteLength !== reader.byteLength) {
-    fail("provider-support", "Installed provider authentication ended before its exact private length");
-  }
-  const auth = Buffer.concat(chunks);
-  const supportBytes = Buffer.from(`${canonicalJson(support)}\n`, "utf8");
   try {
+    for await (const raw of reader.read()) {
+      if (!(raw instanceof Uint8Array) || raw.byteLength === 0) {
+        fail("provider-support", "Installed provider authentication yielded invalid private bytes");
+      }
+      try {
+        if (byteLength + raw.byteLength > auth.byteLength) {
+          fail("provider-support", "Installed provider authentication exceeded its private byte bound");
+        }
+        auth.set(raw, byteLength);
+        byteLength += raw.byteLength;
+      } finally { raw.fill(0); }
+    }
+    if (byteLength !== auth.byteLength) fail("provider-support", "Installed provider authentication ended before its exact private length");
+    const supportBytes = Buffer.from(`${canonicalJson(support)}\n`, "utf8");
     const header = Buffer.alloc(PROVIDER_SUPPORT_FRAME_MAGIC.byteLength + 8);
     PROVIDER_SUPPORT_FRAME_MAGIC.copy(header, 0);
     header.writeUInt32BE(supportBytes.byteLength, PROVIDER_SUPPORT_FRAME_MAGIC.byteLength);
     header.writeUInt32BE(auth.byteLength, PROVIDER_SUPPORT_FRAME_MAGIC.byteLength + 4);
-    return Uint8Array.from(Buffer.concat([header, supportBytes, auth]));
-  } finally {
-    auth.fill(0);
-    for (const chunk of chunks) chunk.fill(0);
-  }
+    const frame = new Uint8Array(header.byteLength + supportBytes.byteLength + auth.byteLength);
+    frame.set(header); frame.set(supportBytes, header.byteLength); frame.set(auth, header.byteLength + supportBytes.byteLength);
+    return frame;
+  } finally { auth.fill(0); }
+
 }
 
 async function readInputTransport(
@@ -739,7 +850,7 @@ async function readInputTransport(
   if (!isRecord(source) || !isRecord(source.inputSet) ||
       source.inputSetDigest !== specification.inputSet.digest ||
       source.inputSet.digest !== source.inputSetDigest ||
-      source.inputSet.schema !== "lifecycle.execution-input-set.v1" ||
+      source.inputSet.schema !== "lifecycle.execution-input-set.v2" ||
       selfDigest(source.inputSet) !== source.inputSet.digest ||
       typeof source.entries !== "function") {
     fail("input", "Docker input transport substituted its exact Input Set");
@@ -996,6 +1107,7 @@ function cellMetadata(labelsValue: unknown, images: readonly FoundationDockerCli
       (providerSupport !== null &&
         (providerSupport.specificationDigest !==
           privateLabel(labels, PRIVATE_LABELS.specificationDigest) ||
+          privateLabel(labels, PRIVATE_LABELS.providerStateVolume) !== `${privateLabel(labels, PRIVATE_LABELS.allocationName)}-provider-state` ||
           image.agentProvider?.executableIdentity !== providerSupport.executableIdentity ||
           image.agentProvider?.adapterImplementationDigest !==
             providerSupport.adapterImplementationDigest))) {
@@ -1006,6 +1118,8 @@ function cellMetadata(labelsValue: unknown, images: readonly FoundationDockerCli
     publicLabels: publicLabels(labels),
     inputVolume: safeName(privateLabel(labels, PRIVATE_LABELS.inputVolume), "Docker input volume"),
     outputVolume: safeName(privateLabel(labels, PRIVATE_LABELS.outputVolume), "Docker output volume"),
+    providerStateVolume: providerSupport === null ? null :
+      safeName(privateLabel(labels, PRIVATE_LABELS.providerStateVolume), "Docker provider-state volume"),
     image,
     providerSupport,
     providerNetwork,
@@ -1021,7 +1135,7 @@ function commandLabels(labels: Readonly<Record<string, string>>): string[] {
   return Object.entries(labels).flatMap(([name, value]) => ["--label", `${name}=${value}`]);
 }
 
-function volumeLabels(kind: "input" | "output" | "dispatch" | "cancel" | "reclamation", input: Readonly<{
+function volumeLabels(kind: "input" | "output" | "provider-state" | "dispatch" | "cancel" | "reclamation", input: Readonly<{
   allocationName: string;
   specificationDigest: Sha256;
   cellId?: string;
@@ -1112,6 +1226,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
   readonly #environment: Readonly<Record<string, string>>;
   readonly #endpointDigest: Sha256;
   #engine: FoundationDockerEngineDescriptionV1 | null = null;
+  readonly #imageLabels = new Map<string, Readonly<Record<string, string>>>();
 
   constructor(options: InternalOptions) {
     this.#options = options;
@@ -1152,6 +1267,15 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     );
     if (selected.length !== 1) fail("image", "Execution Image is not one exact installed Docker image");
     return selected[0]!;
+  }
+
+  async #inheritedImageLabels(image: FoundationDockerCliImageInstallationV1): Promise<Readonly<Record<string, string>>> {
+    const key = `${image.imageId}\0${image.imageDigest}`;
+    if (!this.#imageLabels.has(key)) {
+      await this.inspectImage({ imageId: image.imageId, imageDigest: image.imageDigest,
+        runnerContractId: image.runnerContractId, runnerContractDigest: image.runnerContractDigest });
+    }
+    return this.#imageLabels.get(key)!;
   }
 
   async describe(): Promise<FoundationDockerEngineDescriptionV1> {
@@ -1236,6 +1360,18 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
               installed.agentProvider.adapterImplementationDigest))) {
       fail("image-substitution", "Docker image content does not match its installed immutable record");
     }
+    // Docker inherits every image label. The digest-verified configuration,
+    // not a subset of selected label names, supplies that complete baseline.
+    const inherited = Object.freeze(Object.fromEntries(Object.entries(labels).map(([name, value]) => {
+      if (typeof value !== "string") fail("image-substitution", "Docker image label is not exact text");
+      return [safeLabel(name, "Docker image label name"), safeLabel(value, "Docker image label value")];
+    })));
+    const labelKey = `${installed.imageId}\0${installed.imageDigest}`;
+    const priorLabels = this.#imageLabels.get(labelKey);
+    if (priorLabels !== undefined && canonicalJson(priorLabels) !== canonicalJson(inherited)) {
+      fail("image-substitution", "Docker image inherited labels changed under the selected digest");
+    }
+    this.#imageLabels.set(labelKey, inherited);
     return Object.freeze({
       schema: "lifecycle.docker-image-observation.private.v1" as const,
       imageId: installed.imageId,
@@ -1257,7 +1393,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     arguments_.push("--format", "{{.ID}}");
     const result = await this.#command(arguments_, { maximumStdoutBytes: 16 * 1024 });
     const ids = Buffer.from(result.stdout).toString("utf8").split(/\r?\n/u).filter(Boolean);
-    if (ids.some((id) => !/^[a-f0-9]{64}$/u.test(id))) fail("discovery", "Docker discovery returned an invalid Cell identity");
+    if (ids.some((id) => id.length !== 64 || !/^[a-f0-9]{64}$/u.test(id))) fail("discovery", "Docker discovery returned an invalid Cell identity");
     return Object.freeze(ids.slice(0, maximumResults + 1));
   }
 
@@ -1294,6 +1430,75 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       truncated: ids.length > input.maximumResults ||
         anchorNames.length > input.maximumResults || cells.length > input.maximumResults,
     });
+  }
+
+  async findCellIdentities(input: Readonly<{
+    labels: Readonly<Record<string, string>>;
+    maximumResults: 2;
+  }>): Promise<FoundationDockerCellIdentityDiscoveryV1> {
+    // Both domains are observed afresh. A reclamation anchor remains an
+    // allocation identity even after its physical Cell has been removed.
+    const ids = await this.#containerIds(input.labels, input.maximumResults);
+    const anchorNames = await this.#volumeNamesByLabels(Object.freeze({
+      ...input.labels,
+      [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
+      [PRIVATE_LABELS.resourceKind]: "reclamation",
+    }), input.maximumResults);
+    const cellIds = new Set(ids.slice(0, input.maximumResults));
+    for (const name of anchorNames.slice(0, input.maximumResults)) {
+      const labels = await this.#volumeLabels(name);
+      if (labels === null) continue;
+      const cellId = privateLabel(labels, PRIVATE_LABELS.cellId);
+      if (cellId.length !== 64 || !/^[a-f0-9]{64}$/u.test(cellId) ||
+          name !== this.#reclamationAnchorName(cellId) ||
+          labels[PRIVATE_LABELS.schema] !== DRIVER_SCHEMA ||
+          labels[PRIVATE_LABELS.resourceKind] !== "reclamation" ||
+          !Object.entries(input.labels).every(([key, value]) => labels[key] === value)) {
+        fail("reclamation-anchor", "Docker Reclamation discovery is substituted");
+      }
+      const inspection = decodedInspection(labels, cellId);
+      assertFoundationDockerCellInspectionV1(inspection);
+      cellIds.add(cellId);
+    }
+    return Object.freeze({
+      cellIds: Object.freeze([...cellIds].slice(0, input.maximumResults)),
+      truncated: ids.length > input.maximumResults || anchorNames.length > input.maximumResults ||
+        cellIds.size > input.maximumResults || new Set(ids).size !== ids.length ||
+        new Set(anchorNames).size !== anchorNames.length,
+    });
+  }
+
+  async allocationResourcesAbsent(input: Readonly<{
+    allocationName: string;
+    specificationDigest: Sha256;
+  }>): Promise<boolean> {
+    const name = safeName(input.allocationName, "Docker allocation name");
+    if (!isSha256(input.specificationDigest)) fail("allocation-absence", "Docker allocation Specification is invalid");
+    const labels = [
+      `${PRIVATE_LABELS.allocationName}=${name}`,
+      `${PRIVATE_LABELS.specificationDigest}=${input.specificationDigest}`,
+      `io.lifecycle.execution-cell.v1.specification-digest=${input.specificationDigest}`,
+    ];
+    // Name checks catch substituted labels; label checks catch renamed resources,
+    // including dispatch/cancellation markers and Reclamation anchors.
+    const queries: string[][] = [];
+    for (const label of labels) {
+      queries.push(["container", "ls", "--all", "--no-trunc", "--filter", `label=${label}`, "--format", "{{.ID}}"]);
+      queries.push(["volume", "ls", "--filter", `label=${label}`, "--format", "{{.Name}}"]);
+      queries.push(["network", "ls", "--no-trunc", "--filter", `label=${label}`, "--format", "{{.ID}}"]);
+    }
+    for (const selected of [name, `${name}-input-stage`, `${name}-provider-proxy`, `${name}-provider-state-read`]) {
+      queries.push(["container", "ls", "--all", "--no-trunc", "--filter", `name=^/${selected}$`, "--format", "{{.ID}}"]);
+    }
+    for (const selected of [`${name}-input`, `${name}-output`, `${name}-provider-state`]) {
+      queries.push(["volume", "ls", "--filter", `name=^${selected}$`, "--format", "{{.Name}}"]);
+    }
+    queries.push(["network", "ls", "--no-trunc", "--filter", `name=^${name}-provider-net$`, "--format", "{{.ID}}"]);
+    for (const query of queries) {
+      const observed = await this.#command(query, { maximumStdoutBytes: 4096 });
+      if (observed.stdout.byteLength !== 0) return false;
+    }
+    return true;
   }
 
   async #inspectContainer(cellId: string): Promise<JsonRecord | null> {
@@ -1420,6 +1625,13 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
   }
 
   async inspectCell(cellId: string): Promise<FoundationDockerCellInspectionV1 | null> {
+    return await this.#inspectCell(cellId, true);
+  }
+
+  async #inspectCell(
+    cellId: string,
+    allowMembershipReobservation: boolean,
+  ): Promise<FoundationDockerCellInspectionV1 | null> {
     const inspected = await this.#inspectContainer(cellId);
     if (inspected === null) return await this.#reclamationAnchorInspection(cellId);
     const config = object(inspected.Config, "Docker Cell configuration");
@@ -1439,6 +1651,19 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       ? mounts.find((mount) => isRecord(mount) && mount.Name === metadata.outputVolume)
       : undefined;
     const authenticatedAgent = metadata.providerSupport !== null;
+    const providerStateMount = Array.isArray(mounts)
+      ? mounts.find((mount) => isRecord(mount) && mount.Name === metadata.providerStateVolume)
+      : undefined;
+    if (authenticatedAgent) {
+      const expected = volumeLabels("provider-state", {
+        allocationName: metadata.allocationName,
+        specificationDigest: metadata.providerSupport!.specificationDigest,
+      });
+      const labels = await this.#volumeLabels(metadata.providerStateVolume!);
+      if (labels === null || canonicalJson(labels) !== canonicalJson(expected)) {
+        fail("cell-integrity", "Docker provider-state volume identity is substituted or unavailable");
+      }
+    }
     const securityOptions = Array.isArray(host.SecurityOpt) ? host.SecurityOpt : [];
     const environment = Array.isArray(config.Env) ? config.Env : [];
     const providerProxyUrl = `http://${PROVIDER_CONTROL_ALIAS}:${PROVIDER_CONTROL_PORT}`;
@@ -1456,7 +1681,9 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
           "execute", "--specification", `${INPUT_ROOT}/${SPECIFICATION_PATH}`,
           "--input", INPUT_ROOT, "--output", OUTPUT_ROOT,
         ]) ||
-        mounts.length !== 2 || inputMount === undefined || outputMount === undefined ||
+        mounts.length !== (authenticatedAgent ? 3 : 2) || inputMount === undefined || outputMount === undefined ||
+        (authenticatedAgent && (providerStateMount === undefined || providerStateMount.Type !== "volume" ||
+          providerStateMount.Destination !== PROVIDER_STATE_ROOT || providerStateMount.RW !== true)) ||
         inputMount.Type !== "volume" || inputMount.Destination !== INPUT_ROOT || inputMount.RW !== false ||
         outputMount.Type !== "volume" || outputMount.Destination !== OUTPUT_ROOT || outputMount.RW !== true ||
         !(host.Binds === null || (Array.isArray(host.Binds) && host.Binds.length === 0)) ||
@@ -1491,7 +1718,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         fail("provider-channel-integrity", "Agent Cell lacks its provider-control coordinate");
       }
       const providerLabels = Object.freeze({
-        ...installedImageLabels(metadata.image),
+        ...await this.#inheritedImageLabels(metadata.image),
         [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
         [PRIVATE_LABELS.resourceKind]: "provider-control",
         [PRIVATE_LABELS.allocationName]: metadata.allocationName,
@@ -1553,11 +1780,18 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
           canonicalJson(Object.keys(proxyNetworks).sort()) !==
             canonicalJson(["bridge", metadata.providerNetwork].sort()) ||
           !proxyAliases.includes(PROVIDER_CONTROL_ALIAS) ||
-          networkMembers.some((member) => !expectedNetworkMembers.has(member)) ||
-          (processState === "running" &&
-            (networkMembers.length !== 2 || !networkMembers.includes(cellId) ||
-              !networkMembers.includes(proxyId)))) {
+          networkMembers.some((member) => !expectedNetworkMembers.has(member))) {
         fail("provider-channel-integrity", "Agent provider-control topology is substituted");
+      }
+      if (processState === "running" &&
+          (networkMembers.length !== 2 || !networkMembers.includes(cellId) ||
+            !networkMembers.includes(proxyId))) {
+        // Docker snapshots the Cell before its network membership. A natural
+        // exit between those reads can detach an expected member. Discard this
+        // mixed read once and revalidate the complete exact configuration; a
+        // persistent missing member still refuses without publishing a fact.
+        if (allowMembershipReobservation) return await this.#inspectCell(cellId, false);
+        fail("provider-channel-integrity", "Running Agent provider-control membership is incomplete");
       }
       const proxyState = object(proxy.State, "Docker provider-control proxy state");
       providerProxyRunning = proxyState.Running === true;
@@ -1628,7 +1862,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     } else if (authenticatedAgent && (processState === "running" || providerProxyRunning)) {
       const support = await this.#command([
         "container", "exec", cellId,
-        "/usr/bin/test", "-r", "/tmp/lifecycle-codex-home/auth.json",
+        "/usr/bin/test", "-r", `${PROVIDER_STATE_ROOT}/home/auth.json`,
       ], { allowFailure: true, maximumStdoutBytes: 1024 });
       if (commandSucceeded(support)) {
         credentials = "active";
@@ -1810,6 +2044,173 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     return inspected;
   }
 
+  async #credentialSubject(specificationDigest: Sha256, allocationName: string): Promise<FoundationDockerProviderCredentialSubjectV1> {
+    return Object.freeze({ specificationDigest,
+      engineIdentityDigest: (this.#engine ?? await this.describe()).engineIdentityDigest,
+      allocationName: safeName(allocationName, "Docker credential allocation"),
+    });
+  }
+
+  async #credentialSelection(specification: FoundationExecutionSpecificationV1, allocationName: string): Promise<FoundationDockerProviderCredentialSelectionV1 | null> {
+    if (specification.credentialPolicy.mode === "none") return null;
+    if (specification.credentialPolicy.mode !== "fixed-runner" || specification.credentialPolicy.bindings.length !== 1 ||
+        this.#options.agentProviderSupport === undefined) fail("provider-support", "Provider credential settlement lacks its exact custodian");
+    return Object.freeze({ subject: await this.#credentialSubject(specification.digest, allocationName),
+      credentialBinding: specification.credentialPolicy.bindings[0]!,
+    });
+  }
+
+  #credentialReadLabels(allocationName: string, specificationDigest: Sha256): Readonly<Record<string, string>> {
+    return Object.freeze({ [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
+      [PRIVATE_LABELS.resourceKind]: "provider-state-read", [PRIVATE_LABELS.allocationName]: allocationName,
+      [PRIVATE_LABELS.specificationDigest]: specificationDigest,
+    });
+  }
+
+  async #readProviderCredential(input: Readonly<{
+    specification: FoundationExecutionSpecificationV1;
+    allocationName: string;
+    volume: string;
+  }>): Promise<Uint8Array | null> {
+    const image = this.#image(input.specification.image.imageId, input.specification.image.imageDigest);
+    const name = safeName(`${input.allocationName}-provider-state-read`, "Provider-state reader");
+    const labels = this.#credentialReadLabels(input.allocationName, input.specification.digest);
+    const physicalLabels = Object.freeze({ ...await this.#inheritedImageLabels(image), ...labels });
+    await this.#removeContainerByName(name, physicalLabels);
+    try {
+      const created = await this.#command([
+        "container", "create", "--name", name, ...commandLabels(labels),
+        "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+        "--network", "none", "--restart", "no", "--user", image.nonRootUser,
+        "--log-driver", "none", "--pids-limit", "16",
+        "--mount", `type=volume,src=${input.volume},dst=${PROVIDER_STATE_ROOT},readonly`,
+        "--entrypoint", RUNNER_ENTRYPOINT, image.immutableReference, "provider-credential-read",
+      ], { maximumStdoutBytes: 4096 });
+      const cellId = Buffer.from(created.stdout).toString("utf8").trim();
+      const inspected = /^[a-f0-9]{64}$/u.test(cellId) ? await this.#inspectContainer(cellId) : null;
+      if (inspected === null) fail("provider-state-read", "Private credential reader could not be identified", true);
+      const config = object(inspected.Config, "Private credential reader configuration");
+      const host = object(inspected.HostConfig, "Private credential reader host configuration");
+      const mounts = inspected.Mounts;
+      if (inspected.Id !== cellId || inspected.Image !== image.configurationDigest ||
+          canonicalJson(config.Labels) !== canonicalJson(physicalLabels) || config.User !== image.nonRootUser ||
+          canonicalJson(config.Entrypoint) !== canonicalJson([RUNNER_ENTRYPOINT]) ||
+          canonicalJson(config.Cmd) !== canonicalJson(["provider-credential-read"]) ||
+          host.Privileged !== false || host.ReadonlyRootfs !== true || host.NetworkMode !== "none" ||
+          host.PidMode !== "" || object(host.RestartPolicy, "Private credential reader restart policy").Name !== "no" ||
+          object(host.LogConfig, "Private credential reader logging policy").Type !== "none" ||
+          !Array.isArray(host.CapDrop) || !host.CapDrop.includes("ALL") ||
+          !Array.isArray(host.SecurityOpt) || !host.SecurityOpt.includes("no-new-privileges") ||
+          !(host.Binds === null || (Array.isArray(host.Binds) && host.Binds.length === 0)) ||
+          !Array.isArray(mounts) || mounts.length !== 1 || !isRecord(mounts[0]) ||
+          mounts[0].Type !== "volume" || mounts[0].Name !== input.volume ||
+          mounts[0].Destination !== PROVIDER_STATE_ROOT || mounts[0].RW !== false) {
+        fail("provider-state-read", "Private credential reader physical configuration is substituted");
+      }
+      const result = await this.#command(["container", "start", "--attach", cellId], {
+        maximumStdoutBytes: MAXIMUM_PROVIDER_AUTH_BYTES + PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength + 4,
+        allowFailure: true,
+      });
+      try {
+        if (!commandSucceeded(result)) fail("provider-state-read", "Private credential retrieval is temporarily unavailable", true);
+        const frame = Buffer.from(result.stdout);
+        try {
+          const headerLength = PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength + 4;
+          if (frame.byteLength < headerLength ||
+              !frame.subarray(0, PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength).equals(PROVIDER_CREDENTIAL_FRAME_MAGIC)) {
+            fail("provider-state-read", "Private credential reader returned an invalid bounded frame");
+          }
+          const length = frame.readUInt32BE(PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength);
+          if (length > MAXIMUM_PROVIDER_AUTH_BYTES || (length !== 0 && length < 2) || frame.byteLength !== headerLength + length) {
+            fail("provider-state-read", "Private credential reader returned invalid frame bounds");
+          }
+          return length === 0 ? null : Uint8Array.from(frame.subarray(headerLength));
+        } finally { frame.fill(0); }
+      } finally { result.stdout.fill(0); }
+    } finally {
+      await this.#removeContainerByName(name, physicalLabels);
+    }
+  }
+
+  async settleProviderCredential(input: Readonly<{
+    specification: FoundationExecutionSpecificationV1;
+    allocationName: string;
+    cellId: string | null;
+  }>): Promise<void> {
+    const selection = await this.#credentialSelection(input.specification, input.allocationName);
+    if (selection === null) return;
+    const resolver = this.#options.agentProviderSupport!;
+    // A durable settlement wins over stale Cell bytes after an interrupted return.
+    if (await resolver.credentialSettlement(selection)) return;
+    if (input.cellId === null) {
+      if (!await resolver.hasCredentialClaim(selection)) return;
+      await resolver.settleCredential({ ...selection, outcome: Object.freeze({ kind: "unused" }) });
+      return;
+    }
+    const container = await this.#inspectContainer(input.cellId);
+    if (container !== null) {
+      const metadata = cellMetadata(object(container.Config, "Docker Cell configuration").Labels, this.#options.images);
+      if (metadata.allocationName !== input.allocationName || metadata.providerSupport?.specificationDigest !== input.specification.digest) {
+        fail("provider-support", "Credential settlement selected another Cell");
+      }
+      const inspection = await this.inspectCell(input.cellId);
+      if (inspection === null || !["terminal", "not-started"].includes(inspection.direct.processState) ||
+          inspection.direct.containmentFacts.descendants !== "absent" ||
+          inspection.direct.containmentFacts.writers !== "absent" ||
+          !["not-granted", "unreachable"].includes(inspection.direct.containmentFacts.providerChannel)) {
+        fail("provider-support", "Credential settlement requires exact Cell containment", true);
+      }
+      if (inspection.direct.processState === "not-started" && inspection.direct.containmentFacts.credentials === "not-injected") {
+        await resolver.settleCredential({ ...selection, outcome: Object.freeze({ kind: "unused" }) });
+        return;
+      }
+    }
+    if (container === null) {
+      const image = this.#image(input.specification.image.imageId, input.specification.image.imageDigest);
+      const proxyLabels = Object.freeze({ ...await this.#inheritedImageLabels(image),
+        [PRIVATE_LABELS.schema]: DRIVER_SCHEMA, [PRIVATE_LABELS.resourceKind]: "provider-control",
+        [PRIVATE_LABELS.allocationName]: input.allocationName, [PRIVATE_LABELS.specificationDigest]: input.specification.digest,
+      });
+      const proxyName = `${input.allocationName}-provider-proxy`;
+      let proxy = await this.#providerProxy(proxyName, proxyLabels);
+      if (proxy !== null && object(proxy.State, "Provider-control state").Running === true) {
+        // The productive Cell is absent; the exact surviving private proxy is
+        // still ours to contain. Missing Cell custody never licenses redispatch.
+        await this.#command(["container", "stop", "--time", "5", proxyName], { allowFailure: true, maximumStdoutBytes: 4096 });
+        proxy = await this.#providerProxy(proxyName, proxyLabels);
+        if (proxy !== null && object(proxy.State, "Provider-control state").Running === true) {
+          await this.#command(["container", "kill", proxyName], { allowFailure: true, maximumStdoutBytes: 4096 });
+          proxy = await this.#providerProxy(proxyName, proxyLabels);
+        }
+      }
+      if (proxy !== null && object(proxy.State, "Provider-control state").Running !== false) {
+        fail("provider-support", "Credential settlement requires provider containment", true);
+      }
+    }
+    const volume = safeName(`${input.allocationName}-provider-state`, "Docker provider-state volume");
+    const expected = volumeLabels("provider-state", { allocationName: input.allocationName, specificationDigest: input.specification.digest });
+    const labels = await this.#volumeLabels(volume);
+    const matching = await this.#volumeNamesByLabels(expected, 2);
+    if ((labels !== null && canonicalJson(labels) !== canonicalJson(expected)) ||
+        matching.some(name => name !== volume) || matching.length > 1) {
+      fail("provider-support", "Credential state volume identity is substituted");
+    }
+    const bytes = labels === null ? null : await this.#readProviderCredential({ ...input, volume });
+    try {
+      await resolver.settleCredential({ ...selection,
+        outcome: bytes === null ? Object.freeze({ kind: "lost" }) : Object.freeze({ kind: "updated", bytes }),
+      });
+    } finally { bytes?.fill(0); }
+  }
+
+  async forgetProviderCredential(input: Readonly<{
+    specification: FoundationExecutionSpecificationV1;
+    allocationName: string;
+  }>): Promise<void> {
+    const selection = await this.#credentialSelection(input.specification, input.allocationName);
+    if (selection !== null) await this.#options.agentProviderSupport!.forgetCredentialSettlement(selection);
+  }
+
   async createCell(request: FoundationDockerCellCreateRequestV1): Promise<void> {
     const { specification, configuration } = request;
     if (configuration.transport.input !== "bounded-archive" ||
@@ -1837,6 +2238,8 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     const allocationName = safeName(request.allocationName, "Docker allocation name");
     const inputVolume = safeName(`${allocationName}-input`, "Docker input volume");
     const outputVolume = safeName(`${allocationName}-output`, "Docker output volume");
+    const providerStateVolume = providerSupport === null ? null :
+      safeName(`${allocationName}-provider-state`, "Docker provider-state volume");
     const inputLabels = volumeLabels("input", { allocationName, specificationDigest: specification.digest });
     const outputLabels = volumeLabels("output", { allocationName, specificationDigest: specification.digest });
     const stagingName = safeName(`${allocationName}-input-stage`, "Docker input staging name");
@@ -1848,13 +2251,19 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       [PRIVATE_LABELS.inputVolume]: inputVolume,
     });
     const stagingPhysicalLabels = Object.freeze({
-      ...installedImageLabels(image),
+      ...await this.#inheritedImageLabels(image),
       ...stagingLabels,
     });
     // Validate and bound the complete logical input before allocating physical
     // transport resources. A deterministic input refusal therefore cannot
     // leave an untracked pre-Handle Docker obligation.
     const archive = await readInputTransport(this.#options.inputTransport, specification);
+    if (providerSupport !== null) {
+      await this.#options.agentProviderSupport!.claimCredential({
+        subject: await this.#credentialSubject(specification.digest, allocationName),
+        credentialBinding: providerSupport.credentialBinding,
+      });
+    }
     await this.#removeContainerByName(stagingName, stagingPhysicalLabels);
     // No Cell exists when the Backend enters createCell. Any exact volumes at
     // this coordinate are therefore an interrupted provisional creation, not
@@ -1862,6 +2271,11 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     // cannot survive a lost staging response.
     await this.#resetProvisionalVolume(inputVolume, inputLabels);
     await this.#resetProvisionalVolume(outputVolume, outputLabels);
+    if (providerStateVolume !== null) {
+      await this.#resetProvisionalVolume(providerStateVolume, volumeLabels("provider-state", {
+        allocationName, specificationDigest: specification.digest,
+      }));
+    }
     await this.#command([
       "container", "create", "--name", stagingName,
       ...commandLabels(stagingLabels),
@@ -1905,12 +2319,13 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         [PRIVATE_LABELS.providerSupportDigest]: providerSupportEncoded.digest,
         [PRIVATE_LABELS.providerNetwork]: providerNetwork!,
         [PRIVATE_LABELS.providerProxy]: providerProxy!,
+        [PRIVATE_LABELS.providerStateVolume]: providerStateVolume!,
       }),
     });
     const authenticatedAgent = providerSupport !== null;
     if (authenticatedAgent) {
       const providerResourceLabels = Object.freeze({
-        ...installedImageLabels(image),
+        ...await this.#inheritedImageLabels(image),
         [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
         [PRIVATE_LABELS.resourceKind]: "provider-control",
         [PRIVATE_LABELS.allocationName]: allocationName,
@@ -1953,6 +2368,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       "--user", image.nonRootUser,
       "--mount", `type=volume,src=${inputVolume},dst=${INPUT_ROOT},readonly`,
       "--mount", `type=volume,src=${outputVolume},dst=${OUTPUT_ROOT}`,
+      ...(providerStateVolume === null ? [] : ["--mount", `type=volume,src=${providerStateVolume},dst=${PROVIDER_STATE_ROOT}`]),
       "--tmpfs", `/tmp:rw,exec,nosuid,nodev,size=${Math.min(configuration.limits.storageBytes, 256 * 1024 * 1024)}`,
       ...(authenticatedAgent ? [
         "--env", `HTTP_PROXY=http://${PROVIDER_CONTROL_ALIAS}:${PROVIDER_CONTROL_PORT}`,
@@ -2001,7 +2417,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         fail("provider-channel-integrity", "Agent Cell lacks its exact provider-control resources");
       }
       const providerLabels = Object.freeze({
-        ...installedImageLabels(metadata.image),
+        ...await this.#inheritedImageLabels(metadata.image),
         [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
         [PRIVATE_LABELS.resourceKind]: "provider-control",
         [PRIVATE_LABELS.allocationName]: metadata.allocationName,
@@ -2073,7 +2489,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     if (metadata.providerSupport !== null) {
       const active = await this.#command([
         "container", "exec", cellId,
-        "/usr/bin/test", "-r", "/tmp/lifecycle-codex-home/auth.json",
+        "/usr/bin/test", "-r", `${PROVIDER_STATE_ROOT}/home/auth.json`,
       ], { allowFailure: true, maximumStdoutBytes: 1024 });
       const staged = commandSucceeded(active)
         ? active
@@ -2084,6 +2500,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       if (!commandSucceeded(active) && !commandSucceeded(staged)) {
         const frame = await agentProviderSupportFrame(
           metadata,
+          await this.#credentialSubject(specificationDigest, metadata.allocationName),
           this.#options.agentProviderSupport,
         );
         if (frame === null) {
@@ -2108,7 +2525,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       for (let attempt = 0; attempt < 100 && !ready; attempt += 1) {
         const available = await this.#command([
           "container", "exec", cellId,
-          "/usr/bin/test", "-r", "/tmp/lifecycle-codex-home/auth.json",
+          "/usr/bin/test", "-r", `${PROVIDER_STATE_ROOT}/home/auth.json`,
         ], { allowFailure: true, maximumStdoutBytes: 1024 });
         if (commandSucceeded(available)) {
           ready = true;
@@ -2156,7 +2573,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     }
     if (metadata.providerProxy !== null) {
       const providerLabels = Object.freeze({
-        ...installedImageLabels(metadata.image),
+        ...await this.#inheritedImageLabels(metadata.image),
         [PRIVATE_LABELS.schema]: DRIVER_SCHEMA,
         [PRIVATE_LABELS.resourceKind]: "provider-control",
         [PRIVATE_LABELS.allocationName]: metadata.allocationName,
@@ -2241,6 +2658,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     inspection: FoundationDockerCellInspectionV1;
     inputVolume: string;
     outputVolume: string;
+    providerStateVolume: string | null;
     specificationDigest: Sha256;
     providerNetwork: string | null;
     providerProxy: string | null;
@@ -2253,6 +2671,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
           existing[PRIVATE_LABELS.cellId] !== input.inspection.cellId ||
           existing[PRIVATE_LABELS.inputVolume] !== input.inputVolume ||
           existing[PRIVATE_LABELS.outputVolume] !== input.outputVolume ||
+          (existing[PRIVATE_LABELS.providerStateVolume] ?? null) !== input.providerStateVolume ||
           (input.providerNetwork !== null &&
             existing[PRIVATE_LABELS.providerNetwork] !== input.providerNetwork) ||
           (input.providerProxy !== null &&
@@ -2279,6 +2698,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       }),
       [PRIVATE_LABELS.inputVolume]: input.inputVolume,
       [PRIVATE_LABELS.outputVolume]: input.outputVolume,
+      ...(input.providerStateVolume === null ? {} : { [PRIVATE_LABELS.providerStateVolume]: input.providerStateVolume }),
       ...(input.providerNetwork === null ? {} : {
         [PRIVATE_LABELS.providerNetwork]: input.providerNetwork,
         [PRIVATE_LABELS.providerProxy]: input.providerProxy!,
@@ -2289,9 +2709,65 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     await this.#ensureVolume(anchorName, labels);
   }
 
+  async #removeUnanchoredAllocation(input: Readonly<{
+    allocationName: string;
+    specificationDigest: Sha256;
+  }>): Promise<"removed" | "missing" | "remaining" | "integrity-refusal"> {
+    const allocationName = safeName(input.allocationName, "Docker Reclamation allocation");
+    let removed = false;
+    // Complete the retained deterministic allocation recipe even if its Cell
+    // disappeared before a Reclamation anchor could be written.
+    for (const [suffix, kind] of [["input-stage", "input-stage"], ["provider-proxy", "provider-control"],
+      ["provider-state-read", "provider-state-read"]] as const) {
+      const name = `${allocationName}-${suffix}`;
+      const listed = await this.#command(["container", "ls", "--all", "--no-trunc", "--filter", `name=^/${name}$`, "--format", "{{.ID}}"], { maximumStdoutBytes: 4096 });
+      const ids = Buffer.from(listed.stdout).toString("utf8").split(/\r?\n/u).filter(Boolean);
+      if (ids.length > 1) return "integrity-refusal";
+      if (ids.length === 0) continue;
+      const container = await this.#inspectContainer(ids[0]!);
+      if (container === null) return "remaining";
+      const image = this.#options.images.find(value => value.configurationDigest === container.Image);
+      if (image === undefined) return "integrity-refusal";
+      const expected = Object.freeze({ ...await this.#inheritedImageLabels(image),
+        [PRIVATE_LABELS.schema]: DRIVER_SCHEMA, [PRIVATE_LABELS.resourceKind]: kind,
+        [PRIVATE_LABELS.allocationName]: allocationName, [PRIVATE_LABELS.specificationDigest]: input.specificationDigest,
+        ...(kind === "input-stage" ? { [PRIVATE_LABELS.inputVolume]: `${allocationName}-input` } : {}),
+      });
+      if (canonicalJson(object(container.Config, "Orphan allocation configuration").Labels) !== canonicalJson(expected)) return "integrity-refusal";
+      if (object(container.State, "Orphan allocation state").Running === true && kind !== "provider-state-read") return "remaining";
+      await this.#removeContainerByName(name, expected);
+      removed = true;
+    }
+    const networkName = `${allocationName}-provider-net`;
+    const network = await this.#network(networkName);
+    if (network !== null) {
+      const expected = { [PRIVATE_LABELS.schema]: DRIVER_SCHEMA, [PRIVATE_LABELS.resourceKind]: "provider-network",
+        [PRIVATE_LABELS.allocationName]: allocationName, [PRIVATE_LABELS.specificationDigest]: input.specificationDigest };
+      if (network.Internal !== true || canonicalJson(network.Labels) !== canonicalJson(expected)) return "integrity-refusal";
+      if (Object.keys(object(network.Containers ?? {}, "Orphan network membership")).length !== 0) return "remaining";
+      const result = await this.#command(["network", "rm", networkName], { allowFailure: true, maximumStdoutBytes: 4096 });
+      if (!commandSucceeded(result) || await this.#network(networkName) !== null) return "remaining";
+      removed = true;
+    }
+    for (const kind of ["input", "output", "provider-state"] as const) {
+      const name = `${allocationName}-${kind}`;
+      const expected = volumeLabels(kind, { allocationName, specificationDigest: input.specificationDigest });
+      const matching = await this.#volumeNamesByLabels(expected, 2);
+      const labels = await this.#volumeLabels(name);
+      if (matching.some(value => value !== name) || matching.length > 1 ||
+          (labels !== null && canonicalJson(labels) !== canonicalJson(expected))) return "integrity-refusal";
+      if (labels === null) continue;
+      const result = await this.#removeVolume(name);
+      if (result === "remaining" || result === "integrity-refusal") return result;
+      removed = true;
+    }
+    return removed ? "removed" : "missing";
+  }
+
   async removeCell(input: Readonly<{
     cellId: string;
     specificationDigest: Sha256;
+    allocationName?: string;
   }>): Promise<"removed" | "missing" | "remaining" | "integrity-refusal"> {
     const cellId = input.cellId;
     if (!/^[a-f0-9]{64}$/u.test(cellId) || !isSha256(input.specificationDigest)) {
@@ -2301,6 +2777,10 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
     const anchorName = this.#reclamationAnchorName(cellId);
     const anchorLabels = await this.#volumeLabels(anchorName);
     if (container === null && anchorLabels === null) {
+      const allocation = input.allocationName === undefined ? "missing" : await this.#removeUnanchoredAllocation({
+        allocationName: input.allocationName, specificationDigest: input.specificationDigest,
+      });
+      if (allocation === "remaining" || allocation === "integrity-refusal") return allocation;
       const dispatch = await this.#removeExactMarker(
         "dispatch",
         cellId,
@@ -2315,10 +2795,14 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         return "integrity-refusal";
       }
       if (dispatch === "remaining" || cancel === "remaining") return "remaining";
-      return dispatch === "removed" || cancel === "removed" ? "removed" : "missing";
+      if (input.allocationName !== undefined && !await this.allocationResourcesAbsent({
+        allocationName: input.allocationName, specificationDigest: input.specificationDigest,
+      })) return "remaining";
+      return allocation === "removed" || dispatch === "removed" || cancel === "removed" ? "removed" : "missing";
     }
     let inputVolume: string;
     let outputVolume: string;
+    let providerStateVolume: string | null;
     let specificationDigest: Sha256;
     let providerNetwork: string | null;
     let providerProxy: string | null;
@@ -2329,6 +2813,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       const metadata = cellMetadata(labels, this.#options.images);
       inputVolume = metadata.inputVolume;
       outputVolume = metadata.outputVolume;
+      providerStateVolume = metadata.providerStateVolume;
       specificationDigest = privateLabel(labels, PRIVATE_LABELS.specificationDigest) as Sha256;
       providerNetwork = metadata.providerNetwork;
       providerProxy = metadata.providerProxy;
@@ -2343,6 +2828,7 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         inspection,
         inputVolume,
         outputVolume,
+        providerStateVolume,
         specificationDigest,
         providerNetwork,
         providerProxy,
@@ -2359,6 +2845,8 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
       decodedInspection(anchorLabels!, cellId);
       inputVolume = safeName(privateLabel(anchorLabels!, PRIVATE_LABELS.inputVolume), "Docker input volume");
       outputVolume = safeName(privateLabel(anchorLabels!, PRIVATE_LABELS.outputVolume), "Docker output volume");
+      providerStateVolume = typeof anchorLabels![PRIVATE_LABELS.providerStateVolume] === "string"
+        ? safeName(privateLabel(anchorLabels!, PRIVATE_LABELS.providerStateVolume), "Docker provider-state volume") : null;
       specificationDigest = privateLabel(anchorLabels!, PRIVATE_LABELS.specificationDigest) as Sha256;
       providerNetwork = typeof anchorLabels![PRIVATE_LABELS.providerNetwork] === "string"
         ? safeName(
@@ -2372,7 +2860,8 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
             "Provider-control proxy",
           )
         : null;
-      if ((providerNetwork === null) !== (providerProxy === null)) return "integrity-refusal";
+      if ((providerNetwork === null) !== (providerProxy === null) ||
+          (providerNetwork === null) !== (providerStateVolume === null)) return "integrity-refusal";
       if (!isSha256(specificationDigest) || specificationDigest !== input.specificationDigest) {
         return "integrity-refusal";
       }
@@ -2410,7 +2899,22 @@ class DockerCliEngineDriver implements FoundationDockerEngineDriverV1 {
         }
       }
     }
-    const resources = [inputVolume, outputVolume];
+    if (providerStateVolume !== null) {
+      const allocationName = providerStateVolume.slice(0, -"-provider-state".length);
+      if (providerStateVolume !== `${allocationName}-provider-state`) return "integrity-refusal";
+      const stateLabels = await this.#volumeLabels(providerStateVolume);
+      if (stateLabels !== null && canonicalJson(stateLabels) !== canonicalJson(volumeLabels("provider-state", { allocationName, specificationDigest }))) {
+        return "integrity-refusal";
+      }
+      const anchor = await this.#volumeLabels(anchorName);
+      if (anchor === null) return "integrity-refusal";
+      const retained = decodedInspection(anchor, cellId);
+      const image = this.#image(retained.configuration.image.imageId, retained.configuration.image.imageDigest);
+      await this.#removeContainerByName(`${allocationName}-provider-state-read`, Object.freeze({
+        ...await this.#inheritedImageLabels(image), ...this.#credentialReadLabels(allocationName, specificationDigest),
+      }));
+    }
+    const resources = [inputVolume, outputVolume, ...(providerStateVolume === null ? [] : [providerStateVolume])];
     let remaining = false;
     for (const name of resources) {
       const disposition = await this.#removeVolume(name);

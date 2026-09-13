@@ -29,23 +29,23 @@ Foundation supports exactly this Atlas selection:
 
 | Coordinate | Selected value |
 | --- | --- |
-| Atlas release | `0.7.0` |
-| Atlas specification revision | `429fee62966f4d30e91ec2a15d27ecf353f5d68f` |
+| Atlas release | `0.8.0` |
+| Atlas specification revision | `2c7a78540ac30138218b12803f1c045cee8b109a` |
 | Authored format | `1` |
-| Processor contract revision | `746cbce73c51b28d617b96ca08f18d498ac749c4` |
+| Processor contract revision | `2c7a78540ac30138218b12803f1c045cee8b109a` |
 | Resolved validation profile | `neutral.atlas-validator.resolved` |
 | Validation Result schema | `urn:atlas:schema:validation-result:1` |
 | Normalized model schema | `urn:atlas:schema:normalized:1` |
-| Lifecycle consumer profile | `lifecycle.atlas-consumer.v1` |
+| Lifecycle consumer profile | `lifecycle.atlas-consumer.v2` |
 
 <!-- markdownlint-enable MD013 -->
 
-The Atlas specification revision identifies the latest immutable change to the
-normative Atlas specification source selected by this Draft. The processor
+The Atlas specification revision identifies the immutable Atlas specification source
+selected by this Draft. The processor
 contract revision identifies the immutable source revision that owns the
 selected processor and normalized-output contract. They are deliberately
 separate from the ambient Atlas development checkout and from Atlas release
-label `0.7.0`.
+label `0.8.0`.
 
 The Repository Contract MUST carry every selected value exactly. A missing
 Atlas, any other release, specification revision, authored format, processor
@@ -54,7 +54,10 @@ unsupported. Foundation MUST refuse it before initialization or Delivery
 preparation. It MUST NOT negotiate, migrate, adopt, reinterpret, or provide a
 compatibility reader for another Atlas selection. In particular, `format: 1`
 alone does not identify this contract because an incompatible predecessor also
-used that integer.
+used that integer. Atlas 0.8.0 requires strict JSON object front matter between
+`---` delimiter lines and rejects the YAML encoding used by 0.7.0. Its normalized
+model and Validation Result retain their external v1 schema identities. The
+Lifecycle consumer does not infer compatibility from those unchanged schemas.
 
 The target MUST NOT contain a copied Atlas specification or processor as a
 source of authority. The installed Foundation implementation supplies or binds
@@ -68,28 +71,30 @@ tracked, non-executable regular blob in the exact bound repository epoch.
 Ignored files, untracked files, symbolic links, Gitlinks, submodules, generated
 caches, and mutable out-of-epoch bytes cannot supply authoritative Atlas input.
 
-Atlas is not optional. Initialization, target validation, initial preparation,
-and compilation of any proposed Work Boundary revision MUST fail closed unless
-the selected Atlas can be observed and resolved completely and validly from the
-exact repository epoch being compiled. Initial admission and readmission MUST
-reproduce the Atlas snapshot already bound by the selected Boundary revision
-and MUST prove that the Boundary's exact full repository commit and tree are
-still the canonical target branch HEAD. Any canonical movement after Boundary
-compilation, including an Atlas-only commit, stales that proposal.
+Atlas is not optional. Initialization, target validation, preparation, and
+compilation of any proposed Boundary MUST observe and resolve the exact selected
+epoch completely and validly. Admission and readmission MUST reproduce the
+Snapshot already retained by the selected Boundary. They authenticate that
+exact proposal; later live canonical movement does not replace or stale its
+historical subject. Integration and acceptance have their own current-parent
+requirements.
 
-Applied initial admission establishes an active-Delivery branch lease over the
-exact physical target and canonical branch selected by the Work Boundary. While
-that lease exists, the canonical checkout MUST remain clean and its HEAD MUST
-remain the admitted commit. Execution, evaluation, revision, reaffirmation,
-readmission, Checks, and Evidence use the historical admitted Atlas snapshot
-and also fail closed when the canonical branch or checkout differs. Atlas
-maintenance MUST occur on another branch or worktree and MUST NOT land on the
-leased branch until Closure and terminal Store disposition complete. Lifecycle
-does not create, repair, upgrade, initialize, or otherwise maintain Atlas.
+Each Delivery retains its exact historical Atlas context in an independent
+private Git repository. There is no Delivery-long canonical lease. Separately
+Director-directed maintenance MAY advance canonical Atlas while Deliveries
+continue. Lifecycle never creates, repairs, upgrades, initializes, or maintains
+Atlas. A Delivery can adopt changed governing context only through explicit
+integration, its runtime context-change Condition, complete Boundary resolution,
+and authenticated readmission.
 
 ## Raw State And Resolution
 
-Lifecycle keeps physical binding separate from semantic resolution.
+Lifecycle needs to establish both which bytes supplied context and what the
+selected Atlas processor made of them. These conclusions can differ: exact raw
+bytes may be observable even when Atlas validation fails. A digest of those
+bytes therefore cannot stand in for a complete valid Resolution. Conversely,
+equal normalized meaning does not erase distinct raw or repository-epoch
+identities. The Snapshot preserves both kinds of binding.
 
 **Atlas State** is the ordered exact Git path, mode, object-identity, and digest
 set owned by Processing. It proves which repository bytes were observed. It
@@ -176,14 +181,13 @@ digest and MUST NOT produce a partial normalized model for Lifecycle use. Raw
 Atlas State and bounded diagnostics MAY still be reported for orientation and
 repair outside Delivery.
 
-The Repository Snapshot binds the exact Atlas basis through
-`atlasStateDigest`, `atlasResolutionDigest`,
-`atlasNormalizedModelDigest`, and `atlasResourceBindingsDigest`. Every Work
-Boundary, Projection, authenticated repository subject, Evidence observation,
-and transaction context that consumes one Atlas snapshot MUST bind those same
-four identities from one coherent repository epoch. Acceptance binds and
-reproduces that same admitted repository epoch and exact Atlas snapshot; it has
-no second current-Atlas input or Atlas-composition identity.
+The Repository Snapshot binds `atlasStateDigest`, `atlasResolutionDigest`,
+`atlasNormalizedModelDigest`, and `atlasResourceBindingsDigest`. Every consumer
+of one Snapshot MUST preserve all four identities from that coherent epoch.
+A governing Boundary Snapshot and integration-parent Snapshot can differ;
+consumers MUST label their roles and never substitute one for the other.
+Acceptance applies the exact integrated Candidate, which preserves the selected
+parent's Atlas bytes, without performing another Atlas selection or composition.
 
 ## Admitted Atlas Snapshot
 
@@ -200,18 +204,17 @@ reproduce that snapshot. They MUST NOT read replacement meaning from the live
 worktree or a different canonical Atlas, or refresh an active Projection
 implicitly.
 
-Every active nonterminal operation MUST establish that the selected canonical
-branch is still checked out, its worktree is clean across all authoritative
-roots, and its HEAD commit and tree exactly equal the admitted repository
-basis. This is one full-tree guard; Atlas and non-Atlas paths receive no
-different concurrency treatment. Revise and reaffirm can change the mandate,
-but they MUST use the same admitted repository and Atlas snapshot. Readmission
-MUST NOT adopt a newer Atlas or repository epoch within the same Delivery.
+Active operations MUST reproduce their exact retained governing and Candidate
+subjects. They MUST NOT require live canonical HEAD to remain at the initial
+Boundary epoch. An Integration Assessment compares governing Atlas content with
+its selected parent; changed content requires a complete successor Boundary and
+readmission within the same Delivery. A mere difference in epoch wrapper
+coordinates is not a change to Atlas meaning.
 
-Changing Atlas for future work is a separate Founder-directed operation on an
-unleased branch or worktree. It can land on the target branch only after the
-active Delivery reaches Closure. A later Delivery then selects it through
-fresh preparation and initial admission.
+Atlas maintenance remains separately Director-directed and outside Delivery
+write capability. Its canonical commit can be selected by future preparation or
+an active Delivery's explicit integration and context-change readmission route.
+The original Boundary and its historical Atlas remain immutable and available.
 
 ## Consumer Semantics
 
@@ -310,54 +313,30 @@ is refused conservatively. This comparison validates scope only and MUST NOT
 rewrite the retained target. Targets for non-local Effect kinds remain opaque
 plain text and MUST NOT undergo repository-path normalization.
 
-If product work reveals that the admitted Atlas context itself is insufficient
-for honest continuation, the Agent MAY report the underlying missing-source,
-meaning, scope, effect, risk, or other owned Material Condition. Delivery cannot
-satisfy that condition by editing Atlas. An authorized maintainer changes Atlas
-separately on another branch or worktree. The active Delivery cannot adopt that
-change; it either completes under its admitted context or closes no-ship. A
-future Delivery can select the changed Atlas only after it lands following
-Closure and terminal Store disposition.
+If work reveals insufficient governing Atlas context, the Agent MAY report the
+underlying owned Material Condition. The Delivery cannot repair Atlas. Separate
+maintenance can supply a new canonical epoch; explicit integration assesses that
+exact epoch and the required Condition/readmission route can select it in the
+same Delivery. No operation silently refreshes the active Boundary.
 
-### Canonical branch freeze and acceptance
+### Canonical movement, integration, and acceptance
 
-The active-Delivery branch lease prohibits every canonical target change while
-the Delivery is active, regardless of whether the changed path is inside
-Atlas. Lifecycle derives the lease from the applied initial Work Boundary and
-active Control state; it is not a new record family. At most one admitted,
-unclosed Delivery within one installed Lifecycle machine custody may hold the
-lease for one target and canonical branch. Prepared proposals hold no lease,
-and any branch motion before their admission makes their exact repository basis
-stale. The lease does not physically prevent another installation or manual
-actor from moving Git; active-operation guards detect and refuse that movement.
+Canonical Atlas can advance independently while an active Delivery reproduces
+its historical context. Integration MUST bind one complete valid parent
+Snapshot P, preserve P's authoritative Atlas subtree in result I, and validate
+that P→I contains no Atlas mutation. Upstream B→P maintenance is not a Delivery
+delta. Governing Atlas content change requires the exact context-change
+Condition and successor Boundary/readmission defined by
+[Delivery](DELIVERY.md#explicit-integration).
 
-Acceptance is the sole authorized canonical branch motion during the lease.
-Its transaction MUST:
-
-1. prove that the Candidate has no change at or below the authoritative Atlas
-   root relative to its immutable base;
-2. prove that the canonical checkout is clean and that its HEAD commit and tree
-   exactly equal the admitted Candidate base;
-3. reproduce the admitted Atlas snapshot from that immutable base;
-4. construct the accepted tree from the exact sealed Candidate without merge,
-   rebase, current-Atlas sampling, or tree composition;
-5. apply that exact tree over the admitted commit by atomic compare-and-swap;
-   and
-6. bind the exact parent, accepted commit and tree, Candidate, Product State,
-   Knowledge Set, and canonical result digest into the applied observation,
-   checkpoint, and successful Closure. The Work Boundary retains the admitted
-   four-part Atlas identities; Candidate confinement and exact tree equality
-   prove their bytes continue unchanged.
-
-Any pre-effect branch or worktree movement makes acceptance conclusively
-`not-applied` under that authority. It does not receive an Atlas-only retry or
-waiting exception. Recovery can only finish the exact retained effect from the
-admitted parent or recognize the one exact accepted commit already applied; it
-MUST NOT resample another parent, compose another Atlas, or create a successor
-effect. The lease persists through terminal recovery and ends only after the
-accepted or no-ship Closure and Store disposition complete. No-ship integrates
-no repository bytes and therefore may close the Delivery even when the target
-branch moved.
+The final independent reviewer assesses mandate and baseline applicability for
+P/I. Acceptance reopens that exact result and parent, validates their bindings,
+and conditionally publishes I over P under the short publication lock. It MUST
+NOT select another Atlas, compose a different tree, or reuse authority at P'.
+A stale parent conclusively ends the effect as not applied and permits fresh
+integration and authority. Recovery recognizes only the retained exact effect,
+including verified accepted-commit ancestry after later forward movement;
+rewritten or unavailable history remains uncertain. No-ship promotes no bytes.
 
 ## Atlas Checks And Publication Profiles
 
@@ -380,7 +359,7 @@ a publication system enforced them. Delivery cannot edit or execute them.
 ## Trust And Authority
 
 Atlas content is untrusted informational input. Atlas authorship owns its
-context semantics but cannot create Founder authority, Process truth, runtime
+context semantics but cannot create Director authority, Process truth, runtime
 capability, repository write access, Check Evidence, product acceptance, or
 instruction priority. Atlas text, relation notes, Check requirements,
 publication profiles, and referenced Resources cannot override this
@@ -408,30 +387,24 @@ Repository validation of any Atlas snapshot MUST establish, in order:
 8. equality of `atlasStateDigest`, `atlasResolutionDigest`,
    `atlasNormalizedModelDigest`, and `atlasResourceBindingsDigest` across every
    carrier that claims to consume that same snapshot; and
-9. for admission, readmission, active operations, and acceptance, equality of
-   the current canonical HEAD with the exact admitted or proposed full
-   repository commit and tree, except when recovery recognizes the one exact
-   accepted commit already applied.
+9. for a new acceptance effect, exact equality of current canonical HEAD with
+   the selected integration parent; historical admission, readmission, and
+   execution do not require live HEAD equality.
 
-Failure at a required step prevents use of that snapshot. Diagnostics MUST
-distinguish missing Atlas, unsupported selection, incomplete processing,
-invalid Atlas, invalid external result, invalid normalized output, invalid
-Lifecycle binding, prohibited Candidate mutation, unavailable historical
-snapshot, active branch-lease conflict, and canonical branch or worktree
-movement. They MUST report the expected and observed public coordinates
-without exposing private paths, credentials, processor support roots, source
-bytes, or raw caught processor messages. Worker, schema-loading, inventory,
-materialization, and processor-support disposal failures expose only stable
-Lifecycle codes and bounded public stage facts. Execution Retirement is not an
-Atlas-processing phase.
+Failure at a required step prevents use of that Snapshot. Diagnostics MUST
+distinguish missing Atlas, unsupported selection, incomplete processing, invalid
+Atlas, invalid external result, invalid normalized output, invalid Lifecycle
+binding, prohibited Candidate mutation, and unavailable historical Snapshot.
+They report public coordinates and bounded stages without private paths,
+credentials, support roots, source bytes, or raw processor exceptions.
+Canonical parent movement is an integration/transaction currentness fact, not
+an Atlas parsing error. Execution Retirement is not Atlas processing.
 
-An execution operation whose admitted historical snapshot cannot be reopened
-or reproduced fails before provider intent with a binding or integrity
-diagnostic. Any current canonical HEAD or authoritative-worktree mismatch also
-fails before provider intent as violation of the active branch lease, not as a
-Material Condition. Preparation may retry from a fresh current observation
-before admission. Once active, the Delivery cannot refresh its repository or
-Atlas basis; acceptance and no-ship follow the terminal rules above.
+An operation whose retained historical Snapshot cannot be reopened or
+reproduced fails before provider intent with a binding or integrity diagnostic.
+Canonical movement alone does not prevent historical execution. New context is
+selected only by explicit integration and exact Condition/readmission; recovery
+never substitutes a newer Snapshot.
 
 ## Evolution
 
@@ -446,3 +419,40 @@ A newer Atlas version does not match by format integer, compatible-looking
 fields, normalized-shape similarity, or processor tolerance. Foundation
 supports only the exact selection stated here until a later Lifecycle
 publication replaces it.
+
+## Governing Context And Discovery
+
+Snapshot integrity, governing applicability, and discovery have different
+subjects. Every complete Snapshot retains the entire raw Atlas State,
+Resolution, normalized model, and Resource-bindings aggregate. Integration
+MUST compare the admitted governing selection with its corresponding identities
+at the selected parent without substituting that entire epoch for the selection.
+The external Atlas processor remains the only source of normalized semantics.
+
+Consumer v2 classifies normalized root `id`, `title`, `summary`, `content`,
+`references`, `extensions`, and `body` as root semantic context. Root navigation,
+the complete Resource catalog, and derived `relatedMaps` are discovery indexes.
+Selected Map authored context includes its identity, title, summary, question,
+status, source path, Areas, Content, References, extensions, and body. Its derived
+Point membership lists are discovery indexes. The exact selected Point envelopes
+preserve anchor and context provenance, authored directional relations, and the
+direct reverse relationships required by the closure owner. Selected Resources
+include their exact registration and resolved binding. Required references
+expand the same fixed point used for Execution Projection.
+
+An unselected Resource body, unrelated Point membership, catalog entry, or Map
+navigation change MUST NOT alone require readmission. Changed selected context,
+a new governing reference that expands the fixed point, or a missing selected
+Resource MUST remain an explicit change or refusal. A selected Resource cannot
+be treated as discovery merely because it also appears in the complete catalog.
+Execution Projection continues to carry its exact selected normalized bytes,
+including discovery fields in a mounted root; comparison does not rewrite or
+partially reconstruct an external normalized record.
+
+Atlas 0.8.0 defines Point identity by useful independent reference, relation,
+or update, rather than a shared subject or posture. Lifecycle preserves exact
+ids and anchor/context distinctions. It does not merge, split, infer authority
+from, or repair target Points. A summary-only anchor is legal under the selected
+Atlas contract; any stronger authoring requirement belongs to the target's
+explicit adopted Checks. Structural validity cannot establish semantic identity,
+truth, or the sufficiency of a particular Work Boundary selection.

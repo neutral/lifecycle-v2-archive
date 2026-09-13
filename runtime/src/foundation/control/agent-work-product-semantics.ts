@@ -1,3 +1,5 @@
+import { reviewRequiresMandateResolutionV1 } from "../evidence/review-classification-v1.js";
+import { missingWorkBoundaryRequiredCheckPhase } from "./work-boundary.js";
 import { FoundationError } from "../error.js";
 import {
   canonicalJson,
@@ -32,9 +34,9 @@ export type AgentWorkProductSemanticObservation = Readonly<{
 }>;
 
 export const FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID =
-  "lifecycle.agent-work-product-parser.v2" as const;
+  "lifecycle.agent-work-product-parser.v4" as const;
 export const FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID =
-  "lifecycle.agent-work-product-compiler.v2" as const;
+  "lifecycle.agent-work-product-compiler.v4" as const;
 export const FOUNDATION_AGENT_WORK_PRODUCT_PARSE_RESULT_SCHEMA =
   "lifecycle.agent-work-product-parse-result.v6" as const;
 export const FOUNDATION_AGENT_WORK_PRODUCT_FIXED_BINDINGS_SCHEMA =
@@ -146,7 +148,7 @@ type ParsedMaterialCondition = SourceFragment & Readonly<{
     | "risk-change"
     | "architecture-conflict"
     | "assurance-conflict"
-    | "founder-tradeoff"
+    | "director-tradeoff"
     | "missing-authority"
     | "missing-required-source"
     | "required-capability-unavailable"
@@ -155,7 +157,7 @@ type ParsedMaterialCondition = SourceFragment & Readonly<{
   statement: string;
   falsifiedMandateIds: readonly string[];
   knowledgeIds: readonly string[];
-  founderJudgmentRequired: boolean;
+  directorJudgmentRequired: boolean;
 }>;
 
 type ParsedBuilderProposal = Readonly<{
@@ -175,7 +177,16 @@ type ParsedReviewDecision = SourceFragment & Readonly<{
   limitationLocalIds: readonly string[];
 }>;
 
+type ParsedApplicability = Readonly<{
+  localId: string; anchor: string; digest: Sha256; kind: "decision";
+  receiptId: string | null;
+  disposition: "applicable" | "requires-readmission" | "insufficient" | "indeterminate";
+  rationale: string; citationLocalIds: readonly string[];
+}>;
+
 type ParsedReview = Readonly<{
+  mandateApplicability: ParsedApplicability;
+  baselineApplicability: readonly ParsedApplicability[];
   mandateExcess: boolean;
   missingObligationIds: readonly string[];
   materialCondition: ParsedMaterialCondition | null;
@@ -225,6 +236,7 @@ export type AgentWorkProductTemplate = Readonly<{
 export type AgentWorkProductCitationRegistryEntry = Readonly<{
   id: string;
   kind: "knowledge" | "source" | "projection" | "candidate" | "evidence" | "boundary";
+  knowledgeIdentity: string | null;
   digest: Sha256;
   locator: string;
   authorityClass:
@@ -232,8 +244,8 @@ export type AgentWorkProductCitationRegistryEntry = Readonly<{
     | "runtime-observed"
     | "runtime-derived"
     | "agent-proposed"
-    | "founder-supplied"
-    | "founder-authenticated";
+    | "director-supplied"
+    | "director-authenticated";
 }>;
 
 export type AgentWorkProductPropositionSet = Readonly<{
@@ -253,12 +265,15 @@ export type AgentWorkProductCompilerInput = Readonly<{
   propositionSet?: AgentWorkProductPropositionSet | null;
 }>;
 
+export const FOUNDATION_AGENT_WORK_PRODUCT_VALIDATION_BASIS_MAXIMUM_BYTES = 8 * 1024 * 1024;
+
 export const FOUNDATION_AGENT_WORK_PRODUCT_VALIDATION_BASIS_SCHEMA =
   "lifecycle.agent-work-product-validation-basis.v1" as const;
 
 export type AgentWorkProductValidationCitationFact = Readonly<{
   id: string;
   kind: AgentWorkProductCitationRegistryEntry["kind"];
+  knowledgeIdentity: string | null;
 }>;
 
 export type AgentWorkProductValidationBasis = Readonly<{
@@ -312,6 +327,17 @@ const COMMON_SECTIONS = Object.freeze([
   "Limitations",
 ] as const);
 
+export const FOUNDATION_AGENT_WORK_PRODUCT_LOCAL_HANDLE_GUIDANCE =
+  "Every semantic object definition has a local handle unique across the whole semantic.md, including different sections and item kinds. When present, Objective and Mandate define the fixed handles objective and mandate; do not reuse them for another object. Use distinct names such as claim-result, cite-result, obligation-result and check-result. Metadata such as Supports, Citation, Obligation, Check and Evidence artifact references an existing definition; repeating a reference is different from defining that handle again. When renaming a definition, update every reference to that object.";
+
+export const FOUNDATION_AGENT_WORK_PRODUCT_REVIEW_GUIDANCE = [
+  "A complete or partial Review judges every frozen Proposition exactly once, includes one Mandate Applicability block, and includes one Baseline Applicability block for every required original baseline Receipt, including an authorized not-run Receipt. Each Decision and applicability block requires at least one Citation local handle. Each Baseline Applicability block must cite its own exact original Receipt; a final Receipt cannot substitute for it.",
+  "Mandate Applicability Disposition requires-readmission requires exactly one Material Condition block. The same requirement applies to baseline Disposition insufficient, Mandate excess true, any Missing obligation, or material overall or Decision Uncertainty. Include no Material Condition without such a finding. Explain the precise issue and lawful correction in its statement; a recommendation in prose alone does not supply this typed proposal. A rejected proposition alone does not establish a mandate change.",
+  "Select the justified Condition class from the template. Falsified mandate, when present, names an exact admitted objective, direction, effect, risk, obligation, artifact, Check requirement or acceptance proposition identity, not the Work Boundary record identity or a new local handle. The mandate-falsifier class requires at least one such identity. Condition Knowledge, when present, names only identities selected by the active Work Boundary. Omit optional fields with no applicable identity; do not invent one.",
+  "Define every referenced Citation under Citations: Subject uses the supplied frozen citation handle and Supports names at least one Claim local handle. A Claim Evidence field uses the exact supplied Evidence subject identity and requires that subject's supporting Citation. Preserve the original baseline, final Receipt and Candidate distinctions even when describing the same Check. Review is read-only: propose the Condition, do not modify the Candidate, requirement, Binding or Receipt. Runtime validation and Director readmission govern the subsequent resolution.",
+  "A Decision's optional Limitation field references a Limitation definition under the Limitations section. A Claim with Category limitation is still a Claim and cannot satisfy that reference. Define a separate Limitation with its own unique handle, such as limit-final-check-unavailable, and reference that handle; or omit the optional Limitation field while preserving the supported claim and uncertainty. Do not reuse the Claim handle for the new Limitation.",
+].join("\n\n");
+
 const ROLE_PROFILES = Object.freeze({
   reconnaissance: Object.freeze({
     title: "Reconnaissance Work Product",
@@ -328,7 +354,7 @@ const ROLE_PROFILES = Object.freeze({
 } satisfies Readonly<Record<AgentWorkProductRole, Readonly<{ title: string; roleSection: string }>>>);
 
 function profileId(role: AgentWorkProductRole): string {
-  return `lifecycle.agent-work-product-body.${role}.v2`;
+  return `lifecycle.agent-work-product-body.${role}.v4`;
 }
 
 function commonTemplate(role: AgentWorkProductRole): string[] {
@@ -368,6 +394,7 @@ function reconnaissanceTemplate(): string[] {
     "- Capability profile: <registered builder capability profile identity>",
     "- Projection profile: <execution-standard-v1 | execution-large-v1>",
     "- Selected Knowledge: <repeat only when present>",
+    "- Selected work type: <repeat only when helpful>",
     "",
     "### Objective",
     "",
@@ -403,8 +430,8 @@ function reconnaissanceTemplate(): string[] {
     "- Binding: <registered binding identity; repeat when needed>",
     "- Modality: <precondition | repair-target | regression-guard | postcondition | diagnostic>",
     "- Obligation: <obligation-local-handle; repeat when needed>",
-    "- Baseline required: <true | false>",
-    "- Final required: <true | false>",
+    "- Baseline required: <true | false; at least one Check must be true; a baseline-required postcondition records authorized not-run without baseline execution>",
+    "- Final required: <true | false; at least one Check must be true>",
     "- Environment requirement: <repeat only when present>",
     "",
     "<Check purpose>",
@@ -429,7 +456,7 @@ function builderTemplate(): string[] {
     "",
     "### Material Condition: condition-local-handle",
     "",
-    "- Condition class: <meaning-ambiguity | mandate-falsifier | scope-change | effect-change | risk-change | architecture-conflict | assurance-conflict | founder-tradeoff | missing-authority | missing-required-source | required-capability-unavailable | projection-closure-exceeded | no-honest-route>",
+    "- Condition class: <meaning-ambiguity | mandate-falsifier | scope-change | effect-change | risk-change | architecture-conflict | assurance-conflict | director-tradeoff | missing-authority | missing-required-source | required-capability-unavailable | projection-closure-exceeded | no-honest-route>",
     "- Falsified mandate: <exact admitted mandate identity; repeat only when present>",
     "- Knowledge: <exact Knowledge identity; repeat only when present>",
     "",
@@ -453,9 +480,24 @@ function reviewerTemplate(): string[] {
     "- Mandate excess: <true | false>",
     "- Missing obligation: <exact obligation identity; repeat only when present>",
     "",
+    "### Mandate Applicability: mandate-applicability-local-handle",
+    "",
+    "- Disposition: <applicable | requires-readmission | indeterminate>",
+    "- Citation: <citation-local-handle; repeat when needed>",
+    "",
+    "<explain the admitted mandate against the exact integration parent and result>",
+    "",
+    "### Baseline Applicability: baseline-applicability-local-handle",
+    "",
+    "- Receipt: <exact original baseline Receipt identity; one block for every required baseline Receipt>",
+    "- Disposition: <applicable | insufficient | indeterminate>",
+    "- Citation: <citation-local-handle; repeat when needed>",
+    "",
+    "<explain this original baseline's applicability to the exact integration parent and result>",
+    "",
     "### Material Condition: condition-local-handle",
     "",
-    "- Condition class: <meaning-ambiguity | mandate-falsifier | scope-change | effect-change | risk-change | architecture-conflict | assurance-conflict | founder-tradeoff | missing-authority | missing-required-source | required-capability-unavailable | projection-closure-exceeded | no-honest-route>",
+    "- Condition class: <meaning-ambiguity | mandate-falsifier | scope-change | effect-change | risk-change | architecture-conflict | assurance-conflict | director-tradeoff | missing-authority | missing-required-source | required-capability-unavailable | projection-closure-exceeded | no-honest-route>",
     "- Falsified mandate: <exact admitted mandate identity; repeat only when present>",
     "- Knowledge: <exact Knowledge identity; repeat only when present>",
     "",
@@ -518,7 +560,7 @@ const BUILDER_HEADING = new RegExp(
   "u",
 );
 const REVIEW_HEADING = new RegExp(
-  `^### (?<reviewKind>Decision|Material Condition): (?<localId>${LOCAL_ID_SOURCE}) \\{#(?<anchor>${LOCAL_ID_SOURCE})\\}$`,
+  `^### (?<reviewKind>Decision|Material Condition|Mandate Applicability|Baseline Applicability): (?<localId>${LOCAL_ID_SOURCE}) \\{#(?<anchor>${LOCAL_ID_SOURCE})\\}$`,
   "u",
 );
 
@@ -549,6 +591,7 @@ const BOUNDARY_SELECTION_RULES = Object.freeze([
   { label: "Capability profile", required: false, repeated: false },
   { label: "Projection profile", required: false, repeated: false },
   { label: "Selected Knowledge", required: false, repeated: true },
+  { label: "Selected work type", required: false, repeated: true },
   { label: "Selected source", required: false, repeated: true },
 ] satisfies readonly MetadataRule[]);
 const MANDATE_RULES = Object.freeze([
@@ -616,6 +659,14 @@ const REVIEW_RULES = Object.freeze([
   { label: "Mandate excess", required: true, repeated: false },
   { label: "Missing obligation", required: false, repeated: true },
 ] satisfies readonly MetadataRule[]);
+const APPLICABILITY_RULES = Object.freeze([
+  { label: "Disposition", required: true, repeated: false },
+  { label: "Citation", required: true, repeated: true },
+] satisfies readonly MetadataRule[]);
+const BASELINE_APPLICABILITY_RULES = Object.freeze([
+  { label: "Receipt", required: true, repeated: false },
+  ...APPLICABILITY_RULES,
+] satisfies readonly MetadataRule[]);
 const REVIEW_DECISION_RULES = Object.freeze([
   { label: "Proposition", required: true, repeated: false },
   { label: "Disposition", required: true, repeated: false },
@@ -672,10 +723,12 @@ const TOKEN_METADATA_FIELDS = new Set([
   "Projection profile",
   "Proposition",
   "Remaining obligation",
+  "Receipt",
   "Reversibility",
   "Risk",
   "Role",
   "Selected Knowledge",
+  "Selected work type",
   "Selected source",
   "Severity",
   "Source",
@@ -840,19 +893,24 @@ function sourceLines(markdown: string): readonly string[] {
 
 function normalizeDraftAnchors(lines: readonly string[]): readonly string[] {
   const repeatable = new RegExp(
-    `^### (?<kind>Claim|Citation|Limitation|Effect|Risk|Obligation|Artifact|Check|Proposition|Material Condition|Decision): (?<localId>${LOCAL_ID_SOURCE})$`,
+    `^### (?<kind>Claim|Citation|Limitation|Effect|Risk|Obligation|Artifact|Check|Proposition|Material Condition|Decision|Mandate Applicability|Baseline Applicability): (?<localId>${LOCAL_ID_SOURCE})$`,
     "u",
   );
+  const definitions = new Map<string, number>();
   return Object.freeze(lines.map((line, index) => {
     if (/^### .*\{#[^}]+\}$/u.test(line)) {
       invalid("template", "agent-anchor", "Agent semantic Markdown cannot author fragment anchors", { line: index + 1 });
     }
     const repeated = line.match(repeatable);
-    if (repeated?.groups?.kind !== undefined && repeated.groups.localId !== undefined) {
-      return `### ${repeated.groups.kind}: ${repeated.groups.localId} {#${repeated.groups.localId}}`;
+    const localId = repeated?.groups?.localId ?? (line === "### Objective" ? "objective" : line === "### Mandate" ? "mandate" : null);
+    if (localId !== null) {
+      const firstLine = definitions.get(localId);
+      if (firstLine !== undefined) invalid("semantic", "duplicate-local-identity", "Agent Work Product defines the same local handle more than once", {
+        line: index + 1, localHandle: localId, firstLine,
+      });
+      definitions.set(localId, index + 1);
+      return `${line} {#${localId}}`;
     }
-    if (line === "### Objective") return "### Objective {#objective}";
-    if (line === "### Mandate") return "### Mandate {#mandate}";
     return line;
   }));
 }
@@ -943,11 +1001,6 @@ function blocks(
       })(),
     });
   });
-  const localIdsSeen = new Set<string>();
-  for (const block of result) {
-    if (localIdsSeen.has(block.localId)) invalid("semantic", "duplicate-local-identity", `${label} repeats local handle ${block.localId}`);
-    localIdsSeen.add(block.localId);
-  }
   return Object.freeze({
     prefix: Object.freeze(lines.slice(section.headingLine + 1, headings[0])),
     values: Object.freeze(result),
@@ -1126,7 +1179,7 @@ function parseBoundary(
     if (proposal === "work-boundary") {
       invalid("semantic", "work-boundary-incomplete", "A work-boundary proposal requires complete Work Boundary semantic objects");
     }
-    if (["Capability profile", "Projection profile", "Selected Knowledge", "Selected source"]
+    if (["Capability profile", "Projection profile", "Selected Knowledge", "Selected work type", "Selected source"]
       .some((field) => many(proposalMetadata, field).length > 0)) {
       invalid("semantic", "reconnaissance-selection", "Only a work-boundary proposal can select execution subjects or profiles");
     }
@@ -1274,7 +1327,7 @@ function parseMaterialCondition(
     kind: "condition",
     conditionClass: asEnum(one(metadata, "Condition class"), "Material Condition class", [
       "meaning-ambiguity", "mandate-falsifier", "scope-change", "effect-change", "risk-change",
-      "architecture-conflict", "assurance-conflict", "founder-tradeoff", "missing-authority",
+      "architecture-conflict", "assurance-conflict", "director-tradeoff", "missing-authority",
       "missing-required-source", "required-capability-unavailable", "projection-closure-exceeded",
       "no-honest-route",
     ] as const),
@@ -1282,7 +1335,7 @@ function parseMaterialCondition(
     falsifiedMandateIds: sortedIds(many(metadata, "Falsified mandate"), "Falsified mandate"),
     knowledgeIds: Object.freeze(sortUniqueCodePoints(many(metadata, "Knowledge").map((value, index) =>
       asKnowledgeId(value, `Material Condition Knowledge[${index}]`)))),
-    founderJudgmentRequired: true,
+    directorJudgmentRequired: true,
   });
 }
 
@@ -1312,12 +1365,32 @@ function parseReview(
   );
   let materialCondition: ParsedMaterialCondition | null = null;
   const decisions: ParsedReviewDecision[] = [];
+  let mandateApplicability: ParsedApplicability | null = null;
+  const baselineApplicability: ParsedApplicability[] = [];
   for (const block of parsed.values) {
     if (block.captures.reviewKind === "Material Condition") {
       if (materialCondition !== null) {
         invalid("semantic", "material-condition-cardinality", "Review permits at most one Material Condition");
       }
       materialCondition = parseMaterialCondition(lines, block);
+      continue;
+    }
+    if (block.captures.reviewKind === "Mandate Applicability" || block.captures.reviewKind === "Baseline Applicability") {
+      const baseline = block.captures.reviewKind === "Baseline Applicability";
+      const metadata = parseMetadata(lines, block, baseline ? BASELINE_APPLICABILITY_RULES : APPLICABILITY_RULES, block.captures.reviewKind, true);
+      const value: ParsedApplicability = Object.freeze({
+        localId: block.localId, anchor: block.localId, digest: block.digest, kind: "decision",
+        receiptId: baseline ? asId(one(metadata, "Receipt"), "Baseline Receipt") : null,
+        disposition: asEnum(one(metadata, "Disposition"), "Integration applicability", baseline
+          ? ["applicable", "insufficient", "indeterminate"] as const
+          : ["applicable", "requires-readmission", "indeterminate"] as const),
+        rationale: metadata.narrative!, citationLocalIds: localIds(many(metadata, "Citation"), "Applicability citations"),
+      });
+      if (baseline) baselineApplicability.push(value);
+      else {
+        if (mandateApplicability !== null) invalid("semantic", "review", "Review repeats mandate applicability");
+        mandateApplicability = value;
+      }
       continue;
     }
     const metadata = parseMetadata(lines, block, REVIEW_DECISION_RULES, `Review Decision ${block.localId}`, true);
@@ -1345,10 +1418,14 @@ function parseReview(
   if (new Set(sortedDecisions.map(({ propositionId }) => propositionId)).size !== sortedDecisions.length) {
     invalid("semantic", "review-duplicate", "Review repeats a proposition decision");
   }
+  if (mandateApplicability === null) invalid("semantic", "review", "Review requires one explicit mandate applicability judgment");
+  if (new Set(baselineApplicability.map(({ receiptId }) => receiptId)).size !== baselineApplicability.length) {
+    invalid("semantic", "review-duplicate", "Review repeats a baseline applicability judgment");
+  }
   const mandateExcess = asBoolean(one(review, "Mandate excess"), "Review mandate excess");
   const missingObligationIds = sortedIds(many(review, "Missing obligation"), "Missing obligation");
-  const requiresCondition = mandateExcess || missingObligationIds.length > 0 ||
-    overallUncertainty === "material" || sortedDecisions.some(({ uncertainty }) => uncertainty === "material");
+  const requiresCondition = reviewRequiresMandateResolutionV1({mandateApplicability, baselineApplicability,
+    mandateExcess, missingObligationIds, overallUncertainty, judgments:sortedDecisions});
   if (requiresCondition !== (materialCondition !== null)) {
     invalid(
       "semantic",
@@ -1357,6 +1434,8 @@ function parseReview(
     );
   }
   return Object.freeze({
+    mandateApplicability,
+    baselineApplicability: Object.freeze(baselineApplicability.sort((a, b) => compareCodePoints(a.receiptId!, b.receiptId!))),
     mandateExcess,
     missingObligationIds,
     materialCondition,
@@ -1564,6 +1643,15 @@ function renderNormalizedAgentWorkProduct(parsed: ParsedAgentWorkProduct): strin
         value.materialCondition.statement,
       ));
     }
+    for (const applicability of [value.mandateApplicability, ...value.baselineApplicability]) {
+      const baseline = applicability.receiptId !== null;
+      blocks.push(canonicalBlock(
+        `### ${baseline ? "Baseline" : "Mandate"} Applicability: ${applicability.localId} {#${applicability.localId}}`,
+        Object.freeze({ ...(baseline ? { Receipt: Object.freeze([applicability.receiptId!]) } : {}),
+          Disposition: Object.freeze([applicability.disposition]), Citation: applicability.citationLocalIds }),
+        baseline ? BASELINE_APPLICABILITY_RULES : APPLICABILITY_RULES, applicability.rationale,
+      ));
+    }
     for (const decision of value.decisions) {
       blocks.push(canonicalBlock(
         `### Decision: ${decision.localId} {#${decision.localId}}`,
@@ -1689,19 +1777,6 @@ function parseNormalizedAgentWorkProduct(
     builder,
     review,
   });
-  const handles = [
-    ...parsed.claims,
-    ...parsed.citations,
-    ...parsed.limitations,
-    ...(parsed.reconnaissance?.objects ?? []),
-    ...(parsed.builder?.materialCondition === null || parsed.builder === null ? [] : [parsed.builder.materialCondition]),
-    ...(parsed.builder?.effects ?? []),
-    ...(parsed.review?.materialCondition === null || parsed.review === null ? [] : [parsed.review.materialCondition]),
-    ...(parsed.review?.decisions ?? []),
-  ];
-  if (new Set(handles.map(({ localId }) => localId)).size !== handles.length) {
-    invalid("semantic", "duplicate-local-identity", "Agent Work Product repeats a local handle across semantic sections");
-  }
   return parsed;
 }
 
@@ -1778,7 +1853,7 @@ function attemptBindings(attempt: ControlRecordRevision): Readonly<{
 
 const PARSER_PROFILE_DIGEST = digestCanonical(Object.freeze({
   id: FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID,
-  version: 2,
+  version: 4,
   input: "governed-body-only-markdown",
   roles: Object.freeze(["builder", "reconnaissance", "reviewer"]),
   maximumBytes: 1024 * 1024,
@@ -1794,10 +1869,11 @@ const PARSER_PROFILE_DIGEST = digestCanonical(Object.freeze({
 }));
 const COMPILER_PROFILE_DIGEST = digestCanonical(Object.freeze({
   id: FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID,
-  version: 2,
-  output: "lifecycle.agent-work-product-payload.v2",
+  version: 4,
+  output: "lifecycle.agent-work-product-payload.v5",
   identity: "canonical-semantic-value",
   ordering: "unicode-code-point",
+  knowledgeCitations: "frozen-enduring-identity-and-exact-occurrence",
 }));
 
 export function agentWorkProductParserProfileDigest(): Sha256 {
@@ -1812,6 +1888,18 @@ function semanticId(prefix: string, value: unknown): string {
   return `${prefix}:${digestCanonical(value).slice("sha256:".length)}`;
 }
 
+function exactCitationKnowledgeIdentity(value: unknown, kind: string, label: string): string | null {
+  if (kind !== "knowledge") {
+    if (value !== null) runtimeFailure("citation-registry", `${label} cannot map non-Knowledge to a Knowledge identity`);
+    return null;
+  }
+  try {
+    return knowledgeId(value, label);
+  } catch (error) {
+    runtimeFailure("citation-registry", `${label} must bind one enduring Knowledge identity`, { causeCode: causeCode(error) });
+  }
+}
+
 function exactRegistry(
   entries: readonly AgentWorkProductCitationRegistryEntry[],
   expectedDigest: Sha256,
@@ -1822,6 +1910,7 @@ function exactRegistry(
       runtimeFailure("citation-registry", `Attempt citation registry entry ${index} is not one exact object`);
     }
     const raw = entry as Readonly<Record<string, unknown>>;
+    exactRuntimeKeys(raw, ["id", "kind", "knowledgeIdentity", "digest", "locator", "authorityClass"], `Attempt citation registry entry ${index}`);
     const kind = raw.kind;
     if (typeof kind !== "string" || !CITATION_KINDS.includes(kind as typeof CITATION_KINDS[number])) {
       runtimeFailure("citation-registry", `Attempt citation registry entry ${index} has an unsupported kind`);
@@ -1829,7 +1918,7 @@ function exactRegistry(
     const authorityClass = raw.authorityClass;
     const authorityClasses = [
       "repository-authored", "runtime-observed", "runtime-derived", "agent-proposed",
-      "founder-supplied", "founder-authenticated",
+      "director-supplied", "director-authenticated",
     ] as const;
     if (typeof authorityClass !== "string" || !authorityClasses.includes(authorityClass as typeof authorityClasses[number])) {
       runtimeFailure("citation-registry", `Attempt citation registry entry ${index} has an unsupported authority class`);
@@ -1837,12 +1926,25 @@ function exactRegistry(
     return Object.freeze({
       id: runtimeId(raw.id, `Citation registry[${index}] identity`),
       kind: kind as AgentWorkProductCitationRegistryEntry["kind"],
+      knowledgeIdentity: exactCitationKnowledgeIdentity(raw.knowledgeIdentity, kind, `Citation registry[${index}] Knowledge identity`),
       digest: digestValue(raw.digest, `Citation registry[${index}] digest`),
       locator: runtimeLocator(raw.locator, `Citation registry[${index}] locator`),
       authorityClass: authorityClass as AgentWorkProductCitationRegistryEntry["authorityClass"],
     });
   }).sort((left, right) => compareCodePoints(left.id, right.id));
   if (new Set(result.map(({ id }) => id)).size !== result.length) runtimeFailure("citation-registry", "Attempt citation registry repeats an identity");
+  const knowledgeDigests = new Map<string, Set<Sha256>>();
+  for (const entry of result) {
+    if (entry.knowledgeIdentity === null) continue;
+    const digests = knowledgeDigests.get(entry.knowledgeIdentity) ?? new Set<Sha256>();
+    digests.add(entry.digest);
+    knowledgeDigests.set(entry.knowledgeIdentity, digests);
+  }
+  for (const entry of result) {
+    if (entry.id === entry.knowledgeIdentity && knowledgeDigests.get(entry.knowledgeIdentity)!.size !== 1) {
+      runtimeFailure("citation-registry", "Attempt citation registry gives an ambiguous Knowledge identity an unqualified alias");
+    }
+  }
   const subject = Object.freeze({
     schema: "lifecycle.attempt-citation-registry.v3",
     items: Object.freeze(result),
@@ -1934,6 +2036,7 @@ function validationBasisSubject(
     citationFacts: Object.freeze(value.citationFacts.map((entry) => Object.freeze({
       id: entry.id,
       kind: entry.kind,
+      knowledgeIdentity: entry.knowledgeIdentity,
     }))),
     propositionSetDigest: value.propositionSetDigest,
     propositionIds: Object.freeze([...value.propositionIds]),
@@ -1979,7 +2082,7 @@ export function createAgentWorkProductValidationBasis(
     compilerProfileId: FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID,
     compilerProfileDigest: COMPILER_PROFILE_DIGEST,
     citationRegistryDigest,
-    citationFacts: Object.freeze(registry.map(({ id, kind }) => Object.freeze({ id, kind }))),
+    citationFacts: Object.freeze(registry.map(({ id, kind, knowledgeIdentity }) => Object.freeze({ id, kind, knowledgeIdentity }))),
     propositionSetDigest,
     propositionIds,
   }));
@@ -1997,7 +2100,7 @@ function exactRuntimeKeys(value: Record<string, unknown>, expected: readonly str
   }
 }
 
-function exactValidationBasis(value: unknown): AgentWorkProductValidationBasis {
+export function parseAgentWorkProductValidationBasis(value: unknown): AgentWorkProductValidationBasis {
   const raw = object(value, "Semantic validation basis");
   exactRuntimeKeys(raw, [
     "schema", "role", "bodyProfileId", "templateDigest", "parserProfileId",
@@ -2015,7 +2118,7 @@ function exactValidationBasis(value: unknown): AgentWorkProductValidationBasis {
   }
   const citationFacts = citationValues.map((value, index): AgentWorkProductValidationCitationFact => {
     const entry = object(value, `Semantic validation citation fact ${index}`);
-    exactRuntimeKeys(entry, ["id", "kind"], `Semantic validation citation fact ${index}`);
+    exactRuntimeKeys(entry, ["id", "kind", "knowledgeIdentity"], `Semantic validation citation fact ${index}`);
     const kind = entry.kind;
     if (typeof kind !== "string" || !CITATION_KINDS.includes(kind as typeof CITATION_KINDS[number])) {
       runtimeFailure("validation-basis", `Semantic validation citation fact ${index} has an unsupported kind`);
@@ -2023,6 +2126,7 @@ function exactValidationBasis(value: unknown): AgentWorkProductValidationBasis {
     return Object.freeze({
       id: runtimeId(entry.id, `Semantic validation citation fact ${index} identity`),
       kind: kind as AgentWorkProductCitationRegistryEntry["kind"],
+      knowledgeIdentity: exactCitationKnowledgeIdentity(entry.knowledgeIdentity, kind, `Semantic validation citation fact ${index} Knowledge identity`),
     });
   });
   const sortedCitationFacts = [...citationFacts].sort((left, right) => compareCodePoints(left.id, right.id));
@@ -2082,6 +2186,7 @@ type IdMaps = Readonly<{
   claims: ReadonlyMap<string, string>;
   limitations: ReadonlyMap<string, string>;
   semantic: ReadonlyMap<string, string>;
+  definitionKinds: ReadonlyMap<string, FragmentKind>;
 }>;
 
 function assignIntrinsicIds(parsed: ParsedAgentWorkProduct): IdMaps {
@@ -2117,6 +2222,7 @@ function assignIntrinsicIds(parsed: ParsedAgentWorkProduct): IdMaps {
     ...(parsed.builder?.effects ?? []),
     ...(parsed.review?.materialCondition === null || parsed.review === null ? [] : [parsed.review.materialCondition]),
     ...(parsed.review?.decisions ?? []),
+    ...(parsed.review === null ? [] : [parsed.review.mandateApplicability, ...parsed.review.baselineApplicability]),
   ];
   const semantic = assign(semanticValues, "semantic", (value) => {
     if ("objectKind" in value) return Object.freeze({ objectKind: value.objectKind, fields: value.fields, narrative: value.narrative });
@@ -2125,8 +2231,9 @@ function assignIntrinsicIds(parsed: ParsedAgentWorkProduct): IdMaps {
       statement: value.statement,
       falsifiedMandateIds: value.falsifiedMandateIds,
       knowledgeIds: value.knowledgeIds,
-      founderJudgmentRequired: value.founderJudgmentRequired,
+      directorJudgmentRequired: value.directorJudgmentRequired,
     });
+    if ("receiptId" in value) return Object.freeze({ receiptId: value.receiptId, disposition: value.disposition, rationale: value.rationale });
     return Object.freeze({
       propositionId: value.propositionId,
       disposition: value.disposition,
@@ -2134,12 +2241,35 @@ function assignIntrinsicIds(parsed: ParsedAgentWorkProduct): IdMaps {
       uncertainty: value.uncertainty,
     });
   });
-  return Object.freeze({ claims, limitations, semantic });
+  const definitionKinds = new Map<string, FragmentKind>([
+    ...parsed.claims, ...parsed.citations, ...parsed.limitations, ...semanticValues,
+  ].map((value) => [value.localId, value.kind]));
+  return Object.freeze({ claims, limitations, semantic, definitionKinds });
 }
 
-function resolveLocal(values: readonly string[], map: ReadonlyMap<string, string>, label: string): readonly string[] {
+type LocalReferenceKind = "claim" | "citation" | "limitation";
+
+function resolveLocal(values: readonly string[], map: ReadonlyMap<string, string>, label: string,
+  reference?: Readonly<{ expectedKind: LocalReferenceKind; definitionKinds: ReadonlyMap<string, FragmentKind> }>,
+): readonly string[] {
   return Object.freeze(sortUniqueCodePoints(values.map((value) => map.get(value) ??
-    invalid("semantic", "local-reference", `${label} names absent local handle ${value}`))));
+    invalid("semantic", "local-reference", `${label} names absent local handle ${value}`, reference === undefined ? {} : {
+      localHandle: value,
+      expectedKind: reference.expectedKind,
+      actualKind: reference.definitionKinds.get(value) ?? "absent",
+    }))));
+}
+
+function citedKnowledgeIdentities(
+  citationIds: ReadonlySet<string>,
+  registry: ReadonlyMap<string, AgentWorkProductValidationCitationFact>,
+): ReadonlySet<string> {
+  const identities = new Set<string>();
+  for (const citationId of citationIds) {
+    const identity = registry.get(citationId)?.knowledgeIdentity;
+    if (identity !== undefined && identity !== null) identities.add(identity);
+  }
+  return identities;
 }
 
 function compileBoundary(
@@ -2264,6 +2394,10 @@ function compileBoundary(
     environmentRequirements: Object.freeze(sortUniqueCodePoints(field(value, "Environment requirement").map((entry) => asText(entry, "Environment requirement")))),
     fragmentDigest: value.digest,
   }));
+  const missingCheckPhase = missingWorkBoundaryRequiredCheckPhase(checks);
+  if (missingCheckPhase !== null) {
+    invalid("semantic", "work-boundary-coverage", `A Work Boundary requires at least one ${missingCheckPhase}-required Check`);
+  }
   const propositions = group("Proposition").map((value) => {
     const notApplicableValue = field(value, "Not applicable condition")[0];
     const notApplicableCondition = notApplicableValue === undefined
@@ -2298,16 +2432,19 @@ function compileBoundary(
     Object.freeze([...values].sort((left, right) => compareCodePoints(left.id, right.id)));
   const selectedKnowledgeIds = Object.freeze(sortUniqueCodePoints((selection["Selected Knowledge"] ?? []).map((value, index) =>
     asKnowledgeId(value, `Selected Knowledge[${index}]`))));
+  const selectedWorkTypeIds = Object.freeze(sortUniqueCodePoints((selection["Selected work type"] ?? []).map((value, index) =>
+    asId(value, `Selected work type[${index}]`))));
   const selectedSourceIds = sortedIds(selection["Selected source"] ?? [], "Selected source");
   if (selectedKnowledgeIds.length === 0) {
     invalid("semantic", "work-boundary-selection", "Complete Work Boundary semantics require at least one selected Knowledge subject");
   }
+  const citedKnowledge = citedKnowledgeIdentities(citedSubjectIds, registry);
   for (const id of selectedKnowledgeIds) {
     const subject = registry.get(id);
-    if (subject?.kind !== "knowledge") {
+    if (subject?.kind !== "knowledge" || subject.knowledgeIdentity !== id) {
       invalid("semantic", "work-boundary-selection", `Selected Knowledge ${id} is not exact Knowledge in the frozen citation registry`);
     }
-    if (!citedSubjectIds.has(id)) {
+    if (!citedKnowledge.has(id)) {
       invalid("semantic", "selection-citation", `Selected Knowledge ${id} lacks one exact supporting citation`);
     }
   }
@@ -2380,6 +2517,7 @@ function compileBoundary(
     effectIds: Object.freeze(sortUniqueCodePoints(effects.map(({ id }) => id))),
     workBoundary: Object.freeze({
       selectedKnowledgeIds,
+      selectedWorkTypeIds,
       selectedSourceIds,
       capabilityProfileId: asId(singleField(selection, "Capability profile"), "Capability Profile"),
       projectionProfile: asEnum(singleField(selection, "Projection profile"), "Projection profile", [
@@ -2422,7 +2560,7 @@ function compileMaterialCondition(
     statement: parsed.statement,
     falsifiedMandateIds: parsed.falsifiedMandateIds,
     knowledgeIds: parsed.knowledgeIds,
-    founderJudgmentRequired: parsed.founderJudgmentRequired,
+    directorJudgmentRequired: parsed.directorJudgmentRequired,
     fragmentDigest: parsed.digest,
   });
 }
@@ -2462,6 +2600,8 @@ function compileReview(
   if (parsed === null) return Object.freeze({
     role: "reviewer",
     judgments: Object.freeze([]),
+    mandateApplicability: Object.freeze({ disposition: "indeterminate", rationale: "No reviewer judgment was supplied.", citationIds: Object.freeze([]), fragmentDigest: digestCanonical(null) }),
+    baselineApplicability: Object.freeze([]),
     mandateExcess: false,
     missingObligationIds: Object.freeze([]),
     conditions: Object.freeze([]),
@@ -2474,7 +2614,8 @@ function compileReview(
     id: ids.semantic.get(decision.localId)!,
     propositionId: decision.propositionId,
     disposition: decision.disposition,
-    citationIds: resolveLocal(decision.citationLocalIds, citationIds, "Review decision citations"),
+    citationIds: resolveLocal(decision.citationLocalIds, citationIds, "Review decision citations",
+      { expectedKind: "citation", definitionKinds: ids.definitionKinds }),
     inspectedSubjectIds: resolveLocal(
       decision.citationLocalIds,
       citationSubjectIds,
@@ -2482,12 +2623,23 @@ function compileReview(
     ),
     rationale: decision.rationale,
     uncertainty: decision.uncertainty,
-    limitationIds: resolveLocal(decision.limitationLocalIds, ids.limitations, "Review decision limitations"),
+    limitationIds: resolveLocal(decision.limitationLocalIds, ids.limitations, "Review decision limitations",
+      { expectedKind: "limitation", definitionKinds: ids.definitionKinds }),
     fragmentDigest: decision.digest,
   })).sort((left, right) => compareCodePoints(left.propositionId, right.propositionId));
   return Object.freeze({
     role: "reviewer",
     judgments: Object.freeze(judgments),
+    mandateApplicability: Object.freeze({ disposition: parsed.mandateApplicability.disposition,
+      rationale: parsed.mandateApplicability.rationale,
+      citationIds: resolveLocal(parsed.mandateApplicability.citationLocalIds, citationIds, "Mandate applicability citations",
+        { expectedKind: "citation", definitionKinds: ids.definitionKinds }),
+      fragmentDigest: parsed.mandateApplicability.digest }),
+    baselineApplicability: Object.freeze(parsed.baselineApplicability.map((value) => Object.freeze({
+      receiptId: value.receiptId!, disposition: value.disposition, rationale: value.rationale,
+      citationIds: resolveLocal(value.citationLocalIds, citationIds, "Baseline applicability citations",
+        { expectedKind: "citation", definitionKinds: ids.definitionKinds }), fragmentDigest: value.digest,
+    }))),
     mandateExcess: parsed.mandateExcess,
     missingObligationIds: parsed.missingObligationIds,
     conditions: parsed.materialCondition === null
@@ -2518,7 +2670,7 @@ type AgentWorkProductCitationIdentity = (
 ) => ControlJsonObject;
 
 /**
- * One semantic compiler core serves both invocation-local validation and final
+ * One semantic compiler core serves both private basis validation and final
  * retention. The caller supplies only how a citation identity is materialized:
  * validation uses id/kind facts, while retention adds the frozen registry's
  * exact digest, locator, and authority fields.
@@ -2539,7 +2691,8 @@ function compileAgentWorkProductSemanticsCore(
     if (subject === undefined) {
       invalid("semantic", "citation-subject", `Citation ${citation.localId} names an item outside the frozen registry`);
     }
-    const claimIds = resolveLocal(citation.supportsClaimLocalIds, ids.claims, `Citation ${citation.localId} claims`);
+    const claimIds = resolveLocal(citation.supportsClaimLocalIds, ids.claims, `Citation ${citation.localId} claims`,
+      { expectedKind: "claim", definitionKinds: ids.definitionKinds });
     if (claimIds.length === 0) {
       invalid("semantic", "citation-claims", `Citation ${citation.localId} must support at least one claim`);
     }
@@ -2571,14 +2724,17 @@ function compileAgentWorkProductSemanticsCore(
   }
   for (const claim of parsed.claims) {
     const support = citedSubjectsByClaim.get(claim.localId) ?? new Set<string>();
+    const supportedKnowledge = citedKnowledgeIdentities(support, registry);
     for (const subjectId of claim.knowledgeIds) {
-      if (registry.get(subjectId)?.kind !== "knowledge" || !support.has(subjectId)) {
-        invalid("semantic", "claim-support", `Claim ${claim.localId} names Knowledge ${subjectId} without its exact supporting citation`);
+      if (!supportedKnowledge.has(subjectId)) {
+        invalid("semantic", "claim-support", `Claim ${claim.localId} names Knowledge ${subjectId} without its exact supporting citation`,
+          { localHandle: claim.localId, subject: subjectId, subjectKind: "knowledge" });
       }
     }
     for (const subjectId of claim.evidenceIds) {
       if (registry.get(subjectId)?.kind !== "evidence" || !support.has(subjectId)) {
-        invalid("semantic", "claim-support", `Claim ${claim.localId} names Evidence ${subjectId} without its exact supporting citation`);
+        invalid("semantic", "claim-support", `Claim ${claim.localId} names Evidence ${subjectId} without its exact supporting citation`,
+          { localHandle: claim.localId, subject: subjectId, subjectKind: "evidence" });
       }
     }
   }
@@ -2608,7 +2764,10 @@ function compileAgentWorkProductSemanticsCore(
 
 const SAFE_VALIDATION_DIAGNOSTIC_CODE = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
 
-function semanticValidationDiagnostic(error: unknown): AgentWorkProductValidationDiagnostic {
+function semanticValidationDiagnostic(
+  error: unknown,
+  draftBasis: AgentWorkProductValidationBasis | null = null,
+): AgentWorkProductValidationDiagnostic {
   if (error instanceof AgentWorkProductSemanticError) {
     const observed: Readonly<Record<string, unknown>> = error.observedFacts !== null &&
       typeof error.observedFacts === "object"
@@ -2622,6 +2781,30 @@ function semanticValidationDiagnostic(error: unknown): AgentWorkProductValidatio
       SAFE_VALIDATION_DIAGNOSTIC_CODE.test(error.code)
       ? error.code
       : "lifecycle.agent-work-product.runtime.diagnostic-code";
+    // Local correction may name only bounded grammar handles and matching
+    // identities already present in the supplied compact basis. Durable
+    // submission diagnostics retain their smaller existing projection.
+    const correctionHandle = (value: unknown): string | null =>
+      typeof value === "string" && Buffer.byteLength(value, "utf8") <= 160 &&
+      /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value) ? value : null;
+    const claimSupport = draftBasis !== null &&
+      safeCode === "lifecycle.agent-work-product.invalid.claim-support";
+    const duplicateHandle = draftBasis !== null &&
+      safeCode === "lifecycle.agent-work-product.invalid.duplicate-local-identity";
+    const localReference = draftBasis !== null &&
+      safeCode === "lifecycle.agent-work-product.invalid.local-reference" &&
+      typeof observed.expectedKind === "string" &&
+      ["claim", "citation", "limitation"].includes(observed.expectedKind) &&
+      typeof observed.actualKind === "string" &&
+      ["claim", "citation", "limitation", "condition", "decision", "effect", "proposal", "review", "absent"].includes(observed.actualKind);
+    const subject = claimSupport ? correctionHandle(observed.subject) : null;
+    const expected = localReference
+      ? [`definition-kind:${String(observed.expectedKind)}`, `observed-kind:${String(observed.actualKind)}`]
+      : subject === null ? [] : draftBasis!.citationFacts
+      .filter((fact) => observed.subjectKind === "knowledge"
+        ? fact.kind === "knowledge" && fact.knowledgeIdentity === subject
+        : fact.kind === "evidence" && fact.id === subject)
+      .map(({ id }) => id).slice(0, 32);
     return Object.freeze({
       code: safeCode,
       phase: error.phase,
@@ -2629,9 +2812,9 @@ function semanticValidationDiagnostic(error: unknown): AgentWorkProductValidatio
         ? "correct-semantic-draft" as const
         : "stop-runtime-failure" as const,
       line,
-      subject: null,
-      localHandle: null,
-      expected: Object.freeze([]),
+      subject,
+      localHandle: claimSupport || duplicateHandle || localReference ? correctionHandle(observed.localHandle) : null,
+      expected: Object.freeze(expected),
     });
   }
   return Object.freeze({
@@ -2646,17 +2829,20 @@ function semanticValidationDiagnostic(error: unknown): AgentWorkProductValidatio
 }
 
 /**
- * Validate the current agent-authored Markdown against one compact immutable
- * basis. The outcome is deliberately safe for the provider boundary: it
- * contains only installed diagnostic tokens and an optional source line, never
- * Markdown, paths, registry locators, or semantic values.
+ * Validate agent-authored Markdown against one compact immutable basis.
+ * Both local advisory inspection and independent post-Containment validation
+ * use this owner. Local correction can additionally expose typed handles and
+ * matching supplied-basis citation identities, never prose or source locators.
+ * A successful local result does not establish final submission validity.
  */
 export function validateAgentWorkProductSemanticMarkdown(
-  basis: AgentWorkProductValidationBasis,
+  basis: unknown,
   semanticMarkdown: string,
+  diagnosticScope: "submission" | "local-draft" = "submission",
 ): AgentWorkProductValidationOutcome {
+  let exactBasis: AgentWorkProductValidationBasis | null = null;
   try {
-    const exactBasis = exactValidationBasis(basis);
+    exactBasis = parseAgentWorkProductValidationBasis(basis);
     const parsed = parseAgentWorkProductSemanticMarkdown(exactBasis.role, semanticMarkdown);
     const registry = new Map(exactBasis.citationFacts.map((entry) => [entry.id, entry]));
     compileAgentWorkProductSemanticsCore(
@@ -2671,7 +2857,7 @@ export function validateAgentWorkProductSemanticMarkdown(
     );
     return Object.freeze({ status: "valid" as const, diagnostic: null });
   } catch (error) {
-    const diagnostic = semanticValidationDiagnostic(error);
+    const diagnostic = semanticValidationDiagnostic(error, diagnosticScope === "local-draft" ? exactBasis : null);
     return error instanceof AgentWorkProductSemanticError && error.classification === "invalid-result"
       ? Object.freeze({ status: "invalid-result" as const, diagnostic })
       : Object.freeze({ status: "runtime-failure" as const, diagnostic });
@@ -2809,13 +2995,14 @@ export function compileAgentWorkProductPayload(input: AgentWorkProductCompilerIn
     ...(input.parsed.builder?.effects ?? []),
     ...(input.parsed.review?.materialCondition === null || input.parsed.review === null ? [] : [input.parsed.review.materialCondition]),
     ...(input.parsed.review?.decisions ?? []),
+    ...(input.parsed.review === null ? [] : [input.parsed.review.mandateApplicability, ...input.parsed.review.baselineApplicability]),
   ]) addFragment(value.localId, ids.semantic.get(value.localId)!, value.kind, value.digest);
   if (fragments.length > 16_384) {
     invalid("semantic", "collection-bound", "Agent Work Product addressable fragments exceed the 16384-item bound");
   }
   fragments.sort((left, right) => compareCodePoints(left.id, right.id));
   return Object.freeze({
-    schema: "lifecycle.agent-work-product-payload.v2",
+    schema: "lifecycle.agent-work-product-payload.v5",
     profileId: profileId(bindings.role),
     role: bindings.role,
     disposition: input.parsed.disposition,

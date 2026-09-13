@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,20 @@ const MARKER_SCHEMA = "lifecycle.foundation-package-staging.v1";
 const WORKSPACE_PROTOCOL_NAME = "@neutral/lifecycle-protocol";
 const WORKSPACE_PROTOCOL_LOCK_PATH = "node_modules/@neutral/lifecycle-protocol";
 const WORKSPACE_PROTOCOL_PACKAGE_PATH = "protocol";
+const ATLAS_VALIDATOR_NAME = "atlas-reference-validator";
+const ATLAS_VALIDATOR_LOCK_PATH = "node_modules/atlas-reference-validator";
+const ATLAS_VALIDATOR_VENDOR_ROOT = "third-party/atlas-reference-validator";
+const ATLAS_VALIDATOR_PACKAGE_PATH = `${ATLAS_VALIDATOR_VENDOR_ROOT}/package`;
+const ATLAS_VALIDATOR_DEPENDENCY_ROOT = `${ATLAS_VALIDATOR_VENDOR_ROOT}/node_modules`;
+const ATLAS_VALIDATOR_PROVENANCE_SCHEMA = "lifecycle.third-party-source.v1";
+const ATLAS_VALIDATOR_PROCESSOR_REVISION = "2c7a78540ac30138218b12803f1c045cee8b109a";
+const ATLAS_VALIDATOR_SPECIFICATION_REVISION = "2c7a78540ac30138218b12803f1c045cee8b109a";
+const ATLAS_VALIDATOR_TREE = "b265413a6a0f19c727701489b700669d774bb6e1";
+const ATLAS_VALIDATOR_INVENTORY_DIGEST = "sha256:623f5b625c8fc377fb833f6195066147a087c646434ceff8614de434d86de76e";
+const ATLAS_VALIDATOR_IMPLEMENTATION_DIGEST = "sha256:7432f9d49b9efdc828fbbc573fa32f395def8e201c628d7741ba56b2acf230be";
+const ATLAS_VALIDATOR_PROVENANCE_DIGEST = "sha256:bd436f42e7e5633f0687bcb137c9153b85e8f5adcea0be170abb91488600946a";
+const ATLAS_VALIDATOR_LICENSE_DIGEST = "sha256:a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499";
+const ATLAS_VALIDATOR_DISTRIBUTION = Object.freeze(["README.md", "bin", "package.json", "schemas", "src"]);
 
 function sortedEntries(value) {
   return Object.fromEntries(Object.entries(value ?? {}).sort(([left], [right]) => left.localeCompare(right)));
@@ -20,6 +35,161 @@ function assertEqualRecord(left, right, message) {
   if (JSON.stringify(sortedEntries(left)) !== JSON.stringify(sortedEntries(right))) {
     throw new Error(message);
   }
+}
+
+function canonicalJson(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || !Number.isSafeInteger(value)) throw new Error("Third-party provenance contains a non-canonical number");
+    return JSON.stringify(Object.is(value, -0) ? 0 : value);
+  }
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  throw new Error(`Third-party provenance contains unsupported ${typeof value}`);
+}
+
+function sha256(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function selfDigest(value, field = "digest") {
+  const subject = { ...value };
+  delete subject[field];
+  return sha256(canonicalJson(subject));
+}
+
+function exactKeys(value, expected, label) {
+  if (value === null || typeof value !== "object" || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expected].sort())) {
+    throw new Error(`${label} has an unsupported shape`);
+  }
+}
+
+function sourceMode(metadata) {
+  return (metadata.mode & 0o777).toString(8).padStart(6, "0");
+}
+
+function distributionFile(path, distribution) {
+  return distribution.some((entry) => path === entry || path.startsWith(`${entry}/`));
+}
+
+async function regularFileInventory(root) {
+  const files = [];
+  const visit = async (directory, relativeRoot = "") => {
+    const entries = (await readdir(directory, { withFileTypes: true }))
+      .sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
+    for (const entry of entries) {
+      const source = join(directory, entry.name);
+      const child = relativeRoot ? `${relativeRoot}/${entry.name}` : entry.name;
+      const metadata = await lstat(source);
+      if (metadata.isSymbolicLink()) throw new Error(`Vendored Atlas validator contains a symbolic link: ${child}`);
+      if (metadata.isDirectory()) await visit(source, child);
+      else if (metadata.isFile()) files.push(child);
+      else throw new Error(`Vendored Atlas validator contains an unsupported entry: ${child}`);
+    }
+  };
+  await visit(root);
+  return files;
+}
+
+async function verifyVendoredAtlasValidator(source) {
+  const vendorRoot = dirname(source);
+  const provenancePath = join(vendorRoot, "PROVENANCE.json");
+  const licensePath = join(vendorRoot, "LICENSE");
+  for (const [label, path] of [["package", source], ["provenance", provenancePath], ["license", licensePath]]) {
+    const metadata = await lstat(path);
+    const expectedDirectory = label === "package";
+    if (metadata.isSymbolicLink() || (expectedDirectory ? !metadata.isDirectory() : !metadata.isFile()) ||
+        (!expectedDirectory && sourceMode(metadata) !== "000644")) {
+      throw new Error(`Vendored Atlas validator ${label} carrier has an unsupported type or mode`);
+    }
+  }
+  const provenance = await readJson(provenancePath);
+  exactKeys(provenance, [
+    "schema", "name", "version", "license", "upstream", "upstreamPath",
+    "processorRevision", "specificationRevision", "upstreamTree", "upstreamInventoryDigest",
+    "noLocalPatches", "distribution", "implementationDigest", "files", "digest",
+  ], "Vendored Atlas validator provenance");
+  if (
+    provenance.schema !== ATLAS_VALIDATOR_PROVENANCE_SCHEMA ||
+    provenance.name !== ATLAS_VALIDATOR_NAME ||
+    provenance.version !== "0.8.0" ||
+    provenance.license !== "CC0-1.0" ||
+    provenance.upstream !== "https://github.com/neutral/atlas-dev" ||
+    provenance.upstreamPath !== "plugin/validator" ||
+    provenance.processorRevision !== ATLAS_VALIDATOR_PROCESSOR_REVISION ||
+    provenance.specificationRevision !== ATLAS_VALIDATOR_SPECIFICATION_REVISION ||
+    provenance.upstreamTree !== ATLAS_VALIDATOR_TREE ||
+    provenance.upstreamInventoryDigest !== ATLAS_VALIDATOR_INVENTORY_DIGEST ||
+    provenance.noLocalPatches !== true ||
+    JSON.stringify(provenance.distribution) !== JSON.stringify(ATLAS_VALIDATOR_DISTRIBUTION) ||
+    provenance.implementationDigest !== ATLAS_VALIDATOR_IMPLEMENTATION_DIGEST ||
+    provenance.digest !== ATLAS_VALIDATOR_PROVENANCE_DIGEST ||
+    selfDigest(provenance) !== provenance.digest
+  ) {
+    throw new Error("Vendored Atlas validator provenance differs from the exact selected source");
+  }
+  if (!Array.isArray(provenance.files) || provenance.files.length === 0) {
+    throw new Error("Vendored Atlas validator provenance lacks its source inventory");
+  }
+  const paths = [];
+  for (const record of provenance.files) {
+    exactKeys(record, ["path", "mode", "byteLength", "sha256"], "Vendored Atlas validator file record");
+    if (
+      typeof record.path !== "string" || record.path.length === 0 || record.path.startsWith("/") ||
+      record.path.includes("\\") || record.path.split("/").some((part) => part.length === 0 || part === "." || part === "..") ||
+      !/^000(?:644|755)$/u.test(record.mode) ||
+      !Number.isSafeInteger(record.byteLength) || record.byteLength < 0 ||
+      !/^sha256:[a-f0-9]{64}$/u.test(record.sha256)
+    ) {
+      throw new Error(`Vendored Atlas validator provenance contains an invalid file record: ${record.path ?? "<unknown>"}`);
+    }
+    paths.push(record.path);
+  }
+  if (new Set(paths).size !== paths.length || JSON.stringify(paths) !== JSON.stringify([...paths].sort())) {
+    throw new Error("Vendored Atlas validator provenance paths must be unique and ordered");
+  }
+  const actualPaths = await regularFileInventory(source);
+  if (JSON.stringify(actualPaths) !== JSON.stringify(paths)) {
+    throw new Error("Vendored Atlas validator source inventory differs from provenance");
+  }
+  for (const record of provenance.files) {
+    const target = join(source, record.path);
+    const metadata = await lstat(target);
+    const bytes = await readFile(target);
+    if (sourceMode(metadata) !== record.mode || metadata.size !== record.byteLength || sha256(bytes) !== record.sha256) {
+      throw new Error(`Vendored Atlas validator file differs from provenance: ${record.path}`);
+    }
+  }
+  const distributionRecords = provenance.files.filter((record) => distributionFile(record.path, provenance.distribution));
+  if (sha256(canonicalJson(distributionRecords)) !== provenance.implementationDigest) {
+    throw new Error("Vendored Atlas validator implementation digest does not bind its distribution inventory");
+  }
+  const packageValue = await readJson(join(source, "package.json"));
+  const expectedPackage = {
+    name: ATLAS_VALIDATOR_NAME,
+    version: "0.8.0",
+    description: "Reference validator for Atlas format 1",
+    private: true,
+    type: "module",
+    license: "CC0-1.0",
+    bin: { "atlas-validate": "bin/atlas-validate.mjs" },
+    exports: { ".": "./src/index.mjs" },
+    files: ["README.md", "bin", "schemas", "src"],
+    scripts: { test: "node --test tests/*.test.mjs" },
+    dependencies: { "@hyperjump/uri": "1.3.5", ajv: "8.20.0", "markdown-it": "14.3.0" },
+    engines: { node: ">=22.23.2" },
+  };
+  if (canonicalJson(packageValue) !== canonicalJson(expectedPackage)) {
+    throw new Error("Vendored Atlas validator package metadata differs from the selected source");
+  }
+  if (sha256(await readFile(licensePath)) !== ATLAS_VALIDATOR_LICENSE_DIGEST) {
+    throw new Error("Vendored Atlas validator license differs from the exact CC0 source");
+  }
+  return Object.freeze({ provenance, provenancePath, licensePath });
 }
 
 function packageNameFromLockPath(lockPath) {
@@ -54,6 +224,10 @@ function stagingPathForLockPath(lockPath) {
 
 function stagingLockPathForSourceLockPath(sourceLockPath) {
   if (sourceLockPath.startsWith("node_modules/")) return sourceLockPath;
+  const vendoredPrefix = `${ATLAS_VALIDATOR_DEPENDENCY_ROOT}/`;
+  if (sourceLockPath.startsWith(vendoredPrefix)) {
+    return `${ATLAS_VALIDATOR_LOCK_PATH}/node_modules/${sourceLockPath.slice(vendoredPrefix.length)}`;
+  }
   throw new Error(`Runtime package assembly refuses dependency outside an exact install root: ${sourceLockPath}`);
 }
 
@@ -111,6 +285,57 @@ async function copyWorkspaceProtocol(source, target) {
     dereference: false,
     errorOnExist: true,
   });
+}
+
+async function copyVendoredAtlasValidator(source, target) {
+  const verified = await verifyVendoredAtlasValidator(source);
+  await mkdir(target, { recursive: false, mode: 0o755 });
+  for (const relativePath of verified.provenance.distribution) {
+    const sourcePath = join(source, relativePath);
+    const targetPath = join(target, relativePath);
+    await mkdir(dirname(targetPath), { recursive: true, mode: 0o755 });
+    await cp(sourcePath, targetPath, {
+      recursive: true,
+      dereference: false,
+      errorOnExist: true,
+    });
+  }
+  await cp(verified.licensePath, join(target, "LICENSE"), { errorOnExist: true });
+  await cp(verified.provenancePath, join(target, "PROVENANCE.json"), { errorOnExist: true });
+
+  const stagedPaths = await regularFileInventory(target);
+  const expectedPaths = [
+    "LICENSE",
+    "PROVENANCE.json",
+    ...verified.provenance.files
+      .filter((record) => distributionFile(record.path, verified.provenance.distribution))
+      .map((record) => record.path),
+  ].sort();
+  if (JSON.stringify(stagedPaths) !== JSON.stringify(expectedPaths)) {
+    throw new Error("Staged Atlas validator distribution differs from its exact provenance selection");
+  }
+  for (const record of verified.provenance.files.filter((candidate) =>
+    distributionFile(candidate.path, verified.provenance.distribution))) {
+    const stagedPath = join(target, record.path);
+    const metadata = await lstat(stagedPath);
+    const bytes = await readFile(stagedPath);
+    if (sourceMode(metadata) !== record.mode || metadata.size !== record.byteLength || sha256(bytes) !== record.sha256) {
+      throw new Error(`Staged Atlas validator file differs from provenance: ${record.path}`);
+    }
+  }
+  for (const [name, sourcePath] of [
+    ["LICENSE", verified.licensePath],
+    ["PROVENANCE.json", verified.provenancePath],
+  ]) {
+    const stagedPath = join(target, name);
+    const metadata = await lstat(stagedPath);
+    if (
+      sourceMode(metadata) !== "000644" ||
+      !(await readFile(stagedPath)).equals(await readFile(sourcePath))
+    ) {
+      throw new Error(`Staged Atlas validator ${name} differs from its exact source carrier`);
+    }
+  }
 }
 
 async function removeOwnedStaging() {
@@ -174,6 +399,10 @@ async function prepare() {
           entry.resolved === WORKSPACE_PROTOCOL_PACKAGE_PATH) {
         workspacePackagePath = WORKSPACE_PROTOCOL_PACKAGE_PATH;
         workspaceKind = "protocol";
+      } else if (dependencyName === ATLAS_VALIDATOR_NAME && lockPath === ATLAS_VALIDATOR_LOCK_PATH &&
+          entry.resolved === ATLAS_VALIDATOR_PACKAGE_PATH) {
+        workspacePackagePath = ATLAS_VALIDATOR_PACKAGE_PATH;
+        workspaceKind = "vendored-atlas-validator";
       } else {
         throw new Error(`Runtime package assembly refuses linked production dependency ${lockPath}`);
       }
@@ -199,6 +428,7 @@ async function prepare() {
 
   const records = [];
   const canonicalDependencyRoot = await realpath(join(WORKSPACE_ROOT, "node_modules"));
+  const canonicalAtlasDependencyRoot = await realpath(join(WORKSPACE_ROOT, ATLAS_VALIDATOR_DEPENDENCY_ROOT));
   for (const [lockPath, locked] of [...closure.entries()].sort(([left], [right]) => left.localeCompare(right))) {
     const source = locked.workspacePackagePath === null
       ? join(WORKSPACE_ROOT, locked.sourceLockPath)
@@ -209,7 +439,10 @@ async function prepare() {
     }
     const canonicalSource = await realpath(source).catch(() => null);
     if (locked.workspacePackagePath === null) {
-      const dependencyRelative = canonicalSource === null ? null : relative(canonicalDependencyRoot, canonicalSource);
+      const selectedDependencyRoot = locked.sourceLockPath.startsWith(`${ATLAS_VALIDATOR_DEPENDENCY_ROOT}/`)
+        ? canonicalAtlasDependencyRoot
+        : canonicalDependencyRoot;
+      const dependencyRelative = canonicalSource === null ? null : relative(selectedDependencyRoot, canonicalSource);
       if (
         dependencyRelative === null ||
         dependencyRelative === ".." ||
@@ -237,6 +470,9 @@ async function prepare() {
     records.push(Object.freeze({
       lockPath,
       source: canonicalSource,
+      name: locked.name,
+      version: locked.version,
+      sourceLockPath: locked.sourceLockPath,
       workspacePackagePath: locked.workspacePackagePath,
       workspaceKind: locked.workspaceKind,
     }));
@@ -261,6 +497,8 @@ async function prepare() {
         });
       } else if (record.workspaceKind === "protocol") {
         await copyWorkspaceProtocol(record.source, target);
+      } else if (record.workspaceKind === "vendored-atlas-validator") {
+        await copyVendoredAtlasValidator(record.source, target);
       } else {
         throw new Error(`Runtime package assembly has an unsupported workspace dependency kind: ${record.workspaceKind}`);
       }

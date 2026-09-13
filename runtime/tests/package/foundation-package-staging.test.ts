@@ -199,15 +199,33 @@ test("runtime package staging copies the exact workspace protocol publication su
 
   assert.equal((await lstat(protocolRoot)).isSymbolicLink(), false);
   assert.deepEqual(await files(protocolRoot), [
+    "dist/src/foundation/atlas-inspection.d.ts",
+    "dist/src/foundation/atlas-inspection.js",
+    "dist/src/foundation/atlas-inspection.js.map",
     "dist/src/foundation/attempt-view.d.ts",
     "dist/src/foundation/attempt-view.js",
     "dist/src/foundation/attempt-view.js.map",
+    "dist/src/foundation/authorization-review.d.ts",
+    "dist/src/foundation/authorization-review.js",
+    "dist/src/foundation/authorization-review.js.map",
+    "dist/src/foundation/code-inspection.d.ts",
+    "dist/src/foundation/code-inspection.js",
+    "dist/src/foundation/code-inspection.js.map",
+    "dist/src/foundation/context-core.d.ts",
+    "dist/src/foundation/context-core.js",
+    "dist/src/foundation/context-core.js.map",
+    "dist/src/foundation/context-inspection.d.ts",
+    "dist/src/foundation/context-inspection.js",
+    "dist/src/foundation/context-inspection.js.map",
     "dist/src/foundation/core.d.ts",
     "dist/src/foundation/core.js",
     "dist/src/foundation/core.js.map",
     "dist/src/foundation/internal.d.ts",
     "dist/src/foundation/internal.js",
     "dist/src/foundation/internal.js.map",
+    "dist/src/foundation/knowledge-inspection.d.ts",
+    "dist/src/foundation/knowledge-inspection.js",
+    "dist/src/foundation/knowledge-inspection.js.map",
     "dist/src/foundation/recovery.d.ts",
     "dist/src/foundation/recovery.js",
     "dist/src/foundation/recovery.js.map",
@@ -261,6 +279,13 @@ test("runtime package staging copies the exact workspace protocol publication su
     version?: string;
   };
   assert.deepEqual({ name: noble.name, version: noble.version }, { name: "@noble/hashes", version: "2.4.0" });
+  const atlas = JSON.parse(await readFile(new URL("atlas-reference-validator/package.json", stagingRoot), "utf8")) as {
+    name?: string; version?: string; dependencies?: Record<string, string>;
+  };
+  assert.deepEqual({ name: atlas.name, version: atlas.version, dependencies: atlas.dependencies }, {
+    name: "atlas-reference-validator", version: "0.8.0",
+    dependencies: { "@hyperjump/uri": "1.3.5", ajv: "8.20.0", "markdown-it": "14.3.0" },
+  });
 
   await execute(process.execPath, [stagingScript.pathname, "cleanup"]);
   assert.equal(await lstat(stagingRoot).then(() => true, () => false), false);

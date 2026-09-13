@@ -43,8 +43,8 @@ const ALLOWED: Readonly<Record<FoundationRelationshipType, Readonly<{
     targets: ["blueprint", "description"] as const,
   }),
   "related-to": Object.freeze({
-    sources: ["behavior", "assurance", "blueprint", "description", "check"] as const,
-    targets: ["behavior", "assurance", "blueprint", "description", "check"] as const,
+    sources: ["behavior", "assurance", "blueprint", "description", "check", "discipline"] as const,
+    targets: ["behavior", "assurance", "blueprint", "description", "check", "discipline"] as const,
   }),
 });
 

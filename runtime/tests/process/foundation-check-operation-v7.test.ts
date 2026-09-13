@@ -1,3 +1,4 @@
+import { checkExecutionOutput } from "../support/check-cell-output-fixture.js";
 import assert from "node:assert/strict";
 import {
   mkdir,
@@ -13,9 +14,12 @@ import {
   publishCandidateRevisionCarrierFromGitTree,
 } from "../../src/foundation/candidate/carrier-binding.js";
 import {
+  compileFoundationCheckCellResourceSelectionV1,
   FoundationCheckCellInputTransportRegistryV1,
+  type FoundationCheckCellOperatorV1,
   type FoundationCheckCellRuntimeV1,
 } from "../../src/foundation/check/execution-cell-v1.js";
+import { createFoundationCheckCellOperatorV1 } from "../../src/foundation/execution/installed-check-runtime-v1.js";
 import {
   compileControlRecordEvent,
   compileControlRecordRevision,
@@ -34,14 +38,17 @@ import {
   type ControlRecordStoreAppend,
   type ControlRecordStoreIdentity,
 } from "../../src/foundation/control/types.js";
+import {
+  compileWorkDelegationReservation,
+  WORK_DELEGATION_RESERVATION_SCHEMA,
+  type WorkDelegationExecutionSlot,
+} from "../../src/foundation/control/work-delegation.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import type {
   FoundationExecutionBackend,
   FoundationExecutionHandle,
-  FoundationRetrievedExecutionOutputV1,
 } from "../../src/foundation/execution/backend.js";
 import type {
-  FoundationExecutionOutputManifestEntryV1,
   FoundationExecutionSpecificationV1,
 } from "../../src/foundation/execution/contracts.js";
 import {
@@ -63,9 +70,7 @@ import type { ReducedDeliveryState } from "../../src/foundation/process/delivery
 import { git } from "../../src/foundation/repository/git.js";
 import type { FoundationCheckBinding } from "../../src/foundation/repository/types.js";
 import {
-  canonicalJsonLine,
   digestCanonical,
-  selfDigest,
   sha256Bytes,
   type Sha256,
 } from "../../src/foundation/validation/canonical.js";
@@ -125,6 +130,27 @@ const binding: FoundationCheckBinding = Object.freeze({
   digest: "sha256:5555555555555555555555555555555555555555555555555555555555555555",
 });
 
+test("pure Check resource selection includes runner time and preserves exact selected facts", () => {
+  const selected = executionContractFixture("check-resource-selection");
+  const image = Object.freeze({ ...selected.image, runnerContractDigest: digest("runner-contract"), runnerImplementationDigest: digest("runner-implementation"), toolInventoryDigest: digest("tool-inventory") });
+  const before = structuredClone({ binding, profile: selected.profile, image });
+  const resources = compileFoundationCheckCellResourceSelectionV1({ binding, profile: selected.profile, image });
+  assert.deepEqual(resources, {
+    backendProfile: { profileId: selected.profile.profileId, profileDigest: selected.profile.digest, implementationDigest: selected.profile.implementation.implementationDigest },
+    image: selected.image,
+    limits: { wallTimeMilliseconds: 31_000, processes: 8, storageBytes: 1_048_576, outputEntries: 3, outputBytes: 1_048_576, outputEntryBytes: 1_048_576, events: 100 },
+  });
+  assert.deepEqual({ binding, profile: selected.profile, image }, before);
+  assert.equal(Object.isFrozen(resources), true);
+  assert.equal(Object.isFrozen(resources.limits), true);
+  for (const [timeoutMs, expected] of [[1, 30_001], [30_000, 60_000], [30_001, 60_000]] as const) {
+    assert.equal(compileFoundationCheckCellResourceSelectionV1({ binding: { ...binding, timeoutMs }, profile: selected.profile, image }).limits.wallTimeMilliseconds, expected);
+  }
+  const changedImage = { ...image, imageDigest: digest("explicitly-selected-other-image") };
+  assert.deepEqual(compileFoundationCheckCellResourceSelectionV1({ binding, profile: selected.profile, image: changedImage }).image,
+    { imageId: changedImage.imageId, imageDigest: changedImage.imageDigest });
+});
+
 function reference(revision: ControlRecordRevision) {
   return Object.freeze({
     kind: revision.recordKind,
@@ -159,6 +185,7 @@ function fixture(
   modality: "precondition" | "postcondition" = "precondition",
   phase: FixturePhase = "baseline",
   physical: PhysicalFixture | null = null,
+  delegatedResources: ReturnType<typeof compileFoundationCheckCellResourceSelectionV1> | null = null,
 ): Readonly<{
   store: ControlRecordStore;
   boundary: ControlRecordRevision;
@@ -209,7 +236,7 @@ function fixture(
         createdAt: STARTED,
         semanticMarkdown: "# Candidate Revision\n",
         payload: Object.freeze({
-          schema: "lifecycle.candidate-revision-payload.v2",
+          schema: "lifecycle.candidate-revision-payload.v3",
           candidateBaseCommit: physical!.productBaseCommit,
           carrierManifest: Object.freeze({
             digest: physical!.carrier!.descriptor.digest,
@@ -279,6 +306,37 @@ function fixture(
     return revision;
   };
   const openingSubject = phase === "final" ? seal! : boundary;
+  if (delegatedResources !== null && phase !== "final") throw new TypeError("Only final Checks have delegated slots");
+  if (delegatedResources !== null) {
+    // This existing owner fixture is a partial retained-Control double, not a
+    // full delegation/reducer history. Give its reservation an exact predecessor.
+    appendEvent({ event: {
+      eventId: "event-prior-boundary-check-operation-v7", eventKind: "work-boundary-finalized", occurredAt: CREATED,
+      actor: { kind: "runtime", id: RUNTIME }, subject: { recordId: boundary.recordId, revision: boundary.revision, digest: boundary.digest },
+      payload: { activityId: "activity.prior-preparation" },
+    } });
+  }
+  const reservedDefinition = ((boundary.payload.mandate as ControlJsonObject).checks as readonly ControlJsonObject[])[0]!.definition;
+  const reservation = delegatedResources === null ? null : compileWorkDelegationReservation({
+    schema: WORK_DELEGATION_RESERVATION_SCHEMA, reservationId: "reservation.check-evaluation", activityId: ACTIVITY, operation: "delivery.evaluate",
+    delegation: { kind: "work-delegation", id: "delegation.check-evaluation", revision: 1, digest: digest("retained-delegation") },
+    decision: { journalHead: { sequence: events.length, digest: predecessorDigest! }, basisDigest: digest("opening-facts"), reason: "evaluate-integrated-candidate" },
+    slots: [
+      { slotId: "slot.check", purpose: "check", phase: "final", selectionId: SELECTION,
+        definition: reservedDefinition as unknown as Extract<WorkDelegationExecutionSlot, { purpose: "check" }>["definition"],
+        binding: { id: binding.id, digest: binding.digest }, ...delegatedResources, wallTimeMs: delegatedResources.limits.wallTimeMilliseconds },
+      { slotId: "slot.reviewer", purpose: "agent", role: "reviewer", selection: {
+        providerDescriptor: { id: "descriptor.fixture", digest: digest("provider") }, backendProfile: delegatedResources.backendProfile,
+        image: delegatedResources.image, model: "model.fixture", reasoning: "high", wallTimeMs: 1_000,
+        limits: { tokens: null, events: 100, outputBytes: 1_048_576, toolCalls: null, processes: 8, storageBytes: 1_048_576 },
+      } },
+    ],
+  });
+  appendEvent({ event: {
+    eventId: "event-activity-started-check-operation-v7", eventKind: "activity-started", occurredAt: CREATED,
+    actor: { kind: "runtime", id: RUNTIME },
+    payload: { activityId: ACTIVITY, operation: phase === "final" ? "delivery.evaluate" : "delivery.prepare", ...(reservation === null ? {} : { reservation }) },
+  } });
   appendEvent(Object.freeze({
     event: Object.freeze({
       eventId: phase === "final"
@@ -312,6 +370,7 @@ function fixture(
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: phase === "final" ? reference(boundary) : null,
       candidate: candidate === null ? null : reference(candidate),
@@ -321,6 +380,7 @@ function fixture(
       closure: null,
     }),
     journal: Object.freeze({ eventCount: events.length, headDigest: predecessorDigest }),
+    delegation: Object.freeze({ admission: null, current: null, charged: Object.freeze({ operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 }) }),
     eligibleOperations: Object.freeze([]),
   });
   const store = {
@@ -486,14 +546,14 @@ function request(
   execution: Readonly<{
     target: string;
     machineHome: string;
-    cellRuntime: FoundationCheckCellRuntimeV1;
+    cellOperator: FoundationCheckCellOperatorV1;
   }> | null = null,
 ) {
   return Object.freeze({
     target: execution?.target ?? "/target",
     ...(execution === null ? {} : {
       machineHome: execution.machineHome,
-      cellRuntime: execution.cellRuntime,
+      cellOperator: execution.cellOperator,
     }),
     store: selected.store,
     activityId: ACTIVITY,
@@ -511,96 +571,12 @@ function operationClock(): Readonly<{ now(): string }> {
   return Object.freeze({ now: () => new Date(value += 1).toISOString() });
 }
 
-function checkExecutionOutput(
-  specification: FoundationExecutionSpecificationV1,
-): FoundationRetrievedExecutionOutputV1 {
-  const subjectDigest = digest(`proof-subject-${specification.digest}`);
-  const proofSubject = Object.freeze({
-    schema: "lifecycle.check-cell-proof.v1" as const,
-    startedAt: "2026-09-01T00:00:00.010Z",
-    finishedAt: "2026-09-01T00:00:00.020Z",
-    exitCode: 0,
-    signal: null,
-    timedOut: false,
-    stdoutTruncated: false,
-    stderrTruncated: false,
-    parserId: "exit-code-v1" as const,
-    parserDisposition: "passed" as const,
-    subjectBeforeDigest: subjectDigest,
-    subjectAfterDigest: subjectDigest,
-    subjectIntegrity: "unchanged" as const,
-    resultFacts: Object.freeze([Object.freeze({ name: "exit-code", value: 0 })]),
-  });
-  const proof = Object.freeze({ ...proofSubject, digest: selfDigest(proofSubject) });
-  const raw = Object.freeze({
-    schema: "lifecycle.check-cell-raw-streams.v1" as const,
-    stdoutBase64: Buffer.from("deterministic Check passed\n", "utf8").toString("base64"),
-    stderrBase64: "",
-  });
-  const values = Object.freeze([
-    Object.freeze({
-      path: "check-proof/result.json",
-      purpose: "check-proof" as const,
-      mediaType: "application/json",
-      bytes: Uint8Array.from(Buffer.from(canonicalJsonLine(proof), "utf8")),
-    }),
-    Object.freeze({
-      path: "raw-check-output/streams.json",
-      purpose: "raw-check-output" as const,
-      mediaType: "application/json",
-      bytes: Uint8Array.from(Buffer.from(canonicalJsonLine(raw), "utf8")),
-    }),
-  ]);
-  const entries: readonly FoundationExecutionOutputManifestEntryV1[] = Object.freeze(
-    values.map((value) => Object.freeze({
-      path: value.path,
-      entryKind: "file" as const,
-      purpose: value.purpose,
-      mediaType: value.mediaType,
-      modeClass: "regular" as const,
-      byteLength: value.bytes.byteLength,
-      digest: sha256Bytes(value.bytes),
-    })),
-  );
-  const aggregateByteLength = entries.reduce((sum, entry) => sum + entry.byteLength, 0);
-  const manifestSubject = Object.freeze({
-    schema: "lifecycle.execution-output-manifest.v1" as const,
-    specificationDigest: specification.digest,
-    inputSetDigest: specification.inputSet.digest,
-    imageDigest: specification.image.imageDigest,
-    outputContractDigest: specification.outputContract.digest,
-    runnerDigest: specification.runner.contractDigest,
-    completedAt: "2026-09-01T00:00:00.100Z",
-    entries,
-    entryCount: entries.length,
-    aggregateByteLength,
-    entryInventoryDigest: digestCanonical(entries),
-  });
-  return Object.freeze({
-    manifest: Object.freeze({
-      ...manifestSubject,
-      digest: selfDigest(manifestSubject),
-    }),
-    carrierByteLength: aggregateByteLength,
-    async *entries() {
-      for (let index = 0; index < entries.length; index += 1) {
-        const descriptor = entries[index]!;
-        const bytes = values[index]!.bytes;
-        yield Object.freeze({
-          path: descriptor.path,
-          byteLength: descriptor.byteLength,
-          digest: descriptor.digest,
-          async *read() { yield Uint8Array.from(bytes); },
-        });
-      }
-    },
-  });
-}
 
 function outputBackend(input: Readonly<{
   engine: InMemoryExecutionBackendEngine;
   profile: FoundationCheckCellRuntimeV1["profile"];
   onSpecification(specification: FoundationExecutionSpecificationV1): void;
+  exitCode?: number;
 }>): FoundationExecutionBackend {
   const delegate = input.engine.facade(input.profile);
   let specification: FoundationExecutionSpecificationV1 | null = null;
@@ -618,7 +594,7 @@ function outputBackend(input: Readonly<{
     async dispatch(handle: FoundationExecutionHandle) {
       if (!supplied) {
         assert(specification !== null);
-        await input.engine.provideOutput(specification, checkExecutionOutput(specification));
+        await input.engine.provideOutput(specification, checkExecutionOutput(specification, { exitCode: input.exitCode }));
         supplied = true;
       }
       return await delegate.dispatch(handle);
@@ -634,9 +610,12 @@ function outputBackend(input: Readonly<{
 async function successfulCellFixture(
   context: TestContext,
   phase: FixturePhase,
+  exitCode = 0,
+  delegated = false,
 ): Promise<Readonly<{
   selected: ReturnType<typeof fixture>;
   operation: ReturnType<typeof request>;
+  operationWithImage(imageDigest: Sha256): ReturnType<typeof request>;
   engine: InMemoryExecutionBackendEngine;
   specificationDigest(): Sha256 | null;
   reclamation: Awaited<ReturnType<typeof openFoundationExecutionReclamationLedgerV1>>;
@@ -684,7 +663,6 @@ async function successfulCellFixture(
           }),
         }),
   });
-  const selected = fixture("precondition", phase, physical);
   const contract = executionContractFixture(`check-operation-${phase}`);
   const image = Object.freeze({
     ...contract.image,
@@ -692,6 +670,8 @@ async function successfulCellFixture(
     runnerImplementationDigest: digest("runner-implementation"),
     toolInventoryDigest: digest("tool-inventory"),
   });
+  const reservedResources = compileFoundationCheckCellResourceSelectionV1({ binding, profile: contract.profile, image });
+  const selected = fixture("precondition", phase, physical, delegated ? reservedResources : null);
   const clock = operationClock();
   const engine = new InMemoryExecutionBackendEngine(
     phase === "baseline" ? "2".repeat(64) : "3".repeat(64),
@@ -699,8 +679,13 @@ async function successfulCellFixture(
   let specificationDigest: Sha256 | null = null;
   const backend = outputBackend({
     engine,
+    exitCode,
     profile: contract.profile,
-    onSpecification(specification) { specificationDigest = specification.digest; },
+    onSpecification(specification) {
+      specificationDigest = specification.digest;
+      assert.deepEqual({ backendProfile: specification.backendProfile, image: specification.image, limits: specification.limits }, reservedResources,
+        "The allocated Check uses the exact resource projection available before opening");
+    },
   });
   const reclamation = await openFoundationExecutionReclamationLedgerV1({
     machineHome,
@@ -720,13 +705,22 @@ async function successfulCellFixture(
     clock,
     pollMilliseconds: 0,
   });
+  const operator = createFoundationCheckCellOperatorV1(cellRuntime);
+  assert.deepEqual(Object.keys(operator).sort(), ["clock", "operate"]);
   context.after(async () => {
     try { reclamation.close(); } catch { /* already closed by a failed test */ }
     await rm(workspace, { recursive: true, force: true });
   });
   return Object.freeze({
     selected,
-    operation: request(selected, { target, machineHome, cellRuntime }),
+    operation: request(selected, {
+      target,
+      machineHome,
+      cellOperator: operator,
+    }),
+    operationWithImage: imageDigest => request(selected, { target, machineHome,
+      cellOperator: createFoundationCheckCellOperatorV1({ ...cellRuntime, image: { ...image, imageDigest } }),
+    }),
     engine,
     specificationDigest: () => specificationDigest,
     reclamation,
@@ -831,6 +825,72 @@ test("final Check Cell recovery returns its atomic Carrier-bound Receipt without
   assert.equal(value.selected.support.commitCount(), commitsBeforeRecovery);
   assert.equal(value.engine.productiveStartCount(specificationDigest!), 1);
   assert.equal(recovered.relationships.some(({ relation }) => relation === "checks-seal"), true);
+});
+
+test("delegated final Check rejects an unreserved Image before checkpoint or allocation", async (context) => {
+  const value = await successfulCellFixture(context, "final", 0, true);
+  await assert.rejects(operateFoundationCheckV7(value.operationWithImage(digest("unreserved-image"))),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.check-cell-v1.work-delegation-binding");
+  assert.equal(value.specificationDigest(), null);
+  assert.equal(value.selected.support.checkpoint(), null);
+  assert.equal(value.selected.receipt(), null);
+  assert.equal(value.engine.snapshot().allocations.length, 0);
+  assert.equal(value.reclamation.list().length, 0);
+
+  const receipt = await operateFoundationCheckV7(value.operation);
+  assert.equal(receipt.payload.disposition, "pass");
+  assert.equal(value.engine.productiveStartCount(value.specificationDigest()!), 1);
+});
+
+test("delegated Check recovery retains the original slot and allocation after a lost create return", async (context) => {
+  const value = await successfulCellFixture(context, "final", 0, true);
+  value.engine.armFault("allocate-after-create-before-return");
+  await assert.rejects(operateFoundationCheckV7(value.operation), (error: unknown) => {
+    assert.ok(error instanceof FoundationError);
+    assert.equal(error.code, "lifecycle.execution.operation-host.backend-interrupted");
+    assert.equal(error.operationalStateChanged, true);
+    assert.deepEqual(error.observedFacts, { backendOperation: "allocate", backendFailureClass: "unknown" });
+    return true;
+  });
+  const originalCheckpoint = value.selected.support.checkpoint();
+  const originalSpecification = value.specificationDigest();
+  assert.ok(originalCheckpoint);
+  assert.ok(originalSpecification);
+  assert.equal(value.selected.receipt(), null);
+  assert.equal(value.engine.productiveStartCount(originalSpecification), 0);
+  const originalAllocations = value.engine.snapshot().allocations;
+  assert.equal(originalAllocations.length, 1);
+
+  await assert.rejects(operateFoundationCheckV7(value.operationWithImage(digest("changed-recovery-default"))),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.check-cell-v1.work-delegation-binding");
+  assert.deepEqual(value.selected.support.checkpoint(), originalCheckpoint);
+  assert.deepEqual(value.engine.snapshot().allocations, originalAllocations);
+  assert.equal(value.selected.receipt(), null);
+
+  value.selected.support.loseReceiptReturnOnce();
+  await assert.rejects(operateFoundationCheckV7(value.operation), /lost atomic Receipt return/u);
+  const retainedReceipt = value.selected.receipt();
+  assert.ok(retainedReceipt);
+  assert.equal(value.specificationDigest(), originalSpecification);
+  assert.equal(value.engine.snapshot().allocations.length, 1);
+  assert.equal(value.engine.snapshot().allocations[0]!.handle, originalAllocations[0]!.handle);
+  assert.equal(value.engine.productiveStartCount(originalSpecification), 1);
+  assert.equal(value.reclamation.list().length, 1);
+  assert.equal(value.selected.support.checkpoint(), null);
+  assert.deepEqual(await operateFoundationCheckV7(value.operation), retainedReceipt);
+  assert.equal(value.engine.productiveStartCount(originalSpecification), 1);
+  assert.equal(retainedReceipt.payload.disposition, "pass");
+  assert.equal(retainedReceipt.relationships.some(({ relation }) => relation === "checks-seal"), true);
+});
+
+test("a parsed nonzero Check exit retains a failed Check rather than an operational error", async (context) => {
+  const value = await successfulCellFixture(context, "final", 1);
+  const receipt = await operateFoundationCheckV7(value.operation);
+  assert.equal(receipt.payload.phase, "final");
+  assert.equal(receipt.payload.disposition, "fail");
+  assert.equal(value.engine.productiveStartCount(value.specificationDigest()!), 1);
+  assert.equal(value.reclamation.list().length, 1);
+  assert.equal(receipt.relationships.some(({ relation }) => relation === "checks-seal"), true);
 });
 
 test("Check Cell recovery checkpoint binds the exact baseline phase and proof subject", () => {

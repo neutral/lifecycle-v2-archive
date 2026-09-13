@@ -8,10 +8,14 @@ import { canonicalJson, selfDigest, sha256Bytes } from "../validation/canonical.
 import { compareCodePoints } from "../validation/ordering.js";
 import { DiagnosticCollector, foundationValidationImplementation, type FoundationValidationResult } from "../validation/result.js";
 import { ProjectionByteInventoryBuilder } from "./content.js";
+import type { FoundationBuilderRepairRepositoryV1 } from "../candidate/repair-output.js";
 import {
   compileExecution,
   type FoundationAgentWorkProductProjectionEvidence,
   type FoundationReviewerProjectionObservation,
+  type FoundationIntegrationParentProjectionInput,
+  type FoundationIntegrationProjectionRecords,
+  type FoundationFailedIntegrationProjectionInput,
 } from "./execution.js";
 import { compileOrientation, FOUNDATION_PROJECTION_COMPILER_IDENTITY } from "./orientation.js";
 import {
@@ -32,7 +36,11 @@ import type {
   FoundationProjectionResult,
 } from "./types.js";
 import { projectionCacheKey, verifyCompiledProjection } from "./verification.js";
-import { atlasResourceIdsForSourceRoots, compileAtlasProjection } from "./atlas.js";
+import { compileAtlasProjection } from "./atlas.js";
+
+import { bindFoundationMandatoryProjectionRefusalV1, completeMandatoryProjectionSizeErrorV1, retainFoundationMandatoryProjectionRefusalV1, type FoundationMandatoryProjectionRefusalV1 } from "./mandatory-refusal.js";
+export { foundationMandatoryProjectionRefusalV1 } from "./mandatory-refusal.js";
+export type { FoundationMandatoryProjectionRefusalV1 } from "./mandatory-refusal.js";
 
 const STAGES = ["request", "basis", "closure", "content", "bounds", "digest"] as const;
 const KNOWLEDGE_KIND_ORDER = new Map([
@@ -41,6 +49,7 @@ const KNOWLEDGE_KIND_ORDER = new Map([
   ["blueprint", 2],
   ["description", 3],
   ["check", 4],
+  ["discipline", 5],
 ]);
 const MAXIMUM_DIAGNOSTIC_FACT_DEPTH = 8;
 const MAXIMUM_DIAGNOSTIC_FACT_VALUES = 256;
@@ -145,6 +154,10 @@ export type FoundationExecutionCompilerInput = Readonly<{
   /** Exact retained Work Boundary revision selected by the request. */
   workBoundary: ControlRecordRevision;
   candidateObservation?: FoundationReviewerProjectionObservation | null;
+  integrationParent?: FoundationIntegrationParentProjectionInput | null;
+  integrationRecords?: FoundationIntegrationProjectionRecords | null;
+  failedIntegration?: FoundationFailedIntegrationProjectionInput | null;
+  builderRepair?: FoundationBuilderRepairRepositoryV1 | null;
   /** Runtime-private, callback-scoped Git repository for verified Candidate Carrier objects. */
   candidateObjectRepository?: string | null;
   /** Exact current Check Receipt revisions selected for fresh review. */
@@ -274,18 +287,14 @@ function enforceBounds(options: {
     .map((item) => ({ id: item.id, bytes: item.content.byteLength }));
   if (mandatoryItems > request.profile.maximumMandatoryItems || mandatoryBytes > request.profile.maximumMandatoryBytes ||
       options.sources.bytes > request.profile.maximumSourceBytes || oversized.length > 0) {
-    throw new FoundationError("lifecycle.projection.mandatory-too-large", "Complete mandatory Projection material exceeds the selected profile", {
-      observedFacts: {
-        mandatoryItems,
-        mandatoryBytes,
-        sourceBytes: options.sources.bytes,
-        maximumMandatoryItems: request.profile.maximumMandatoryItems,
-        maximumMandatoryBytes: request.profile.maximumMandatoryBytes,
-        maximumItemBytes: request.profile.maximumItemBytes,
-        maximumSourceBytes: request.profile.maximumSourceBytes,
-        oversized,
-      },
-    });
+    throw completeMandatoryProjectionSizeErrorV1(request, Object.freeze({
+      mandatoryItems, mandatoryBytes, sourceBytes: options.sources.bytes,
+      maximumMandatoryItems: request.profile.maximumMandatoryItems,
+      maximumMandatoryBytes: request.profile.maximumMandatoryBytes,
+      maximumItemBytes: request.profile.maximumItemBytes,
+      maximumSourceBytes: request.profile.maximumSourceBytes,
+      oversized: Object.freeze(oversized.map((item) => Object.freeze(item))),
+    }));
   }
   if (options.reachable.items > request.profile.maximumReachableItems || options.reachable.bytes > request.profile.maximumReachableBytes) {
     throw new FoundationError("lifecycle.projection.bounds-invalid", "Reachable Projection material exceeds the selected profile", {
@@ -355,7 +364,7 @@ async function orientation(
     projectionId: projectionId(request),
     class: "orientation" as const,
     role: "reconnaissance" as const,
-    profile: request.profile.id as "orientation-standard-v1",
+    profile: request.profile.id as "orientation-standard-v1" | "orientation-large-v1",
     profileDigest: request.profile.digest,
     compiler: FOUNDATION_PROJECTION_COMPILER_IDENTITY,
     specificationRevision: request.specificationRevision,
@@ -393,7 +402,7 @@ async function execution(
     loaded: input.repository,
     inventory,
     mode: "execution",
-    selectedResourceIds: atlasResourceIdsForSourceRoots(input.repository, input.subject.sourceRoots),
+    sourceRoots: input.subject.sourceRoots,
   }).items;
   const compiled = await compileExecution({
     request,
@@ -402,6 +411,10 @@ async function execution(
     subject: input.subject,
     inventory,
     candidateObservation: input.candidateObservation,
+    integrationParent: input.integrationParent,
+    integrationRecords: input.integrationRecords,
+    failedIntegration: input.failedIntegration,
+    builderRepair: input.builderRepair,
     candidateObjectRepository: input.candidateObjectRepository,
     workBoundary: input.workBoundary,
     checkReceipts: input.checkReceipts,
@@ -507,6 +520,7 @@ export async function compileKnowledgeProjection(input: FoundationProjectionComp
   let projection: FoundationCompiledProjection | null = null;
   let observed: Record<string, number> = {};
   let incompleteFrom: (typeof STAGES)[number] | null = null;
+  let mandatoryRefusal: FoundationMandatoryProjectionRefusalV1 | null = null;
   try {
     request = parseProjectionRequest(input.request);
     if (request.class === "orientation") {
@@ -528,9 +542,12 @@ export async function compileKnowledgeProjection(input: FoundationProjectionComp
       observedSourceBytes: projection.manifest.counts.sources.bytes,
     };
   } catch (error) {
+    mandatoryRefusal = bindFoundationMandatoryProjectionRefusalV1(error, request);
     const failure = addFailure(collector, error);
     observed = failureObservations(error);
     if (failure.stage === "content" || failure.stage === "bounds" || failure.code.includes("enumeration")) incompleteFrom = failure.stage;
   }
-  return result({ collector, request, projection, contract: input.repository.contract, observedAt: input.observedAt, observed, incompleteFrom });
+  const compiled = result({ collector, request, projection, contract: input.repository.contract, observedAt: input.observedAt, observed, incompleteFrom });
+  if (mandatoryRefusal !== null) retainFoundationMandatoryProjectionRefusalV1(compiled, mandatoryRefusal);
+  return compiled;
 }

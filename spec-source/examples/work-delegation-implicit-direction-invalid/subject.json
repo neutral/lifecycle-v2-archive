@@ -1,0 +1,63 @@
+{
+  "schema": "lifecycle.work-delegation.v2",
+  "boundary": {
+    "kind": "work-boundary",
+    "id": "boundary.demo",
+    "revision": 1,
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "admission": {
+    "kind": "director-decision",
+    "id": "decision.admit.demo",
+    "revision": 1,
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "replaces": null,
+  "policy": {
+    "id": "lifecycle.work-delegation.standard-v1",
+    "digest": "sha256:b1806a1a821135f37f2c0838ba280ebec3c8426b089347dc04ce5a49963f571a"
+  },
+  "allowedOperations": [
+    "delivery.continue"
+  ],
+  "directions": {
+    "continue": null,
+    "evaluate": null
+  },
+  "agentSelections": {
+    "builder": {
+      "providerDescriptor": {
+        "id": "descriptor.demo",
+        "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "backendProfile": {
+        "profileId": "lifecycle.execution-backend-profile.docker-local.v1",
+        "profileDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "implementationDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "image": {
+        "imageId": "image.demo",
+        "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      "model": "model.demo",
+      "reasoning": "high",
+      "wallTimeMs": 1800000,
+      "limits": {
+        "tokens": null,
+        "events": 10000,
+        "outputBytes": 268435456,
+        "toolCalls": null,
+        "processes": 128,
+        "storageBytes": 268435456
+      }
+    },
+    "reviewer": null
+  },
+  "ceilings": {
+    "operations": 2,
+    "agentAttempts": 1,
+    "reservedCellWallTimeMs": 1800000
+  },
+  "expiresAt": null,
+  "stopPolicy": "finish-reserved-operation"
+}

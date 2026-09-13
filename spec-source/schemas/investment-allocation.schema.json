@@ -23,16 +23,16 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.investment-allocation.v1" },
-    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "eligibleOperationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "eligibleOperationId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "role": {
       "type": "string",
       "enum": ["reconnaissance", "builder", "reviewer"]
     },
-    "providerDescriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "providerDescriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "reasoning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "providerDescriptorId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "providerDescriptorDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "model": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "reasoning": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "wallTimeMs": { "type": "integer", "minimum": 1, "maximum": 86400000 },
     "limits": {
       "type": "object",
@@ -45,10 +45,10 @@
         "toolCalls": { "$ref": "#/$defs/nullablePositiveInteger" }
       }
     },
-    "callerPolicyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "callerPolicyId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "cumulativePolicyObservationDigest": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         { "type": "null" }
       ]
     },
@@ -73,7 +73,7 @@
       "additionalProperties": { "type": "string", "maxLength": 256 },
       "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" }
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "nullablePositiveInteger": {

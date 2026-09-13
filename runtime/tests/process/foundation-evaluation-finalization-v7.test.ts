@@ -1,3 +1,6 @@
+import { evidenceFixtureV7, EVIDENCE_OBSERVATION_V7 } from "../helpers/evidence-fixture-v7.js";
+import { retainEvidencePacket } from "../../src/foundation/control/evidence-packet.js";
+import { retainMaterialCondition } from "../../src/foundation/control/material-condition.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileControlRecordEvent, compileControlRecordRevision } from "../../src/foundation/control/model.js";
@@ -15,8 +18,6 @@ import type {
 } from "../../src/foundation/process/agent-operation-v7.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import {
-  FOUNDATION_EVIDENCE_RULE_SET_V7,
-  FOUNDATION_EVIDENCE_VALIDATOR_V7,
   finalizeDeliveryEvaluationV7,
 } from "../../src/foundation/process/evaluation-finalization-v7.js";
 import { sha256Bytes, type Sha256 } from "../../src/foundation/validation/canonical.js";
@@ -63,8 +64,6 @@ function revision(input: Readonly<{
   });
 }
 
-type Harness = ReturnType<typeof harness>;
-
 function harness(input: Readonly<{
   withWorkProduct: boolean;
   withCondition?: boolean;
@@ -93,9 +92,9 @@ function harness(input: Readonly<{
     ]),
   });
   const brief = revision({
-    id: "founder-brief-evaluation-finalization",
-    kind: "founder-brief",
-    payload: Object.freeze({ schema: "lifecycle.founder-brief-payload.v1" }),
+    id: "director-brief-evaluation-finalization",
+    kind: "director-brief",
+    payload: Object.freeze({ schema: "lifecycle.director-brief-payload.v2", scope: { kind: "activity", activityId: ACTIVITY } }),
   });
   const attempt = revision({
     id: "agent-attempt-evaluation-finalization",
@@ -120,7 +119,7 @@ function harness(input: Readonly<{
         kind: "agent-work-product",
         authority: "agent-proposed",
         payload: Object.freeze({
-          schema: "lifecycle.agent-work-product-payload.v2",
+          schema: "lifecycle.agent-work-product-payload.v5",
           role: "reviewer",
           roleSemantics: Object.freeze({
             role: "reviewer",
@@ -170,7 +169,7 @@ function harness(input: Readonly<{
     id: "evidence-packet-evaluation-finalization",
     kind: "evidence-packet",
     payload: Object.freeze({
-      schema: "lifecycle.evidence-packet-payload.v1",
+      schema: "lifecycle.evidence-packet-payload.v2",
       readiness: "acceptance-ready",
     }),
     relationships: Object.freeze([
@@ -187,7 +186,7 @@ function harness(input: Readonly<{
         id: "material-condition-evaluation-finalization",
         kind: "material-condition",
         payload: Object.freeze({
-          schema: "lifecycle.material-condition-payload.v1",
+          schema: "lifecycle.material-condition-payload.v4",
           source: Object.freeze({
             kind: "agent-proposal",
             conditionId: "condition.material",
@@ -261,6 +260,7 @@ function harness(input: Readonly<{
         candidateCondition: currentEvidence === null ? "under-evaluation" as const : "decision-ready" as const,
         activities: Object.freeze([]),
         subjects: Object.freeze({
+          integrationAssessment: null,
           proposedBoundary: null,
           activeBoundary: Object.freeze(reference(boundary)),
           candidate: Object.freeze(reference(candidate)),
@@ -269,6 +269,7 @@ function harness(input: Readonly<{
           evidence: currentEvidence === null ? null : Object.freeze(reference(currentEvidence)),
           closure: null,
         }),
+        delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
         journal: Object.freeze({ eventCount: journal.length, headDigest: predecessorDigest }),
         eligibleOperations: Object.freeze([]),
       });
@@ -343,20 +344,33 @@ function observation() {
   });
 }
 
-function owners(value: Harness, calls: { condition: number; evidence: number }) {
-  return Object.freeze({
-    now: () => "2026-08-29T20:01:00.000Z",
-    retainCondition: (() => {
+function verifiedHarness(materialReview?: "mandate" | "baseline") {
+  const base = evidenceFixtureV7(materialReview === undefined ? {} : {materialReview});
+  const supportHarness = harness({withWorkProduct:true});
+  const byKind = (kind:string, role?:string) => {
+    const value = [...base.revisions.values()].find((item) => item.recordKind === kind && (role === undefined || item.payload.role === role));
+    assert.ok(value); return value;
+  };
+  const candidate = base.store.getRevision(base.selected.candidate.id,base.selected.candidate.revision)!;
+  const context: FoundationAgentRoleControlContextV7 = {
+    store:base.store,activityId:base.activityId,operation:"delivery.evaluate",role:"reviewer",
+    brief:byKind("director-brief"),attempt:byKind("agent-attempt","reviewer"),boundary:byKind("work-boundary"),
+    attemptedCandidate:candidate,resultCandidate:candidate,seal:byKind("candidate-seal"),
+    workProduct:byKind("agent-work-product","reviewer"),receipt:byKind("execution-receipt"),support:supportHarness.context.support,
+  };
+  const calls = {condition:0,evidence:0};
+  const owners = {
+    now:() => EVIDENCE_OBSERVATION_V7.evaluatedAt,
+    retainCondition:((input) => {
       calls.condition += 1;
-      return Object.freeze({ revision: value.condition!, event: value.appendCondition() });
-    }) as NonNullable<Parameters<typeof finalizeDeliveryEvaluationV7>[1]>["retainCondition"],
-    retainEvidence: ((input) => {
-      calls.evidence += 1;
-      assert.deepEqual(input.observation.ruleSet, FOUNDATION_EVIDENCE_RULE_SET_V7);
-      assert.deepEqual(input.observation.validator, FOUNDATION_EVIDENCE_VALIDATOR_V7);
-      return Object.freeze({ revision: value.evidence, event: value.appendEvidence() });
-    }) as NonNullable<Parameters<typeof finalizeDeliveryEvaluationV7>[1]>["retainEvidence"],
-  });
+      // Semantic diagnosis and its observation checkpoint exist while no frozen response exists yet.
+      assert.equal(base.store.state().subjects.materialCondition,null);
+      assert.notEqual(supportHarness.checkpoint(),null);
+      return retainMaterialCondition(input);
+    }) as typeof retainMaterialCondition,
+    retainEvidence:((input) => {calls.evidence += 1; return retainEvidencePacket(input);}) as typeof retainEvidencePacket,
+  };
+  return {context,calls,owners,checkpoint:supportHarness.checkpoint,failNextClear:supportHarness.failNextClear};
 }
 
 test("evaluation finalization completes a missing reviewer Work Product as failed without sampling Evidence", async () => {
@@ -376,22 +390,22 @@ test("evaluation finalization completes a missing reviewer Work Product as faile
 });
 
 test("evaluation finalization checkpoints physical observations and derives one Evidence Packet", async () => {
-  const value = harness({ withWorkProduct: true });
+  const value = verifiedHarness();
   assert.equal(
     value.context.receipt.relationships.some(({ relation }) => relation === "observes-candidate"),
     false,
   );
-  const calls = { condition: 0, evidence: 0 };
+  const calls = value.calls;
   let observed = 0;
   const input = {
     ...value.context,
     runtimeId: "runtime-v7",
     observeEvidence: async () => {
       observed += 1;
-      return observation();
+      return EVIDENCE_OBSERVATION_V7;
     },
   };
-  const first = await finalizeDeliveryEvaluationV7(input, owners(value, calls));
+  const first = await finalizeDeliveryEvaluationV7(input, value.owners);
   assert.equal(first.outcome, "completed");
   assert.deepEqual(first.controls?.map(({ recordKind }) => recordKind), ["evidence-packet"]);
   assert.equal(observed, 1);
@@ -399,7 +413,7 @@ test("evaluation finalization checkpoints physical observations and derives one 
   assert.equal(calls.evidence, 1);
   assert.equal(value.checkpoint(), null);
 
-  const replay = await finalizeDeliveryEvaluationV7(input, owners(value, calls));
+  const replay = await finalizeDeliveryEvaluationV7(input, value.owners);
   assert.equal(replay.outcome, "completed");
   assert.equal(observed, 1);
   assert.equal(calls.evidence, 1);
@@ -432,20 +446,20 @@ test("evaluation finalization refuses a reviewer Candidate successor edge or sub
 });
 
 test("evaluation finalization resumes after Evidence retention without resampling observations", async () => {
-  const value = harness({ withWorkProduct: true, withCondition: true });
-  const calls = { condition: 0, evidence: 0 };
+  const value = verifiedHarness("mandate");
+  const calls = value.calls;
   let observed = 0;
   const input = {
     ...value.context,
     runtimeId: "runtime-v7",
     observeEvidence: async () => {
       observed += 1;
-      return observation();
+      return EVIDENCE_OBSERVATION_V7;
     },
   };
   value.failNextClear();
   await assert.rejects(
-    () => finalizeDeliveryEvaluationV7(input, owners(value, calls)),
+    () => finalizeDeliveryEvaluationV7(input, value.owners),
     /simulated loss after Evidence retention/u,
   );
   assert.notEqual(value.checkpoint(), null);
@@ -453,7 +467,7 @@ test("evaluation finalization resumes after Evidence retention without resamplin
   assert.equal(calls.condition, 1);
   assert.equal(calls.evidence, 1);
 
-  const recovered = await finalizeDeliveryEvaluationV7(input, owners(value, calls));
+  const recovered = await finalizeDeliveryEvaluationV7(input, value.owners);
   assert.equal(recovered.outcome, "completed");
   assert.deepEqual(recovered.controls?.map(({ recordKind }) => recordKind), [
     "material-condition",
@@ -463,4 +477,31 @@ test("evaluation finalization resumes after Evidence retention without resamplin
   assert.equal(observed, 1);
   assert.equal(calls.condition, 1);
   assert.equal(calls.evidence, 1);
+});
+
+test("baseline insufficiency is assessed before its exact Material Condition is retained", async () => {
+  const value = verifiedHarness("baseline");
+  const result = await finalizeDeliveryEvaluationV7({...value.context,runtimeId:"runtime-v7",observeEvidence:async () => EVIDENCE_OBSERVATION_V7},value.owners);
+  assert.equal(result.outcome,"completed");
+  assert.deepEqual(result.controls?.map(({recordKind}) => recordKind),["material-condition","evidence-packet"]);
+  assert.equal(result.controls?.at(-1)?.payload.readiness,"revision-required");
+  assert.deepEqual(value.calls,{condition:1,evidence:1});
+});
+
+test("recovery after the Condition reaction reuses the checkpointed diagnosis and completes Packet retention", async () => {
+  const value = verifiedHarness("mandate");
+  let observations = 0;
+  const input = {...value.context,runtimeId:"runtime-v7",observeEvidence:async () => {observations += 1;return EVIDENCE_OBSERVATION_V7;}};
+  await assert.rejects(finalizeDeliveryEvaluationV7(input,{...value.owners,
+    retainEvidence:() => {throw new Error("interruption after Condition reaction");},
+  }),/interruption after Condition reaction/u);
+  assert.notEqual(value.context.store.state().subjects.materialCondition,null);
+  assert.equal(value.context.store.state().subjects.evidence,null);
+  assert.equal(value.calls.condition,1);
+  const result = await finalizeDeliveryEvaluationV7(input,value.owners);
+  assert.equal(result.outcome,"completed");
+  assert.equal(observations,1);
+  assert.equal(value.calls.condition,1);
+  assert.equal(value.calls.evidence,1);
+  assert.equal(result.controls?.at(-1)?.payload.readiness,"revision-required");
 });

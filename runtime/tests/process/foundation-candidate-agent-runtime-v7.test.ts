@@ -22,6 +22,8 @@ import {
   type FoundationCandidateAgentRuntimeV7Options,
 } from "../../src/foundation/process/candidate-agent-runtime-v7.js";
 import type {
+  FoundationBuilderAgentOperationContextV7,
+  FoundationBoundaryResolutionAgentOperationContextV7,
   FoundationFreshAgentOperationContextV7,
   FoundationRetainedAgentOperationContextV7,
 } from "../../src/foundation/process/operation-context-v7.js";
@@ -73,7 +75,7 @@ const boundary = revision({
   id: "boundary-candidate-agent-runtime-v7",
   kind: "work-boundary",
   payload: Object.freeze({
-    schema: "lifecycle.work-boundary-payload.v4",
+    schema: "lifecycle.work-boundary-payload.v6",
     targetId: TARGET,
     basis: Object.freeze({ repositoryContractDigest: contract.digest }),
     mandate: Object.freeze({
@@ -122,7 +124,7 @@ const configuration = Object.freeze({
   codexHome: "/tmp/codex-home",
   model: "installed-model",
   reasoning: "installed-reasoning",
-  specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
+  specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
   publicationDigest: digest("publication"),
 }) as FoundationInstalledRuntimeConfigurationV7;
 
@@ -146,29 +148,16 @@ const epoch = Object.freeze({
 function context(
   operation: FoundationCandidateAgentRuntimeOperationV7,
 ): FoundationFreshAgentOperationContextV7 {
-  const role = operation === "delivery.continue" ? "builder" : "reconnaissance";
-  return Object.freeze({
+  const common = Object.freeze({
     activityId: `activity-${operation.slice("delivery.".length)}`,
-    operation,
-    role,
     semanticMarkdown: `# ${operation}\n`,
     boundary,
     candidate,
     attemptSeal: null,
     seal: null,
-    materialCondition: operation === "delivery.continue" ? null : revision({
-      id: `condition-${operation.slice("delivery.".length)}`,
-      kind: "material-condition",
-      payload: Object.freeze({ schema: "lifecycle.material-condition-payload.v1" }),
-    }),
     epoch,
-    snapshot: null,
-    repositoryValidation: null,
-    knowledge: null,
-    request: Object.freeze({}) as FoundationFreshAgentOperationContextV7["request"],
-    subject: null,
     projection: Object.freeze({
-      manifest: Object.freeze({ digest: digest(`projection-${operation}`) }),
+      manifest: Object.freeze({ digest: digest(`projection-${operation}`), basis: Object.freeze({}) }),
     }) as FoundationFreshAgentOperationContextV7["projection"],
     roleSubject: Object.freeze({ schema: "lifecycle.agent-role-subject.v3" }),
     capabilityProfile: Object.freeze({ id: "capability", digest: digest("capability") }),
@@ -179,9 +168,6 @@ function context(
         bytes: Uint8Array.from(Buffer.from("# Exact provider input\n", "utf8")),
       })]),
     }) as FoundationFreshAgentOperationContextV7["providerInput"],
-    evidenceSet: role === "builder"
-      ? Object.freeze({ digest: digest("evidence") }) as FoundationFreshAgentOperationContextV7["evidenceSet"]
-      : null,
     propositionSet: null,
     investment: Object.freeze({
       id: "investment",
@@ -200,6 +186,36 @@ function context(
       digest: digest("investment"),
     }),
     rootTokenSetDigest: digest("root-tokens"),
+  });
+  if (operation === "delivery.continue") {
+    return Object.freeze({
+      ...common,
+      operation,
+      role: "builder",
+      materialCondition: null,
+      snapshot: Object.freeze({}) as FoundationBuilderAgentOperationContextV7["snapshot"],
+      repositoryValidation: Object.freeze({}) as FoundationBuilderAgentOperationContextV7["repositoryValidation"],
+      knowledge: Object.freeze({}) as FoundationBuilderAgentOperationContextV7["knowledge"],
+      request: Object.freeze({ class: "execution" }) as FoundationBuilderAgentOperationContextV7["request"],
+      subject: Object.freeze({}) as FoundationBuilderAgentOperationContextV7["subject"],
+      evidenceSet: Object.freeze({ digest: digest("evidence") }) as FoundationBuilderAgentOperationContextV7["evidenceSet"],
+    });
+  }
+  return Object.freeze({
+    ...common,
+    operation,
+    role: "reconnaissance",
+    materialCondition: revision({
+      id: `condition-${operation.slice("delivery.".length)}`,
+      kind: "material-condition",
+      payload: Object.freeze({ schema: "lifecycle.material-condition-payload.v4" }),
+    }),
+    snapshot: null,
+    repositoryValidation: null,
+    knowledge: null,
+    request: Object.freeze({ class: "orientation" }) as FoundationBoundaryResolutionAgentOperationContextV7["request"],
+    subject: null,
+    evidenceSet: null,
   });
 }
 
@@ -225,7 +241,7 @@ function preIntent(
     activityId: request.activityId,
     operation: request.operation,
     role: request.operation === "delivery.continue" ? "builder" : "reconnaissance",
-    brief: revision({ id: `brief-${request.activityId}`, kind: "founder-brief", payload: Object.freeze({}) }),
+    brief: revision({ id: `brief-${request.activityId}`, kind: "director-brief", payload: Object.freeze({}) }),
     boundary: request.boundary,
     candidate: request.candidate,
     seal: null,
@@ -234,21 +250,21 @@ function preIntent(
 }
 
 function roleContext(request: FoundationAgentOperationV7Input): FoundationAgentRoleControlContextV7 {
-  return Object.freeze({
+  const common = Object.freeze({
     store,
     activityId: request.activityId,
-    operation: request.operation,
-    role: request.operation === "delivery.continue" ? "builder" : "reconnaissance",
     brief: preIntent(request).brief,
     attempt: revision({ id: `attempt-${request.activityId}`, kind: "agent-attempt", payload: Object.freeze({}) }),
     boundary: request.boundary,
     attemptedCandidate: request.candidate,
     resultCandidate: request.candidate,
-    seal: null,
     workProduct: null,
     receipt: revision({ id: `receipt-${request.activityId}`, kind: "execution-receipt", payload: Object.freeze({}) }),
     support: Object.freeze({}) as FoundationAgentRoleControlContextV7["support"],
   });
+  if (request.operation === "delivery.continue") return Object.freeze({...common,operation:"delivery.continue",role:"builder",seal:null});
+  assert.ok(request.operation === "delivery.revise" || request.operation === "delivery.reaffirm");
+  return Object.freeze({...common,operation:request.operation,role:"reconnaissance",seal:null});
 }
 
 function retainedContext(
@@ -261,12 +277,12 @@ function retainedContext(
     opening: Object.freeze({
       agentId: "agent",
       runtimeId: "runtime",
-      founderId: "founder",
+      directorId: "director",
       submittedAt: CREATED,
       startedAt: CREATED,
       attemptCreatedAt: CREATED,
     }),
-    brief: revision({ id: `brief-${fresh.activityId}`, kind: "founder-brief", payload: Object.freeze({}) }),
+    brief: revision({ id: `brief-${fresh.activityId}`, kind: "director-brief", payload: Object.freeze({}) }),
     attempt: null,
     boundaryResolutionBasis,
   }) as FoundationRetainedAgentOperationContextV7;
@@ -284,8 +300,15 @@ function independentlyClonedProviderInput(
   });
 }
 
-test("fresh continue reopens the exact Carrier-bound Candidate context before builder finalization", async () => {
-  const fresh = context("delivery.continue");
+test("fresh correction reopens the exact Candidate while a prior Process Seal is not an Attempt binding", async () => {
+  const fresh = Object.freeze({
+    ...context("delivery.continue"),
+    seal: revision({
+      id: "seal-before-correction",
+      kind: "candidate-seal",
+      payload: validDeliveryControlPayload("candidate-seal"),
+    }),
+  });
   let retainedCompilations = 0;
   let finalized = 0;
   const options: FoundationCandidateAgentRuntimeV7Options = {
@@ -305,6 +328,7 @@ test("fresh continue reopens the exact Carrier-bound Candidate context before bu
     operateAgent: (async (request: FoundationAgentOperationV7Input) => {
       assert.equal(request.configuration, configuration);
       assert.equal(request.targetRepository, epoch.repository);
+      assert.equal(request.seal, null, "The prior evaluation Seal does not bind the builder Attempt");
       await request.revalidateBeforeIntent(preIntent(request));
       await request.finalizeRoleControl(roleContext(request));
       return result("delivery.continue");
@@ -323,12 +347,23 @@ test("fresh continue reopens the exact Carrier-bound Candidate context before bu
       submittedAt: CREATED,
       startedAt: CREATED,
       attemptCreatedAt: CREATED,
-      founderId: "founder",
+      directorId: "director",
     }),
   }, options);
   assert.equal(actual.operation, "delivery.continue");
   assert.equal(retainedCompilations, 1);
   assert.equal(finalized, 1);
+});
+
+test("unavailable or lookalike diagnostic failures cannot manufacture a builder Condition", async () => {
+  for (const error of [new Error("temporarily unavailable context"),
+    new FoundationError("lifecycle.projection.mandatory-too-large", "a matching diagnostic is not an owned measurement")]) {
+    await assert.rejects(operateFoundationCandidateAgentRuntimeV7({ target: epoch.repository, store, configuration,
+      activityId: "builder-context-refusal", operation: "delivery.continue", runtimeId: "runtime-fresh", agentId: "agent-fresh",
+      opening: { semanticMarkdown: "# Continue\n", submittedAt: CREATED, startedAt: CREATED, attemptCreatedAt: CREATED, directorId: "director" },
+    }, { compileFreshContext: async () => { throw error; },
+      operateAgent: async () => assert.fail("unavailable context must not open or allocate an Agent") }), (observed) => observed === error);
+  }
 });
 
 test("pre-intent uses the compiled Atlas context without reobserving canonical Atlas", async () => {
@@ -355,7 +390,7 @@ test("pre-intent uses the compiled Atlas context without reobserving canonical A
       submittedAt: CREATED,
       startedAt: CREATED,
       attemptCreatedAt: CREATED,
-      founderId: "founder",
+      directorId: "director",
     }),
   }, options);
   assert.equal(actual.operation, "delivery.continue");
@@ -376,12 +411,12 @@ test("fresh revise recompiles an own-activity-excluding retained basis for share
     opening: Object.freeze({
       agentId: "agent",
       runtimeId: "runtime",
-      founderId: "founder",
+      directorId: "director",
       submittedAt: CREATED,
       startedAt: CREATED,
       attemptCreatedAt: CREATED,
     }),
-    brief: revision({ id: "brief-revise", kind: "founder-brief", payload: Object.freeze({}) }),
+    brief: revision({ id: "brief-revise", kind: "director-brief", payload: Object.freeze({}) }),
     attempt: null,
     boundaryResolutionBasis: resolutionBasis,
   }) as FoundationRetainedAgentOperationContextV7;
@@ -417,7 +452,7 @@ test("fresh revise recompiles an own-activity-excluding retained basis for share
       submittedAt: CREATED,
       startedAt: CREATED,
       attemptCreatedAt: CREATED,
-      founderId: "founder",
+      directorId: "director",
     }),
   }, options);
   assert.equal(retainedCompilations, 2);
@@ -438,19 +473,19 @@ test("reaffirm recovery uses retained identities, semantics, and funded provider
     opening: Object.freeze({
       agentId: "retained-agent",
       runtimeId: "retained-runtime",
-      founderId: "retained-founder",
+      directorId: "retained-director",
       submittedAt: "2026-08-29T23:01:00.000Z",
       startedAt: "2026-08-29T23:02:00.000Z",
       attemptCreatedAt: "2026-08-29T23:03:00.000Z",
     }),
-    brief: revision({ id: "brief-reaffirm", kind: "founder-brief", payload: Object.freeze({}) }),
+    brief: revision({ id: "brief-reaffirm", kind: "director-brief", payload: Object.freeze({}) }),
     attempt: revision({ id: "attempt-reaffirm", kind: "agent-attempt", payload: Object.freeze({}) }),
     boundaryResolutionBasis: Object.freeze({
       snapshot: Object.freeze({}),
       knowledge: Object.freeze({}),
       projection: base.projection,
     }),
-  }) as FoundationRetainedAgentOperationContextV7;
+  }) as unknown as FoundationRetainedAgentOperationContextV7;
   let compilations = 0;
   const options: FoundationCandidateAgentRuntimeV7Options = {
     compileRetainedContext: (async () => {
@@ -518,7 +553,7 @@ test("pre-intent subject substitution is rejected before retained Candidate reop
         submittedAt: CREATED,
         startedAt: CREATED,
         attemptCreatedAt: CREATED,
-        founderId: "founder",
+        directorId: "director",
       }),
     }, options),
     /pre-intent subjects differ/u,
@@ -562,7 +597,7 @@ test("pre-intent revalidation rejects substituted Provider Input bytes", async (
         submittedAt: CREATED,
         startedAt: CREATED,
         attemptCreatedAt: CREATED,
-        founderId: "founder",
+        directorId: "director",
       }),
     }, options),
     (error: unknown) => error instanceof FoundationError &&

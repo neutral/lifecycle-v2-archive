@@ -154,7 +154,7 @@ function evidenceItem(
 ): FoundationAgentEvidenceSetItemV7 {
   if (supplied.recordKind === "agent-work-product") {
     const revision = exactRetainedRevision(store, supplied, "agent-work-product", "Agent Work Product Evidence");
-    if (revision.payload.schema !== "lifecycle.agent-work-product-payload.v2") {
+    if (revision.payload.schema !== "lifecycle.agent-work-product-payload.v5") {
       fail("evidence", "Agent Work Product Evidence uses a non-current payload schema");
     }
     const target = exactRelationshipTarget(
@@ -173,7 +173,7 @@ function evidenceItem(
   }
   if (supplied.recordKind === "check-receipt") {
     const revision = exactRetainedRevision(store, supplied, "check-receipt", "Check Receipt Evidence");
-    if (revision.payload.schema !== "lifecycle.check-receipt-payload.v2") {
+    if (revision.payload.schema !== "lifecycle.check-receipt-payload.v3") {
       fail("evidence", "Check Receipt Evidence uses a non-current payload schema");
     }
     const boundaryTargets = revision.relationships.filter(({ relation }) => relation === "checks-boundary");
@@ -324,7 +324,7 @@ export function compileFoundationReviewerPropositionSetV7(input: Readonly<{
   ) {
     fail("boundary", "Reviewer proposition compilation requires the exact active Work Boundary");
   }
-  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v4") {
+  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v6") {
     fail("boundary", "Reviewer Work Boundary uses a non-current payload schema");
   }
   const mandate = object(boundary.payload.mandate, "Work Boundary mandate");

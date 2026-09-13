@@ -1,0 +1,16 @@
+{
+  "schema": "lifecycle.agent-work-product-validation-basis.v1",
+  "role": "builder",
+  "bodyProfileId": "lifecycle.agent-work-product-body.builder.v4",
+  "templateDigest": "sha256:c0777785591c86c6860d3e26c3823b2a908035f4b905fbc66ea84ddaad2930da",
+  "parserProfileId": "lifecycle.agent-work-product-parser.v4",
+  "parserProfileDigest": "sha256:bcb55ee6ffcb9445efc113673f8006043584a8c6a451cf6b4cfe1174e87bbee9",
+  "compilerProfileId": "lifecycle.agent-work-product-compiler.v4",
+  "compilerProfileDigest": "sha256:2e9feb51d494f9ceeb74ab362cfbb2b06f55f26b34169a75aa88f1dc9b676e49",
+  "citationRegistryDigest": "sha256:68de316254ae9d4e6309ee3ecd7139fe71ed1b4f35759a3d7126a1264f569c01",
+  "citationFacts": [],
+  "propositionSetDigest": null,
+  "propositionIds": [],
+  "digest": "sha256:b970519f98771dbbadae3b39166cbd978c02775775492b9736be752d5a7fb201",
+  "locator": "/not-permitted"
+}

@@ -1,11 +1,10 @@
 import { TextDecoder } from "node:util";
 import { FoundationError } from "../error.js";
-import { objectBlobBytes } from "../repository/git.js";
+import { exactBlobSizes, objectBlobBytes } from "../repository/git.js";
 import type { FoundationLoadedRepositoryEpoch } from "../repository/types.js";
 import { digestCanonical, sha256Bytes, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import { projectionIndexBytes } from "./content.js";
-import { exactBlobSizes } from "./objects.js";
 
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 

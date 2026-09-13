@@ -21,7 +21,13 @@ follow BCP 14.
 
 ## Independent Version Coordinates
 
-Lifecycle uses independent coordinates:
+A version answers which contract gives bytes or behavior their meaning. Those
+contracts change at different boundaries: a public request can change while a
+Knowledge schema remains fixed, and an implementation selection can change for
+future work while an open Attempt still binds its prior selection. One package
+number cannot express all of these relationships.
+
+Lifecycle therefore uses independent coordinates:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -37,7 +43,7 @@ Lifecycle uses independent coordinates:
 | Adjacent-file profile | Allowed purposes, content-addressed naming, byte identity, descriptor, retention, disclosure, limits, and archive behavior. |
 | Store seal and archive profiles | Logical inventory, terminal head, immutable seal, SQLite retrieval integrity, complete movement, and read-only verification. |
 | Knowledge schema | Repository-authored product-meaning shape and semantic processing. |
-| Atlas integration selection | Exact external release, immutable specification revision, authored format, processor contract revision, resolved profile, output schemas, Lifecycle consumer profile, admitted historical-snapshot semantics, no-write rules, exclusive active branch lease, and exact sealed-Candidate acceptance over the admitted parent. |
+| Atlas integration selection | Exact external release, immutable specification revision, authored format, processor contract revision, resolved profile, output schemas, Lifecycle consumer profile, admitted historical-snapshot semantics, no-write rules, immutable governing snapshots, explicit integration and context-change readmission, and conditional exact-result acceptance. |
 | Projection schema and profile | Compiled context carrier and role-specific closure algorithm. |
 | Agent Work Product templates, parser, and compiler | Exact body-only role grammar, local handles, normalized semantic value, fixed runtime bindings, reference resolution, and typed Work Product compilation. |
 | Provider input profile | Exact materialization, inventory, role brief, Projection, subject, and capability-visible bytes. |
@@ -60,7 +66,49 @@ filenames are implementation or retrieval facts unless an owning profile
 explicitly selects them. They are not semantic version coordinates by
 proximity to the Control Record Store.
 
-## Current Foundation rc.10 Cut
+## Current Foundation rc.17 Cut
+
+This cut selects the actor-neutral
+[Director–Worker pair](AUTHORITY.md#operating-roles) under repository v22 and
+runtime/interface v17. Director Brief v2, Director Decision payload v5 and
+subject v4, and Authorization Review v1 have their exact current named
+identities. Director provenance and the renamed Control families and events
+use common schema v2, Control Store v2, revision v2, event v6, reduction v5,
+Control lifecycle v7, and physical SQLite `user_version = 3`.
+
+Finite Work Delegation v2 and stable exact artifact inspection retain their
+existing responsibilities. Context and Code bases and Source References select
+v2; the context-inspection selector schema selects v3. Delivery View v2 requires
+the Work Delegation section and
+permits an explicitly unavailable Agent Investment preview. Exact retained
+inspection provenance remains separate from
+the full operation, authorization, recovery, and watch generation.
+
+Atlas 0.8.0 strict JSON source, its immutable processor, consumer v2 governing
+partition, integration rule v2, and Material Condition v4 remain selected.
+Every predecessor repository, Store, public protocol, and recovery plan is
+refused. Earlier publications and operated results retain their exact historical
+subjects; they do not qualify or continue under this cut.
+
+The cut retains the separation of semantic Evidence assessment from Foundation provenance,
+retains preparation context at first opening, and makes exact measured context
+refusal a completable mandate-resolution course. Product Knowledge permits
+contiguous nongoverning Draft successors above one Current revision. A builder
+Receipt can retain the exact rejected Product Carrier through the new
+`builder-repair-output` schema v1 for read-only correction; it does not promote
+invalid Knowledge or change the selected Candidate. Permitted Projection
+capacity can change through unchanged-mandate readmission, while capability
+remains part of the mandate comparison. It does not grant external CI
+acceptance, dynamic policy selection, linked worktrees, or a migration route.
+
+The rc.17 Draft retains the Orientation objective's explicit
+[semantic-text bound](PROJECTION.md#projection-request) in place of generic
+short text. Complete boundary-resolution context remains mandatory, and the
+existing Projection Profile identities and seven numeric bounds remain
+unchanged. This accepted-input change belongs to the exact current Draft
+schemas, compiler and publication selection. It does not reinterpret retained
+requests or extend an earlier publication's limit. Current rc.17 supplies no
+continuation or rebinding route for work selected under an earlier publication.
 
 The current Draft target is one coordinated fresh-only hard cut:
 
@@ -69,47 +117,125 @@ The current Draft target is one coordinated fresh-only hard cut:
 | Family | Current target |
 | --- | --- |
 | Product package | `1.0.0` |
-| Qualification revision | `lifecycle.foundation.1.0.0-rc.10` |
-| Repository Contract | `lifecycle.repository.v15` |
-| Runtime protocol | `lifecycle.runtime.foundation.v10` |
-| Interface protocol | `lifecycle.interface.foundation.v10` |
-| Provider adapter | `lifecycle.provider-adapter.v6` |
-| Default Provider Descriptor | `codex-exec-standard-v6`; `openai-codex-cli >=0.151.0 <0.152.0`; current production Image tool `0.151.0` |
+| Qualification revision | `lifecycle.foundation.1.0.0-rc.17` |
+| Repository Contract | `lifecycle.repository.v22` |
+| Runtime protocol | `lifecycle.runtime.foundation.v17` |
+| Interface protocol | `lifecycle.interface.foundation.v17` |
+| Provider adapter | `lifecycle.provider-adapter.v7` |
+| Default Provider Descriptor | `codex-exec-standard-v7`; `openai-codex-cli >=0.153.4 <0.154.0`; current selected Image tool `0.153.4` |
 | Production Execution Backend | `lifecycle.execution-backend-profile.docker-local.v1` |
 | Execution Cell runner | `lifecycle.execution-cell-runner.v1` |
-| Atlas release and format | `0.7.0`, authored format `1` |
-| Atlas specification revision | `429fee62966f4d30e91ec2a15d27ecf353f5d68f` |
-| Atlas processor contract revision | `746cbce73c51b28d617b96ca08f18d498ac749c4` |
-| Atlas resolved and consumer profiles | `neutral.atlas-validator.resolved`, `lifecycle.atlas-consumer.v1` |
-| Control Record Store | `lifecycle.control-record-store.v1` |
-| Control record revision | `lifecycle.control-record-revision.v1` |
-| Control event | `lifecycle.control-record-event.v2`, closed twenty-two-kind vocabulary |
+| Atlas release and format | `0.8.0`, authored format `1` |
+| Atlas specification revision | `2c7a78540ac30138218b12803f1c045cee8b109a` |
+| Atlas processor contract revision | `2c7a78540ac30138218b12803f1c045cee8b109a` |
+| Atlas resolved and consumer profiles | `neutral.atlas-validator.resolved`, `lifecycle.atlas-consumer.v2` |
+| Control Record Store | `lifecycle.control-record-store.v2`; physical SQLite `user_version = 3` |
+| Control record revision | `lifecycle.control-record-revision.v2` |
+| Control event | `lifecycle.control-record-event.v6`, closed twenty-five-kind vocabulary |
 | Adjacent referenced file | `lifecycle.control-record-file.v1` |
 | Store logical inventory | `lifecycle.control-record-store-logical-inventory.v1` |
 | Store seal | `lifecycle.control-record-store-seal.v1` |
 | Archive manifest | `lifecycle.control-record-store-archive.v1` |
-| Delivery reduction | `lifecycle.delivery-reduction.v2` |
-| Control lifecycle | `foundation-delivery-control-lifecycle-v4` |
-| Candidate Carrier and execution | `lifecycle.candidate-revision-carrier-manifest.v1`; `lifecycle.execution-backend-profile.docker-local.v1`; `lifecycle.execution-specification.v1`; `lifecycle.execution-input-set.v1`; `lifecycle.execution-image.v1`; `lifecycle.execution-observation.v1`; and `lifecycle.execution-output-manifest.v1` |
-| Governed Attempt payloads | Agent Attempt v3, Execution Receipt v3, Candidate Revision v2, Candidate Seal v2, Check Receipt v2, and Closure v4 |
-| Agent Work Product | `agent-work-product` family with `lifecycle.agent-work-product-body.<role>.v2`, selected v6 parse-result and fixed-binding subjects, and no provider-final-output carrier |
-| Delivery record families | the twelve closed rc.10 families in [Control](CONTROL.md#closed-delivery-record-family-registry) |
-| Knowledge and Projection | Knowledge record and Knowledge Set v1; Orientation and Execution Projection algorithms v1 under repository-v15 carriers |
-| Runtime read models | disposable Inbox, selected Delivery View, Decision Readiness, Candidate difference, watch, and Control inspection under runtime/interface v10 |
+| Delivery reduction | `lifecycle.delivery-reduction.v5` |
+| Control lifecycle | `foundation-delivery-control-lifecycle-v7` |
+| Candidate Carrier and execution | `lifecycle.candidate-revision-carrier-manifest.v1`; `lifecycle.execution-backend-profile.docker-local.v1`; `lifecycle.execution-specification.v1`; `lifecycle.execution-input-set.v2`; `lifecycle.execution-image.v1`; `lifecycle.execution-observation.v1`; and `lifecycle.execution-output-manifest.v1` |
+| Governed Attempt payloads | Director Brief v2, Work Delegation v2, Agent Attempt v3, Execution Receipt v3, Candidate Revision v3, Candidate Seal v2, Check Receipt v3, and Closure v6 |
+| Agent Work Product | `agent-work-product` payload v5 with `lifecycle.agent-work-product-body.<role>.v4`, selected v6 parse-result and fixed-binding subjects, and no provider-final-output carrier |
+| Provider input | `lifecycle.agent-provider-input.standard-v8`, `lifecycle.agent-input-content-inventory.v8`, `lifecycle.agent-input-material.v8`, `lifecycle.agent-input-bundle-manifest.v8`, and `lifecycle.agent-input-bundle-tree.v8` |
+| Director authority | `director-brief` payload v2; `director-decision` payload v5; `lifecycle.director-decision-subject.v4`; `lifecycle.authorization-review.v1` |
+| Delivery record families | the fourteen closed rc.17 families in [Control](CONTROL.md#closed-delivery-record-family-registry) |
+| Knowledge and Projection | Knowledge record v2, Knowledge Set v2, Discipline Registry v1, Pack v1, Work Boundary payload v6, and Projection v6 under repository-v22 carriers |
+| Runtime read models | disposable Inbox, selected Delivery View v2, Decision Readiness, Candidate difference, watch, Control inspection, the closed nine-member context-inspection selector union, deterministic Authorization Review, and invocation-private challenge handoff under runtime/interface v17 |
 
 <!-- markdownlint-enable MD013 -->
 
 The package remains `1.0.0` because package version and Foundation
-qualification are independent. The rc.10 coordinates above select one current
+qualification are independent. The rc.17 coordinates above select one current
 Foundation architecture and do not negotiate alternate target generations.
 
-Within the unpublished rc.10 Draft, the Delivery reduction meaning explicitly
+This cut replaces rc.16, Repository Contract v21, and runtime and
+interface protocols v16. It has no reader, writer, adapter, alias, migration,
+adoption, recovery, or challenge compatibility with those coordinates. An
+unsupported carrier is observed only far enough to refuse its fixed
+discriminator before authority, Process mutation, Backend allocation, or
+dispatch.
+
+The selected rc.17 cut retains advisory Discipline Knowledge v2, exact Pack
+adoption, Registry Work Types, the Integration Assessment family,
+explicit integration operation, independent Delivery repositories, immutable
+per-revision application bases, exact context-change readmission, and
+conditional publication under short canonical locking. Projection Request v5,
+Knowledge Projection v6, Candidate payload v3, Boundary v6, Material Condition
+v4, Work Product payload v5 with parser/compiler/body v4, Packet v2, Director
+payload v5/subject v4, Closure v6, Control lifecycle v7, event v6, and reduction
+v5 carry the selected contracts. Knowledge/Set v2, Pack/Registry v1, Carrier v1,
+Provider Adapter v7,
+and the sole Delivery Process retain their existing ownership. This is a fresh
+hard cut with no reader or recovery compatibility for predecessor targets.
+
+There is no reader, conversion, or recovery compatibility for former target
+contracts. An immutable Discipline Pack is a different subject: its exact
+`contract.specificationRevision` records authoring provenance. A Pack authored
+at rc.9 that already selects Knowledge v2 remains adoptable if its unchanged
+bytes satisfy current Knowledge v2 and target contracts. This does not retag
+the manifest, read an old target, or loosen the selected runtime cut.
+
+Runtime and interface v17 close inspection to nine exact selector kinds:
+Knowledge index and record, Code index and file, Atlas overview, Point, and
+Resource, Source, and Authorization Review. Every artifact result is bounded,
+binds its exact retained inspection selection and historical dependencies, and
+uses Runtime-issued selector-bound continuation when paged. Current observation
+is separate from retained content identity. Authorization Review preserves the
+full exact current generation. Productive semantic operations over an
+existing Delivery require the exact generation on which the complete input was
+authored. Admit, accept, and no-ship may use a volatile single-use
+invocation-private challenge only after the Runtime produces the exact
+deterministic Authorization Review and rederives its authority subject under
+lock; neither the Review nor challenge is authority or retained Control.
+
+Within the unpublished rc.17 Draft, the Delivery reduction meaning explicitly
 treats Standing, Candidate condition, Activity recovery, and physical Store
 disposition as orthogonal. Clarifying the applied-initial-admission interval,
 recoverable pre-effect `in-progress` activity, and terminal Store-recovery
 overlay changes no event, enum, schema shape, record, repository, runtime,
 interface, or migration coordinate. No authenticated publication or compatible
 predecessor state is reinterpreted.
+
+Within this same unpublished Draft, the integrated model makes responsibility,
+architectural laws, productive completeness, and operation-contract selection
+lifetimes explicit. These clarify existing owners and permitted routes without
+adding public fields, records, states, protocols, or a policy framework. Changes
+to internal valid-context types or selected implementation mechanics do not
+reinterpret retained plans or permit recovery under changed defaults. Future
+changes to an exact published profile still require its own evolution review.
+
+The same unpublished Draft makes narrow consequential capability ownership
+explicit within the existing Runtime. Execution, Director authority custody,
+and canonical transition expose scoped operations while ordinary composition
+receives no general Engine, signer, or canonical-write primitive. This changes
+no record, public field, profile, event, protocol, or deployment topology.
+Existing exact-subject validation, effect-time currentness, authenticated
+Decision, and retained recovery rules continue to govern each operation.
+Software ownership within one executable does not establish an operating-system
+privilege boundary or change publication authority.
+
+The private source execution context now carries opaque, purpose-bound single-use
+credential custody instead of raw Director secret bytes. All installed Runtime
+and private interface callers change together; the former raw-secret context
+is refused. This is a private API cut within the unpublished Draft, not a
+change to the public request or retained Decision shape. Invalid credential
+custody and invalid authority execution context use the dedicated
+diagnostics in [Validation](VALIDATION.md); they do not add a public credential
+field or reinterpret retained signatures.
+
+The Draft citation registry v3 now requires `knowledgeIdentity` on every
+entry, and its compact private validation facts retain the same mapping.
+Knowledge entries bind an enduring identity; other entries bind null. The
+compiler profile digest selects these semantics. Missing mappings and older
+profile bytes are invalid, not inferred or adapted. Public Work Product
+payloads, semantic templates, and runtime/interface v17 keep their existing
+shapes. Exact Projection, registry, provider-input, and compiler digests reflect
+the newly bound private values; no retained operation is reinterpreted.
 
 Candidate continuity is now the reducer-selected Candidate Revision lineage and
 the exact immutable Candidate Revision Carriers required by active,
@@ -135,39 +261,45 @@ Closure conditions. Exact bounded Reclamation is private installation
 maintenance and may complete asynchronously without creating a public workflow
 or another Process.
 
-Foundation rc.10 deliberately omits provider-invoked live semantic validation.
-An Agent may inspect and revise its governed draft, but only post-Containment
-Runtime validation of the exact retrieved Output Carrier can establish a valid
-Agent Work Product. A Cell, Role Brief, Input Set, or Provider Adapter cannot
-advertise a validation command or provisional validity claim under this
-coordinate.
+Foundation rc.17 retains Provider Adapter v7 and
+`lifecycle.local-draft-assistance.v1`, and selects provider input v8 for the
+Director–Worker operating guidance and exact Director direction identities. Its
+compact
+immutable authoring basis and bounded local advisory command remain distinct
+from independent post-Containment Runtime validation of the exact Output Carrier.
+Repository contract v22 and runtime/interface v17 bind the changed current
+qualification, retained resource contracts and inspection selectors. Package
+1.0.0, Knowledge schema v2, Projection schema v6, and semantic body/parser/compiler
+v4 do not change. No compatibility reader or mandate rebinding is implied.
 
-The Atlas selection is mandatory and fresh-only. A missing Atlas or another
-release, revision, format, or processor contract is unsupported. Foundation
-does not inspect for a compatible subset, migrate authored records, or retain
-another Atlas reader. The separately maintained target Atlas must select the
-exact current contract before Lifecycle can establish a complete valid
-repository basis. Delivery never authors that change. Once a Work Boundary is
-admitted, its exact Atlas
-snapshot remains historical context under the exclusive branch lease. Atlas
-maintenance cannot land on that canonical branch until Closure and terminal
-Store disposition complete; a future fresh Delivery then compiles it.
-Acceptance imports the exact sealed Candidate Carrier over the admitted parent.
-Changing the historical-snapshot, branch-lease, or terminal-application rule is
-itself a Lifecycle hard cut even if the external Atlas selection is unchanged.
+The Atlas selection is mandatory and fresh-only. Missing or unsupported Atlas
+coordinates fail before use; no compatible subset or alternate reader exists.
+Delivery never authors Atlas. Its governing Snapshot stays immutable while
+canonical state can move. Explicit integration preserves the selected parent's
+Atlas bytes and requires exact Condition/readmission for changed governing
+context. Acceptance conditionally applies the exact integrated Carrier over
+that parent. The current contract preserves these explicit revision and
+operation boundaries without a Delivery-long branch lease or lifetime-fixed
+Candidate base. The external Atlas selection remains unchanged.
 
 Within the unpublished Foundation Draft, Behavior and Assurance are separate
 first-class Knowledge kinds. Behavior's sole physical root is
 `records/behavior`; any other Behavior root or parent authority surface is
 invalid rather than aliased, upgraded, or reinterpreted. The Orientation and
 Execution Projection algorithms and profiles remain v1; the Knowledge
-Projection carrier remains v4 as their strict derived typed value. Founder
+Projection carrier is v6 as their strict derived typed value. Director
 authority subjects remain separately constructed canonical JSON and do not
 become Control Markdown or SQLite file identity by proximity to the store.
 
 ## Current Coordinate Change Rule
 
-The current rc.10 coordinates are complete and independent. Git history and
+Current selection and historical provenance answer different questions. A
+Repository Contract selects the contracts under which a target may operate. A
+Pack's authoring revision records where its immutable advisory bytes came
+from. A retained Attempt selects what recovery must reopen. Similar-looking
+version fields do not give these values interchangeable compatibility meaning.
+
+The current rc.17 coordinates are complete and independent. Git history and
 immutable Release Notes retain superseded design history; current normative
 documents define only the selected contract and its fresh-only refusal
 boundary.
@@ -278,20 +410,27 @@ A successor MUST NOT treat the SQLite file hash as record or Process identity,
 derive semantic identity from row order, preserve a digest while changing its
 subject, or insert a self-digest into the value it identifies.
 
+The Discipline adoption rule retains publisher-supplied revision and exact
+supersession provenance without requiring every predecessor in the target. It
+permits current revision adoption and later exact updates without changing the
+Product Knowledge local-chain rule, record schema, digest projection, or
+existing occurrence identity. This distinction belongs to the rc.12 restoration
+and is not a target migration or predecessor-record interpretation route.
+
 ## Repository Selection
 
-Repository Contract v15 selects:
+Repository Contract v22 selects:
 
 - one exact supported specification publication;
-- repository contract v15 and installed schema registry;
+- repository contract v22 and installed schema registry;
 - semantic runtime, reducer, authority, and Control compatibility profiles
   without retaining a public presentation protocol as product meaning;
-- Provider Adapter v6 and exact Provider Descriptor compatibility;
+- Provider Adapter v7 and exact Provider Descriptor compatibility;
 - exact production Execution Backend Profile, Image, Cell runner, Specification,
   Input Set, Output Manifest, Containment, Retirement, and Reclamation
   contracts;
-- Control Store v1, revision v1, event v2, file v1, logical-inventory v1,
-  seal v1, archive v1, Delivery reduction v2, and Control lifecycle v4;
+- Control Store v2, revision v2, event v6, file v1, logical-inventory v1,
+  seal v1, archive v1, Delivery reduction v5, and Control lifecycle v7;
 - the closed Delivery family, relationship, and event registries;
 - authoring-workspace, semantic parser, Work Product Compiler, and provider
   input profiles;
@@ -314,18 +453,18 @@ different bytes.
 
 ## Fresh-Only Hard Cut
 
-Foundation rc.10 is fresh-project-only. Runtime and setup accept only a newly
+Foundation rc.17 is fresh-project-only. Runtime and setup accept only a newly
 initialized repository selecting every current coordinate. They refuse:
 
-- any repository contract other than v15;
-- any runtime or interface protocol other than v10;
-- any Provider Adapter other than v6;
+- any repository contract other than v22;
+- any runtime or interface protocol other than v17;
+- any Provider Adapter other than v7;
 - any Control event, Delivery reduction, or Control lifecycle profile other
   than the exact current selection;
 - a missing, unknown, test-only, or substituted production Execution Backend
   Profile, Image, or Cell runner;
 - a missing Atlas or any Atlas selection other than the exact release,
-  revisions, format, profiles, and schemas selected by Foundation rc.10;
+  revisions, format, profiles, and schemas selected by Foundation rc.17;
 - any repository-visible Control document, protected Process Git ref, Journal,
   Control tree, generated Control index, or foreign Delivery Store;
 - a Markdown or JSON export presented as retained Control;
@@ -339,7 +478,7 @@ digest, signature, or event becomes current meaning.
 
 Setup and runtime MUST NOT migrate, adopt, import, translate, replay, continue,
 or partially initialize unsupported state. They MUST NOT launch unsupported
-software or copy unsupported authority into rc.10. Failure occurs before
+software or copy unsupported authority into rc.17. Failure occurs before
 authority secrets, Backend allocation or dispatch, provider dispatch, or
 transaction preparation.
 
@@ -351,13 +490,13 @@ or authority identity.
 
 ## No Foundation Migration Contract
 
-Foundation rc.10 defines no migration path. A future release can add migration
+Foundation rc.17 defines no migration path. A future release can add migration
 only through a new migration-bearing cut that explicitly binds:
 
 - one exact source snapshot and source/target coordinate set;
 - stable product meaning, authority provenance, accepted bytes, exclusions,
   effects, risks, and Evidence limitations;
-- information loss and every new Founder decision;
+- information loss and every new Director decision;
 - predecessor byte preservation and active-Delivery treatment;
 - one recoverable transaction and its last safe rollback point; and
 - exact conformance fixtures for success, refusal, interruption, and recovery.
@@ -373,12 +512,13 @@ dossier, semantic author, authority class, editor, edit window, revision
 policy, finalization event, retention policy, payload meaning, or relationship
 cardinality changes its selected registry/profile coordinate.
 
-Adding a thirteenth Delivery family under rc.10 is not an extension. Splitting
+Adding a fifteenth Delivery family under rc.17 is not an extension. Splitting
 one family into several records, folding several owners into one carrier, or
 turning a derived view into a retained row is breaking even when no public
 operation changes.
 
-`candidate-revision` and `work-boundary` are the only successive rc.10 families.
+`candidate-revision`, `work-boundary`, and `work-delegation` are the only
+successive rc.17 families.
 A later runtime cannot append a revision to a single family, treat latest row as
 current, or infer lineage from equal identities. Every relationship names one
 exact positive target revision and logical digest; “latest,” null revision, or
@@ -416,7 +556,7 @@ compiler coordinate as applicable.
 
 A future provider-invoked validator would version its command bytes, private
 transport, correction diagnostic, exact-workspace binding, limits,
-Containment, and Retirement. Foundation rc.10 selects no such route. A later
+Containment, and Retirement. Foundation rc.17 selects no such route. A later
 validator could not validate one profile and let Runtime finalization retain
 another, and changing fixed Cell-side transport or runner support would change
 the selected runner contract.
@@ -469,7 +609,7 @@ Retirement makes the Cell and dispatch authority permanently non-reusable and
 durably hands any exact residual obligation to private Reclamation. Reclamation
 may complete asynchronously, does not enter Process reduction, and cannot
 become a Journal event, Control record family, Receipt workflow, public
-operation, or Founder authority subject. A Closure may bind only the immutable
+operation, or Director authority subject. A Closure may bind only the immutable
 terminal handoff or obligation-set digest and whether obligations existed at
 Closure; mutable Reclamation progress remains private installation state.
 
@@ -487,11 +627,13 @@ predecessor rule, append protocol, idempotence, reducer input, derived standing,
 state generation, eligibility, activity completion, and recovery coordinate are
 versioned together by their affected profiles.
 
-Foundation rc.10 selects `lifecycle.control-record-event.v2` and
-`lifecycle.delivery-reduction.v2` while preserving the same closed twenty-two
-event kinds. The version change permits `candidate-revision-observed` to
-finalize a builder outcome with no Candidate successor and updates current
-Candidate and recovery derivation. Backend observations, Cell state,
+Foundation rc.17 selects `lifecycle.control-record-event.v6` and
+`lifecycle.delivery-reduction.v5` with twenty-five closed event kinds.
+`work-delegation-set` and `work-delegation-stopped` retain resource permission
+and its settled stop. Standing Director Brief scope and an Activity's optional
+exact reservation bind supplied direction and finite lifetime charges without
+adding a Delivery operation. Existing Candidate outcome and recovery semantics
+remain owned by their current events. Backend observations, Cell state,
 Containment, Retirement, and Reclamation progress remain private inputs to
 validated record finalization; they are not additional Journal event kinds or
 another Process event source.
@@ -508,7 +650,7 @@ same output.
 
 Closure finalization is the terminal event and completes the terminal activity.
 A reducer that expects or accepts a later activity-completed event has different
-Process semantics and cannot operate the rc.10 Store.
+Process semantics and cannot operate the rc.17 Store.
 
 ## Adjacent File, Seal, and Archive Evolution
 
@@ -546,18 +688,27 @@ the exact definition, binding, environment, subject, modality, and result.
 Changing a Binding later cannot strengthen an earlier Receipt.
 
 Candidate Seal, Check Receipt, and Evidence Packet payloads and relationships
-are exact-subject protocols. The rc.10 Packet's bounded artifact, coverage,
+are exact-subject protocols. The rc.17 Packet's bounded artifact, coverage,
 receipt-use, invalidation, independence, proposition-decision, and obligation
 ledgers are the sole current Evidence structure. A later runtime cannot
 reconstruct missing ledgers from prose or promote another component because its
 claim looks equivalent.
+
+The effect-free Evidence verifier separates interpretation from Delivery
+assembly within the existing Evidence owner. This ownership refinement changes
+no Packet shape, required evaluation provenance, public interface, Process
+event, or installed topology. Retained runtime observations remain historical
+inputs; the canonical owner independently observes the physical subject before
+a new effect. The selected Evidence rules and validator identities still bind
+the interpretation. An implementation refactor cannot silently change those
+rules, reinterpret an earlier selection, or admit external proof carriers.
 
 Authority identifiers, keys, algorithms, subject construction, lifetime, and
 replay rules are versioned. Key rotation does not rewrite history. Changing an
 authenticated subject is breaking, and a runtime cannot verify an old
 signature over a new construction because visible values appear equal.
 
-Founder authority subjects remain canonical JSON values distinct from Control
+Director authority subjects remain canonical JSON values distinct from Control
 revision Markdown and SQLite retrieval identity. Neither a Journal event nor a
 Control revision authenticates itself.
 
@@ -568,11 +719,41 @@ meaning. A provider can change without revising the Work Boundary only when the
 selected adapter enforces the exact same capability, input, governed workspace,
 observation, containment, cancellation, and isolation contract.
 
-Provider Adapter v6 requires one exact governed body-only semantic Markdown
+The current Draft selects Codex `0.153.4` with compatibility range
+`>=0.153.4 <0.154.0`. This is an exact provider and Image selection change,
+not a change to the Provider Adapter v7 contract, Store or event meaning, or
+runtime/interface v17 request and result shapes. The Provider Descriptor
+digest, executable and inventory identities, Image selection, Draft publication
+digest, and exact runtime version response change together. Current packages
+MUST agree on that response; an older client is not made compatible by retaining
+the same protocol discriminator.
+
+Every new Attempt binds its resolved selection. A retained Attempt MUST keep
+its original exact resources through observation, retrieval, Containment, and
+Retirement; a changed default cannot replace them or redispatch the Attempt.
+An unavailable original selection remains unavailable until its custody is
+restored. Evidence for the earlier Image does not establish operation or
+conformance of the new Image. Its credential separation, restricted-read
+environment, interruption, and parent-loss boundaries require their own exact
+operated qualification.
+
+The selected private Docker credential continuity mechanism retains one
+execution claim, a runner-only provider-state volume, and exact settlement
+before Retirement. This changes the Backend implementation/profile, installed
+containment and retirement policy digests, runner executable/contract, tool
+inventory, and immutable Execution Image selections. It does not change public
+Adapter v7 or runtime/interface v17 shapes or reinterpret an already retained
+execution. Earlier Image evidence does not qualify refreshed-credential
+retention, settlement interruption, or the new private volume boundary. Those
+seams require focused repository assertions and separate operated qualification
+against the new exact Image.
+
+Provider Adapter v7 requires one exact governed body-only semantic Markdown
 workspace inside one fresh Cell. It supports repeated inspection and correction
 of that same file, explicit submission or abandonment, and independent Runtime
-collection and validation after Containment. It exposes no provider-invoked
-live semantic validator or Cell validity claim. Provider
+collection and validation after Containment. Its local draft assistance reports
+only explicit-byte and supplied-basis observations, with no live host service
+or final validity claim. Provider
 control-plane authentication and network access remain outside Agent product
 capability; inseparable access makes the Attempt unsupported before dispatch.
 No provider-authored front matter, canonical document, Control revision, SQL
@@ -603,7 +784,7 @@ persistence and semantic coordinate.
 Ordinary display wrapping, headings, filenames, or field order can evolve
 without changing a logical revision when the export is explicitly
 noncanonical and the same source coordinate remains visible. A named canonical
-export profile would require its own exact renderer and digest rules; rc.10
+export profile would require its own exact renderer and digest rules; rc.17
 selects no such profile.
 
 No export is an import, backup, migration, recovery package, event source,
@@ -618,7 +799,7 @@ removal behavior. It cannot redefine a standard field, weaken a mandatory rule,
 change standard logical digests under the same version, create authority, alter
 Delivery reduction, or make acceptable a result the standard rejects.
 
-Foundation rc.10 has a closed Delivery registry and no dynamic SQL, family,
+Foundation rc.17 has a closed Delivery registry and no dynamic SQL, family,
 relationship, event, trigger, or table extension seam.
 
 A future Process can reuse the generic Control Record Store model only by
@@ -642,14 +823,14 @@ A candidate publication can report qualification evidence but cannot claim
 released conformance.
 
 Lifecycle Foundation 1.0.0 currently implements changing Draft material. It
-makes no rc.10 conformance, publication, or production-readiness claim while
+makes no rc.17 conformance, publication, or production-readiness claim while
 authenticated publication, complete operated scenarios, security gates, and
 independent-implementation gates remain unmet.
 
 Another generation's result, package, database, authoring profile, Backend
-result, or qualification run cannot be relabeled rc.10. Fresh rc.10
-qualification must exercise repository v15, runtime and interface v10,
-Provider Adapter v6, the selected Docker Backend, Candidate Carrier publication
+result, or qualification run cannot be relabeled rc.17. Fresh rc.17
+qualification must exercise repository v22, runtime and interface v17,
+Provider Adapter v7, the selected Docker Backend, Candidate Carrier publication
 and materialization, one-time dispatch, Containment, Retirement, private
 Reclamation, and every required unsupported-generation refusal.
 

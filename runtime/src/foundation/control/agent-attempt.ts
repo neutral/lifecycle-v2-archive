@@ -1,4 +1,5 @@
 import { FoundationError } from "../error.js";
+import { FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE, FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE } from "../candidate/carrier-types.js";
 import type {
   FoundationExecutionBackendProfileReferenceV1,
   FoundationExecutionImageReferenceV1,
@@ -70,9 +71,9 @@ export type AgentAttemptExecution = Readonly<{
   backendProfile: FoundationExecutionBackendProfileReferenceV1;
   image: FoundationExecutionImageReferenceV1;
   /**
-   * Reference to the already-compiled immutable Input Set. For builder and
-   * reviewer roles, that Input Set owns the exact Candidate Revision and
-   * Candidate Revision Carrier manifest and artifact bindings.
+   * Reference to the already-compiled immutable Input Set. Builder, reviewer,
+   * and boundary-resolution Attempts bind their exact Candidate Revision and
+   * Carrier here. Initial preparation has no Candidate input.
    */
   inputSet: FoundationExecutionInputSetReferenceV1;
 }>;
@@ -105,7 +106,7 @@ export type AgentAttemptInputFacts = Readonly<{
 }>;
 
 export type AgentAttemptReference = Readonly<{
-  kind: "founder-brief" | "work-boundary" | "candidate-revision" | "candidate-seal";
+  kind: "director-brief" | "work-boundary" | "candidate-revision" | "candidate-seal";
   id: string;
   revision: number;
   digest: Sha256;
@@ -127,10 +128,10 @@ function relationships(input: Readonly<{
   candidate?: AgentAttemptReference | null;
   seal?: AgentAttemptReference | null;
 }>): readonly ControlRecordRelationship[] {
-  if (input.brief.kind !== "founder-brief") {
+  if (input.brief.kind !== "director-brief") {
     throw new FoundationError(
       "lifecycle.agent-attempt.brief",
-      "Agent Attempt compilation requires one exact Founder Brief reference",
+      "Agent Attempt compilation requires one exact Director Brief reference",
     );
   }
   if (input.boundary !== undefined && input.boundary !== null && input.boundary.kind !== "work-boundary") {
@@ -227,6 +228,11 @@ export function compileAgentAttemptAppend(input: RetainAgentAttemptInput): Reado
       "Agent Attempt role does not match its exact Delivery operation",
     );
   }
+  const repairPurposes = (input.adjacentFilePurposes ?? []).filter((purpose) =>
+    purpose === FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE || purpose === FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE);
+  if (repairPurposes.length > 0 && (input.role !== "builder" || repairPurposes.length !== 2 || new Set(repairPurposes).size !== 2)) {
+    throw new FoundationError("lifecycle.agent-attempt.role", "Only a builder may declare one complete repair-output purpose pair");
+  }
   const hasBoundary = input.boundary !== undefined && input.boundary !== null;
   const hasCandidate = input.candidate !== undefined && input.candidate !== null;
   const hasSeal = input.seal !== undefined && input.seal !== null;
@@ -275,7 +281,7 @@ export function compileAgentAttemptAppend(input: RetainAgentAttemptInput): Reado
     }),
     provider: Object.freeze({
       ...input.provider,
-      adapter: "lifecycle.provider-adapter.v6",
+      adapter: "lifecycle.provider-adapter.v7",
     }),
     execution: Object.freeze({
       backendProfile: Object.freeze({ ...input.execution.backendProfile }),

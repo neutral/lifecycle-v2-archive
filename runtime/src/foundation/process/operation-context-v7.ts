@@ -1,6 +1,10 @@
+import { foundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
+import { resolveWorkBoundaryResolutionSnapshotV1 } from "../control/work-boundary.js";
+import { resolveCandidateIntegrationProvenanceV1, resolveFailedIntegrationCorrectionV1, type FoundationCandidateIntegrationProvenanceV1 } from "../control/integration-assessment.js";
 import { FoundationSemanticMarkdownSchema } from "@neutral/lifecycle-protocol";
 import type { ProviderInputV4Capability, ProviderInputV4 } from "../attempt/provider-input-v4.js";
-import { compileProviderInputV4 } from "../attempt/provider-input-v4.js";
+import { compileProviderInputV4, sameProviderInputV4 } from "../attempt/provider-input-v4.js";
+import { selectFoundationAgentAttemptPolicyV7 } from "../attempt/investment-policy-v7.js";
 import type { AgentAttemptInvestment, AgentAttemptRole } from "../control/agent-attempt.js";
 import {
   agentWorkProductCompilerProfileDigest,
@@ -11,6 +15,8 @@ import {
 import { normalizeSemanticMarkdown, controlIdentifier } from "../control/model.js";
 import { assertDeliveryControlRecordPayload } from "../control/payload-registry.js";
 import type { ControlRecordStore } from "../control/store.js";
+import { parseWorkDelegationReservation, type WorkDelegationReservation } from "../control/work-delegation.js";
+import { readWorkDelegationExecution } from "../control/work-delegation-execution.js";
 import type {
   ControlJsonObject,
   ControlJsonValue,
@@ -21,14 +27,14 @@ import type {
 import { FOUNDATION_SPECIFICATION_REVISION } from "../constants.js";
 import { FoundationError } from "../error.js";
 import { withFoundationReviewerProjectionCandidateRepositoryV7 } from "../evidence/physical-observation-v7.js";
-import { validateKnowledgeSet } from "../knowledge/knowledge-set.js";
 import type {
   FoundationKnowledgeSet,
   FoundationKnowledgeSetResult,
-  FoundationKnowledgeSourceResolution,
 } from "../knowledge/types.js";
 import { compileKnowledgeProjection } from "../projection/compiler.js";
-import { atlasResourceSourceId } from "../projection/source-context.js";
+import { selectFoundationBuilderRepairOutputV1, withFoundationBuilderRepairRepositoryV1,
+  type FoundationBuilderRepairRepositoryV1 } from "../candidate/repair-output.js";
+import { compileExecutionProjectionSourceRoots } from "../projection/execution-source-roots.js";
 import type { FoundationReviewerProjectionObservation } from "../projection/execution.js";
 import {
   parseProjectionRequest,
@@ -43,23 +49,12 @@ import type {
   FoundationProjectionCandidateBasis,
   FoundationProjectionKnowledgeRoot,
   FoundationProjectionRequest,
-  FoundationProjectionSourceRoot,
 } from "../projection/types.js";
 import { pathWithin } from "../repository/product-state.js";
-import {
-  assertRepositoryEpochUnmoved,
-  canonicalRepository,
-  exactTreeEntries,
-  resolveAttachedEpoch,
-} from "../repository/git.js";
-import {
-  bindHistoricalRepositorySnapshot,
-  loadRepositoryEpochAtCommit,
-} from "../repository/snapshot.js";
+import { openFoundationDeliveryGitBasisV1, openFoundationDeliveryGitSnapshotV1 } from "../repository/delivery-git-basis.js";
+import { bindHistoricalRepositorySnapshot } from "../repository/snapshot.js";
 import type {
   FoundationCapabilityProfile,
-  FoundationGitObjectFormat,
-  FoundationGitTreeEntry,
   FoundationLoadedRepositoryEpoch,
   FoundationLoadedRepositorySnapshot,
 } from "../repository/types.js";
@@ -77,7 +72,7 @@ import {
 } from "../validation/canonical.js";
 import { compareCodePoints, sortUniqueCodePoints } from "../validation/ordering.js";
 import type { FoundationValidationResult } from "../validation/result.js";
-import type { FoundationInstalledRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
+import type { FoundationProcessRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
 import {
   compileFoundationAgentEvidenceSetFromProjectionSourcesV7,
   compileFoundationReviewerPropositionSetV7,
@@ -86,11 +81,11 @@ import {
 } from "./agent-context-v7.js";
 import {
   inspectFoundationAgentActivityV7,
+  type FoundationAgentOperationPreIntentContextV7,
   type FoundationAgentOperationSupportV7,
   type FoundationAgentOperationV7,
 } from "./agent-operation-v7.js";
 
-const PROVIDER_TIMEOUT_MS = 30 * 60 * 1_000;
 const MAXIMUM_CURRENT_RECORDS = 10_000;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 
@@ -114,6 +109,7 @@ type ExactOperationSubjects = Readonly<{
 
 type RepositoryObservation = Readonly<{
   epoch: FoundationLoadedRepositoryEpoch;
+  snapshot: FoundationLoadedRepositorySnapshot;
   knowledgeResult: FoundationKnowledgeSetResult;
 }>;
 
@@ -136,27 +132,9 @@ type ExecutionRepositoryBasis = RepositoryObservation & Readonly<{
   knowledge: FoundationKnowledgeSet;
 }>;
 
-type CurrentRawRepositoryTree = Readonly<{
-  repository: string;
-  ref: string;
-  commit: string;
-  tree: string;
-  objectFormat: FoundationGitObjectFormat;
-  treeEntries: readonly FoundationGitTreeEntry[];
-}>;
-
-async function loadCurrentRawRepositoryTree(target: string): Promise<CurrentRawRepositoryTree> {
-  const repository = await canonicalRepository(target);
-  const epoch = await resolveAttachedEpoch(repository);
-  const treeEntries = await exactTreeEntries(repository, epoch.tree, epoch.objectFormat);
-  await assertRepositoryEpochUnmoved(repository, epoch);
-  return Object.freeze({ repository, ...epoch, treeEntries });
-}
-
 type OperationContextOwnersV7 = Readonly<{
-  loadRepositoryEpochAtCommit: typeof loadRepositoryEpochAtCommit;
-  loadCurrentRawRepositoryTree: typeof loadCurrentRawRepositoryTree;
-  validateKnowledgeSet: typeof validateKnowledgeSet;
+  openDeliveryGitBasis: typeof openFoundationDeliveryGitBasisV1;
+  openDeliveryGitSnapshot: typeof openFoundationDeliveryGitSnapshotV1;
   bindHistoricalRepositorySnapshot: typeof bindHistoricalRepositorySnapshot;
   validateLoadedHistoricalRepositorySnapshot: typeof validateLoadedHistoricalRepositorySnapshot;
   compileKnowledgeProjection: typeof compileKnowledgeProjection;
@@ -169,50 +147,126 @@ export type FoundationFreshAgentOperationContextV7Options = Partial<OperationCon
 export type FoundationFreshAgentOperationContextV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   operation: FoundationAgentOperationV7;
   semanticMarkdown: string;
+  reservation?: WorkDelegationReservation;
   reviewerObservation?: FoundationReviewerProjectionObservation | null;
   observedAt?: string;
 }>;
 
-export type FoundationFreshAgentOperationContextV7 = Readonly<{
+type FoundationAgentOperationContextCommonV7 = Readonly<{
   activityId: string;
-  operation: FoundationAgentOperationV7;
-  role: AgentAttemptRole;
   semanticMarkdown: string;
   boundary: ControlRecordRevision;
   candidate: ControlRecordRevision;
-  /** Candidate Seal bound as an Agent Attempt relationship; reviewer only. */
-  attemptSeal: ControlRecordRevision | null;
-  /** Current reducer Seal, including a prior review Seal during boundary resolution. */
-  seal: ControlRecordRevision | null;
-  materialCondition: ControlRecordRevision | null;
   epoch: FoundationLoadedRepositoryEpoch;
-  /** Execution-only repository authority; Orientation binds the epoch directly. */
-  snapshot: FoundationLoadedRepositorySnapshot | null;
-  /** Execution-only successful repository validation. */
-  repositoryValidation: FoundationValidationResult | null;
-  /** A usable Knowledge Set when the observation is complete and valid. */
-  knowledge: FoundationKnowledgeSet | null;
-  request: FoundationProjectionRequest;
-  subject: FoundationExecutionProjectionSubject | null;
   projection: FoundationCompiledProjection;
   roleSubject: ControlJsonObject;
   capabilityProfile: Readonly<{ id: string; digest: Sha256 }>;
   providerCapability: ProviderInputV4Capability;
   providerInput: ProviderInputV4;
-  evidenceSet: FoundationAgentEvidenceSetCompilationV7 | null;
-  propositionSet: FoundationAgentPropositionSetCompilationV7 | null;
   investment: AgentAttemptInvestment;
   rootTokenSetDigest: Sha256;
 }>;
 
+type FoundationExecutionOperationContextV7 = FoundationAgentOperationContextCommonV7 & Readonly<{
+  snapshot: FoundationLoadedRepositorySnapshot;
+  repositoryValidation: FoundationValidationResult;
+  knowledge: FoundationKnowledgeSet;
+  request: FoundationExecutionProjectionRequest;
+  subject: FoundationExecutionProjectionSubject;
+  evidenceSet: FoundationAgentEvidenceSetCompilationV7;
+  materialCondition: null;
+}>;
+
+export type FoundationBuilderAgentOperationContextV7 = FoundationExecutionOperationContextV7 & Readonly<{
+  operation: "delivery.continue";
+  role: "builder";
+  attemptSeal: null;
+  /** Correction can start from a prior evaluation; its Seal is not an Attempt binding. */
+  seal: ControlRecordRevision | null;
+  propositionSet: null;
+}>;
+
+export type FoundationReviewerAgentOperationContextV7 = FoundationExecutionOperationContextV7 & Readonly<{
+  operation: "delivery.evaluate";
+  role: "reviewer";
+  /** The exact evaluation Seal is also the reviewer Attempt's Seal. */
+  attemptSeal: ControlRecordRevision;
+  seal: ControlRecordRevision;
+  propositionSet: FoundationAgentPropositionSetCompilationV7;
+}>;
+
+export type FoundationBoundaryResolutionAgentOperationContextV7 = FoundationAgentOperationContextCommonV7 & Readonly<{
+  operation: "delivery.revise" | "delivery.reaffirm";
+  role: "reconnaissance";
+  attemptSeal: null;
+  /** A prior current Process Seal does not make resolution a reviewer Attempt. */
+  seal: ControlRecordRevision | null;
+  materialCondition: ControlRecordRevision;
+  snapshot: null;
+  repositoryValidation: null;
+  /** Orientation can explain an incomplete Knowledge observation. */
+  knowledge: FoundationKnowledgeSet | null;
+  request: FoundationOrientationProjectionRequest;
+  subject: null;
+  evidenceSet: null;
+  propositionSet: null;
+}>;
+
+/** Valid semantic cases after retained-byte and exact-subject validation. */
+export type FoundationFreshAgentOperationContextV7 =
+  | FoundationBuilderAgentOperationContextV7
+  | FoundationReviewerAgentOperationContextV7
+  | FoundationBoundaryResolutionAgentOperationContextV7;
+
+/**
+ * Compare established operation bindings; this does not observe currentness.
+ * Callers must still reopen retained inputs and mutable repository state at
+ * the effect boundary before comparing their newly established context.
+ */
+export function sameFoundationAgentOperationContextV7(
+  expected: FoundationFreshAgentOperationContextV7,
+  actual: FoundationFreshAgentOperationContextV7,
+): boolean {
+  const sameSubject = (left: ControlRecordRevision | null, right: ControlRecordRevision | null) =>
+    left === right || (left !== null && right !== null &&
+      left.recordKind === right.recordKind && left.recordId === right.recordId &&
+      left.revision === right.revision && left.digest === right.digest);
+  return actual.activityId === expected.activityId && actual.operation === expected.operation &&
+    actual.role === expected.role && sameSubject(actual.boundary, expected.boundary) &&
+    sameSubject(actual.candidate, expected.candidate) &&
+    sameSubject(actual.attemptSeal, expected.attemptSeal) &&
+    sameSubject(actual.seal, expected.seal) &&
+    sameSubject(actual.materialCondition, expected.materialCondition) &&
+    actual.projection.manifest.digest === expected.projection.manifest.digest &&
+    canonicalJson(actual.roleSubject) === canonicalJson(expected.roleSubject) &&
+    canonicalJson(actual.capabilityProfile) === canonicalJson(expected.capabilityProfile) &&
+    sameProviderInputV4(actual.providerInput, expected.providerInput) &&
+    canonicalJson(actual.investment) === canonicalJson(expected.investment) &&
+    (actual.evidenceSet?.digest ?? null) === (expected.evidenceSet?.digest ?? null) &&
+    (actual.propositionSet?.digest ?? null) === (expected.propositionSet?.digest ?? null);
+}
+
+/** Bind the imminent provider effect to its compiled subjects, including the Attempt Seal. */
+export function foundationAgentPreIntentMatchesContextV7(
+  context: FoundationFreshAgentOperationContextV7,
+  actual: FoundationAgentOperationPreIntentContextV7,
+): boolean {
+  return actual.activityId === context.activityId && actual.operation === context.operation &&
+    actual.role === context.role && canonicalJson(actual.boundary) === canonicalJson(context.boundary) &&
+    canonicalJson(actual.candidate) === canonicalJson(context.candidate) &&
+    canonicalJson(actual.seal) === canonicalJson(context.attemptSeal) &&
+    actual.projection.manifest.digest === context.projection.manifest.digest &&
+    canonicalJson(actual.projection.manifest.basis) === canonicalJson(context.projection.manifest.basis);
+}
+
 export type FoundationRetainedAgentOperationContextV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   operation: FoundationAgentOperationV7;
   reviewerObservation?: FoundationReviewerProjectionObservation | null;
@@ -222,21 +276,19 @@ export type FoundationRetainedAgentOperationContextV7Input = Readonly<{
 export type FoundationUnpromotedReviewAgentOperationContextV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   reviewerObservation: FoundationReviewerProjectionObservation;
   observedAt?: string;
 }>;
 
 export type FoundationUnpromotedReviewAgentOperationContextV7 =
-  FoundationFreshAgentOperationContextV7 & Readonly<{
-    operation: "delivery.evaluate";
-    role: "reviewer";
-    configuration: FoundationInstalledRuntimeConfigurationV7;
+  FoundationReviewerAgentOperationContextV7 & Readonly<{
+    configuration: FoundationProcessRuntimeConfigurationV7;
     opening: Readonly<{
       agentId: string;
       runtimeId: string;
-      founderId: string;
+      directorId: string;
       submittedAt: string;
       startedAt: string;
     }>;
@@ -248,7 +300,7 @@ export type FoundationRetainedAgentOperationContextV7 =
     opening: Readonly<{
       agentId: string;
       runtimeId: string;
-      founderId: string;
+      directorId: string;
       submittedAt: string;
       startedAt: string;
       attemptCreatedAt: string;
@@ -256,7 +308,7 @@ export type FoundationRetainedAgentOperationContextV7 =
     brief: ControlRecordRevision;
     attempt: ControlRecordRevision | null;
     /** Current physical installation with the retained provider selection restored. */
-    configuration: FoundationInstalledRuntimeConfigurationV7;
+    configuration: FoundationProcessRuntimeConfigurationV7;
     boundaryResolutionBasis: Readonly<{
       snapshot: FoundationLoadedRepositorySnapshot;
       knowledge: FoundationKnowledgeSet;
@@ -394,7 +446,7 @@ function roleFor(operation: FoundationAgentOperationV7): AgentAttemptRole {
   }
 }
 
-function normalizedFounderMarkdown(value: string): string {
+function normalizedDirectorMarkdown(value: string): string {
   const parsed = FoundationSemanticMarkdownSchema.safeParse(value);
   if (!parsed.success) {
     fail("semantic-markdown", "Operation context requires body-only public semantic Markdown");
@@ -459,8 +511,8 @@ function exactOperationSubjects(
     exactRelationship(materialCondition, "freezes", candidate, "Current Material Condition");
     exactRelationship(materialCondition, "governed-by", boundary, "Current Material Condition");
   }
-  if (operation === "delivery.continue" && (seal !== null || materialCondition !== null)) {
-    fail("operation-coordinate", "Candidate development requires an unsealed, unpaused Candidate");
+  if (operation === "delivery.continue" && materialCondition !== null) {
+    fail("operation-coordinate", "Candidate development requires an unpaused Candidate");
   }
   if (operation === "delivery.evaluate" && (seal === null || materialCondition !== null)) {
     fail("operation-coordinate", "Reviewer context requires the exact sealed, unpaused Candidate");
@@ -474,13 +526,9 @@ function exactOperationSubjects(
 
 function resolvedOwners(options: FoundationFreshAgentOperationContextV7Options): OperationContextOwnersV7 {
   return Object.freeze({
-    loadRepositoryEpochAtCommit:
-      options.loadRepositoryEpochAtCommit ?? loadRepositoryEpochAtCommit,
-    loadCurrentRawRepositoryTree:
-      options.loadCurrentRawRepositoryTree ?? loadCurrentRawRepositoryTree,
-    validateKnowledgeSet: options.validateKnowledgeSet ?? validateKnowledgeSet,
-    bindHistoricalRepositorySnapshot:
-      options.bindHistoricalRepositorySnapshot ?? bindHistoricalRepositorySnapshot,
+    openDeliveryGitBasis: options.openDeliveryGitBasis ?? openFoundationDeliveryGitBasisV1,
+    openDeliveryGitSnapshot: options.openDeliveryGitSnapshot ?? openFoundationDeliveryGitSnapshotV1,
+    bindHistoricalRepositorySnapshot: options.bindHistoricalRepositorySnapshot ?? bindHistoricalRepositorySnapshot,
     validateLoadedHistoricalRepositorySnapshot:
       options.validateLoadedHistoricalRepositorySnapshot ?? validateLoadedHistoricalRepositorySnapshot,
     compileKnowledgeProjection: options.compileKnowledgeProjection ?? compileKnowledgeProjection,
@@ -524,13 +572,16 @@ function admittedRepositoryBasis(boundary: ControlRecordRevision): AdmittedRepos
 
 async function admittedRepositoryObservation(
   target: string,
+  machineHome: string,
   store: ControlRecordStore,
   boundary: ControlRecordRevision,
   owners: OperationContextOwnersV7,
 ): Promise<RepositoryObservation> {
   const admitted = admittedRepositoryBasis(boundary);
-  const epoch = await owners.loadRepositoryEpochAtCommit(target, admitted.productBaseCommit);
-  const current = await owners.loadCurrentRawRepositoryTree(target);
+  const retained = await owners.openDeliveryGitBasis({
+    machineHome, repository: target, store, boundary,
+  });
+  const { snapshot: _snapshot, ...epoch } = retained.loaded;
   if (
     epoch.contract.targetId !== store.identity.targetId ||
     epoch.epoch.commit !== admitted.productBaseCommit ||
@@ -561,29 +612,12 @@ async function admittedRepositoryObservation(
       },
     );
   }
-  if (
-    current.repository !== epoch.repository ||
-    current.ref !== epoch.contract.canonicalBranch ||
-    current.objectFormat !== epoch.epoch.objectFormat ||
-    current.commit !== admitted.productBaseCommit ||
-    current.tree !== admitted.productBaseTree
-  ) {
-    fail(
-      "repository-drift",
-      "The active-Delivery branch lease requires the exact admitted canonical commit and tree",
-      {
-        expectedRef: epoch.contract.canonicalBranch,
-        expectedCommit: admitted.productBaseCommit,
-        expectedTree: admitted.productBaseTree,
-        expectedObjectFormat: epoch.epoch.objectFormat,
-        observedRef: current.ref,
-        observedCommit: current.commit,
-        observedTree: current.tree,
-        observedObjectFormat: current.objectFormat,
-      },
-    );
-  }
-  const knowledgeResult = await owners.validateKnowledgeSet(epoch);
+  const knowledgeResult = Object.freeze({
+    observation: retained.knowledge,
+    knowledgeSet: retained.knowledgeValidation.complete && retained.knowledgeValidation.valid
+      ? retained.knowledge : null,
+    validation: retained.knowledgeValidation,
+  });
   if (
     knowledgeResult.validation.complete && knowledgeResult.validation.valid &&
     knowledgeResult.observation.manifest.digest !== admitted.knowledgeSetDigest
@@ -597,7 +631,7 @@ async function admittedRepositoryObservation(
       },
     );
   }
-  return Object.freeze({ epoch, knowledgeResult });
+  return Object.freeze({ epoch, snapshot: retained.loaded, knowledgeResult });
 }
 
 async function executionRepositoryBasis(
@@ -615,7 +649,7 @@ async function executionRepositoryBasis(
       diagnostics: knowledgeResult.validation.diagnostics.map(({ code }) => code),
     });
   }
-  const snapshot = await owners.bindHistoricalRepositorySnapshot(epoch, knowledge);
+  const snapshot = observation.snapshot;
   const admitted = admittedRepositoryBasis(boundary);
   if (snapshot.snapshot.digest !== admitted.repositorySnapshotDigest) {
     fail(
@@ -644,25 +678,49 @@ function boundaryResolutionObjective(input: Readonly<{
   boundary: ControlRecordRevision;
   candidate: ControlRecordRevision;
   materialCondition: ControlRecordRevision;
-  founderRationale: string;
+  directorRationale: string;
+  proposedCapabilityProfile?: Readonly<{ id: string; digest: Sha256 }>;
 }>): string {
-  const founderRationale = normalizedFounderMarkdown(input.founderRationale);
+  const directorRationale = normalizedDirectorMarkdown(input.directorRationale);
   const facts = Object.freeze({
     operation: input.operation,
     activeBoundary: reference(input.boundary),
+    governingBoundaryContext: Object.freeze({
+      basis: input.boundary.payload.basis,
+      mandate: input.boundary.payload.mandate,
+      knowledge: input.boundary.payload.knowledge,
+      disciplines: input.boundary.payload.disciplines,
+      externalSources: input.boundary.payload.externalSources,
+      capabilityProfile: input.boundary.payload.capabilityProfile,
+      executionProjectionProfile: input.boundary.payload.projectionProfile,
+      relationships: input.boundary.relationships,
+    }),
     frozenMaterialCondition: reference(input.materialCondition),
+    frozenConditionContext: Object.freeze({
+      semanticMarkdown: input.materialCondition.semanticMarkdown,
+      payload: input.materialCondition.payload,
+      relationships: input.materialCondition.relationships,
+    }),
+    ...(object(input.materialCondition.payload.source, "Material Condition source").kind === "projection-compilation" ? {
+      projectionRefusal: input.materialCondition.payload.source,
+      evaluationSeal: input.materialCondition.relationships.find(({ relation }) => relation === "observed-in")?.target ?? null,
+    } : {}),
     currentCandidate: reference(input.candidate),
-    founderRationale,
-    founderRationaleDigest: sha256Bytes(founderRationale),
+    directorRationale,
+    directorRationaleDigest: sha256Bytes(directorRationale),
+    ...(input.proposedCapabilityProfile === undefined ? {} : { proposedCapabilityProfile: input.proposedCapabilityProfile }),
   });
   const factBlock = canonicalPrettyJson(facts)
     .trimEnd()
     .split("\n")
     .map((line) => `    ${line}`)
     .join("\n");
-  return normalizedFounderMarkdown(
+  return normalizedDirectorMarkdown(
     `# Boundary Resolution Objective\n\n` +
     `Resolve the frozen Delivery boundary from these exact runtime-derived facts.\n\n` +
+    `The governing execution Projection profile below selects admitted work; it is not this read-only Orientation profile. ` +
+    `Knowledge and Discipline entries are the governing selections, not merely installed discovery choices. ` +
+    `The Condition body preserves its attributed proposal and Runtime conclusion. These facts supply context, not new capability or admission.\n\n` +
     `${factBlock}\n`,
   );
 }
@@ -675,17 +733,17 @@ export function compileFoundationOrientationProjectionRequestV7(input: Readonly<
   const profile = input.epoch.contract.projectionProfiles[
     input.epoch.contract.defaults.orientationProjectionProfileId
   ];
-  if (profile === undefined || profile.id !== "orientation-standard-v1") {
+  if (profile === undefined || !["orientation-standard-v1", "orientation-large-v1"].includes(profile.id)) {
     fail("projection-profile", "Default Orientation Projection profile is unavailable or unsupported");
   }
   if (
     input.epoch.contract.sourcePolicy.externalLocal !== "denied" ||
     input.epoch.contract.sourcePolicy.network !== "denied"
   ) fail("retrieval", "Foundation Agent operations have no external retrieval authority");
-  const semanticMarkdown = normalizedFounderMarkdown(input.semanticMarkdown);
+  const semanticMarkdown = normalizedDirectorMarkdown(input.semanticMarkdown);
   const observation = input.knowledge.observation;
   const base = Object.freeze({
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     class: "orientation" as const,
     role: "reconnaissance" as const,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -747,6 +805,7 @@ function candidateBasis(
   candidate: ControlRecordRevision,
   seal: ControlRecordRevision | null,
   role: "builder" | "reviewer",
+  provenance: FoundationCandidateIntegrationProvenanceV1 | null,
 ): FoundationProjectionCandidateBasis {
   const state = object(candidate.payload.state, "Current Candidate state");
   const carrierManifest = object(candidate.payload.carrierManifest, "Candidate Carrier manifest binding");
@@ -762,10 +821,22 @@ function candidateBasis(
     carrierManifest.digest,
     "Candidate Carrier manifest digest",
   );
+  const integration = provenance === null ? null : Object.freeze({
+    assessment: Object.freeze({ kind: "integration-assessment" as const, id: provenance.assessment.recordId,
+      revision: provenance.assessment.revision, digest: provenance.assessment.digest }),
+    sourceCandidate: Object.freeze({ kind: "candidate-revision" as const, id: provenance.sourceCandidate.recordId,
+      revision: provenance.sourceCandidate.revision, digest: provenance.sourceCandidate.digest }),
+    canonicalParent: provenance.canonicalParent,
+  });
+  if (integration !== null && baseCommit !== integration.canonicalParent.commit) {
+    fail("integration", "Projection Candidate and its retained integration parent differ");
+  }
+  if (role === "reviewer" && integration === null) fail("integration", "Review requires explicit Candidate integration provenance");
   if (role === "builder") {
     if (seal !== null) fail("candidate", "Builder Candidate basis cannot carry a Candidate Seal");
     return Object.freeze({
       baseCommit,
+      integration,
       revision,
       stateDigest,
       carrierManifestDigest,
@@ -776,6 +847,7 @@ function candidateBasis(
   if (seal === null) fail("candidate", "Reviewer Candidate basis requires a Candidate Seal");
   return Object.freeze({
     baseCommit,
+    integration,
     revision,
     stateDigest,
     carrierManifestDigest,
@@ -813,11 +885,12 @@ export function compileFoundationExecutionProjectionRequestV7(input: Readonly<{
   candidate: ControlRecordRevision;
   seal: ControlRecordRevision | null;
   role: "builder" | "reviewer";
+  integration?: FoundationCandidateIntegrationProvenanceV1 | null;
 }>): FoundationExecutionProjectionRequest {
   const profile = executionProfile(input.snapshot, input.boundary);
-  const candidate = candidateBasis(input.candidate, input.seal, input.role);
+  const candidate = candidateBasis(input.candidate, input.seal, input.role, input.integration ?? null);
   const base = Object.freeze({
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     class: "execution" as const,
     role: input.role,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -879,81 +952,6 @@ export function compileFoundationExecutionProjectionRequestV7(input: Readonly<{
   const parsed = parseProjectionRequest(request);
   if (parsed.class !== "execution") fail("projection", "Execution request parsed as orientation");
   return parsed;
-}
-
-function authorityForSource(
-  source: FoundationKnowledgeSourceResolution,
-): "atlas" | "informational-source" | "repository-reality" {
-  return source.kind === "atlas" ? "atlas"
-    : source.kind === "repository" ? "repository-reality"
-      : "informational-source";
-}
-
-function sourceRoots(
-  boundary: ControlRecordRevision,
-  knowledge: FoundationKnowledgeSet,
-  snapshot: FoundationLoadedRepositorySnapshot,
-): readonly FoundationProjectionSourceRoot[] {
-  const selected = array(boundary.payload.externalSources, "Work Boundary external sources");
-  return Object.freeze(selected.map((value, index) => {
-    const source = object(value, `Work Boundary external source[${index}]`);
-    const sourceId = string(source.sourceId, `Work Boundary external source[${index}] identity`);
-    const revision = nullableString(source.revision, `Work Boundary external source[${index}] revision`);
-    const selectedDigest = digest(source.digest, `Work Boundary external source[${index}] digest`);
-    const ownerKind = string(source.ownerKind, `Work Boundary external source[${index}] owner kind`);
-    const ownerId = string(source.ownerId, `Work Boundary external source[${index}] owner identity`);
-    const matches = knowledge.sources.filter((candidate) =>
-      candidate.sourceId === sourceId && candidate.declaredRevision === revision &&
-      (candidate.resolvedDigest ?? candidate.declaredDigest) === selectedDigest &&
-      authorityForSource(candidate) === ownerKind);
-    const atlasResourceMatches = ownerKind !== "atlas" ? [] : snapshot.atlas.model.atlas.resources.flatMap((resource) => {
-      const materialId = atlasResourceSourceId(snapshot.atlas.model.atlas.id, resource.id);
-      const binding = snapshot.atlas.resolution.resourceBindings.find(({ resourceId }) => resourceId === resource.id);
-      return materialId === sourceId && materialId === ownerId && binding?.disposition === "resolved" &&
-          binding.path !== null && binding.objectId === revision && binding.byteDigest === selectedDigest
-        ? [Object.freeze({ resource, binding, materialId })]
-        : [];
-    });
-    if (matches.length + atlasResourceMatches.length !== 1) {
-      fail("source", `Work Boundary external source ${sourceId} does not resolve one exact Knowledge source`, {
-        knowledgeMatches: matches.length,
-        atlasResourceMatches: atlasResourceMatches.length,
-      });
-    }
-    const atlasResource = atlasResourceMatches[0];
-    if (atlasResource !== undefined) {
-      return Object.freeze({
-        owner: "source-anchor" as const,
-        sourceId: atlasResource.materialId,
-        reference: atlasResource.binding.path!,
-        revision: atlasResource.binding.objectId,
-        digest: selectedDigest,
-        authority: "atlas" as const,
-        required: true,
-        reason: "selected-by-active-work-boundary",
-      });
-    }
-    const match = matches[0]!;
-    return Object.freeze({
-      owner: "knowledge" as const,
-      recordId: match.recordId,
-      recordRevision: match.recordRevision,
-      sourceId: match.sourceId,
-      reference: match.reference,
-      revision: match.declaredRevision,
-      digest: selectedDigest,
-      authority: authorityForSource(match),
-      required: match.required,
-      reason: "selected-by-active-work-boundary",
-    });
-  }).sort((left, right) => compareCodePoints(
-    left.owner === "knowledge"
-      ? `knowledge\0${left.recordId}\0${left.recordRevision}\0${left.sourceId}`
-      : `source-anchor\0${left.sourceId}`,
-    right.owner === "knowledge"
-      ? `knowledge\0${right.recordId}\0${right.recordRevision}\0${right.sourceId}`
-      : `source-anchor\0${right.sourceId}`,
-  )));
 }
 
 function exactObjects(value: ControlJsonValue | undefined, label: string): readonly ControlJsonObject[] {
@@ -1047,6 +1045,69 @@ function proposition(value: ControlJsonObject): FoundationExecutionProjectionCor
   });
 }
 
+function disciplineSelection(
+  boundary: ControlRecordRevision,
+  knowledge: FoundationKnowledgeSet,
+): FoundationExecutionProjectionCore["disciplines"] {
+  const source = object(boundary.payload.disciplines, "Work Boundary Discipline selection");
+  const registryDigest = digest(source.registryDigest, "Work Boundary Discipline registry digest");
+  if (registryDigest !== knowledge.disciplineRegistry.digest) {
+    fail("discipline", "Work Boundary Discipline selection does not bind the exact admitted registry");
+  }
+  const workTypeIds = strings(source.workTypeIds, "Work Boundary Discipline work types");
+  const registeredWorkTypes = new Set(knowledge.disciplineRegistry.workTypes.map(({ id }) => id));
+  for (const id of workTypeIds) {
+    if (!registeredWorkTypes.has(id)) fail("discipline", `Work Boundary selects unknown Discipline work type ${id}`);
+  }
+  const records = exactObjects(source.records, "Work Boundary Discipline records").map((value) => {
+    const id = string(value.id, "Work Boundary Discipline identity");
+    const record = knowledge.index.currentByIdentity.get(id);
+    const revision = integer(value.revision, "Work Boundary Discipline revision");
+    const sourceDigest = digest(value.sourceDigest, "Work Boundary Discipline source digest");
+    const semanticDigest = digest(value.semanticDigest, "Work Boundary Discipline semantic digest");
+    if (
+      record === undefined || record.frontMatter.kind !== "discipline" ||
+      record.frontMatter.revision !== revision || record.sourceDigest !== sourceDigest ||
+      record.semanticDigest !== semanticDigest
+    ) fail("discipline", `Work Boundary Discipline ${id} does not bind one exact current adopted record`);
+    return Object.freeze({
+      id,
+      title: record.frontMatter.title,
+      summary: record.frontMatter.summary,
+      path: record.path,
+      revision,
+      sourceDigest,
+      semanticDigest,
+    });
+  });
+  records.sort((left, right) => compareCodePoints(left.id, right.id));
+  if (new Set(records.map(({ id }) => id)).size !== records.length) {
+    fail("discipline", "Work Boundary repeats one selected Discipline record");
+  }
+  const selectedKnowledgeDisciplines = exactObjects(
+    boundary.payload.knowledge,
+    "Work Boundary selected Knowledge",
+  ).filter((value) => String(value.id).startsWith("discipline."))
+    .map((value) => Object.freeze({
+      id: string(value.id, "Work Boundary selected Discipline identity"),
+      revision: integer(value.revision, "Work Boundary selected Discipline revision"),
+      sourceDigest: digest(value.sourceDigest, "Work Boundary selected Discipline source digest"),
+      semanticDigest: digest(value.semanticDigest, "Work Boundary selected Discipline semantic digest"),
+    })).sort((left, right) => compareCodePoints(left.id, right.id));
+  if (canonicalJson(selectedKnowledgeDisciplines) !== canonicalJson(records.map(({ id, revision, sourceDigest, semanticDigest }) =>
+    ({ id, revision, sourceDigest, semanticDigest })))) {
+    fail(
+      "discipline",
+      "Work Boundary Discipline records must be exactly the Discipline subset of selected Knowledge",
+    );
+  }
+  return Object.freeze({
+    registryDigest,
+    workTypeIds,
+    records: Object.freeze(records),
+  });
+}
+
 export function compileFoundationExecutionProjectionSubjectV7(input: Readonly<{
   snapshot: FoundationLoadedRepositorySnapshot;
   knowledge: FoundationKnowledgeSet;
@@ -1073,6 +1134,7 @@ export function compileFoundationExecutionProjectionSubjectV7(input: Readonly<{
     excluded: strings(direction.excluded, "Work Boundary excluded outcomes"),
     assumptions: strings(direction.assumptions, "Work Boundary assumptions"),
     falsifiers: strings(direction.falsifiers, "Work Boundary falsifiers"),
+    disciplines: disciplineSelection(input.boundary, input.knowledge),
     obligations: Object.freeze(exactObjects(mandate.obligations, "Work Boundary obligations").map(obligation)),
     requiredArtifacts: Object.freeze(exactObjects(mandate.artifacts, "Work Boundary artifacts").map(artifact)),
     effects: Object.freeze(exactObjects(mandate.effects, "Work Boundary effects").map(effect)),
@@ -1086,7 +1148,7 @@ export function compileFoundationExecutionProjectionSubjectV7(input: Readonly<{
       ? "The builder receives the exact admitted Candidate-write subset of the selected Capability Profile."
       : "The reviewer receives a read-only Candidate and no authority to change product or acceptance state.",
     prohibitedEffects: Object.freeze(sortUniqueCodePoints(input.role === "builder"
-      ? ["change canonical repository", "claim acceptance authority", "expand admitted Work Boundary"]
+      ? ["change canonical repository", "change adopted Discipline content or its Registry", "claim acceptance authority", "expand admitted Work Boundary"]
       : ["change Candidate", "change canonical repository", "claim acceptance authority"])),
     materialConditionPolicy: input.role === "builder"
       ? "Return a typed Material Condition when the admitted mandate cannot continue exactly."
@@ -1130,7 +1192,11 @@ export function compileFoundationExecutionProjectionSubjectV7(input: Readonly<{
     core,
     knowledgeRoots,
     implementationRoots,
-    sourceRoots: sourceRoots(input.boundary, input.knowledge, input.snapshot),
+    sourceRoots: compileExecutionProjectionSourceRoots({
+      boundary: input.boundary,
+      knowledge: input.knowledge,
+      snapshot: input.snapshot,
+    }),
     candidate: input.request.subject.candidate,
   });
   return Object.freeze({ ...unsigned, subjectDigest: digestCanonical(unsigned) });
@@ -1189,13 +1255,16 @@ function applicableWorkProducts(
 
 function applicableCheckReceipts(
   store: ControlRecordStore,
+  boundary: ControlRecordRevision,
   seal: ControlRecordRevision | null,
 ): readonly ControlRecordRevision[] {
   if (seal === null) return Object.freeze([]);
   return Object.freeze(allCurrentRevisions(store, ["check-receipt"])
     .filter((receipt) => {
-      const target = relationshipTarget(receipt, "checks-seal", "candidate-seal");
-      return receipt.payload.phase === "final" && target !== null && sameReference(target, seal);
+      const final = relationshipTarget(receipt, "checks-seal", "candidate-seal");
+      const baseline = relationshipTarget(receipt, "checks-boundary", "work-boundary");
+      return receipt.payload.phase === "final" && final !== null && sameReference(final, seal) ||
+        receipt.payload.phase === "baseline" && baseline !== null && sameReference(baseline, boundary);
     })
     .sort((left, right) => compareCodePoints(left.recordId, right.recordId)));
 }
@@ -1242,15 +1311,22 @@ export function compileFoundationAgentInvestmentV7(input: Readonly<{
   store: ControlRecordStore;
   activityId: string;
   operation: FoundationAgentOperationV7 | "delivery.prepare";
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: Readonly<Pick<FoundationProcessRuntimeConfigurationV7, "model" | "reasoning">>;
+  reservation?: WorkDelegationReservation;
 }>): AgentAttemptInvestment {
   const activityId = controlIdentifier(input.activityId, "Agent Investment activity identity");
-  const rationale: Readonly<Record<FoundationAgentOperationV7 | "delivery.prepare", string>> = Object.freeze({
-    "delivery.prepare": "fresh-reconnaissance",
-    "delivery.continue": "fresh-candidate-development",
-    "delivery.evaluate": "fresh-independent-review",
-    "delivery.revise": "fresh-boundary-revision-reconnaissance",
-    "delivery.reaffirm": "fresh-boundary-reaffirmation-reconnaissance",
+  const ordinary = selectFoundationAgentAttemptPolicyV7(input);
+  const reservation = input.reservation === undefined ? null : parseWorkDelegationReservation(input.reservation);
+  const slot = reservation?.slots.find(value => value.purpose === "agent");
+  if (reservation !== null && (reservation.activityId !== activityId || reservation.operation !== input.operation ||
+      slot === undefined || slot.purpose !== "agent" ||
+      slot.role !== (input.operation === "delivery.continue" ? "builder" : input.operation === "delivery.evaluate" ? "reviewer" : null))) {
+    fail("reserved-investment", "Agent Investment requires its exact Activity operation and reserved role");
+  }
+  const selection = slot === undefined || slot.purpose !== "agent" ? ordinary : Object.freeze({
+    model: slot.selection.model, reasoning: slot.selection.reasoning,
+    wallTimeMs: slot.selection.wallTimeMs, limits: slot.selection.limits,
+    rationale: slot.role === "builder" ? "delegated-candidate-development" : "delegated-independent-review",
   });
   const value = Object.freeze({
     id: `investment-${digestCanonical({
@@ -1260,18 +1336,7 @@ export function compileFoundationAgentInvestmentV7(input: Readonly<{
       activityId,
       operation: input.operation,
     }).slice("sha256:".length)}`,
-    model: input.configuration.model,
-    reasoning: input.configuration.reasoning,
-    wallTimeMs: PROVIDER_TIMEOUT_MS,
-    limits: Object.freeze({
-      tokens: null,
-      events: 10_000,
-      outputBytes: 1024 * 1024,
-      toolCalls: null,
-      processes: 64,
-      storageBytes: 256 * 1024 * 1024,
-    }),
-    rationale: rationale[input.operation],
+    ...selection,
   });
   return Object.freeze({ ...value, digest: digestCanonical(value) });
 }
@@ -1289,17 +1354,20 @@ export function compileFoundationAgentRoleSubjectV7(input: Readonly<{
   evidenceSetDigest: Sha256 | null;
   propositionSetDigest: Sha256 | null;
 }>): ControlJsonObject {
-  const semanticMarkdown = normalizedFounderMarkdown(input.semanticMarkdown);
+  const semanticMarkdown = normalizedDirectorMarkdown(input.semanticMarkdown);
   return Object.freeze({
     schema: "lifecycle.agent-role-subject.v3",
     operation: input.operation,
     role: input.role,
-    founderDirectionDigest: sha256Bytes(semanticMarkdown),
+    directorDirectionDigest: sha256Bytes(semanticMarkdown),
     repositoryEpochDigest: input.repositoryEpochDigest,
     projectionDigest: input.projection.manifest.digest,
     boundary: reference(input.boundary),
     candidate: reference(input.candidate),
-    seal: input.seal === null ? null : reference(input.seal),
+    // A prior evaluation remains Process context during correction. Builder
+    // execution binds the Candidate; its identity must survive that prior
+    // Seal becoming non-current when a successor is observed.
+    seal: input.role === "builder" || input.seal === null ? null : reference(input.seal),
     materialCondition: input.materialCondition === null ? null : reference(input.materialCondition),
     evidenceSetDigest: input.evidenceSetDigest,
     propositionSetDigest: input.propositionSetDigest,
@@ -1358,41 +1426,49 @@ function exactRetainedBrief(
   store: ControlRecordStore,
   support: FoundationAgentOperationSupportV7,
 ): ControlRecordRevision {
-  const brief = retainedRevision(store, support.brief, "founder-brief", "Retained Founder Brief");
-  const submission = object(brief.payload.submission, "Retained Founder Brief submission");
-  const normalized = normalizedFounderMarkdown(brief.semanticMarkdown);
+  const brief = retainedRevision(store, support.brief, "director-brief", "Retained Director Brief");
+  const submission = object(brief.payload.submission, "Retained Director Brief submission");
+  const normalized = normalizedDirectorMarkdown(brief.semanticMarkdown);
   const semanticDigest = sha256Bytes(normalized);
   const normalizedBytes = Buffer.byteLength(normalized, "utf8");
   const events = activityEvents(store, support.activityId);
-  const submitted = events.filter(({ eventKind }) => eventKind === "founder-brief-submitted");
+  const delegated = readWorkDelegationExecution({ store, activityId: support.activityId });
+  const submitted = delegated.reservation === null
+    ? events.filter(({ eventKind }) => eventKind === "director-brief-submitted")
+    : allJournalEvents(store).filter(event => event.eventKind === "director-brief-submitted" &&
+      event.subject?.recordId === brief.recordId && event.subject.revision === brief.revision && event.subject.digest === brief.digest);
+  const expectedScope = delegated.reservation === null ? { kind: "activity", activityId: support.activityId }
+    : { kind: "delegation", delegationId: delegated.reservation.delegation.id,
+      delegationRevision: delegated.reservation.delegation.revision, operation: support.operation };
   const started = events.filter(({ eventKind }) => eventKind === "activity-started");
   if (
-    brief.payload.schema !== "lifecycle.founder-brief-payload.v1" ||
+    brief.payload.schema !== "lifecycle.director-brief-payload.v2" ||
+    canonicalJson(brief.payload.scope) !== canonicalJson(expectedScope) ||
     brief.payload.inputProfile !== support.operation ||
     brief.semanticMarkdown !== normalized ||
     brief.payload.semanticMarkdownDigest !== semanticDigest ||
-    submission.rawDigest !== support.opening.founderSubmissionRawDigest ||
-    submission.rawByteLength !== support.opening.founderSubmissionRawByteLength ||
+    submission.rawDigest !== support.opening.directorSubmissionRawDigest ||
+    submission.rawByteLength !== support.opening.directorSubmissionRawByteLength ||
     submission.normalizedByteLength !== normalizedBytes ||
-    support.opening.founderSemanticDigest !== semanticDigest ||
-    support.opening.founderSemanticByteLength !== normalizedBytes ||
+    support.opening.directorSemanticDigest !== semanticDigest ||
+    support.opening.directorSemanticByteLength !== normalizedBytes ||
     brief.createdAt !== support.opening.submittedAt ||
-    brief.semanticAuthor.kind !== "founder" ||
-    brief.semanticAuthor.id !== support.opening.founderId ||
+    brief.semanticAuthor.kind !== "director" ||
+    brief.semanticAuthor.id !== support.opening.directorId ||
     submitted.length !== 1 || submitted[0]!.occurredAt !== support.opening.submittedAt ||
     submitted[0]!.subject === null ||
     submitted[0]!.subject.recordId !== brief.recordId ||
     submitted[0]!.subject.revision !== brief.revision ||
     submitted[0]!.subject.digest !== brief.digest ||
     submitted[0]!.actor.kind !== "runtime" ||
-    submitted[0]!.actor.id !== support.opening.runtimeId ||
+    submitted[0]!.actor.id !== (delegated.reservation === null ? support.opening.runtimeId : brief.producer.id) ||
     started.length !== 1 || started[0]!.occurredAt !== support.opening.startedAt ||
     started[0]!.subject !== null || started[0]!.payload.operation !== support.operation ||
     started[0]!.actor.kind !== "runtime" || started[0]!.actor.id !== support.opening.runtimeId
   ) {
     fail(
       "retained-brief",
-      "Retained Founder Brief normalized semantics and opening facts do not reproduce one activity",
+      "Retained Director Brief normalized semantics and opening facts do not reproduce one activity",
     );
   }
   // The raw submission is intentionally not retained. Its digest and byte
@@ -1446,7 +1522,7 @@ function retainedOperationSubjects(
   const currentSeal = state.subjects.seal === null
     ? null
     : exactCurrentRevision(store, state.subjects.seal, "candidate-seal", "Current Candidate Seal");
-  const materialCondition = state.subjects.materialCondition === null
+  const currentMaterialCondition = state.subjects.materialCondition === null
     ? null
     : exactCurrentRevision(
         store,
@@ -1468,12 +1544,25 @@ function retainedOperationSubjects(
     exactRelationship(seal, "seals", candidate, "Retained Candidate Seal");
     exactRelationship(seal, "governed-by", boundary, "Retained Candidate Seal");
   }
-  if (materialCondition !== null) {
-    exactRelationship(materialCondition, "freezes", candidate, "Current Material Condition");
-    exactRelationship(materialCondition, "governed-by", boundary, "Current Material Condition");
+  if (currentMaterialCondition !== null) {
+    exactRelationship(currentMaterialCondition, "freezes", currentCandidate, "Current Material Condition");
+    exactRelationship(currentMaterialCondition, "governed-by", boundary, "Current Material Condition");
   }
-  if (support.role === "builder" && (seal !== null || materialCondition !== null)) {
-    fail("retained-subject", "Builder recovery requires an unsealed, unpaused Candidate basis");
+  let materialCondition = currentMaterialCondition;
+  if (support.role !== "reconnaissance" && currentMaterialCondition !== null) {
+    const frozen = activityEvents(store, support.activityId)
+      .filter(({ eventKind }) => eventKind === "material-condition-frozen");
+    const subject = frozen[0]?.subject;
+    if (
+      frozen.length !== 1 || subject === null || subject === undefined ||
+      subject.recordId !== currentMaterialCondition.recordId ||
+      subject.revision !== currentMaterialCondition.revision ||
+      subject.digest !== currentMaterialCondition.digest
+    ) fail("retained-subject", "Current Material Condition was not frozen by the retained Agent activity");
+    // This Activity produced the current condition after its Attempt. Recovery
+    // finishes that retained obligation with the original unpaused input; the
+    // reducer and role finalizer keep the exact current condition authoritative.
+    materialCondition = null;
   }
   if (support.role === "reviewer" && (seal === null || materialCondition !== null)) {
     fail("retained-subject", "Reviewer recovery requires the exact sealed, unpaused Candidate basis");
@@ -1578,7 +1667,7 @@ function exactRetainedAttempt(
     digestCanonical(attemptInvestment) !== digestCanonical(support.opening.investment) ||
     provider.descriptorId !== FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.id ||
     provider.descriptorDigest !== FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.digest ||
-    provider.adapter !== "lifecycle.provider-adapter.v6" ||
+    provider.adapter !== "lifecycle.provider-adapter.v7" ||
     provider.executableIdentityClass !==
       FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.provider.executableIdentityClass ||
     support.coordinate === null || provider.installedIdentityDigest !== support.coordinate.executableIdentity ||
@@ -1590,7 +1679,7 @@ function exactRetainedAttempt(
       support.execution.backendProfile.implementationDigest ||
     typeof image.imageId !== "string" || image.imageId.length === 0 ||
     !/^sha256:[a-f0-9]{64}$/u.test(String(image.imageDigest)) ||
-    inputSet.profileId !== "lifecycle.execution-input-set.v1" ||
+    inputSet.profileId !== "lifecycle.execution-input-set.v2" ||
     !/^sha256:[a-f0-9]{64}$/u.test(String(inputSet.digest)) ||
     Object.keys(executionPolicy).sort().join("\0") !== [
       "cancellationPolicyDigest",
@@ -1620,7 +1709,7 @@ function exactRetainedAttempt(
   if (attempt.relationships.length !== expectedRelationshipCount) {
     fail("retained-attempt", "Retained Agent Attempt has an unexpected relationship set");
   }
-  assertAttemptRelationship(attempt, "uses-brief", "founder-brief", brief);
+  assertAttemptRelationship(attempt, "uses-brief", "director-brief", brief);
   assertAttemptRelationship(attempt, "uses-boundary", "work-boundary", context.boundary);
   assertAttemptRelationship(attempt, "uses-candidate", "candidate-revision", context.candidate);
   if (context.attemptSeal !== null) {
@@ -1636,15 +1725,29 @@ async function compileExplicitAgentOperationContextV7(
   const activityId = controlIdentifier(input.activityId, "Agent operation activity identity");
   const operation = input.operation;
   const role = roleFor(operation);
-  const semanticMarkdown = normalizedFounderMarkdown(input.semanticMarkdown);
+  const semanticMarkdown = normalizedDirectorMarkdown(input.semanticMarkdown);
   const subjects = input.subjects;
   const owners = resolvedOwners(options);
-  const repository = await admittedRepositoryObservation(
-    input.target,
-    input.store,
-    subjects.boundary,
-    owners,
-  );
+  const resolutionSnapshot = role === "reconnaissance" && subjects.materialCondition !== null
+    ? resolveWorkBoundaryResolutionSnapshotV1({ store: input.store, boundary: subjects.boundary, materialCondition: subjects.materialCondition })
+    : null;
+  const integrationResolution = resolutionSnapshot !== null &&
+    resolutionSnapshot.digest !== admittedRepositoryBasis(subjects.boundary).repositorySnapshotDigest;
+  const repository: RepositoryObservation = integrationResolution
+    ? await (async () => {
+        const retained = await owners.openDeliveryGitSnapshot({ machineHome: input.machineHome, repository: input.target,
+          identity: input.store.identity, snapshot: resolutionSnapshot! });
+        const { snapshot: _snapshot, ...epoch } = retained.loaded;
+        return Object.freeze({ epoch: Object.freeze(epoch), snapshot: retained.loaded,
+          knowledgeResult: Object.freeze({ observation: retained.knowledge, knowledgeSet: retained.knowledge,
+            validation: retained.knowledgeValidation }) });
+      })()
+    : await admittedRepositoryObservation(input.target, input.machineHome, input.store, subjects.boundary, owners);
+  // Context adoption is proposed by this Attempt; its existing grant remains
+  // the admitted Boundary's exact Capability even when P removes that profile.
+  const capabilityRepository = integrationResolution
+    ? await admittedRepositoryObservation(input.target, input.machineHome, input.store, subjects.boundary, owners)
+    : repository;
   let snapshot: FoundationLoadedRepositorySnapshot | null = null;
   let repositoryValidation: FoundationValidationResult | null = null;
   let knowledge: FoundationKnowledgeSet | null =
@@ -1664,7 +1767,12 @@ async function compileExplicitAgentOperationContextV7(
       boundary: subjects.boundary,
       candidate: subjects.candidate,
       materialCondition: subjects.materialCondition,
-      founderRationale: semanticMarkdown,
+      directorRationale: semanticMarkdown,
+      ...(integrationResolution ? { proposedCapabilityProfile: (() => {
+        const profile = repository.epoch.contract.capabilityProfiles[repository.epoch.contract.defaults.capabilityProfileId];
+        if (profile === undefined) fail("capability", "Integration context has no selected default Capability Profile");
+        return Object.freeze({ id: profile.id, digest: profile.digest });
+      })() } : {}),
     });
     request = compileFoundationOrientationProjectionRequestV7({
       epoch: repository.epoch,
@@ -1678,6 +1786,8 @@ async function compileExplicitAgentOperationContextV7(
       ...(input.observedAt === undefined ? {} : { observedAt: input.observedAt }),
     }));
     if (compiled.projection === null || !compiled.validation.complete || !compiled.validation.valid) {
+      const mandatoryRefusal = foundationMandatoryProjectionRefusalV1(compiled);
+      if (mandatoryRefusal !== null) throw mandatoryRefusal.error;
       fail("projection", "Orientation Projection did not compile completely and validly", {
         validationDigest: compiled.validation.digest,
         diagnostics: compiled.validation.diagnostics.map(({ code }) => code),
@@ -1694,6 +1804,20 @@ async function compileExplicitAgentOperationContextV7(
     snapshot = basis.snapshot;
     repositoryValidation = basis.repositoryValidation;
     knowledge = basis.knowledge;
+    const integration = resolveCandidateIntegrationProvenanceV1({ store: input.store, candidate: subjects.candidate });
+    const latestAssessment = input.store.state().subjects.integrationAssessment;
+    const correction = role !== "builder" ? null : resolveFailedIntegrationCorrectionV1({
+      store: input.store, candidate: subjects.candidate, boundary: subjects.boundary,
+      assessment: latestAssessment === null ? null : { kind: "integration-assessment", ...latestAssessment },
+    });
+    const correctionParent = correction === null ? null : await owners.openDeliveryGitSnapshot({
+      machineHome: input.machineHome, repository: input.target, identity: input.store.identity,
+      snapshot: correction.canonicalParent,
+    });
+    const integrationParent = role !== "reviewer" || integration === null ? null : await owners.openDeliveryGitSnapshot({
+      machineHome: input.machineHome, repository: input.target, identity: input.store.identity,
+      snapshot: integration.canonicalParent,
+    });
     const executionRequest = compileFoundationExecutionProjectionRequestV7({
       snapshot: basis.snapshot,
       repositoryValidation: basis.repositoryValidation,
@@ -1702,6 +1826,7 @@ async function compileExplicitAgentOperationContextV7(
       candidate: subjects.candidate,
       seal: role === "reviewer" ? subjects.seal : null,
       role,
+      integration,
     });
     request = executionRequest;
     const executionSubject = compileFoundationExecutionProjectionSubjectV7({
@@ -1713,7 +1838,7 @@ async function compileExplicitAgentOperationContextV7(
     });
     subject = executionSubject;
     const checkReceipts = role === "reviewer"
-      ? applicableCheckReceipts(input.store, subjects.seal)
+      ? applicableCheckReceipts(input.store, subjects.boundary, subjects.seal)
       : Object.freeze([]);
     const agentWorkProducts = applicableWorkProducts(
       input.store,
@@ -1723,6 +1848,7 @@ async function compileExplicitAgentOperationContextV7(
     const compile = async (
       candidateObservation: FoundationReviewerProjectionObservation | null,
       candidateObjectRepository: string | null,
+      builderRepair: FoundationBuilderRepairRepositoryV1 | null = null,
     ) => await owners.compileKnowledgeProjection(Object.freeze({
         request: executionRequest,
         repository: basis.snapshot,
@@ -1732,10 +1858,21 @@ async function compileExplicitAgentOperationContextV7(
         workBoundary: subjects.boundary,
         candidateObservation,
         candidateObjectRepository,
+        builderRepair,
         checkReceipts,
         agentWorkProducts,
+        ...(correction === null || correctionParent === null ? {} : {
+          failedIntegration: { correction, parent: { loaded: correctionParent.loaded, knowledge: correctionParent.knowledge } },
+        }),
+        ...(integrationParent === null || integration === null ? {} : {
+          integrationParent: { loaded: integrationParent.loaded, knowledge: integrationParent.knowledge },
+          integrationRecords: { assessment: integration.assessment, sourceCandidate: integration.sourceCandidate },
+        }),
         ...(input.observedAt === undefined ? {} : { observedAt: input.observedAt }),
       }));
+    const repair = role !== "builder" ? null : await selectFoundationBuilderRepairOutputV1({
+      store: input.store, boundary: subjects.boundary, candidate: subjects.candidate,
+    });
     const compiled = role === "reviewer"
       ? await owners.withReviewerCandidateRepository({
           machineHome: input.machineHome,
@@ -1763,8 +1900,12 @@ async function compileExplicitAgentOperationContextV7(
           }
           return await compile(scopedObservation, candidateObjectRepository);
         })
-      : await compile(null, null);
+      : repair === null ? await compile(null, null) : await withFoundationBuilderRepairRepositoryV1({
+          machineHome: input.machineHome, store: input.store, repair,
+        }, async (selected) => await compile(null, null, selected));
     if (compiled.projection === null || !compiled.validation.complete || !compiled.validation.valid) {
+      const mandatoryRefusal = foundationMandatoryProjectionRefusalV1(compiled);
+      if (mandatoryRefusal !== null) throw mandatoryRefusal.error;
       fail("projection", "Execution Projection did not compile completely and validly", {
         validationDigest: compiled.validation.digest,
         diagnostics: compiled.validation.diagnostics.map(({ code }) => code),
@@ -1787,7 +1928,7 @@ async function compileExplicitAgentOperationContextV7(
     : null;
   const capability = materializeFoundationAgentCapabilityV7({
     boundary: subjects.boundary,
-    repository: repository.epoch,
+    repository: capabilityRepository.epoch,
     role,
   });
   const roleSubject = compileFoundationAgentRoleSubjectV7({
@@ -1809,34 +1950,79 @@ async function compileExplicitAgentOperationContextV7(
     roleSubjectDigest: digestCanonical(roleSubject),
     rootTokenSetDigest: FOUNDATION_AGENT_ROOT_TOKEN_SET_DIGEST_V3,
     capability: capability.materialized,
-    founderSemanticMarkdown: semanticMarkdown,
+    directorSemanticMarkdown: semanticMarkdown,
+    propositionSet: propositionSet?.subject ?? null,
   });
   const investment = input.investment;
-  return Object.freeze({
+  const common: FoundationAgentOperationContextCommonV7 = Object.freeze({
     activityId,
-    operation,
-    role,
     semanticMarkdown,
     boundary: subjects.boundary,
     candidate: subjects.candidate,
-    attemptSeal: role === "reviewer" ? subjects.seal : null,
-    seal: subjects.seal,
-    materialCondition: subjects.materialCondition,
     epoch: repository.epoch,
-    snapshot,
-    repositoryValidation,
-    knowledge,
-    request,
-    subject,
     projection,
     roleSubject,
     capabilityProfile: capability.profile,
     providerCapability: capability.materialized,
     providerInput,
-    evidenceSet,
-    propositionSet,
     investment,
     rootTokenSetDigest: FOUNDATION_AGENT_ROOT_TOKEN_SET_DIGEST_V3,
+  });
+  if (operation === "delivery.revise" || operation === "delivery.reaffirm") {
+    if (request.class !== "orientation" || subjects.materialCondition === null) {
+      fail("operation-coordinate", "Boundary resolution requires its Orientation and frozen condition");
+    }
+    return Object.freeze({
+      ...common,
+      operation,
+      role: "reconnaissance",
+      attemptSeal: null,
+      seal: subjects.seal,
+      materialCondition: subjects.materialCondition,
+      snapshot: null,
+      repositoryValidation: null,
+      knowledge,
+      request,
+      subject: null,
+      evidenceSet: null,
+      propositionSet: null,
+    });
+  }
+  if (
+    snapshot === null || repositoryValidation === null || knowledge === null ||
+    request.class !== "execution" || subject === null || evidenceSet === null ||
+    subjects.materialCondition !== null
+  ) fail("operation-coordinate", "Execution requires its complete admitted repository and subject basis");
+  const execution: FoundationExecutionOperationContextV7 = Object.freeze({
+    ...common,
+    snapshot,
+    repositoryValidation,
+    knowledge,
+    request,
+    subject,
+    evidenceSet,
+    materialCondition: null,
+  });
+  if (operation === "delivery.continue") {
+    return Object.freeze({
+      ...execution,
+      operation,
+      role: "builder",
+      attemptSeal: null,
+      seal: subjects.seal,
+      propositionSet: null,
+    });
+  }
+  if (subjects.seal === null || propositionSet === null) {
+    fail("operation-coordinate", "Reviewer context requires the exact evaluation Seal and propositions");
+  }
+  return Object.freeze({
+    ...execution,
+    operation,
+    role: "reviewer",
+    attemptSeal: subjects.seal,
+    seal: subjects.seal,
+    propositionSet,
   });
 }
 
@@ -1856,6 +2042,7 @@ export async function compileFoundationFreshAgentOperationContextV7(
     activityId,
     operation: input.operation,
     configuration: input.configuration,
+    ...(input.reservation === undefined ? {} : { reservation: input.reservation }),
   });
   return compileExplicitAgentOperationContextV7({
     target: input.target,
@@ -1875,7 +2062,7 @@ export async function compileFoundationFreshAgentOperationContextV7(
 /**
  * Compile the reviewer input after Seal and final-Check preparation but before
  * the same evaluation Activity is promoted to an Agent execution plan. The
- * immutable opening supplies Founder semantics and Investment, so restart does
+ * immutable opening supplies Director semantics and Investment, so restart does
  * not sample installed model or reasoning defaults again.
  */
 export async function compileFoundationUnpromotedReviewAgentOperationContextV7(
@@ -1914,10 +2101,11 @@ export async function compileFoundationUnpromotedReviewAgentOperationContextV7(
     ...(input.observedAt === undefined ? {} : { observedAt: input.observedAt }),
     excludedWorkProductActivityId: activityId,
   }, options);
+  if (context.role !== "reviewer") {
+    fail("unpromoted-review", "Evaluation compilation must establish one valid reviewer context");
+  }
   return Object.freeze({
     ...context,
-    operation: "delivery.evaluate",
-    role: "reviewer",
     configuration: Object.freeze({
       ...input.configuration,
       model: context.investment.model,
@@ -1926,7 +2114,7 @@ export async function compileFoundationUnpromotedReviewAgentOperationContextV7(
     opening: Object.freeze({
       agentId: support.opening.agentId,
       runtimeId: support.opening.runtimeId,
-      founderId: support.opening.founderId,
+      directorId: support.opening.directorId,
       submittedAt: support.opening.submittedAt,
       startedAt: support.opening.startedAt,
     }),
@@ -1987,9 +2175,12 @@ export async function compileFoundationRetainedAgentOperationContextV7(
         diagnostics: repositoryValidation.diagnostics.map(({ code }) => code),
       });
     }
-    const admitted = admittedRepositoryBasis(context.boundary);
+    if (context.materialCondition === null) fail("retained-finalization-basis", "Boundary resolution has no retained Material Condition");
+    const selected = resolveWorkBoundaryResolutionSnapshotV1({
+      store: input.store, boundary: context.boundary, materialCondition: context.materialCondition,
+    });
     if (
-      snapshot.snapshot.digest !== admitted.repositorySnapshotDigest ||
+      snapshot.snapshot.digest !== selected.digest ||
       snapshot.snapshot.targetId !== input.store.identity.targetId ||
       snapshot.epoch.commit !== context.epoch.epoch.commit ||
       snapshot.epoch.tree !== context.epoch.epoch.tree ||
@@ -2016,7 +2207,7 @@ export async function compileFoundationRetainedAgentOperationContextV7(
     opening: Object.freeze({
       agentId: support.opening.agentId,
       runtimeId: support.opening.runtimeId,
-      founderId: support.opening.founderId,
+      directorId: support.opening.directorId,
       submittedAt: support.opening.submittedAt,
       startedAt: support.opening.startedAt,
       attemptCreatedAt: support.plan.attemptCreatedAt,

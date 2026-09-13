@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:discipline-registry:v1",
+  "title": "Lifecycle Discipline Registry v1",
+  "description": "Tracked target configuration for adopted Discipline records and the work types that make them discoverable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "packs", "adoptions", "workTypes", "digest"],
+  "properties": {
+    "schema": { "const": "lifecycle.discipline-registry.v1" },
+    "packs": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/pack" }
+    },
+    "adoptions": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": { "$ref": "#/$defs/adoption" }
+    },
+    "workTypes": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/workType" }
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+  },
+  "$defs": {
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "publisher", "source", "revision", "manifestDigest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "publisher": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId" },
+        "source": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "adoption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "path", "sourceDigest", "semanticDigest", "packId"],
+      "properties": {
+        "id": {
+          "allOf": [
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId" },
+            { "pattern": "^discipline\\." }
+          ]
+        },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "path": {
+          "allOf": [
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
+            { "pattern": "^records/disciplines/.+\\.md$" }
+          ]
+        },
+        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "packId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
+      }
+    },
+    "workType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "description", "disciplineIds"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "title": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
+        "description": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "disciplineIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              { "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId" },
+              { "pattern": "^discipline\\." }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@ import {
   type EvidencePacketDiagnostic,
   type EvidencePacketObservation,
   retainEvidencePacket,
+  assessEvidencePacket,
 } from "../control/evidence-packet.js";
 import { retainMaterialCondition } from "../control/material-condition.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
@@ -41,7 +42,6 @@ export type FoundationEvaluationPhysicalObservationV7 = Readonly<{
   artifacts: readonly EvidencePacketArtifactObservation[];
   descriptionCoverage: readonly EvidencePacketDescriptionObservation[];
   reviewerSubjectDisposition: "exact-read-only" | "mutated" | "indeterminate";
-  nonReadyDisposition?: "correctable" | "no-ship-recommended";
   diagnostics?: readonly EvidencePacketDiagnostic[];
 }>;
 
@@ -290,9 +290,6 @@ function completeObservation(
     artifacts: Object.freeze([...physical.artifacts]),
     descriptionCoverage: Object.freeze([...physical.descriptionCoverage]),
     reviewerSubjectDisposition: physical.reviewerSubjectDisposition,
-    ...(physical.nonReadyDisposition === undefined
-      ? {}
-      : { nonReadyDisposition: physical.nonReadyDisposition }),
     ...(physical.diagnostics === undefined
       ? {}
       : { diagnostics: Object.freeze([...physical.diagnostics]) }),
@@ -544,6 +541,11 @@ export async function finalizeDeliveryEvaluationV7(
     if (checkpoint.conditionRequired !== required) {
       fail("checkpoint", "Evaluation checkpoint changed its Material Condition requirement");
     }
+  }
+
+  const assessment = assessEvidencePacket({store:input.store,activityId:input.activityId,observation:checkpoint.observation});
+  if (assessment.requiresMandateResolution !== required) {
+    fail("condition", "Reviewer Condition proposal does not reproduce the semantic assessment's required response");
   }
 
   let condition = existingCondition;

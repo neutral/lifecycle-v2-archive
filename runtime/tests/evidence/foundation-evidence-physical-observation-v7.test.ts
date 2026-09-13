@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   chmod,
@@ -34,6 +35,7 @@ import {
   FOUNDATION_SPECIFICATION_REVISION,
   FOUNDATION_WORK_BOUNDARY_PAYLOAD_SCHEMA,
 } from "../../src/foundation/constants.js";
+import { foundationIntegrationValidationFactsDigestV1 } from "../../src/foundation/control/integration-assessment.js";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
 import type { ControlRecordStore } from "../../src/foundation/control/store.js";
 import {
@@ -45,6 +47,7 @@ import {
 import {
   createFoundationEvaluationEvidenceObservationOwnerV7,
   FOUNDATION_EVIDENCE_PHYSICAL_OBSERVER_V7,
+  observeFoundationAcceptanceEvidenceV7,
   observeFoundationEvaluationEvidenceV7,
   observeFoundationReviewerProjectionCandidateV7,
   withFoundationReviewerProjectionCandidateRepositoryV7,
@@ -52,6 +55,7 @@ import {
 import { FoundationError } from "../../src/foundation/error.js";
 import type { FoundationEvaluationObservationContextV7 } from "../../src/foundation/process/evaluation-finalization-v7.js";
 import { loadKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
+import { parseKnowledgeRecord } from "../../src/foundation/knowledge/records.js";
 import { git, gitBytes } from "../../src/foundation/repository/git.js";
 import { initializeRepository } from "../../src/foundation/repository/initialize.js";
 import {
@@ -83,7 +87,7 @@ async function write(root: string, path: string, contents: string): Promise<void
 
 function description(): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.evidence-observer",
     title: "Evidence observer fixture",
@@ -91,7 +95,7 @@ function description(): string {
     revision: 1,
     supersedes: null,
     summary: "Own the governed implementation used by physical Evidence tests.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -145,6 +149,7 @@ function revision(input: Readonly<{
 
 type Fixture = Readonly<{
   target: string;
+  authorityHome: string;
   machineHome: string;
   carrierArtifactRoot: string;
   carrierManifestBytes: Uint8Array;
@@ -161,6 +166,9 @@ async function fixture(options: Readonly<{
   directoryArtifact?: boolean;
   candidateChange?: "modified" | "deleted";
   readmissionRebind?: boolean;
+  integrated?: boolean;
+  descriptionSuccessor?: boolean;
+  descriptionArtifactRole?: "description" | "blueprint";
 }> = {}): Promise<Fixture> {
   const target = await mkdtemp(join(tmpdir(), "lifecycle-evidence-observer-target-"));
   const authorityHome = await mkdtemp(join(tmpdir(), "lifecycle-evidence-observer-authority-"));
@@ -175,9 +183,9 @@ async function fixture(options: Readonly<{
   await git(target, ["commit", "-m", "Initialize target"]);
   await initializeRepository(target, {
     targetId: "evidence-observer-target",
-    founderPrincipal: "founder",
+    directorPrincipal: "director",
     home: authorityHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: PUBLICATION_DIGEST,
     implementationRoots: ["src"],
     stage: true,
@@ -214,6 +222,16 @@ async function fixture(options: Readonly<{
   } else {
     await writeFile(join(candidateSourceRoot, "src/current.ts"), "export const current = 2;\n", "utf8");
   }
+  if (options.descriptionSuccessor) {
+    const priorText = description().replace('"status": "current"', '"status": "superseded"');
+    const prior = parseKnowledgeRecord({ path: "src/_source.desc.md", mode: "100644", objectId: "a".repeat(40),
+      bytes: Buffer.from(priorText), contract: loaded.contract });
+    const fields = { ...JSON.parse(description().split("---\n")[1]!), revision: 2, supersedes: {
+      id: prior.frontMatter.id, revision: 1, sourceDigest: prior.sourceDigest, semanticDigest: prior.semanticDigest } };
+    const successor = description().replace(description().split("---\n")[1]!, `${JSON.stringify(fields, null, 2)}\n`);
+    await write(candidateSourceRoot, "src/_source.desc.md", priorText);
+    await write(candidateSourceRoot, "src/_source-r2.desc.md", successor);
+  }
   await git(candidateSourceRoot, ["add", "-A", "--", "."]);
   const rootTree = (await git(candidateSourceRoot, ["write-tree"])).stdout.trim();
   const carrier = await publishCandidateRevisionCarrierFromGitTree({
@@ -243,7 +261,7 @@ async function fixture(options: Readonly<{
     kind: "work-boundary",
     payload: Object.freeze({
       schema: FOUNDATION_WORK_BOUNDARY_PAYLOAD_SCHEMA,
-      profileId: "lifecycle.work-boundary.foundation-v1",
+      profileId: "lifecycle.work-boundary.foundation-v3",
       targetId: loaded.contract.targetId,
       basis: Object.freeze({
         specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -265,7 +283,7 @@ async function fixture(options: Readonly<{
           Object.freeze({
             id: "artifact.description",
             path: "src/_source.desc.md",
-            role: "description",
+            role: options.descriptionArtifactRole ?? "description",
             mustChange: false,
             obligationIds: Object.freeze(["obligation.description"]),
           }),
@@ -287,9 +305,24 @@ async function fixture(options: Readonly<{
       }),
     }),
   });
+  const initialCarrier = options.readmissionRebind ? await publishCandidateRevisionCarrierFromGitTree({
+    machineHome, repository: target, rootTree: loaded.epoch.tree,
+  }) : null;
+  const initialObserved = initialCarrier === null ? null : await observeCandidateRevisionCarrierState({
+    machineHome, manifestBytes: initialCarrier.manifestBytes, admitted, predecessor: null,
+  });
+  const initialCandidateRevision = initialCarrier === null || initialObserved === null ? null : revision({
+    id: "candidate-revision-evidence-observer", kind: "candidate-revision",
+    payload: Object.freeze({ ...validDeliveryControlPayload("candidate-revision"), observation: "initialization",
+      candidateBaseCommit: loaded.epoch.commit,
+      carrierManifest: Object.freeze({ ...carrierManifest, digest: sha256Bytes(initialCarrier.manifestBytes), byteLength: initialCarrier.manifestBytes.byteLength }),
+      state: initialObserved.state as unknown as ControlJsonObject }),
+    relationships: Object.freeze([relationship("governed-by", boundary)]),
+  });
   const predecessorCandidateRevision = revision({
     id: "candidate-revision-evidence-observer",
     kind: "candidate-revision",
+    revision: initialCandidateRevision === null ? 1 : 2,
     payload: Object.freeze({
       ...validDeliveryControlPayload("candidate-revision"),
       observation: options.readmissionRebind ? "builder-successor" : "initialization",
@@ -297,23 +330,44 @@ async function fixture(options: Readonly<{
       carrierManifest,
       state: observed.state as unknown as ControlJsonObject,
     }),
-    relationships: Object.freeze([relationship("governed-by", boundary)]),
+    relationships: Object.freeze([relationship("governed-by", boundary),
+      ...(initialCandidateRevision === null ? [] : [relationship("revises", initialCandidateRevision)])]),
+  });
+  const integratedObservation = options.integrated ? await observeCandidateRevisionCarrierState({
+    machineHome,
+    manifestBytes: carrier.manifestBytes,
+    admitted,
+    predecessor: { candidateDigest: observed.state.candidateDigest },
+  }) : null;
+  const integrationAssessment = integratedObservation !== null ? revision({
+    id:"integration.evidence-observation",kind:"integration-assessment",
+    payload:{...validDeliveryControlPayload("integration-assessment"),canonicalParent:snapshot.snapshot as unknown as ControlJsonObject,
+      validation:{complete:true,valid:true,diagnosticCodes:[],factsDigest:foundationIntegrationValidationFactsDigestV1({
+        manifestFileDigest:carrierManifest.digest,state:integratedObservation.state,observer:predecessorCandidateRevision.payload.observer as ControlJsonObject,
+      })}},
+    relationships:[relationship("governed-by",boundary),relationship("integrates",predecessorCandidateRevision)],
+  }) : null;
+  const integratedCandidate = integrationAssessment === null ? predecessorCandidateRevision : revision({
+    id:predecessorCandidateRevision.recordId,kind:"candidate-revision",revision:predecessorCandidateRevision.revision+1,
+    payload:{...predecessorCandidateRevision.payload,observation:"integration-successor",
+      state:integratedObservation!.state as unknown as ControlJsonObject},
+    relationships:[relationship("governed-by",boundary),relationship("revises",predecessorCandidateRevision),relationship("integrated-from",integrationAssessment)],
   });
   const candidateRevision = options.readmissionRebind
     ? revision({
-        id: predecessorCandidateRevision.recordId,
+        id: integratedCandidate.recordId,
         kind: "candidate-revision",
-        revision: predecessorCandidateRevision.revision + 1,
+        revision: integratedCandidate.revision + 1,
         payload: Object.freeze({
-          ...predecessorCandidateRevision.payload,
+          ...integratedCandidate.payload,
           observation: "readmission-rebind",
         }),
         relationships: Object.freeze([
           relationship("governed-by", boundary),
-          relationship("revises", predecessorCandidateRevision),
+          relationship("revises", integratedCandidate),
         ]),
       })
-    : predecessorCandidateRevision;
+    : integratedCandidate;
   const seal = revision({
     id: "candidate-seal-evidence-observer",
     kind: "candidate-seal",
@@ -345,7 +399,7 @@ async function fixture(options: Readonly<{
   const workProduct = revision({
     id: "agent-work-product-evidence-observer",
     kind: "agent-work-product",
-    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v2" }),
+    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v5" }),
   });
   const receipt = revision({
     id: "execution-receipt-evidence-observer",
@@ -358,7 +412,9 @@ async function fixture(options: Readonly<{
   });
   const retained = new Map([
     boundary,
+    ...(initialCandidateRevision === null ? [] : [initialCandidateRevision]),
     predecessorCandidateRevision,
+    ...(integrationAssessment === null ? [] : [integrationAssessment,integratedCandidate]),
     candidateRevision,
     seal,
     attempt,
@@ -396,6 +452,7 @@ async function fixture(options: Readonly<{
         candidateCondition: "under-evaluation" as const,
         activities: Object.freeze([]),
         subjects: Object.freeze({
+          integrationAssessment: null,
           proposedBoundary: null,
           activeBoundary: Object.freeze(referenceValue(boundary)),
           candidate: Object.freeze(referenceValue(candidateRevision)),
@@ -404,6 +461,7 @@ async function fixture(options: Readonly<{
           evidence: null,
           closure: null,
         }),
+        delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
         journal: Object.freeze({ eventCount: 1, headDigest: journalHead }),
         eligibleOperations: Object.freeze([]),
       });
@@ -421,6 +479,7 @@ async function fixture(options: Readonly<{
   });
   return Object.freeze({
     target,
+    authorityHome,
     machineHome,
     carrierArtifactRoot: dirname(openedCarrier.artifactPath),
     carrierManifestBytes: Uint8Array.from(carrier.manifestBytes),
@@ -614,13 +673,41 @@ test("reviewer Projection accepts a readmission rebind's historical predecessor 
 });
 
 test("Evidence observation derives deterministic artifact, Description, and read-only reviewer facts", async () => {
-  const value = await fixture();
+  const value = await fixture({integrated:true});
   const owner = createFoundationEvaluationEvidenceObservationOwnerV7({
     machineHome: value.machineHome,
     targetRepository: value.target,
     contract: value.contract,
   });
   const observed = await owner(value.context);
+  const bound = await observeFoundationAcceptanceEvidenceV7({
+    store: value.store,
+    boundary: value.boundary,
+    candidate: value.candidateRevision,
+    seal: value.seal,
+    machineHome: value.machineHome,
+    targetRepository: value.target,
+    contract: value.contract,
+  });
+  const assessmentTarget = value.candidateRevision.relationships.find(({relation}) => relation === "integrated-from")!.target;
+  const assessment = value.store.getRevision(assessmentTarget.id,assessmentTarget.revision)!;
+  const parent = assessment.payload.canonicalParent as ControlJsonObject;
+  assert.deepEqual(bound.subject, {
+    boundary: referenceValue(value.boundary),
+    candidate: referenceValue(value.candidateRevision),
+    seal: referenceValue(value.seal),
+    integration:referenceValue(assessment),
+    parent:{commit:parent.commit,tree:parent.tree,snapshotDigest:parent.digest},
+  });
+  assert.deepEqual(bound.facts, observed);
+  await assert.rejects(() => observeFoundationAcceptanceEvidenceV7({
+    ...value.context,
+    candidate: { ...value.candidateRevision, digest: sha256Bytes("different-Candidate") },
+    machineHome: value.machineHome,
+    targetRepository: value.target,
+    contract: value.contract,
+  }), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.control-evidence-packet.observation-subject");
   assert.equal(observed.reviewerSubjectDisposition, "exact-read-only");
   assert.equal(observed.diagnostics, undefined);
   assert.deepEqual(observed.artifacts.map(({ artifactId }) => artifactId), [
@@ -637,7 +724,6 @@ test("Evidence observation derives deterministic artifact, Description, and read
     schemaValidation: "valid",
     semanticValidation: "valid",
     limitationIds: [],
-    state: "satisfied",
   });
   assert.deepEqual(observed.artifacts[1], {
     artifactId: "artifact.source",
@@ -649,7 +735,6 @@ test("Evidence observation derives deterministic artifact, Description, and read
     schemaValidation: "not-required",
     semanticValidation: "not-required",
     limitationIds: [],
-    state: "satisfied",
   });
   assert.equal(observed.descriptionCoverage.length, 1);
   assert.deepEqual(observed.descriptionCoverage[0], {
@@ -661,10 +746,33 @@ test("Evidence observation derives deterministic artifact, Description, and read
     descriptionChange: "unchanged",
     exclusionChange: "none",
     obligationIds: ["obligation.source"],
-    state: "satisfied",
   });
   assert.match(observed.descriptionCoverage[0]!.selector!, /^description-selector\.[a-f0-9]{64}$/u);
   assert.match(FOUNDATION_EVIDENCE_PHYSICAL_OBSERVER_V7.implementationDigest, /^sha256:[a-f0-9]{64}$/u);
+});
+
+test("Knowledge Artifact validity includes exact Superseded bytes while governing Description coverage stays Current", async () => {
+  for (const role of ["description", "blueprint"] as const) {
+    const value = await fixture({ descriptionSuccessor: true, descriptionArtifactRole: role });
+    try {
+      const observed = await observeFoundationEvaluationEvidenceV7({ ...value.context,
+        machineHome: value.machineHome, targetRepository: value.target, contract: value.contract });
+      const artifact = observed.artifacts.find(({ artifactId }) => artifactId === "artifact.description")!;
+      assert.equal(artifact.contentDigest, sha256Bytes(description().replace('"status": "current"', '"status": "superseded"')));
+      assert.equal(artifact.schemaValidation, "valid");
+      assert.equal(artifact.semanticValidation, role === "description" ? "valid" : "invalid");
+      assert.equal(observed.descriptionCoverage[0]!.ownership, "exact");
+      const retained = await observeFoundationReviewerProjectionCandidateV7({ store: value.store, boundary: value.boundary,
+        candidateRevision: value.candidateRevision, seal: value.seal, machineHome: value.machineHome,
+        targetRepository: value.target, contract: value.contract });
+      assert.equal(retained.knowledge.records.find(({ path }) => path === "src/_source.desc.md")!.frontMatter.status, "superseded");
+      const governing = retained.knowledge.currentRecords.find(({ frontMatter }) => frontMatter.kind === "description")!;
+      assert.equal(governing.path, "src/_source-r2.desc.md");
+      assert.equal(governing.frontMatter.revision, 2);
+    } finally {
+      await Promise.all([value.target, value.machineHome, value.authorityHome].map((path) => rm(path, { recursive: true, force: true })));
+    }
+  }
 });
 
 test("directory artifacts bind an exact manifest, descendant change, and Description obligations", async () => {
@@ -697,7 +805,6 @@ test("directory artifacts bind an exact manifest, descendant change, and Descrip
     schemaValidation: "not-required",
     semanticValidation: "not-required",
     limitationIds: [],
-    state: "satisfied",
   });
   assert.deepEqual(observed.descriptionCoverage[0]!.obligationIds, [
     "obligation.source",
@@ -719,7 +826,7 @@ test("deleted directory artifacts report deletion rather than unchanged absence"
   assert.equal(directory?.fileKind, "absent");
   assert.equal(directory?.existence, "absent");
   assert.equal(directory?.change, "deleted");
-  assert.equal(directory?.state, "failed");
+  assert.equal(Object.hasOwn(directory!, "state"), false);
 });
 
 test("Carrier-based Evidence ignores mutable canonical checkout bytes", async () => {

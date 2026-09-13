@@ -46,14 +46,14 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
   });
   const briefInput = {
     recordId: "brief-attempt",
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     revision: 1,
     producer: { kind: "runtime" as const, id: RUNTIME },
-    semanticAuthor: { kind: "founder" as const, id: "founder" },
-    semanticAuthority: "founder-supplied" as const,
+    semanticAuthor: { kind: "director" as const, id: "director" },
+    semanticAuthority: "director-supplied" as const,
     createdAt: "2026-08-29T15:00:01.000Z",
-    semanticMarkdown: "# Founder Brief\n\nPrepare the exact boundary.\n",
-    payload: validDeliveryControlPayload("founder-brief"),
+    semanticMarkdown: "# Director Brief\n\nPrepare the exact boundary.\n",
+    payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: "prepare-attempt" } },
     relationships: [],
   };
   const compiledBrief = compileControlRecordRevision(store.identity.processId, briefInput);
@@ -61,7 +61,7 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
     revision: briefInput,
     event: {
       eventId: "event-brief",
-      eventKind: "founder-brief-submitted",
+      eventKind: "director-brief-submitted",
       occurredAt: briefInput.createdAt,
       actor: { kind: "runtime", id: RUNTIME },
       subject: {
@@ -94,7 +94,7 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
       imageDigest: digest("execution-image"),
     }),
     inputSet: Object.freeze({
-      profileId: "lifecycle.execution-input-set.v1" as const,
+      profileId: "lifecycle.execution-input-set.v2" as const,
       digest: digest("execution-input-set"),
     }),
   });
@@ -149,11 +149,11 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
     execution,
     authoring: {
       roleBriefDigest: digest("role-brief"),
-      templateProfileId: "lifecycle.agent-work-product-body.reconnaissance.v2",
+      templateProfileId: "lifecycle.agent-work-product-body.reconnaissance.v4",
       templateDigest: digest("template"),
-      parserProfileId: "lifecycle.agent-work-product-parser.v2",
+      parserProfileId: "lifecycle.agent-work-product-parser.v4",
       parserProfileDigest: digest("parser"),
-      compilerProfileId: "lifecycle.agent-work-product-compiler.v2",
+      compilerProfileId: "lifecycle.agent-work-product-compiler.v4",
       compilerProfileDigest: digest("compiler"),
       submissionPolicy: "explicit-or-clean-natural-completion",
     },
@@ -167,7 +167,7 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
     executionPolicy,
     adjacentFilePurposes: ["provider-events", "provider-events"],
     brief: {
-      kind: "founder-brief",
+      kind: "director-brief",
       id: brief.recordId,
       revision: brief.revision,
       digest: brief.digest,
@@ -192,7 +192,7 @@ test("runtime compiles one exact provider-neutral Agent Attempt and event", asyn
     descriptorDigest: digest("provider-descriptor"),
     executableIdentityClass: "oci-image-tool",
     installedIdentityDigest: digest("provider-executable"),
-    adapter: "lifecycle.provider-adapter.v6",
+    adapter: "lifecycle.provider-adapter.v7",
   });
   assert.deepEqual(retained.revision.payload.execution, execution);
   assert.deepEqual(retained.revision.payload.executionPolicy, executionPolicy);

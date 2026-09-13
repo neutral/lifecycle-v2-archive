@@ -1,3 +1,6 @@
+import { openFoundationDeliveryGitSnapshotV1 } from "../repository/delivery-git-basis.js";
+import type { ControlRecordStoreIdentity } from "../control/types.js";
+import type { FoundationPreparationBasisBindingV7 } from "./preparation-basis-v7.js";
 import type {
   ProviderInputV4,
   ProviderInputV4Capability,
@@ -15,6 +18,7 @@ import type {
   FoundationKnowledgeSetResult,
 } from "../knowledge/types.js";
 import { compileKnowledgeProjection } from "../projection/compiler.js";
+import { foundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
 import { projectionRepositoryEpochDigest } from "../projection/request.js";
 import type {
   FoundationCompiledProjection,
@@ -41,6 +45,7 @@ import {
 } from "./operation-context-v7.js";
 
 type PreparationContextOwnersV7 = Readonly<{
+  openSnapshot: typeof openFoundationDeliveryGitSnapshotV1;
   loadRepositoryEpoch: typeof loadRepositoryEpoch;
   validateKnowledgeSet: typeof validateKnowledgeSet;
   compileKnowledgeProjection: typeof compileKnowledgeProjection;
@@ -88,6 +93,7 @@ function fail(
 
 function owners(options: FoundationPreparationContextV7Options): PreparationContextOwnersV7 {
   return Object.freeze({
+    openSnapshot: options.openSnapshot ?? openFoundationDeliveryGitSnapshotV1,
     loadRepositoryEpoch: options.loadRepositoryEpoch ?? loadRepositoryEpoch,
     validateKnowledgeSet: options.validateKnowledgeSet ?? validateKnowledgeSet,
     compileKnowledgeProjection: options.compileKnowledgeProjection ?? compileKnowledgeProjection,
@@ -206,6 +212,8 @@ export async function preflightFoundationPreparationBasisV7(
     !compiled.validation.complete ||
     !compiled.validation.valid
   ) {
+    const mandatoryRefusal = foundationMandatoryProjectionRefusalV1(compiled);
+    if (mandatoryRefusal !== null) throw mandatoryRefusal.error;
     fail("projection", "Orientation Projection did not compile completely and validly", {
       validationDigest: compiled.validation.digest,
       diagnostics: compiled.validation.diagnostics.map(({ code }) => code),
@@ -231,7 +239,7 @@ export async function preflightFoundationPreparationBasisV7(
     roleSubjectDigest: digestCanonical(roleSubject),
     rootTokenSetDigest: FOUNDATION_AGENT_ROOT_TOKEN_SET_DIGEST_V3,
     capability: capability.materialized,
-    founderSemanticMarkdown: semanticMarkdown,
+    directorSemanticMarkdown: semanticMarkdown,
   });
   const value = Object.freeze({
     semanticMarkdown,
@@ -247,6 +255,47 @@ export async function preflightFoundationPreparationBasisV7(
     providerInput,
   });
   return Object.freeze({ ...value, digest: basisDigest(value) });
+}
+
+/** Retain or reopen the exact initial basis without consulting live canonical state. */
+export async function reopenFoundationPreparationBasisV7(
+  input: Readonly<{
+    target: string;
+    machineHome: string;
+    identity: Pick<ControlRecordStoreIdentity, "targetId" | "storeId" | "processId">;
+    binding: FoundationPreparationBasisBindingV7;
+    semanticMarkdown: string;
+    observedAt?: string;
+  }>,
+  options: FoundationPreparationContextV7Options = {},
+): Promise<FoundationPreparationBasisV7> {
+  const selected = owners(options);
+  const retained = await selected.openSnapshot({
+    machineHome: input.machineHome,
+    repository: input.target,
+    identity: input.identity,
+    snapshot: input.binding.snapshot,
+  });
+  const { snapshot: _snapshot, ...epoch } = retained.loaded;
+  const basis = await preflightFoundationPreparationBasisV7({
+    target: retained.repository,
+    semanticMarkdown: input.semanticMarkdown,
+    ...(input.observedAt === undefined ? {} : { observedAt: input.observedAt }),
+  }, {
+    ...options,
+    loadRepositoryEpoch: async () => Object.freeze(epoch),
+    validateKnowledgeSet: async () => Object.freeze({
+      knowledgeSet: retained.knowledge,
+      observation: retained.knowledge,
+      validation: retained.knowledgeValidation,
+    }),
+  });
+  if (basis.digest !== input.binding.basisDigest ||
+      basis.snapshot.snapshot.digest !== input.binding.snapshot.digest ||
+      basis.epoch.contract.targetId !== input.identity.targetId) {
+    fail("basis", "Reopened preparation context differs from its exact retained basis");
+  }
+  return basis;
 }
 
 /** Verify that a supplied preflight value still reproduces every exact binding. */
@@ -288,7 +337,7 @@ export function assertFoundationPreparationBasisV7(
     basis.providerInput.projectionDigest !== basis.projection.manifest.digest ||
     basis.providerInput.roleSubjectDigest !== digestCanonical(basis.roleSubject) ||
     basis.providerInput.rootTokenSetDigest !== FOUNDATION_AGENT_ROOT_TOKEN_SET_DIGEST_V3 ||
-    basis.providerInput.founderDirection.markdown !== semanticMarkdown ||
+    basis.providerInput.directorDirection.markdown !== semanticMarkdown ||
     basis.digest !== basisDigest(basis)
   ) {
     fail("basis", "Preparation basis no longer reproduces its exact preflight bindings");

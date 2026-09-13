@@ -1,0 +1,38 @@
+{
+  "schema": "lifecycle.work-delegation.v2",
+  "boundary": {
+    "kind": "work-boundary",
+    "id": "boundary.demo",
+    "revision": 1,
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "admission": {
+    "kind": "director-decision",
+    "id": "decision.admit.demo",
+    "revision": 1,
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "replaces": null,
+  "policy": {
+    "id": "lifecycle.work-delegation.standard-v1",
+    "digest": "sha256:b1806a1a821135f37f2c0838ba280ebec3c8426b089347dc04ce5a49963f571a"
+  },
+  "allowedOperations": [
+    "delivery.integrate"
+  ],
+  "directions": {
+    "continue": null,
+    "evaluate": null
+  },
+  "agentSelections": {
+    "builder": null,
+    "reviewer": null
+  },
+  "ceilings": {
+    "operations": 2,
+    "agentAttempts": 0,
+    "reservedCellWallTimeMs": 0
+  },
+  "expiresAt": null,
+  "stopPolicy": "finish-reserved-operation"
+}

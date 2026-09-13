@@ -1,3 +1,16 @@
+import { foundationProjectionConditionObservedFactsDigestV1 } from "../control/projection-condition-facts.js";
+import {
+  addWorkDelegationAccounting,
+  assessWorkDelegationAllowance,
+  parseWorkDelegationPayload,
+  parseWorkDelegationReservation,
+  WORK_DELEGATION_OPERATIONS,
+  type WorkDelegationAccounting,
+  type WorkDelegationPayload,
+  type WorkDelegationReservation,
+} from "../control/work-delegation.js";
+import { compileWorkDelegationStopRequest } from "../control/work-delegation-stop.js";
+import { workDelegationAgentAttemptMatches } from "../control/work-delegation-execution.js";
 import { FoundationError } from "../error.js";
 import { compileControlRecordEvent } from "../control/model.js";
 import type {
@@ -7,7 +20,8 @@ import type {
   ControlRecordRevision,
   ControlRecordEventSubject,
 } from "../control/types.js";
-import { canonicalJson, type Sha256 } from "../validation/canonical.js";
+import { foundationIntegratedCandidateFactsDigestV1, parseFoundationIntegrationAssessmentPayloadV1 } from "../control/integration-assessment.js";
+import { canonicalJson, digestCanonical, type Sha256 } from "../validation/canonical.js";
 import {
   assertDeliveryEventEnvelope,
   deliveryEventSubject,
@@ -25,6 +39,7 @@ import {
   type DeliveryRecoveryObligation,
   type DeliveryStanding,
   type DeliveryState,
+  deliveryWorkDecisionBasisDigest,
 } from "./delivery-state.js";
 import {
   deliveryOperationDescriptor,
@@ -47,7 +62,7 @@ type EvidenceReadiness =
   | "correctable"
   | "revision-required"
   | "no-ship-recommended";
-type FounderDecision = "admit" | "readmit" | "accept" | "no-ship";
+type DirectorDecision = "admit" | "readmit" | "accept" | "no-ship";
 type CheckPhase = "baseline" | "final";
 type CheckModality =
   | "precondition"
@@ -74,9 +89,11 @@ type ReplayActivity = {
   attempt: SubjectReference | null;
   providerEffectDigest: Sha256 | null;
   providerOutcome: ProviderOutcome | null;
+  preIntentRefusal: ControlRecordEvent | null;
   workProduct: SubjectReference | null;
   workProductAbandoned: boolean;
   candidate: SubjectReference | null;
+  integrationAssessment: SubjectReference | null;
   receipt: SubjectReference | null;
   boundary: SubjectReference | null;
   materialCondition: SubjectReference | null;
@@ -91,17 +108,19 @@ type ReplayActivity = {
   evidence: SubjectReference | null;
   evidenceReadiness: EvidenceReadiness | null;
   decision: SubjectReference | null;
-  decisionKind: FounderDecision | null;
+  decisionKind: DirectorDecision | null;
   transactionEffectDigest: Sha256 | null;
   transactionOutcome: TransactionOutcome | null;
   closure: SubjectReference | null;
   completionOutcome: CompletionOutcome | null;
+  reservation: WorkDelegationReservation | null;
 };
 
 type MutableSubjects = {
   proposedBoundary: SubjectReference | null;
   activeBoundary: SubjectReference | null;
   candidate: SubjectReference | null;
+  integrationAssessment: SubjectReference | null;
   materialCondition: SubjectReference | null;
   seal: SubjectReference | null;
   evidence: SubjectReference | null;
@@ -124,6 +143,11 @@ type Replay = {
   subjects: MutableSubjects;
   evidenceReadiness: EvidenceReadiness | null;
   closureDisposition: "accepted" | "no-ship" | null;
+  candidateIntegrated: boolean;
+  activeAdmission: SubjectReference | null;
+  delegation: Readonly<{ reference: SubjectReference; payload: WorkDelegationPayload; stopped: boolean }> | null;
+  delegatedCharges: WorkDelegationAccounting;
+  standingBriefs: Map<string, SubjectReference>;
 };
 
 export type ReducedDeliveryState = DeliveryState & Readonly<{
@@ -160,6 +184,7 @@ function freshReplay(resolveRevision: DeliveryRecordRevisionResolver): Replay {
       proposedBoundary: null,
       activeBoundary: null,
       candidate: null,
+      integrationAssessment: null,
       materialCondition: null,
       seal: null,
       evidence: null,
@@ -167,6 +192,11 @@ function freshReplay(resolveRevision: DeliveryRecordRevisionResolver): Replay {
     },
     evidenceReadiness: null,
     closureDisposition: null,
+    candidateIntegrated: false,
+    activeAdmission: null,
+    delegation: null,
+    delegatedCharges: Object.freeze({ operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 }),
+    standingBriefs: new Map(),
   };
 }
 
@@ -184,6 +214,7 @@ function clonedActivity(activity: ReplayActivity): ReplayActivity {
     attempt: clonedReference(activity.attempt),
     workProduct: clonedReference(activity.workProduct),
     candidate: clonedReference(activity.candidate),
+    integrationAssessment: clonedReference(activity.integrationAssessment),
     receipt: clonedReference(activity.receipt),
     boundary: clonedReference(activity.boundary),
     materialCondition: clonedReference(activity.materialCondition),
@@ -226,6 +257,7 @@ function clonedReplay(replay: Replay): Replay {
       proposedBoundary: clonedReference(replay.subjects.proposedBoundary),
       activeBoundary: clonedReference(replay.subjects.activeBoundary),
       candidate: clonedReference(replay.subjects.candidate),
+      integrationAssessment: clonedReference(replay.subjects.integrationAssessment),
       materialCondition: clonedReference(replay.subjects.materialCondition),
       seal: clonedReference(replay.subjects.seal),
       evidence: clonedReference(replay.subjects.evidence),
@@ -233,6 +265,12 @@ function clonedReplay(replay: Replay): Replay {
     },
     evidenceReadiness: replay.evidenceReadiness,
     closureDisposition: replay.closureDisposition,
+    candidateIntegrated: replay.candidateIntegrated,
+    activeAdmission: clonedReference(replay.activeAdmission),
+    delegation: replay.delegation === null ? null : Object.freeze({ ...replay.delegation,
+      reference: clonedReference(replay.delegation.reference)! }),
+    delegatedCharges: replay.delegatedCharges,
+    standingBriefs: new Map(replay.standingBriefs),
   };
 }
 
@@ -638,6 +676,7 @@ function currentCandidateCondition(replay: Replay): DeliveryCandidateCondition {
     return "terminal-recovery";
   }
   if (replay.subjects.materialCondition !== null) return "paused-for-boundary";
+  if (activeCandidateActivity?.operation === "delivery.integrate") return "in-progress";
   if (replay.evidenceReadiness === "acceptance-ready") return "ready-for-decision";
   if (activeCandidateActivity?.operation === "delivery.evaluate" && replay.subjects.seal !== null) {
     return "sealed-under-evaluation";
@@ -663,6 +702,13 @@ function stateFromReplay(replay: Replay): DeliveryState {
     candidateCondition: currentCandidateCondition(replay),
     activities,
     subjects,
+    delegation: Object.freeze({
+      admission: clonedReference(replay.activeAdmission),
+      current: replay.delegation === null ? null : Object.freeze({
+        reference: clonedReference(replay.delegation.reference)!, stopped: replay.delegation.stopped,
+      }),
+      charged: replay.delegatedCharges,
+    }),
     journal: Object.freeze({
       eventCount: replay.lastEvent?.sequence ?? 0,
       headDigest: replay.lastEvent?.digest ?? null,
@@ -674,7 +720,7 @@ function reducedState(replay: Replay): ReducedDeliveryState {
   const state = stateFromReplay(replay);
   return Object.freeze({
     ...state,
-    eligibleOperations: eligibleDeliveryOperations(state),
+    eligibleOperations: eligibleDeliveryOperations(state, { candidateIntegrated: replay.candidateIntegrated }),
   });
 }
 
@@ -765,22 +811,151 @@ function verifyEnvelope(replay: Replay, event: ControlRecordEvent, expectedSeque
   replay.lastOccurredAt = occurredAt;
 }
 
-function submitFounderBrief(replay: Replay, event: ControlRecordEvent): void {
+function submitDirectorBrief(replay: Replay, event: ControlRecordEvent): void {
+  if (Object.hasOwn(event.payload, "delegationId")) {
+    const payload = exactPayload(event, ["delegationId", "delegationRevision", "operation"]);
+    const brief = registerFinalizedSubject(replay, event, "director-brief");
+    assertOnlyRelationships(brief, []);
+    const scope = recordObject(brief.payload.scope, "Standing Director Brief scope");
+    const expected = { kind: "delegation", ...payload };
+    if (canonicalJson(scope) !== canonicalJson(expected) || brief.payload.inputProfile !== payload.operation) {
+      fail("delegation-brief", "Standing direction does not bind its exact delegation and operation");
+    }
+    const key = canonicalJson(payload);
+    if (replay.standingBriefs.has(key)) fail("delegation-brief", "A delegation operation has duplicate standing direction");
+    replay.standingBriefs.set(key, retainedReference(brief));
+    return;
+  }
   const payload = exactPayload(event, ["activityId"]);
   const activityId = identifierField(payload, "activityId");
   if (replay.activities.has(activityId)) {
-    fail("order", `Founder Brief for ${activityId} must be finalized before the activity starts`);
+    fail("order", `Director Brief for ${activityId} must be finalized before the activity starts`);
   }
   if (replay.plannedBriefs.has(activityId)) {
-    fail("duplicate", `Planned agent activity ${activityId} already has a Founder Brief`);
+    fail("duplicate", `Planned agent activity ${activityId} already has a Director Brief`);
   }
-  const briefRevision = registerFinalizedSubject(replay, event, "founder-brief");
+  const briefRevision = registerFinalizedSubject(replay, event, "director-brief");
   assertOnlyRelationships(briefRevision, []);
+  if (canonicalJson(briefRevision.payload.scope) !== canonicalJson({ kind: "activity", activityId })) {
+    fail("brief-scope", "Director Brief must bind its exact Activity scope");
+  }
   replay.plannedBriefs.set(activityId, retainedReference(briefRevision));
 }
 
+function exactDelegationRevision(replay: Replay, selected: SubjectReference, kind: string): ControlRecordRevision {
+  const revision = replay.resolveRevision({ recordId: selected.id, revision: selected.revision, digest: selected.digest });
+  if (revision === null || revision.processId !== replay.processId || revision.recordKind !== kind ||
+      revision.recordId !== selected.id || revision.revision !== selected.revision || revision.digest !== selected.digest) {
+    fail("delegation-subject", "Delegated work requires its exact retained subjects");
+  }
+  return revision;
+}
+
+function setWorkDelegation(replay: Replay, event: ControlRecordEvent): void {
+  exactPayload(event, []);
+  if (replay.subjects.activeBoundary === null || replay.activeAdmission === null ||
+      replay.subjects.materialCondition !== null || [...replay.activities.values()].some(activity => activity.stage !== "completed")) {
+    fail("delegation-currentness", "Resource delegation requires settled work under an active admitted mandate");
+  }
+  const revision = registerFinalizedSubject(replay, event, "work-delegation");
+  const grant = parseWorkDelegationPayload(revision.payload);
+  assertOnlyRelationships(revision, ["uses-boundary", "uses-admission", "uses-brief", "revises"]);
+  assertReference(grant.boundary, replay.subjects.activeBoundary, "Delegation Boundary");
+  assertReference(grant.admission, replay.activeAdmission, "Delegation admission");
+  assertReference(requiredRelationship(revision, "uses-boundary", "work-boundary"), grant.boundary, "Delegation Boundary relationship");
+  assertReference(requiredRelationship(revision, "uses-admission", "director-decision"), grant.admission, "Delegation admission relationship");
+  const admission = exactDelegationRevision(replay, replay.activeAdmission, "director-decision");
+  if (revision.semanticAuthor.id !== admission.semanticAuthor.id) {
+    fail("delegation-author", "Resource direction must preserve the admitted Director's supplied provenance");
+  }
+  const previous = replay.delegation?.reference ?? null;
+  const previousRelationship = optionalRelationship(revision, "revises", "work-delegation");
+  if (previous === null) {
+    if (grant.replaces !== null || previousRelationship !== null) {
+      fail("delegation-revision", "Initial resource permission cannot replace an absent delegation");
+    }
+  } else {
+    assertReference(grant.replaces, previous, "Delegation replacement");
+    assertReference(previousRelationship, previous, "Delegation replacement relationship");
+  }
+  if (previous !== null && (revision.recordId !== previous.id || revision.revision !== previous.revision + 1)) {
+    fail("delegation-revision", "Resource replacement must advance the same exact delegation lineage");
+  }
+  if (grant.expiresAt !== null && Date.parse(grant.expiresAt) <= Date.parse(event.occurredAt)) {
+    fail("delegation-expiry", "New resource permission must not already be expired");
+  }
+  for (const field of ["operations", "agentAttempts", "reservedCellWallTimeMs"] as const) {
+    if (grant.ceilings[field] < replay.delegatedCharges[field]) {
+      fail("delegation-accounting", "A resource replacement cannot erase already reserved work");
+    }
+  }
+  const directions = revision.relationships.filter(link => link.relation === "uses-brief");
+  const selectedDirections = [grant.directions.continue, grant.directions.evaluate].filter(value => value !== null);
+  if (directions.length !== selectedDirections.length) fail("delegation-brief", "Resource direction relationships differ from the selected standing Briefs");
+  for (const [operation, selected] of [["delivery.continue", grant.directions.continue], ["delivery.evaluate", grant.directions.evaluate]] as const) {
+    if (selected === null) continue;
+    const key = canonicalJson({ delegationId: revision.recordId, delegationRevision: revision.revision, operation });
+    assertReference(replay.standingBriefs.get(key) ?? null, selected, "Delegation standing Brief");
+    const brief = exactDelegationRevision(replay, selected, "director-brief");
+    if (brief.semanticAuthor.id !== revision.semanticAuthor.id ||
+        !directions.some(link => link.target.id === selected.id && link.target.revision === selected.revision && link.target.digest === selected.digest)) {
+      fail("delegation-brief", "Standing direction must preserve its exact Director and selected relationship");
+    }
+    replay.standingBriefs.delete(key);
+  }
+  replay.delegation = Object.freeze({ reference: retainedReference(revision), payload: grant, stopped: false });
+}
+
+function stopWorkDelegation(replay: Replay, event: ControlRecordEvent): void {
+  const payload = exactPayload(event, ["requestDigest", "requestedAt", "requestedBy"]);
+  const grant = replay.delegation;
+  if (grant === null || grant.stopped || [...replay.activities.values()].some(activity => activity.stage !== "completed")) {
+    fail("delegation-stop", "A settled stop must identify one current delegation after its reserved work settles");
+  }
+  assertReference(reference(deliveryEventSubject(event)), grant.reference, "Stopped delegation");
+  const revision = exactDelegationRevision(replay, grant.reference, "work-delegation");
+  if (payload.requestedBy !== revision.semanticAuthor.id ||
+      Date.parse(stringField(payload, "requestedAt")) < Date.parse(revision.createdAt) ||
+      Date.parse(stringField(payload, "requestedAt")) > Date.parse(event.occurredAt)) {
+    fail("delegation-stop", "A stop must retain the exact Director's earlier request");
+  }
+  const request = compileWorkDelegationStopRequest({ storeId: event.storeId, processId: event.processId,
+    delegation: { kind: "work-delegation", ...grant.reference },
+    requestedAt: stringField(payload, "requestedAt"), requestedBy: stringField(payload, "requestedBy") });
+  if (payload.requestDigest !== request.digest) fail("delegation-stop", "A stopped delegation must reproduce its exact request digest");
+  replay.delegation = Object.freeze({ ...grant, stopped: true });
+}
+
+function assertReservedChecks(replay: Replay, reservation: WorkDelegationReservation): void {
+  if (reservation.operation !== "delivery.evaluate") return;
+  if (replay.subjects.activeBoundary === null) fail("delegation-checks", "Delegated evaluation requires its active Boundary");
+  const boundary = exactDelegationRevision(replay, replay.subjects.activeBoundary, "work-boundary");
+  const mandate = recordObject(boundary.payload.mandate, "Reserved evaluation mandate");
+  const required = recordArray(mandate.checks, "Reserved evaluation Checks")
+    .map(value => recordObject(value, "Reserved Check selection"))
+    .filter(selection => selection.finalRequired === true);
+  const slots = reservation.slots.filter(slot => slot.purpose === "check");
+  if (slots.length !== required.length) fail("delegation-checks", "Evaluation must reserve every required final Check exactly once");
+  for (const selection of required) {
+    const slot = slots.find(value => value.selectionId === selection.id);
+    if (slot === undefined || canonicalJson(slot.definition) !== canonicalJson(selection.definition)) {
+      fail("delegation-checks", "Reserved Check must bind its exact admitted Definition occurrence");
+    }
+    if (!recordArray(selection.bindings, "Admitted Check Bindings").some(value => {
+      const binding = recordObject(value, "Admitted Check Binding");
+      // The reservation carries the exact Binding reference. The admitted
+      // value additionally carries its implementation digest; the Check owner
+      // verifies that complete installed mechanism before allocation.
+      return binding.id === slot.binding.id && binding.digest === slot.binding.digest;
+    })) {
+      fail("delegation-checks", "Reserved Check must use an admitted exact Binding");
+    }
+  }
+}
+
 function startActivity(replay: Replay, event: ControlRecordEvent): void {
-  const payload = exactPayload(event, ["activityId", "operation"]);
+  const payload = exactPayload(event, Object.hasOwn(event.payload, "reservation")
+    ? ["activityId", "operation", "reservation"] : ["activityId", "operation"]);
   const activityId = identifierField(payload, "activityId");
   if (replay.activities.has(activityId)) fail("duplicate", `Delivery activity ${activityId} is repeated`);
   const operation = stringField(payload, "operation");
@@ -788,18 +963,50 @@ function startActivity(replay: Replay, event: ControlRecordEvent): void {
   if (descriptor.operation === "delivery.recover") {
     fail("activity", "Recovery resumes an exact retained activity; it cannot create a second activity");
   }
-  const brief = replay.plannedBriefs.get(activityId) ?? null;
+  const reservation = Object.hasOwn(payload, "reservation") ? parseWorkDelegationReservation(payload.reservation) : null;
+  let brief = replay.plannedBriefs.get(activityId) ?? null;
+  const state = stateFromReplay(replay);
+  if (reservation !== null) {
+    const grant = replay.delegation;
+    if (grant === null || reservation.activityId !== activityId || reservation.operation !== descriptor.operation ||
+        replay.subjects.materialCondition !== null || brief !== null) {
+      fail("delegation-reservation", "Delegated opening must use its exact current resource permission and standing direction");
+    }
+    assertReference(reservation.delegation, grant.reference, "Reserved delegation");
+    assertReference(grant.payload.boundary, replay.subjects.activeBoundary, "Reserved Boundary");
+    assertReference(grant.payload.admission, replay.activeAdmission, "Reserved admission");
+    if (reservation.decision.journalHead.sequence !== replay.lastEvent?.sequence ||
+        reservation.decision.journalHead.digest !== replay.lastEvent?.digest ||
+        reservation.decision.basisDigest !== deliveryWorkDecisionBasisDigest(state)) {
+      fail("delegation-basis", "A work reservation must bind the exact preceding settled facts");
+    }
+    if ([...replay.activities.values()].some(activity => activity.reservation?.reservationId === reservation.reservationId)) {
+      fail("delegation-reservation", "A work reservation cannot finance another Activity");
+    }
+    assertReservedChecks(replay, reservation);
+    const allowance = assessWorkDelegationAllowance({ delegation: grant.payload,
+      accounting: replay.delegatedCharges, reservation, observedAt: event.occurredAt, stopped: grant.stopped });
+    if (!allowance.allowed) fail("delegation-allowance", `Work reservation is outside its retained allowance: ${allowance.reason}`);
+    brief = reservation.operation === "delivery.continue" ? grant.payload.directions.continue
+      : reservation.operation === "delivery.evaluate" ? grant.payload.directions.evaluate : null;
+  } else if (replay.delegation !== null && !replay.delegation.stopped &&
+      replay.subjects.activeBoundary !== null && replay.activeAdmission !== null &&
+      sameReference(replay.delegation.payload.boundary, replay.subjects.activeBoundary) &&
+      sameReference(replay.delegation.payload.admission, replay.activeAdmission) &&
+      WORK_DELEGATION_OPERATIONS.includes(descriptor.operation as WorkDelegationReservation["operation"])) {
+    fail("delegation-reservation", "An active work allowance cannot be bypassed with an uncharged productive opening");
+  }
   if (descriptor.activity === "agent" && brief === null) {
-    fail("order", `Agent activity ${activityId} requires its exact finalized Founder Brief`);
+    fail("order", `Agent activity ${activityId} requires its exact finalized Director Brief`);
   }
   if (descriptor.activity !== "agent" && brief !== null) {
-    fail("activity", `Founder Brief ${brief.id} is planned for an agent activity, not ${descriptor.operation}`);
+    fail("activity", `Director Brief ${brief.id} is planned for an agent activity, not ${descriptor.operation}`);
   }
-  const state = stateFromReplay(replay);
-  if (!eligibleDeliveryOperations(state).includes(descriptor.operation)) {
+  if (!eligibleDeliveryOperations(state, { candidateIntegrated: replay.candidateIntegrated }).includes(descriptor.operation)) {
     fail("eligibility", `${descriptor.operation} is not eligible in the current Delivery state`);
   }
-  const family: DeliveryActivityFamily = descriptor.activity === "agent" ? "agent" : "transaction";
+  if (descriptor.activity === "recovery") fail("activity", "Recovery cannot start a new Activity");
+  const family: DeliveryActivityFamily = descriptor.activity;
   replay.activities.set(activityId, {
     id: activityId,
     operation: descriptor.operation,
@@ -810,14 +1017,18 @@ function startActivity(replay: Replay, event: ControlRecordEvent): void {
       ? descriptor.operation === "delivery.evaluate"
         ? recovery("finalization", "candidate-sealed", null)
         : recovery("finalization", "agent-attempt-prepared", null)
-      : recovery("finalization", "founder-decision-authenticated", null),
+      : family === "integration"
+        ? recovery("finalization", "integration-assessed", null)
+        : recovery("finalization", "director-decision-authenticated", null),
     brief,
     attempt: null,
     providerEffectDigest: null,
     providerOutcome: null,
+    preIntentRefusal: null,
     workProduct: null,
     workProductAbandoned: false,
     candidate: null,
+    integrationAssessment: null,
     receipt: null,
     boundary: null,
     materialCondition: null,
@@ -831,7 +1042,9 @@ function startActivity(replay: Replay, event: ControlRecordEvent): void {
     transactionOutcome: null,
     closure: null,
     completionOutcome: null,
+    reservation,
   });
+  if (reservation !== null) replay.delegatedCharges = addWorkDelegationAccounting(replay.delegatedCharges, reservation.charges);
   replay.plannedBriefs.delete(activityId);
 }
 
@@ -855,7 +1068,7 @@ function recordRecovery(replay: Replay, event: ControlRecordEvent): void {
 }
 
 function refuseAgentBeforeIntent(replay: Replay, event: ControlRecordEvent): void {
-  const payload = exactPayload(event, ["activityId", "diagnosticCode", "refusalFactsDigest"]);
+  const payload = exactPayload(event, ["activityId", "diagnosticCode", "refusalFactsDigest", "resolution"]);
   const activity = activityFor(replay, payload);
   assertAgentActivity(activity, "agent-pre-intent-refused");
   const preAttemptStage = activity.operation === "delivery.evaluate" ? "finalizing" : "started";
@@ -872,25 +1085,42 @@ function refuseAgentBeforeIntent(replay: Replay, event: ControlRecordEvent): voi
   ) {
     fail("order", `Agent activity ${activity.id} is not at the exact pre-intent refusal boundary`);
   }
-  identifierField(payload, "diagnosticCode");
+  const diagnosticCode = identifierField(payload, "diagnosticCode");
   digestField(payload, "refusalFactsDigest");
+  const resolution = enumField(payload, "resolution", ["none", "projection-condition-required"] as const);
+  if (resolution === "projection-condition-required" && ((activity.operation !== "delivery.evaluate" && activity.operation !== "delivery.continue") ||
+      diagnosticCode !== "lifecycle.projection.mandatory-too-large")) {
+    fail("order", "Only an exact measured builder or reviewer refusal can require a Projection Condition");
+  }
+  activity.preIntentRefusal = event;
   activity.stage = "finalizing";
-  activity.recovery = recovery("finalization", "activity-completed", null);
+  activity.recovery = recovery("finalization",
+    resolution === "projection-condition-required"
+      ? "activity-finalization" : "activity-completed", null);
 }
 
 function prepareAttempt(replay: Replay, event: ControlRecordEvent): void {
   const payload = exactPayload(event, ["activityId"]);
   const activity = activityFor(replay, payload);
   assertAgentActivity(activity, "agent-attempt-prepared");
+  if (activity.preIntentRefusal !== null) {
+    fail("order", `Agent activity ${activity.id} cannot prepare an Attempt after pre-intent refusal`);
+  }
   if (activity.attempt !== null || activity.providerEffectDigest !== null) {
     fail("order", `Agent activity ${activity.id} already has a prepared Attempt`);
   }
   const attemptRevision = registerFinalizedSubject(replay, event, "agent-attempt");
+  if (activity.reservation !== null) {
+    const slot = activity.reservation.slots.find(slot => slot.purpose === "agent");
+    if (slot === undefined || slot.purpose !== "agent" || !workDelegationAgentAttemptMatches(slot, attemptRevision)) {
+      fail("delegation-attempt", "The prepared Attempt must reproduce its reserved Agent resource selection");
+    }
+  }
   assertOnlyRelationships(attemptRevision, ["uses-brief", "uses-boundary", "uses-candidate", "uses-seal"]);
   assertReference(
-    requiredRelationship(attemptRevision, "uses-brief", "founder-brief"),
+    requiredRelationship(attemptRevision, "uses-brief", "director-brief"),
     activity.brief,
-    "Agent Attempt Founder Brief",
+    "Agent Attempt Director Brief",
   );
   const usesBoundary = optionalRelationship(attemptRevision, "uses-boundary", "work-boundary");
   const usesCandidate = optionalRelationship(
@@ -992,6 +1222,34 @@ function abandonWorkProduct(replay: Replay, event: ControlRecordEvent): void {
     : recovery("finalization", "execution-receipt-recorded", null);
 }
 
+function integrationAssessmentFor(replay: Replay, selected: SubjectReference) {
+  const revision = replay.resolveRevision({ recordId: selected.id, revision: selected.revision, digest: selected.digest });
+  if (revision === null || revision.recordKind !== "integration-assessment" || revision.recordId !== selected.id ||
+    revision.revision !== selected.revision || revision.digest !== selected.digest || revision.processId !== replay.processId) {
+    fail("reference", "Integration Activity cannot resolve its exact Assessment");
+  }
+  return parseFoundationIntegrationAssessmentPayloadV1(revision.payload);
+}
+
+function assessIntegration(replay: Replay, event: ControlRecordEvent): void {
+  const activity = activityFor(replay, exactPayload(event, ["activityId"]));
+  if (activity.operation !== "delivery.integrate" || activity.family !== "integration" || activity.stage !== "started" ||
+    activity.integrationAssessment !== null || activity.recovery?.resumesAt !== "integration-assessed") {
+    fail("order", "Integration Assessment requires its exact new runtime integration Activity");
+  }
+  const revision = registerFinalizedSubject(replay, event, "integration-assessment");
+  assertOnlyRelationships(revision, ["governed-by", "integrates"]);
+  assertReference(requiredRelationship(revision, "governed-by", "work-boundary"), replay.subjects.activeBoundary, "Integration governing Boundary");
+  assertReference(requiredRelationship(revision, "integrates", "candidate-revision"), replay.subjects.candidate, "Integration source Candidate");
+  const assessment = parseFoundationIntegrationAssessmentPayloadV1(revision.payload);
+  activity.integrationAssessment = retainedReference(revision);
+  replay.subjects.integrationAssessment = activity.integrationAssessment;
+  activity.stage = "finalizing";
+  activity.recovery = assessment.outcome === "constructed"
+    ? recovery("candidate-observation", "candidate-revision-observed", null)
+    : recovery("finalization", "activity-completed", null);
+}
+
 function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): void {
   const payload = exactPayload(event, ["activityId"]);
   const activity = activityFor(replay, payload);
@@ -999,11 +1257,11 @@ function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): vo
     fail("order", "Candidate revision observation must precede the terminal Execution Receipt");
   }
   const candidateRevision = registerFinalizedSubject(replay, event, "candidate-revision");
-  if (candidateRevision.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
+  if (candidateRevision.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
     fail("candidate-payload", "Candidate observation does not retain one exact reconstructible Revision");
   }
   const candidate = retainedReference(candidateRevision);
-  assertOnlyRelationships(candidateRevision, ["revises", "governed-by", "result-of"]);
+  assertOnlyRelationships(candidateRevision, ["revises", "governed-by", "result-of", "integrated-from"]);
   const governedBy = requiredRelationship(
     candidateRevision,
     "governed-by",
@@ -1020,7 +1278,25 @@ function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): vo
     "agent-attempt",
   );
   if (activity.candidate !== null) fail("duplicate", `Activity ${activity.id} already observed a Candidate revision`);
-  if (activity.operation === "delivery.continue") {
+  const integratedFrom = optionalRelationship(candidateRevision, "integrated-from", "integration-assessment");
+  if (activity.operation !== "delivery.integrate" && integratedFrom !== null) fail("reference", "Only explicit integration can bind an Integration Assessment");
+  if (activity.operation === "delivery.integrate") {
+    if (activity.integrationAssessment === null || activity.recovery?.resumesAt !== "candidate-revision-observed") {
+      fail("order", "Candidate integration requires its exact constructed Assessment");
+    }
+    const assessment = integrationAssessmentFor(replay, activity.integrationAssessment);
+    const previous = replay.subjects.candidate;
+    assertReference(governedBy, replay.subjects.activeBoundary, "Integration Candidate Boundary");
+    assertReference(integratedFrom, activity.integrationAssessment, "Candidate Integration Assessment");
+    if (previous === null || candidate.id !== previous.id || candidate.revision !== previous.revision + 1 ||
+      revises === null || !sameReference(revises, previous) || resultOf !== null || candidateRevision.payload.observation !== "integration-successor" ||
+      candidateRevision.payload.candidateBaseCommit !== assessment.canonicalParent.commit || assessment.outcome !== "constructed") {
+      fail("reference", "Integration must advance the exact current Candidate against its assessed parent");
+    }
+    if (assessment.validation.factsDigest !== foundationIntegratedCandidateFactsDigestV1(candidateRevision)) {
+      fail("reference", "Integration Candidate differs from its Assessment's exact constructed observation");
+    }
+  } else if (activity.operation === "delivery.continue") {
     if (activity.providerOutcome === null) {
       fail("order", "Candidate revision requires the builder provider terminal observation");
     }
@@ -1034,6 +1310,10 @@ function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): vo
       !sameReference(revises, previous)
     ) {
       fail("reference", "Candidate development must advance the exact current Candidate by one revision");
+    }
+    const predecessor = replay.resolveRevision({ recordId: previous.id, revision: previous.revision, digest: previous.digest });
+    if (predecessor === null || candidateRevision.payload.candidateBaseCommit !== predecessor.payload.candidateBaseCommit) {
+      fail("reference", "Candidate development must preserve its predecessor's exact application base");
     }
     if (
       candidateRevision.payload.observation !== "builder-successor" ||
@@ -1105,6 +1385,8 @@ function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): vo
   } else {
     fail("activity", `${activity.operation} cannot observe a Candidate revision at this boundary`);
   }
+  if (candidateRevision.payload.observation === "initialization") replay.candidateIntegrated = false;
+  if (candidateRevision.payload.observation === "integration-successor") replay.candidateIntegrated = true;
   activity.candidate = candidate;
   replay.subjects.candidate = candidate;
   replay.subjects.seal = null;
@@ -1113,7 +1395,10 @@ function observeCandidateRevision(replay: Replay, event: ControlRecordEvent): vo
   activity.stage = "finalizing";
   activity.recovery = activity.operation === "delivery.continue"
     ? recovery("finalization", "execution-receipt-recorded", null)
-    : recovery("finalization", "activity-completed", null);
+    : activity.operation === "delivery.integrate" && activity.integrationAssessment !== null &&
+      integrationAssessmentFor(replay, activity.integrationAssessment).contextualApplicability.disposition === "requires-readmission"
+      ? recovery("finalization", "activity-finalization", null)
+      : recovery("finalization", "activity-completed", null);
 }
 
 function recordReceipt(replay: Replay, event: ControlRecordEvent): void {
@@ -1161,9 +1446,9 @@ function finalizeBoundary(replay: Replay, event: ControlRecordEvent): void {
   const boundary = retainedReference(boundaryRevision);
   assertOnlyRelationships(boundaryRevision, ["uses-brief", "proposed-from", "revises", "resolves"]);
   assertReference(
-    requiredRelationship(boundaryRevision, "uses-brief", "founder-brief"),
+    requiredRelationship(boundaryRevision, "uses-brief", "director-brief"),
     activity.brief,
-    "Work Boundary Founder Brief",
+    "Work Boundary Director Brief",
   );
   assertReference(
     requiredRelationship(boundaryRevision, "proposed-from", "agent-work-product"),
@@ -1194,7 +1479,7 @@ function finalizeBoundary(replay: Replay, event: ControlRecordEvent): void {
 
 function freezeMaterialCondition(replay: Replay, event: ControlRecordEvent): void {
   const payload = exactPayload(event, ["sourceKind", "activityId", "observedFactsDigest"]);
-  const sourceKind = enumField(payload, "sourceKind", ["agent-proposal"] as const);
+  const sourceKind = enumField(payload, "sourceKind", ["agent-proposal", "integration-assessment", "projection-compilation"] as const);
   const observedFactsDigest = digestField(payload, "observedFactsDigest");
   const conditionRevision = registerFinalizedSubject(replay, event, "material-condition");
   if (conditionRevision.payload.observedFactsDigest !== observedFactsDigest) {
@@ -1214,6 +1499,66 @@ function freezeMaterialCondition(replay: Replay, event: ControlRecordEvent): voi
     fail("payload", "Agent-proposed Material Condition requires one exact activity identity");
   }
   const activity = activityFor(replay, Object.freeze({ activityId }));
+  if (sourceKind === "integration-assessment") {
+    if (activity.operation !== "delivery.integrate" || activity.family !== "integration" || activity.candidate === null ||
+      activity.integrationAssessment === null || activity.materialCondition !== null || activity.recovery?.resumesAt !== "activity-finalization") {
+      fail("order", "Integration Condition requires the exact constructed successor before finalization");
+    }
+    const assessment = integrationAssessmentFor(replay, activity.integrationAssessment);
+    if (assessment.contextualApplicability.disposition !== "requires-readmission" ||
+      observedFactsDigest !== digestCanonical(assessment.contextualApplicability) ||
+      conditionRevision.payload.conditionClass !== "integration-context-change") {
+      fail("record-payload", "Integration Condition must reproduce the exact contextual change observation");
+    }
+    assertOnlyRelationships(conditionRevision, ["reported-by", "freezes", "governed-by"]);
+    assertReference(requiredRelationship(conditionRevision, "reported-by", "integration-assessment"), activity.integrationAssessment, "Integration Condition source");
+    assertReference(requiredRelationship(conditionRevision, "freezes", "candidate-revision"), activity.candidate, "Integration frozen Candidate");
+    assertReference(requiredRelationship(conditionRevision, "governed-by", "work-boundary"), replay.subjects.activeBoundary, "Integration Condition Boundary");
+    activity.materialCondition = condition;
+    replay.subjects.materialCondition = condition;
+    activity.stage = "finalizing";
+    activity.recovery = recovery("finalization", "activity-completed", null);
+    return;
+  }
+  if (sourceKind === "projection-compilation") {
+    const refusal = activity.preIntentRefusal;
+    if ((activity.operation !== "delivery.evaluate" && activity.operation !== "delivery.continue") || activity.family !== "agent" ||
+        activity.stage !== "finalizing" || activity.recovery?.resumesAt !== "activity-finalization" ||
+        activity.attempt !== null || activity.providerEffectDigest !== null || activity.providerOutcome !== null ||
+        activity.workProduct !== null || activity.workProductAbandoned || activity.receipt !== null ||
+        activity.materialCondition !== null || refusal === null ||
+        refusal.payload.resolution !== "projection-condition-required" ||
+        refusal.payload.diagnosticCode !== "lifecycle.projection.mandatory-too-large" ||
+        source.refusalFactsDigest !== refusal.payload.refusalFactsDigest ||
+        conditionRevision.payload.conditionClass !== "projection-closure-exceeded") {
+      fail("order", "Projection Condition requires the exact measured pre-intent builder or reviewer refusal");
+    }
+    const boundary = replay.subjects.activeBoundary;
+    const candidate = replay.subjects.candidate;
+    const seal = activity.operation === "delivery.evaluate" ? activity.seal : null;
+    if (boundary === null || candidate === null || (activity.operation === "delivery.evaluate" && seal === null)) {
+      fail("reference", "Projection Condition requires the exact governing Boundary, Candidate, and any evaluation Seal");
+    }
+    assertOnlyRelationships(conditionRevision, seal === null ? ["freezes", "governed-by"] : ["freezes", "governed-by", "observed-in"]);
+    const boundaryRef = requiredRelationship(conditionRevision, "governed-by", "work-boundary");
+    const candidateRef = requiredRelationship(conditionRevision, "freezes", "candidate-revision");
+    const sealRef = seal === null ? null : requiredRelationship(conditionRevision, "observed-in", "candidate-seal");
+    assertReference(boundaryRef, boundary, "Projection Condition Boundary");
+    assertReference(candidateRef, candidate, "Projection frozen Candidate");
+    if (sealRef !== null) assertReference(sealRef, seal, "Projection Condition Seal");
+    if (observedFactsDigest !== foundationProjectionConditionObservedFactsDigestV1({
+      activityId, boundary: { kind: "work-boundary", ...boundaryRef },
+      candidate: { kind: "candidate-revision", ...candidateRef }, seal: sealRef === null ? null : { kind: "candidate-seal", ...sealRef },
+      refusalEvent: { sequence: refusal.sequence, digest: refusal.digest }, source,
+    })) {
+      fail("record-payload", "Projection Condition must reproduce exact refusal provenance and subject bindings");
+    }
+    activity.materialCondition = condition;
+    replay.subjects.materialCondition = condition;
+    activity.stage = "finalizing";
+    activity.recovery = recovery("finalization", "activity-completed", null);
+    return;
+  }
   assertAgentActivity(activity, "material-condition-frozen");
   assertCoreAgentTerminal(activity);
   if (!(activity.operation === "delivery.continue" || activity.operation === "delivery.evaluate")) {
@@ -1472,19 +1817,19 @@ function finalizeEvidence(replay: Replay, event: ControlRecordEvent): void {
 function authenticateDecision(replay: Replay, event: ControlRecordEvent): void {
   const payload = exactPayload(event, ["activityId"]);
   const activity = activityFor(replay, payload);
-  assertTransactionActivity(activity, "founder-decision-authenticated");
-  if (activity.decision !== null) fail("duplicate", `Transaction activity ${activity.id} already has a Founder Decision`);
-  const expectedDecision: FounderDecision = activity.operation === "delivery.admit"
+  assertTransactionActivity(activity, "director-decision-authenticated");
+  if (activity.decision !== null) fail("duplicate", `Transaction activity ${activity.id} already has a Director Decision`);
+  const expectedDecision: DirectorDecision = activity.operation === "delivery.admit"
     ? activity.originStanding === "awaiting-readmission" ? "readmit" : "admit"
     : activity.operation === "delivery.accept" ? "accept" : "no-ship";
-  const decisionRevision = registerFinalizedSubject(replay, event, "founder-decision");
+  const decisionRevision = registerFinalizedSubject(replay, event, "director-decision");
   const decision = recordEnumField(
     decisionRevision,
     "decision",
     ["admit", "readmit", "accept", "no-ship"] as const,
   );
   if (decision !== expectedDecision) {
-    fail("authority", `${activity.operation} requires a ${expectedDecision} Founder Decision`);
+    fail("authority", `${activity.operation} requires a ${expectedDecision} Director Decision`);
   }
   assertOnlyRelationships(decisionRevision, [
     "selects-boundary",
@@ -1531,7 +1876,7 @@ function authenticateDecision(replay: Replay, event: ControlRecordEvent): void {
     "check-receipt",
   );
   if (decision === "admit" || decision === "readmit") {
-    assertReference(selectsBoundary, replay.subjects.proposedBoundary, "Founder-selected Work Boundary");
+    assertReference(selectsBoundary, replay.subjects.proposedBoundary, "Director-selected Work Boundary");
     const expectedBaselineReceipts = baselineChecksForBoundary(
       replay,
       replay.subjects.proposedBoundary,
@@ -1547,17 +1892,17 @@ function authenticateDecision(replay: Replay, event: ControlRecordEvent): void {
     ) {
       fail(
         "authority",
-        "Founder admission must select every and only complete baseline Check Receipt",
+        "Director admission must select every and only complete baseline Check Receipt",
       );
     }
     if (decision === "readmit") {
       assertReference(
         continuesFromBoundary,
         replay.subjects.activeBoundary,
-        "Founder-selected predecessor Work Boundary",
+        "Director-selected predecessor Work Boundary",
       );
-      assertReference(resolves, replay.subjects.materialCondition, "Founder-resolved Material Condition");
-      assertReference(selectsCandidate, replay.subjects.candidate, "Founder-selected continuing Candidate");
+      assertReference(resolves, replay.subjects.materialCondition, "Director-resolved Material Condition");
+      assertReference(selectsCandidate, replay.subjects.candidate, "Director-selected continuing Candidate");
     } else {
       assertAbsentRelationship(continuesFromBoundary, "Initial admission predecessor Boundary selection");
       assertAbsentRelationship(resolves, "Admission Condition resolution");
@@ -1570,11 +1915,11 @@ function authenticateDecision(replay: Replay, event: ControlRecordEvent): void {
       fail("record-relationship", "Acceptance cannot select baseline Check Receipts");
     }
     assertAbsentRelationship(continuesFromBoundary, "Acceptance predecessor Boundary selection");
-    assertReference(selectsBoundary, replay.subjects.activeBoundary, "Founder-selected active Work Boundary");
+    assertReference(selectsBoundary, replay.subjects.activeBoundary, "Director-selected active Work Boundary");
     assertAbsentRelationship(resolves, "Acceptance Condition resolution");
-    assertReference(selectsCandidate, replay.subjects.candidate, "Founder-selected Candidate");
-    assertReference(selectsSeal, replay.subjects.seal, "Founder-selected Candidate Seal");
-    assertReference(selectsEvidence, replay.subjects.evidence, "Founder-selected Evidence Packet");
+    assertReference(selectsCandidate, replay.subjects.candidate, "Director-selected Candidate");
+    assertReference(selectsSeal, replay.subjects.seal, "Director-selected Candidate Seal");
+    assertReference(selectsEvidence, replay.subjects.evidence, "Director-selected Evidence Packet");
   } else {
     if (selectedBaselineReceipts.length !== 0) {
       fail("record-relationship", "No-ship cannot select baseline Check Receipts");
@@ -1584,17 +1929,17 @@ function authenticateDecision(replay: Replay, event: ControlRecordEvent): void {
     if (boundary === null) {
       assertAbsentRelationship(selectsBoundary, "No-ship Work Boundary selection");
     } else {
-      assertReference(selectsBoundary, boundary, "Founder-selected current Work Boundary");
+      assertReference(selectsBoundary, boundary, "Director-selected current Work Boundary");
     }
     if (replay.subjects.materialCondition === null) {
       assertAbsentRelationship(resolves, "No-ship Condition resolution");
     } else {
-      assertReference(resolves, replay.subjects.materialCondition, "Founder-resolved Material Condition");
+      assertReference(resolves, replay.subjects.materialCondition, "Director-resolved Material Condition");
     }
     if (replay.subjects.candidate === null) {
       assertAbsentRelationship(selectsCandidate, "No-ship Candidate selection");
     } else {
-      assertReference(selectsCandidate, replay.subjects.candidate, "Founder-selected Candidate");
+      assertReference(selectsCandidate, replay.subjects.candidate, "Director-selected Candidate");
     }
     assertAbsentRelationship(selectsSeal, "No-ship Seal selection");
     assertAbsentRelationship(selectsEvidence, "No-ship Evidence selection");
@@ -1634,7 +1979,7 @@ function observeTransactionEffect(replay: Replay, event: ControlRecordEvent): vo
   }
   const outcome = enumField(payload, "outcome", ["applied", "not-applied", "indeterminate"] as const);
   if (activity.decisionKind === null) {
-    fail("order", `Transaction activity ${activity.id} has no exact Founder Decision kind`);
+    fail("order", `Transaction activity ${activity.id} has no exact Director Decision kind`);
   }
   assertFoundationTransactionObservationFactsV7({
     operation: activity.operation,
@@ -1663,6 +2008,7 @@ function observeTransactionEffect(replay: Replay, event: ControlRecordEvent): vo
       fail("order", "Readmission requires the exact continuing Candidate");
     }
     replay.subjects.activeBoundary = replay.subjects.proposedBoundary;
+    replay.activeAdmission = clonedReference(activity.decision);
     replay.subjects.proposedBoundary = null;
     replay.subjects.materialCondition = null;
     replay.subjects.seal = null;
@@ -1722,9 +2068,9 @@ function recordClosure(replay: Replay, event: ControlRecordEvent): void {
     "abandons-candidate",
   ]);
   assertReference(
-    requiredRelationship(closureRevision, "closes-with", "founder-decision"),
+    requiredRelationship(closureRevision, "closes-with", "director-decision"),
     activity.decision,
-    "Closure Founder Decision",
+    "Closure Director Decision",
   );
   const governedBy = optionalRelationship(
     closureRevision,
@@ -1881,6 +2227,13 @@ function completeActivity(replay: Replay, event: ControlRecordEvent): void {
           fail("activity", `${activity.operation} is not an agent activity`);
       }
     }
+  } else if (activity.family === "integration") {
+    if (activity.integrationAssessment === null || outcome !== "completed") fail("order", "Integration completion requires a retained completed assessment");
+    const assessment = integrationAssessmentFor(replay, activity.integrationAssessment);
+    if ((assessment.outcome === "constructed") !== (activity.candidate !== null)) fail("order", "Only a constructed integration completes with a Candidate successor");
+    if (assessment.outcome === "constructed" && assessment.contextualApplicability.disposition === "requires-readmission" && activity.materialCondition === null) {
+      fail("order", "Integration context changes must freeze the constructed Candidate before completion");
+    }
   } else {
     if (
       (activity.operation === "delivery.accept" || activity.operation === "delivery.no-ship") &&
@@ -1933,8 +2286,14 @@ function applyEvent(replay: Replay, event: ControlRecordEvent): void {
       if (replay.created || event.sequence !== 1) fail("duplicate", "Delivery is created exactly once at sequence 1");
       replay.created = true;
       break;
-    case "founder-brief-submitted":
-      submitFounderBrief(replay, event);
+    case "director-brief-submitted":
+      submitDirectorBrief(replay, event);
+      break;
+    case "work-delegation-set":
+      setWorkDelegation(replay, event);
+      break;
+    case "work-delegation-stopped":
+      stopWorkDelegation(replay, event);
       break;
     case "activity-started":
       startActivity(replay, event);
@@ -1960,6 +2319,9 @@ function applyEvent(replay: Replay, event: ControlRecordEvent): void {
     case "agent-work-product-abandoned":
       abandonWorkProduct(replay, event);
       break;
+    case "integration-assessed":
+      assessIntegration(replay, event);
+      break;
     case "candidate-revision-observed":
       observeCandidateRevision(replay, event);
       break;
@@ -1981,7 +2343,7 @@ function applyEvent(replay: Replay, event: ControlRecordEvent): void {
     case "evidence-packet-finalized":
       finalizeEvidence(replay, event);
       break;
-    case "founder-decision-authenticated":
+    case "director-decision-authenticated":
       authenticateDecision(replay, event);
       break;
     case "transaction-effect-intended":

@@ -1,14 +1,14 @@
 {
   "schema": "lifecycle.atlas-resolution.v2",
   "selection": {
-    "release": "0.7.0",
-    "specificationRevision": "429fee62966f4d30e91ec2a15d27ecf353f5d68f",
+    "release": "0.8.0",
+    "specificationRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
     "authoredFormat": 1,
-    "processorRevision": "746cbce73c51b28d617b96ca08f18d498ac749c4",
+    "processorRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
     "validationProfile": "neutral.atlas-validator.resolved",
     "validationResultSchema": "urn:atlas:schema:validation-result:1",
     "normalizedModelSchema": "urn:atlas:schema:normalized:1",
-    "consumerProfile": "lifecycle.atlas-consumer.v1"
+    "consumerProfile": "lifecycle.atlas-consumer.v2"
   },
   "atlasStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "resourceBindings": [
@@ -61,12 +61,12 @@
   "resourceBindingsDigest": "sha256:1dbcdb0b32d48c9c11ad39507ae07751195490267811b6cf3aef3bd2c73d1ec5",
   "processor": {
     "id": "atlas-reference-validator",
-    "version": "0.7.0",
-    "implementationDigest": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+    "version": "0.8.0",
+    "implementationDigest": "sha256:7432f9d49b9efdc828fbbc573fa32f395def8e201c628d7741ba56b2acf230be"
   },
   "externalValidationResultDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
   "normalizedModelDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
   "complete": true,
   "valid": true,
-  "digest": "sha256:c44130b1dd541fd6c72c6044d38f654da6cf0700258c6f61ed21e31960fcf07f"
+  "digest": "sha256:ce337a63e8399fdf1b1fc746e40f95e8163878825a055453b72bf4d119d0d1e5"
 }

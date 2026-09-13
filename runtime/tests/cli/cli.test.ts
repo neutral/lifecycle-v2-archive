@@ -97,14 +97,15 @@ test("root help presents Foundation v1 as the sole route", () => {
 
 test("every direct command exposes side-effect-free contextual help", () => {
   for (const leaf of allHelpLeafPaths()) {
-    const explicit = runCli(["help", leaf]);
+    const path = leaf.split(" ");
+    const explicit = runCli(["help", ...path]);
     assert.equal(explicit.status, 0, `${leaf}: ${explicit.stderr}`);
     assert.equal(explicit.stderr, "");
     assert.match(explicit.stdout, /USAGE/u);
     assert.match(explicit.stdout, new RegExp(`lifecycle ${leaf}\\b`, "u"));
 
     for (const flag of ["--help", "-h"]) {
-      const inline = runCli([leaf, "/target-that-must-not-be-inspected", "--unsupported", flag]);
+      const inline = runCli([...path, "/target-that-must-not-be-inspected", "--unsupported", flag]);
       assert.equal(inline.status, 0, `${leaf} ${flag}: ${inline.stderr}`);
       assert.equal(inline.stderr, "");
       assert.equal(inline.stdout, explicit.stdout);
@@ -118,20 +119,20 @@ test("version aliases preserve the exact Foundation v1 identity", () => {
   assert.equal(canonical.stderr, "");
   assert.deepEqual(JSON.parse(canonical.stdout), {
     runtimeVersion: "1.0.0",
-    runtimeProtocol: "lifecycle.runtime.foundation.v10",
+    runtimeProtocol: "lifecycle.runtime.foundation.v17",
     specificationId: "lifecycle",
-    specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
+    specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
     specificationStatus: "draft",
     publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
     authenticatedPublicationStatus: null,
     provider: {
-      defaultDescriptorId: "codex-exec-standard-v6",
-      defaultDescriptorDigest: "sha256:2e7d6aa152145518c6ce35b561384eb9f0e49dd2736ea019f18d47d5f095fc9e",
-      protocol: "lifecycle.provider-adapter.v6",
+      defaultDescriptorId: "codex-exec-standard-v7",
+      defaultDescriptorDigest: "sha256:4bcb41216dad08468d53d7208909d3417415c6f5b7b1078da72285650a92d021",
+      protocol: "lifecycle.provider-adapter.v7",
     },
     codex: {
-      executableRange: ">=0.151.0 <0.152.0",
-      generatedWith: "0.151.0",
+      executableRange: ">=0.153.4 <0.154.0",
+      generatedWith: "0.153.4",
       protocol: "exec-jsonl-v1",
     },
   });
@@ -515,9 +516,9 @@ test("installed validate is a direct top-level v7 JSON and human route", async (
   };
   assert.equal(result.operation, "repository.validate");
   assert.equal(result.status, "completed");
-  assert.equal(result.schema, "lifecycle.foundation-runtime-result.v10");
+  assert.equal(result.schema, "lifecycle.foundation-runtime-result.v17");
   assert.deepEqual(result.observation.repository, {
-    schema: "lifecycle.repository-observation.v10",
+    schema: "lifecycle.repository-observation.v17",
     initialized: false,
     valid: false,
     targetId: null,

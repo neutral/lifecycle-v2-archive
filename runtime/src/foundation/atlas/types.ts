@@ -1,14 +1,14 @@
 import type { Sha256 } from "../validation/canonical.js";
 
 export type FoundationAtlasSelection = Readonly<{
-  release: "0.7.0";
-  specificationRevision: "429fee62966f4d30e91ec2a15d27ecf353f5d68f";
+  release: "0.8.0";
+  specificationRevision: "2c7a78540ac30138218b12803f1c045cee8b109a";
   authoredFormat: 1;
-  processorRevision: "746cbce73c51b28d617b96ca08f18d498ac749c4";
+  processorRevision: "2c7a78540ac30138218b12803f1c045cee8b109a";
   validationProfile: "neutral.atlas-validator.resolved";
   validationResultSchema: "urn:atlas:schema:validation-result:1";
   normalizedModelSchema: "urn:atlas:schema:normalized:1";
-  consumerProfile: "lifecycle.atlas-consumer.v1";
+  consumerProfile: "lifecycle.atlas-consumer.v2";
 }>;
 
 export type FoundationAtlasDiagnostic = Readonly<{
@@ -29,8 +29,8 @@ export type FoundationAtlasValidationResult = Readonly<{
   specificationRevision: FoundationAtlasSelection["specificationRevision"];
   implementation: Readonly<{
     name: "atlas-reference-validator";
-    version: "0.7.0";
-    status: "working";
+    version: "0.8.0";
+    status: "stable";
   }>;
   diagnostics: readonly FoundationAtlasDiagnostic[];
   normalized?: FoundationAtlasNormalizedModel;
@@ -192,7 +192,7 @@ export type FoundationAtlasResolution = Readonly<{
   resourceBindingsDigest: Sha256;
   processor: Readonly<{
     id: "atlas-reference-validator";
-    version: "0.7.0";
+    version: "0.8.0";
     implementationDigest: Sha256;
   }>;
   externalValidationResultDigest: Sha256;

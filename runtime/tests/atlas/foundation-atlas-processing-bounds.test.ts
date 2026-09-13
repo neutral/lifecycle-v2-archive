@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { FOUNDATION_ATLAS_PROCESSOR_OUTPUT_MAXIMUM_BYTES } from "../../src/foundation/atlas/limits.js";
+import { materializeAtlasState } from "../../src/foundation/atlas/materialization.js";
 import { parseAtlasProcessorOutput } from "../../src/foundation/atlas/processor.js";
 import { inventoryInstalledAtlasProcessor } from "../../src/foundation/atlas/processor-filesystem.js";
 import {
@@ -14,7 +15,8 @@ import {
 import type { FoundationAtlasNormalizedModel, FoundationAtlasResource } from "../../src/foundation/atlas/types.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import type { FoundationGitTreeEntry } from "../../src/foundation/repository/types.js";
-import { digestCanonical } from "../../src/foundation/validation/canonical.js";
+import { git, objectBlobBytes } from "../../src/foundation/repository/git.js";
+import { digestCanonical, sha256Bytes } from "../../src/foundation/validation/canonical.js";
 import { minimalAtlasRepositoryState } from "../helpers/atlas-fixture.js";
 
 const RESOURCE_LIMITS: FoundationAtlasResourceBindingLimits = Object.freeze({
@@ -118,6 +120,126 @@ test("Atlas Resource binding hashes each unique Git blob once", async () => {
   assert.equal(reads, 1);
   assert.deepEqual(result.bindings.map(({ disposition }) => disposition), ["resolved", "resolved"]);
   assert.equal(result.bindings[0]!.byteDigest, result.bindings[1]!.byteDigest);
+});
+
+async function materializedResourceFixture() {
+  const repository = await mkdtemp(join(tmpdir(), "lifecycle-atlas-resource-reuse-"));
+  try {
+    await git(repository, ["init", "-b", "main"]);
+    const first = (await git(repository, ["hash-object", "-w", "--stdin"], { input: "shared" })).stdout.trim();
+    const second = (await git(repository, ["hash-object", "-w", "--stdin"], { input: "second" })).stdout.trim();
+    const entries = Object.freeze([
+      Object.freeze({ path: "atlas/atlas.md", mode: "100644" as const, objectId: first }),
+      Object.freeze({ path: "atlas/second.md", mode: "100644" as const, objectId: second }),
+    ]);
+    const atlasState = Object.freeze({ entries, digest: digestCanonical(entries) });
+    const materialization = await materializeAtlasState(repository, atlasState, "atlas/atlas.md");
+    let disposed = false;
+    return {
+      options: {
+        repository, atlasState, materialization,
+        treeEntries: Object.freeze(entries.map((entry) => Object.freeze({ ...entry, type: "blob" }))),
+        model: modelWithResources([resource("first", "atlas.md"), resource("alias", "atlas.md")]),
+      },
+      dispose: async () => {
+        if (disposed) return;
+        disposed = true;
+        try { await materialization.cleanup(); }
+        finally { await rm(repository, { recursive: true, force: true }); }
+      },
+    };
+  } catch (error) {
+    await rm(repository, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+test("Atlas Resource binding reuses only exact materialization observations with unchanged output", async (context) => {
+  const fixture = await materializedResourceFixture();
+  context.after(fixture.dispose);
+  // Real Git startup is outside this equivalence assertion; clock-bound cases retain the small policy.
+  const limits = { ...RESOURCE_LIMITS, maximumElapsedMilliseconds: 10_000 };
+  let reads = 0;
+  const host = stableHost(async (...args) => { reads += 1; return objectBlobBytes(...args); });
+  const { materialization: _materialization, ...withoutMaterialization } = fixture.options;
+  const original = await bindAtlasResourcesUnderPolicy(withoutMaterialization, host, limits);
+  assert.equal(reads, 1);
+  reads = 0;
+  const reused = await bindAtlasResourcesUnderPolicy(fixture.options, host, limits);
+  assert.deepEqual(reused, original);
+  assert.equal(reads, 0);
+  assert.equal(reused.bindings[0]!.byteDigest, sha256Bytes(Buffer.from("shared")));
+  assert.equal(reused.digest, digestCanonical(reused.bindings));
+});
+
+test("Atlas materialization reuse cannot substitute a repository, State, path, mode, object, or lifetime", async (context) => {
+  const fixture = await materializedResourceFixture();
+  context.after(fixture.dispose);
+  const options = fixture.options;
+  let reads = 0;
+  const fallbackBytes = Buffer.from("fresh");
+  const host = stableHost(async () => { reads += 1; return fallbackBytes; });
+  const mutations: readonly Parameters<typeof bindAtlasResourcesUnderPolicy>[0][] = [
+    { ...options, repository: `${options.repository}/another` },
+    { ...options, atlasState: Object.freeze({ ...options.atlasState }) },
+    { ...options, model: modelWithResources([resource("moved", "moved.md")]),
+      treeEntries: [treeEntry("atlas/moved.md", options.treeEntries[0]!.objectId)] },
+    { ...options, model: modelWithResources([resource("outside", "../src/external.md")]),
+      treeEntries: [treeEntry("src/external.md", options.treeEntries[0]!.objectId)] },
+    { ...options, treeEntries: [treeEntry("atlas/atlas.md", options.treeEntries[1]!.objectId)] },
+    { ...options, materialization: Object.freeze({ ...options.materialization }) },
+  ];
+  for (const mutated of mutations) {
+    reads = 0;
+    const result = await bindAtlasResourcesUnderPolicy(mutated, host, RESOURCE_LIMITS);
+    assert.equal(reads, 1);
+    assert.equal(result.bindings[0]!.byteDigest, sha256Bytes(fallbackBytes));
+  }
+  for (const entry of [
+    { ...options.treeEntries[0]!, mode: "100755" },
+    { ...options.treeEntries[0]!, type: "commit" },
+  ]) {
+    reads = 0;
+    const result = await bindAtlasResourcesUnderPolicy({ ...options, treeEntries: [entry] }, host, RESOURCE_LIMITS);
+    assert.equal(reads, 0);
+    assert(result.bindings.every(({ disposition }) => disposition === "unreadable"));
+  }
+  reads = 0;
+  const missing = await bindAtlasResourcesUnderPolicy({ ...options, treeEntries: [] }, host, RESOURCE_LIMITS);
+  assert.equal(reads, 0);
+  assert(missing.bindings.every(({ disposition }) => disposition === "missing"));
+  await fixture.dispose();
+  reads = 0;
+  const expired = await bindAtlasResourcesUnderPolicy(options, host, RESOURCE_LIMITS);
+  assert.equal(reads, 1);
+  assert.equal(expired.bindings[0]!.byteDigest, sha256Bytes(fallbackBytes));
+});
+
+test("reused Atlas Resource facts still consume all Resource bounds", async (context) => {
+  const fixture = await materializedResourceFixture();
+  context.after(fixture.dispose);
+  let reads = 0;
+  const host = stableHost(async () => { reads += 1; throw new Error("reused blob must not be read"); });
+  const options = fixture.options;
+  const unique = await bindAtlasResourcesUnderPolicy(options, host, { ...RESOURCE_LIMITS, maximumAggregateBytes: 6 });
+  assert(unique.bindings.every(({ disposition }) => disposition === "resolved"));
+  const oversized = await bindAtlasResourcesUnderPolicy(options, host, { ...RESOURCE_LIMITS, maximumResourceBytes: 5 });
+  assert(oversized.bindings.every(({ disposition }) => disposition === "unreadable"));
+  for (const [input, limits] of [
+    [options, { ...RESOURCE_LIMITS, maximumResources: 1 }],
+    [{ ...options, model: modelWithResources([resource("first", "atlas.md"), resource("second", "second.md")]) }, RESOURCE_LIMITS],
+  ] as const) {
+    await assert.rejects(bindAtlasResourcesUnderPolicy(input, host, limits),
+      (error: unknown) => atlasFailure(error, "lifecycle.atlas.processing-incomplete"));
+  }
+  await assert.rejects(bindAtlasResourcesUnderPolicy({ ...options,
+    model: modelWithResources([resource("same", "atlas.md"), resource("same", "second.md")]),
+  }, host, RESOURCE_LIMITS), (error: unknown) => atlasFailure(error, "lifecycle.atlas.result-invalid"));
+  let clockReads = 0;
+  await assert.rejects(bindAtlasResourcesUnderPolicy(options, {
+    ...host, now: () => clockReads++ < 2 ? 0 : 11,
+  }, RESOURCE_LIMITS), (error: unknown) => atlasFailure(error, "lifecycle.atlas.processing-incomplete"));
+  assert.equal(reads, 0);
 });
 
 test("Atlas Resource aggregate bytes and elapsed time fail closed without source disclosure", async () => {

@@ -12,6 +12,8 @@ const IMPLEMENTATION = Object.freeze({
   runner: "lifecycle.execution-cell-runner.v1",
   authenticatedAgentIsolation:
     "internal-cell-network-plus-fixed-destination-tls-proxy-plus-current-codex-restricted-read-networkless-inner-sandbox",
+  providerCredentialCustody:
+    "durable-exclusive-execution-claim-private-provider-state-volume-and-retirement-cas-settlement-v1",
 });
 
 const ENGINE_CONTRACT = Object.freeze({
@@ -40,6 +42,7 @@ FoundationExecutionBackendProfileV1 {
         observation: "direct",
         containment: "required",
         retirement: "required",
+        providerCredentialSettlement: "before-retirement-exact-claim",
         reclamation: "asynchronous-private",
       }),
     },

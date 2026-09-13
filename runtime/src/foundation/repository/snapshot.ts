@@ -1,11 +1,12 @@
 import { TextDecoder } from "node:util";
-import { validateKnowledgeSet } from "../knowledge/knowledge-set.js";
+import { consumeFoundationKnowledgeCompilation, validateKnowledgeSet } from "../knowledge/knowledge-set.js";
 import type { FoundationKnowledgeSet } from "../knowledge/types.js";
 import {
   FOUNDATION_SPECIFICATION_REVISION,
   FOUNDATION_VALIDATION_RESULT_SCHEMA,
 } from "../constants.js";
 import { FoundationError } from "../error.js";
+import { assertIndependentGitRepository } from "./independent-git.js";
 import { canonicalJson, digestCanonical, selfDigest, type Sha256 } from "../validation/canonical.js";
 import {
   validationDigestSubject,
@@ -91,6 +92,7 @@ export async function loadRepositoryIdentityEpoch(
   path: string,
 ): Promise<FoundationLoadedRepositoryIdentityEpoch> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   const epoch = await resolveAttachedEpoch(repository);
   const treeEntries = await exactTreeEntries(repository, epoch.tree, epoch.objectFormat);
   const contract = await readExactContract(repository, epoch.commit, treeEntries);
@@ -163,6 +165,7 @@ function repositorySnapshot(options: {
 /** Bind the exact pre-Knowledge repository epoch without reading authority from live worktree bytes. */
 export async function loadRepositoryEpoch(path: string): Promise<FoundationLoadedRepositoryEpoch> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   const epoch = await resolveAttachedEpoch(repository);
   const treeEntries = await exactTreeEntries(repository, epoch.tree, epoch.objectFormat);
   const contract = await readExactContract(repository, epoch.commit, treeEntries);
@@ -182,16 +185,17 @@ export async function loadRepositoryEpoch(path: string): Promise<FoundationLoade
 }
 
 /**
- * Load one exact historical commit while retaining a lock on the current
- * attached repository epoch. This is used for immutable admitted Knowledge:
- * the canonical Control commit can advance HEAD without rewriting the
- * pre-admission Product/Atlas/Knowledge authority basis.
+ * Load one exact historical commit and check that the attached epoch stayed
+ * unchanged during reproduction. Lock ownership remains with the caller.
+ * Later canonical Product commits do not rewrite this historical Knowledge
+ * and Atlas basis; Delivery Control remains outside canonical Git.
  */
 export async function loadRepositoryEpochAtCommit(
   path: string,
   commit: string,
 ): Promise<FoundationLoadedRepositoryEpoch> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   const attached = await resolveAttachedEpoch(repository);
   const resolvedCommit = (await git(repository, [
     "rev-parse", "--verify", "--end-of-options", `${commit}^{commit}`,
@@ -246,9 +250,9 @@ function epochBasis(loaded: FoundationLoadedRepositoryEpoch): FoundationReposito
 
 function compiledKnowledgeManifestSubject(knowledge: FoundationKnowledgeSet): Record<string, unknown> {
   return {
-    schema: "lifecycle.knowledge-set.v1",
+    schema: "lifecycle.knowledge-set.v2",
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     repository: {
       targetId: knowledge.repository.contract.targetId,
       commit: knowledge.repository.commit,
@@ -261,6 +265,7 @@ function compiledKnowledgeManifestSubject(knowledge: FoundationKnowledgeSet): Re
       atlasNormalizedModelDigest: knowledge.repository.atlasNormalizedModelDigest,
       atlasResourceBindingsDigest: knowledge.repository.atlasResourceBindingsDigest,
     },
+    disciplineRegistry: knowledge.disciplineRegistry,
     records: knowledge.records.map((record) => ({
       kind: record.frontMatter.kind,
       id: record.frontMatter.id,
@@ -328,7 +333,7 @@ async function bindRepositorySnapshotWithGuard(
   const manifest = knowledge.manifest;
   const invalidKnowledge = validation.schema !== FOUNDATION_VALIDATION_RESULT_SCHEMA ||
     validation.specificationRevision !== FOUNDATION_SPECIFICATION_REVISION ||
-    validation.profile !== "knowledge-set-v1" ||
+    validation.profile !== "knowledge-set-v2" ||
     validation.subject.kind !== "repository-knowledge" ||
     validation.subject.id !== manifest.repository.targetId ||
     validation.subject.revision !== manifest.repository.commit ||
@@ -339,9 +344,9 @@ async function bindRepositorySnapshotWithGuard(
     !compiledKnowledgeManifestMatches(knowledge) ||
     validation.subject.digest !== manifest.digest ||
     validation.publicationDigest !== knowledge.repository.contract.specification.publicationDigest ||
-    manifest.schema !== "lifecycle.knowledge-set.v1" ||
+    manifest.schema !== "lifecycle.knowledge-set.v2" ||
     manifest.specificationRevision !== FOUNDATION_SPECIFICATION_REVISION ||
-    manifest.profile !== "knowledge-set-v1" ||
+    manifest.profile !== "knowledge-set-v2" ||
     !manifest.complete ||
     !manifest.valid;
   if (invalidKnowledge) {
@@ -370,7 +375,7 @@ async function bindRepositorySnapshotWithGuard(
       },
     });
   }
-  const recomputed = await validateKnowledgeSet(loaded);
+  const recomputed = consumeFoundationKnowledgeCompilation(loaded, knowledge) ?? await validateKnowledgeSet(loaded);
   if (
     recomputed.knowledgeSet === null ||
     !recomputed.validation.complete ||

@@ -1,13 +1,16 @@
 import type { AgentAttemptInvestment } from "../control/agent-attempt.js";
+import { FOUNDATION_DIRECTOR_BRIEF_PAYLOAD_SCHEMA } from "../constants.js";
 import { controlIdentifier, normalizeSemanticMarkdown } from "../control/model.js";
 import type { ControlRecordStore } from "../control/store.js";
 import type { ControlJsonObject, ControlRecordRevision } from "../control/types.js";
 import { FoundationError } from "../error.js";
-import type { FoundationInstalledRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
+import type { FoundationProcessRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
 import { assertRepositoryEpochUnmoved } from "../repository/git.js";
 import { digestCanonical, sha256Bytes } from "../validation/canonical.js";
 import {
   inspectFoundationAgentActivityV7,
+  openFoundationAgentActivityV7,
+  advanceFoundationPreparationAgentActivityV7,
   operateFoundationAgentActivityV7,
   recoverFoundationAgentActivityV7,
   type FoundationAgentOperationSupportV7,
@@ -20,7 +23,7 @@ import {
 import { compileFoundationAgentInvestmentV7 } from "./operation-context-v7.js";
 import {
   assertFoundationPreparationBasisV7,
-  preflightFoundationPreparationBasisV7,
+  reopenFoundationPreparationBasisV7,
   type FoundationPreparationBasisV7,
   type FoundationPreparationContextV7Options,
 } from "./preparation-context-v7.js";
@@ -38,7 +41,7 @@ type PreparationRuntimeOwnersV7 = Readonly<{
   inspectAgentActivity: typeof inspectFoundationAgentActivityV7;
   operateAgentActivity: PreparationAgentOwner;
   recoverAgentActivity: PreparationAgentOwner;
-  preflightBasis: typeof preflightFoundationPreparationBasisV7;
+  reopenBasis: typeof reopenFoundationPreparationBasisV7;
   assertEpochUnmoved: typeof assertRepositoryEpochUnmoved;
 }>;
 
@@ -49,13 +52,13 @@ export type FoundationPreparationRuntimeV7Options = Readonly<{
   inspectAgentActivity?: typeof inspectFoundationAgentActivityV7;
   operateAgentActivity?: PreparationAgentOwner;
   recoverAgentActivity?: PreparationAgentOwner;
-  preflightBasis?: typeof preflightFoundationPreparationBasisV7;
+  reopenBasis?: typeof reopenFoundationPreparationBasisV7;
   assertEpochUnmoved?: typeof assertRepositoryEpochUnmoved;
 }>;
 
 export type FoundationFreshPreparationRuntimeV7Input = Readonly<{
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   runtimeId: string;
   agentId: string;
@@ -68,7 +71,7 @@ export type FoundationFreshPreparationRuntimeV7Input = Readonly<{
 export type FoundationRecoveredPreparationRuntimeV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   runtimeId: string;
   observedAt?: string;
@@ -93,7 +96,7 @@ function owners(options: FoundationPreparationRuntimeV7Options): PreparationRunt
     recoverAgentActivity: options.recoverAgentActivity ?? (
       async (input, selected) => await recoverFoundationAgentActivityV7(input, selected)
     ),
-    preflightBasis: options.preflightBasis ?? preflightFoundationPreparationBasisV7,
+    reopenBasis: options.reopenBasis ?? reopenFoundationPreparationBasisV7,
     assertEpochUnmoved: options.assertEpochUnmoved ?? assertRepositoryEpochUnmoved,
   });
 }
@@ -132,27 +135,31 @@ function exactRetainedPreparationBrief(
   if (
     brief === null ||
     brief.processId !== store.identity.processId ||
-    brief.recordKind !== "founder-brief" ||
+    brief.recordKind !== "director-brief" ||
     brief.digest !== support.brief.digest ||
-    brief.payload.schema !== "lifecycle.founder-brief-payload.v1" ||
+    brief.payload.schema !== FOUNDATION_DIRECTOR_BRIEF_PAYLOAD_SCHEMA ||
     brief.payload.inputProfile !== "delivery.prepare"
   ) {
-    fail("retained-brief", "Preparation recovery does not resolve its exact Founder Brief");
+    fail("retained-brief", "Preparation recovery does not resolve its exact Director Brief");
+  }
+  const scope = object(brief.payload.scope, "Retained Director Brief scope");
+  if (digestCanonical(scope) !== digestCanonical({ kind: "activity", activityId: support.activityId })) {
+    fail("retained-brief", "Preparation recovery requires its exact Activity-scoped Director Brief");
   }
   const semanticMarkdown = normalizeSemanticMarkdown(brief.semanticMarkdown);
-  const submission = object(brief.payload.submission, "Retained Founder Brief submission");
+  const submission = object(brief.payload.submission, "Retained Director Brief submission");
   if (
     semanticMarkdown !== brief.semanticMarkdown ||
     brief.payload.semanticMarkdownDigest !== sha256Bytes(semanticMarkdown) ||
-    support.opening.founderSemanticDigest !== sha256Bytes(semanticMarkdown) ||
-    support.opening.founderSemanticByteLength !== Buffer.byteLength(semanticMarkdown, "utf8") ||
-    submission.rawDigest !== support.opening.founderSubmissionRawDigest ||
-    submission.rawByteLength !== support.opening.founderSubmissionRawByteLength ||
-    submission.normalizedByteLength !== support.opening.founderSemanticByteLength
+    support.opening.directorSemanticDigest !== sha256Bytes(semanticMarkdown) ||
+    support.opening.directorSemanticByteLength !== Buffer.byteLength(semanticMarkdown, "utf8") ||
+    submission.rawDigest !== support.opening.directorSubmissionRawDigest ||
+    submission.rawByteLength !== support.opening.directorSubmissionRawByteLength ||
+    submission.normalizedByteLength !== support.opening.directorSemanticByteLength
   ) {
-    fail("retained-brief", "Preparation recovery Founder Brief differs from its retained opening facts");
+    fail("retained-brief", "Preparation recovery Director Brief differs from its retained opening facts");
   }
-  // Raw Founder bytes are intentionally not retained or reconstructed. The
+  // Raw Director bytes are intentionally not retained or reconstructed. The
   // normalized semantic Markdown is the only input rehydrated for recovery.
   return brief;
 }
@@ -188,7 +195,9 @@ function assertRetainedPlan(
     plan.providerInput.citationRegistryDigest !== basis.providerInput.citationRegistryDigest ||
     plan.providerInput.rootTokenSetDigest !== basis.providerInput.rootTokenSetDigest ||
     plan.evidenceSetDigest !== null ||
-    plan.propositionSetDigest !== null
+    plan.propositionSetDigest !== null ||
+    plan.preparationBasis?.basisDigest !== basis.digest ||
+    plan.preparationBasis.snapshot.digest !== basis.snapshot.snapshot.digest
   ) {
     fail("retained-plan", "Preparation recovery does not reproduce its immutable Agent plan");
   }
@@ -240,7 +249,7 @@ function assertFinalizationContext(
 
 function preparationRequest(input: Readonly<{
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   runtimeId: string;
   agentId: string;
@@ -260,6 +269,7 @@ function preparationRequest(input: Readonly<{
     targetRepository: basis.epoch.repository,
     activityId,
     operation: "delivery.prepare",
+    preparationBasis: Object.freeze({ snapshot: basis.snapshot.snapshot, basisDigest: basis.digest }),
     runtimeId: controlIdentifier(input.runtimeId, "Preparation runtime identity"),
     agentId: controlIdentifier(input.agentId, "Preparation Agent identity"),
     opening: Object.freeze({
@@ -267,7 +277,7 @@ function preparationRequest(input: Readonly<{
       submittedAt: input.submittedAt,
       startedAt: input.startedAt,
       attemptCreatedAt: input.attemptCreatedAt,
-      founderId: basis.epoch.contract.authority.principalId,
+      directorId: basis.epoch.contract.authority.principalId,
     }),
     boundary: null,
     candidate: null,
@@ -306,9 +316,29 @@ export async function operateFoundationPreparationRuntimeV7(
   input: FoundationFreshPreparationRuntimeV7Input,
   options: FoundationPreparationRuntimeV7Options,
 ): Promise<FoundationPreparationAgentOperationV7Result> {
+  const request = await freshPreparationRequest(input, options);
+  if (input.store.state().activities.some(({ id }) => id === input.activityId)) {
+    return await advanceFoundationPreparationAgentActivityV7(request, options.agentOperation);
+  }
+  return await owners(options).operateAgentActivity(request, options.agentOperation);
+}
+
+/** Pin exact context and retain the first Activity while Store custody is unpublished. */
+export async function openFoundationPreparationRuntimeV7(input: FoundationFreshPreparationRuntimeV7Input, options: FoundationPreparationRuntimeV7Options): Promise<void> {
+  openFoundationAgentActivityV7(await freshPreparationRequest(input, options));
+}
+
+async function freshPreparationRequest(input: FoundationFreshPreparationRuntimeV7Input, options: FoundationPreparationRuntimeV7Options): Promise<FoundationPreparationAgentOperationV7Input> {
   const runtimeOwners = owners(options);
   assertFoundationPreparationBasisV7(input.basis);
   assertPreparationCoordinate(input.store, input.basis);
+  const basis = await runtimeOwners.reopenBasis({
+    target: input.basis.epoch.repository,
+    machineHome: input.configuration.machineHome,
+    identity: input.store.identity,
+    binding: Object.freeze({ snapshot: input.basis.snapshot.snapshot, basisDigest: input.basis.digest }),
+    semanticMarkdown: input.basis.semanticMarkdown,
+  }, options.context);
   const activityId = controlIdentifier(input.activityId, "Preparation activity identity");
   const investment = compileFoundationAgentInvestmentV7({
     store: input.store,
@@ -316,13 +346,14 @@ export async function operateFoundationPreparationRuntimeV7(
     operation: "delivery.prepare",
     configuration: input.configuration,
   });
-  return await runtimeOwners.operateAgentActivity(preparationRequest({
+  return preparationRequest({
     ...input,
+    basis,
     activityId,
     investment,
     runtimeOwners,
     options,
-  }), options.agentOperation);
+  });
 }
 
 /** Rehydrate and resume only the exact retained preparation Activity. */
@@ -334,8 +365,13 @@ export async function recoverFoundationPreparationRuntimeV7(
   const activityId = controlIdentifier(input.activityId, "Preparation recovery activity identity");
   const support = runtimeOwners.inspectAgentActivity(input.store, activityId, "delivery.prepare");
   const brief = exactRetainedPreparationBrief(input.store, support);
-  const basis = await runtimeOwners.preflightBasis({
+  const binding = support.plan?.preparationBasis;
+  if (binding === undefined) fail("retained-plan", "Preparation recovery lacks its exact retained basis");
+  const basis = await runtimeOwners.reopenBasis({
     target: input.target,
+    machineHome: input.configuration.machineHome,
+    identity: input.store.identity,
+    binding,
     semanticMarkdown: brief.semanticMarkdown,
     ...(input.observedAt === undefined ? {} : { observedAt: input.observedAt }),
   }, options.context);

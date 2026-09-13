@@ -1,23 +1,32 @@
 import { spawn, spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   accessSync,
   chmodSync,
+  closeSync,
   constants as fsConstants,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
+  opendirSync,
+  openSync,
   readFileSync,
+  readSync,
   readdirSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
+  writeSync,
+  type BigIntStats,
 } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import {
   delimiter,
+  dirname,
   isAbsolute,
   join,
   normalize,
@@ -35,14 +44,29 @@ import {
   platformSelection,
   RUNTIME_INVOCATION_PROTOCOL,
 } from "./manifest.js";
+import {
+  HEARTBEAT_INTERVAL_MS,
+  INVOCATION_LABEL_PREFIX,
+  MISSED_HEARTBEAT_LIMIT,
+  mountArgument,
+  RUNTIME_INVOCATION_MASK_TMPFS_BYTES,
+  RUNTIME_TMPFS_BYTES,
+  signalExitCode,
+  stateRootDigest,
+  updateRuntimeInvocationHeartbeat,
+  writeRuntimeInvocationSupport,
+} from "./invocation-support.js";
+import type {
+  DockerBoundary,
+  DockerPlatform,
+  HostInstallation,
+  InstallationConfig,
+  PreparedInvocation,
+} from "./launcher-context.js";
 
-export type DistributionCommand = "lifecycle" | "lifecycle-tui";
+export type DistributionCommand = "lifecycle";
 
-const INVOCATION_LABEL_PREFIX = "io.lifecycle.runtime-invocation.private.v1";
 const CONFIG_SCHEMA = "lifecycle.distribution-installation-config.private.v1";
-const HEARTBEAT_INTERVAL_MS = 500;
-const MISSED_HEARTBEAT_LIMIT = 10;
-const RUNTIME_TMPFS_BYTES = 512 * 1024 * 1024;
 const MAXIMUM_COMMAND_OUTPUT_BYTES = 1024 * 1024;
 const MINIMUM_DOCKER_API_VERSION = Object.freeze([1n, 48n] as const);
 const OPAQUE_SELECTION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
@@ -105,40 +129,6 @@ const RESERVED_RUNTIME_MOUNT_TARGETS = [
   "/var/lib/lifecycle",
 ] as const;
 const DESCENDANT_MOUNTS_ALLOWED = new Set(["/tmp"]);
-
-type InstallationConfig = Readonly<{
-  model: string;
-  reasoning: string;
-  schema: typeof CONFIG_SCHEMA;
-}>;
-
-type DockerPlatform = Readonly<{
-  architecture: DistributionArchitecture;
-  os: "linux";
-}>;
-
-type HostInstallation = Readonly<{
-  codexHome: string;
-  dockerConfig: string;
-  invocationRoot: string;
-  machineHome: string;
-  runtimeHome: string;
-}>;
-
-type DockerBoundary = Readonly<{
-  endpoint: string;
-  environment: NodeJS.ProcessEnv;
-  executable: string;
-  run(arguments_: readonly string[]): SpawnSyncReturns<Buffer>;
-  socketGid: number;
-  socketPath: string;
-}>;
-
-type PreparedInvocation = Readonly<{
-  arguments: readonly string[];
-  mounts: readonly Readonly<{ source: string; target: string; readOnly: boolean }>[];
-  target: string | null;
-}>;
 
 export class DistributionLauncherError extends Error {
   constructor(message: string) {
@@ -346,7 +336,7 @@ function dockerDiscoveryEnvironment(environment: NodeJS.ProcessEnv): NodeJS.Proc
 
 function dockerCommandEnvironment(
   environment: NodeJS.ProcessEnv,
-  installation: HostInstallation,
+  installation: Pick<HostInstallation, "dockerConfig" | "runtimeHome">,
 ): NodeJS.ProcessEnv {
   return Object.freeze({
     ...selectedEnvironment(environment, DOCKER_COMMAND_ENVIRONMENT_NAMES),
@@ -362,7 +352,7 @@ function commandFailure(result: SpawnSyncReturns<Buffer>, label: string): never 
 
 function createDockerBoundary(
   environment: NodeJS.ProcessEnv,
-  installation: HostInstallation,
+  installation: Pick<HostInstallation, "dockerConfig" | "runtimeHome">,
 ): DockerBoundary {
   const executable = resolveExecutable(environment.LIFECYCLE_DISTRIBUTION_DOCKER_PATH ?? "docker", environment);
   const discoveryEnvironment = dockerDiscoveryEnvironment(environment);
@@ -637,52 +627,66 @@ function positionalIndexes(arguments_: readonly string[]): readonly number[] {
   return output;
 }
 
-function targetGitMounts(target: string): readonly string[] {
-  const dotGit = join(target, ".git");
-  if (!existsSync(dotGit)) return Object.freeze([]);
-  const state = lstatSync(dotGit);
-  if (state.isDirectory() && !state.isSymbolicLink()) return Object.freeze([]);
-  if (!state.isFile() || state.isSymbolicLink() || state.size > 8_192) {
-    fail("target .git carrier is not one bounded regular file or directory");
+/** Physical preflight only; Runtime independently verifies Git's resolved directories. */
+function assertIndependentTargetGit(target: string): void {
+  const localEntry = (path: string, kind: "directory" | "file", required = false): void => {
+    const absolute = join(target, path);
+    let state;
+    try { state = lstatSync(absolute); } catch (error) {
+      if (!required && (error as NodeJS.ErrnoException).code === "ENOENT") return;
+      fail(`target requires independent local Git metadata at ${path}`);
+    }
+    if (state.isSymbolicLink() ||
+        (kind === "directory" ? !state.isDirectory() : !state.isFile() || state.nlink !== 1) ||
+        realpathSync(absolute) !== absolute) {
+      fail(`target requires independent local Git metadata at ${path}`);
+    }
+  };
+  localEntry(".git", "directory", true);
+  for (const path of [
+    ".git/objects", ".git/objects/info", ".git/objects/pack",
+    ".git/refs", ".git/refs/heads", ".git/refs/tags", ".git/reftable", ".git/info",
+    ".git/logs", ".git/logs/refs", ".git/logs/refs/heads",
+    ".git/worktrees",
+  ]) localEntry(path, "directory");
+  if (existsSync(join(target, ".git/worktrees"))) {
+    const directory = opendirSync(join(target, ".git/worktrees"));
+    try {
+      if (directory.readSync() !== null) fail("target cannot share Git administration with registered linked worktrees");
+    } finally { directory.closeSync(); }
   }
-  const match = /^gitdir: ([^\0\r\n]+)\n?$/u.exec(readFileSync(dotGit, "utf8"));
-  if (match === null) fail("target linked-worktree .git carrier is invalid");
-  const gitDirectory = exactDirectory(resolve(target, match[1]!), "target Git administration directory", false);
-  const reverseCarrier = join(gitDirectory, "gitdir");
-  if (!existsSync(reverseCarrier)) {
-    fail("target Git administration directory has no reverse worktree binding");
+  for (const path of [".git/commondir", ".git/objects/info/alternates", ".git/objects/info/http-alternates"]) {
+    try { lstatSync(join(target, path)); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      fail(`target Git metadata is unavailable at ${path}`);
+    }
+    fail(`target cannot use linked worktrees or alternate Git object stores: ${path}`);
   }
-  const reverseState = lstatSync(reverseCarrier);
-  if (!reverseState.isFile() || reverseState.isSymbolicLink() || reverseState.size > 8_192) {
-    fail("target Git reverse-worktree carrier is invalid");
+  for (const path of [".git/HEAD", ".git/config", ".git/index", ".git/packed-refs", ".git/shallow", ".git/info/grafts"]) {
+    localEntry(path, "file");
   }
-  const reverseValue = readFileSync(reverseCarrier, "utf8");
-  if (!/^[^\0\r\n]+\n?$/u.test(reverseValue) ||
-      resolve(gitDirectory, reverseValue.endsWith("\n") ? reverseValue.slice(0, -1) : reverseValue) !== dotGit) {
-    fail("target Git administration directory does not bind back to the selected worktree");
+  let selected = "HEAD";
+  const chain = new Set<string>();
+  while (true) {
+    if (chain.has(selected) || chain.size >= 64) fail("target Git symbolic reference chain is invalid");
+    chain.add(selected);
+    const carrier = join(target, ".git", selected);
+    if (!existsSync(carrier)) break;
+    if (lstatSync(carrier).size > 8_192) fail("target Git reference exceeds its physical preflight bound");
+    const reference = /^ref: (refs\/[^\0\r\n]+)\n?$/u.exec(readFileSync(carrier, "utf8"))?.[1];
+    if (reference === undefined) break;
+    const segments = reference.split("/");
+    if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
+      fail("target Git HEAD has an invalid local reference");
+    }
+    for (let index = 1; index <= segments.length; index += 1) {
+      const path = segments.slice(0, index).join("/");
+      const kind = index === segments.length ? "file" : "directory";
+      localEntry(`.git/${path}`, kind);
+      localEntry(`.git/logs/${path}`, kind);
+    }
+    selected = reference;
   }
-  const commonCarrier = join(gitDirectory, "commondir");
-  const commonDirectory = existsSync(commonCarrier)
-    ? (() => {
-        const commonState = lstatSync(commonCarrier);
-        if (!commonState.isFile() || commonState.isSymbolicLink() || commonState.size > 8_192) {
-          fail("target Git common-directory carrier is invalid");
-        }
-        const value = readFileSync(commonCarrier, "utf8");
-        if (!/^[^\0\r\n]+\n?$/u.test(value)) fail("target Git common-directory carrier is malformed");
-        return exactDirectory(
-          resolve(gitDirectory, value.endsWith("\n") ? value.slice(0, -1) : value),
-          "target Git common directory",
-          false,
-        );
-    })()
-    : gitDirectory;
-  if (within(target, gitDirectory) || within(target, commonDirectory) ||
-      !within(commonDirectory, gitDirectory)) {
-    fail("target Git administrative topology is not one exact external common-directory domain");
-  }
-  return Object.freeze([gitDirectory, commonDirectory]
-    .filter((path, index, all) => !within(target, path) && all.indexOf(path) === index));
 }
 
 function absoluteInputFile(value: string, cwd: string, target: string): string {
@@ -713,38 +717,19 @@ export function prepareRuntimeInvocation(
   if (output.includes("--help") || output.includes("-h")) {
     return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([]), target: null });
   }
-  let targetValue: string;
-  if (command === "lifecycle") {
-    const positionals = positionalIndexes(output);
-    const action = positionals[0] === undefined ? null : output[positionals[0]]!;
-    if (action === null || !TARGET_ACTIONS.has(action)) {
-      return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([]), target: null });
-    }
-    const targetIndex = positionals[1];
-    if (targetIndex === undefined) fail(`${action} requires one target repository path`);
-    targetValue = output[targetIndex]!;
-    output[targetIndex] = exactDirectory(realpathSync(resolve(cwd, targetValue)), "target repository", false);
-  } else {
-    let targetIndex = -1;
-    for (let index = 0; index < output.length; index += 1) {
-      if (output[index] === "--lifecycle") {
-        fail("the distributed TUI cannot select another Lifecycle executable");
-      }
-      if (output[index] === "--target") {
-        if (targetIndex !== -1 || output[index + 1] === undefined) fail("TUI target selection is invalid");
-        targetIndex = index + 1;
-        index += 1;
-      }
-    }
-    targetValue = targetIndex === -1 ? cwd : output[targetIndex]!;
-    const selected = exactDirectory(realpathSync(resolve(cwd, targetValue)), "target repository", false);
-    if (targetIndex === -1) output.push("--target", selected);
-    else output[targetIndex] = selected;
+  if (command !== "lifecycle") fail("entrypoint is not the selected Lifecycle CLI");
+  const positionals = positionalIndexes(output);
+  const action = positionals[0] === undefined ? null : output[positionals[0]]!;
+  if (action === null || !TARGET_ACTIONS.has(action)) {
+    return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([]), target: null });
   }
-  const target = command === "lifecycle"
-    ? output[positionalIndexes(output)[1]!]!
-    : output[output.indexOf("--target") + 1]!;
-  const mountPaths = [target, ...targetGitMounts(target)];
+  const targetIndex = positionals[1];
+  if (targetIndex === undefined) fail(`${action} requires one target repository path`);
+  const targetValue = output[targetIndex]!;
+  const target = exactDirectory(realpathSync(resolve(cwd, targetValue)), "target repository", false);
+  output[targetIndex] = target;
+  assertIndependentTargetGit(target);
+  const mountPaths = [target];
   if (command === "lifecycle") {
     for (let index = 0; index < output.length; index += 1) {
       const argument = output[index]!;
@@ -776,23 +761,187 @@ export function prepareRuntimeInvocation(
   });
 }
 
-function stateRootDigest(machineHome: string): string {
-  return `sha256:${createHash("sha256").update(machineHome, "utf8").digest("hex")}`;
+/** Map only explicitly selected local files; this route never selects a target. */
+export function prepareDraftInvocation(arguments_: readonly string[], cwd: string): PreparedInvocation {
+  const output = [...arguments_];
+  if (output.includes("--help") || output.includes("-h") ||
+      (output.length === 2 && output[0] === "help" && output[1] === "draft")) {
+    return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([]), target: null });
+  }
+  if (output[0] !== "draft") fail("local drafting requires the draft command");
+  const positions: number[] = [];
+  const options = new Map<string, number>();
+  for (let index = 1; index < output.length; index += 1) {
+    const value = output[index]!;
+    if (!value.startsWith("--")) { positions.push(index); continue; }
+    if ((value !== "--format" && value !== "--basis") || options.has(value) ||
+        output[index + 1] === undefined || output[index + 1]!.startsWith("--")) {
+      fail("draft accepts only explicit local selections, --basis FILE, and --format human|json");
+    }
+    options.set(value, ++index);
+  }
+  const formatIndex = options.get("--format");
+  if (formatIndex !== undefined && !["human", "json"].includes(output[formatIndex]!)) {
+    fail("draft --format must be human or json");
+  }
+  const action = positions[0] === undefined ? undefined : output[positions[0]];
+  if (action === "forms") {
+    if (positions.length > 2 || options.has("--basis")) fail("draft forms accepts at most one form and --format");
+    return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([]), target: null });
+  }
+  if ((action !== "knowledge" && action !== "semantic") || positions.length < 3 ||
+      (action === "knowledge" && options.has("--basis")) ||
+      (action === "semantic" && (positions.length !== 3 || !options.has("--basis")))) {
+    fail("use lifecycle help draft for exact local file selection syntax");
+  }
+  // Bound host mount construction independently of Runtime byte/semantic limits.
+  if (positions.length - 2 > 1_024) fail("draft accepts at most 1024 explicit file selections");
+  const workspaceIndex = positions[1]!;
+  let workspace: string;
+  try {
+    workspace = exactPath(realpathSync(resolve(cwd, output[workspaceIndex]!)), "draft workspace");
+    if (!lstatSync(workspace).isDirectory()) fail("draft workspace must be a directory");
+    accessSync(workspace, fsConstants.R_OK | fsConstants.X_OK);
+  } catch { fail("the explicitly selected draft workspace is unavailable"); }
+  const mounts = new Map<string, PreparedInvocation["mounts"][number]>();
+  const containerRoot = "/lifecycle-draft/workspace";
+  const addFile = (source: string, target: string): void => {
+    const path = exactRegularFile(source, "selected draft input");
+    const state = lstatSync(path);
+    if (state.nlink !== 1 || (state.mode & 0o111) !== 0) fail("draft inputs must be non-executable regular files without links");
+    mounts.set(target, Object.freeze({ source: path, target, readOnly: true }));
+  };
+  for (const index of positions.slice(2)) {
+    const path = output[index]!;
+    if (isAbsolute(path) || path.includes("\\") || path.split("/").some((part) => part === "" || part === "." || part === "..")) {
+      fail("draft file selections must be normalized paths relative to the explicit workspace");
+    }
+    addFile(join(workspace, path), `${containerRoot}/${path}`);
+  }
+  if (action === "knowledge") addFile(join(workspace, ".lifecycle/repository.json"), `${containerRoot}/.lifecycle/repository.json`);
+  const basisIndex = options.get("--basis");
+  if (basisIndex !== undefined) {
+    if (!isAbsolute(output[basisIndex]!)) fail("draft semantic --basis requires one absolute file");
+    addFile(output[basisIndex]!, "/lifecycle-draft/semantic-basis.json");
+    output[basisIndex] = "/lifecycle-draft/semantic-basis.json";
+  }
+  output[workspaceIndex] = containerRoot;
+  return Object.freeze({ arguments: Object.freeze(output), mounts: Object.freeze([...mounts.values()]), target: null });
 }
 
-function mountArgument(source: string, target: string, readOnly: boolean): string {
-  return `type=bind,src=${source},dst=${target}${readOnly ? ",readonly" : ""}`;
+/** Snapshot selected bytes before Docker observes them; no target semantics live here. */
+function snapshotDraftInputs(prepared: PreparedInvocation, temporary: string): PreparedInvocation["mounts"] {
+  if (prepared.mounts.length === 0) return Object.freeze([]);
+  const root = ensurePrivateDirectory(join(temporary, "inputs"), "local draft input snapshot");
+  // Independent transport ceilings encompass the Runtime's local read profiles.
+  const maximumFileBytes = 256 * 1024 * 1024;
+  const maximumTotalBytes = 512 * 1024 * 1024;
+  let total = 0;
+  const same = (left: BigIntStats, right: BigIntStats): boolean =>
+    left.dev === right.dev && left.ino === right.ino && left.size === right.size &&
+    left.mode === right.mode && left.nlink === right.nlink &&
+    left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
+  for (const mount of prepared.mounts) {
+    const directories: { path: string; state: BigIntStats }[] = [];
+    let parent = dirname(mount.source);
+    for (;;) {
+      const state = lstatSync(parent, { bigint: true });
+      if (!state.isDirectory() || state.isSymbolicLink()) fail("selected draft input directories changed; retry the explicit selection");
+      directories.push({ path: parent, state });
+      const next = dirname(parent);
+      if (next === parent) break;
+      parent = next;
+    }
+    const before = lstatSync(mount.source, { bigint: true });
+    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n || (before.mode & 0o111n) !== 0n) {
+      fail("selected draft input must remain one non-executable regular file without links");
+    }
+    if (before.size > BigInt(maximumFileBytes) || before.size + BigInt(total) > BigInt(maximumTotalBytes)) {
+      fail("selected draft input exceeds the bounded local launch snapshot");
+    }
+    const destination = join(root, relative("/lifecycle-draft", mount.target));
+    mkdirSync(dirname(destination), { mode: 0o700, recursive: true });
+    const source = openSync(mount.source, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK);
+    try {
+      if (!same(before, fstatSync(source, { bigint: true }))) fail("selected draft input changed before snapshot; retry the explicit selection");
+      const output = openSync(destination, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL, 0o600);
+      let observed = 0;
+      try {
+        const buffer = Buffer.alloc(64 * 1024);
+        for (;;) {
+          const count = readSync(source, buffer, 0, buffer.byteLength, observed);
+          if (count === 0) break;
+          observed += count;
+          if (observed > maximumFileBytes || total + observed > maximumTotalBytes) fail("selected draft input exceeds the bounded local launch snapshot");
+          let written = 0;
+          while (written < count) written += writeSync(output, buffer, written, count - written);
+        }
+      } finally { closeSync(output); }
+      if (BigInt(observed) !== before.size || !same(before, fstatSync(source, { bigint: true })) ||
+          !same(before, lstatSync(mount.source, { bigint: true })) || realpathSync(mount.source) !== mount.source) {
+        fail("selected draft input changed during snapshot; retry the explicit selection");
+      }
+      for (const directory of directories) {
+        const current = lstatSync(directory.path, { bigint: true });
+        if (!current.isDirectory() || current.isSymbolicLink() || current.dev !== directory.state.dev || current.ino !== directory.state.ino) {
+          fail("selected draft input directory changed during snapshot; retry the explicit selection");
+        }
+      }
+      total += observed;
+    } finally { closeSync(source); }
+  }
+  return Object.freeze([Object.freeze({ source: root, target: "/lifecycle-draft", readOnly: true })]);
 }
 
-export function dockerTerminalArguments(
-  command: DistributionCommand,
-  stdinIsTty: boolean,
-  stdoutIsTty: boolean,
-): readonly string[] {
-  return Object.freeze([
-    "--interactive",
-    ...(command === "lifecycle-tui" && stdinIsTty && stdoutIsTty ? ["--tty"] : []),
-  ]);
+async function launchDraft(
+  arguments_: readonly string[],
+  manifest: DistributionManifest,
+  environment: NodeJS.ProcessEnv,
+): Promise<number> {
+  const prepared = prepareDraftInvocation(arguments_, process.cwd());
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  if (uid === undefined || gid === undefined) fail("local drafting requires one Unix user identity");
+  const temporary = realpathSync(mkdtempSync(join(tmpdir(), "lifecycle-draft-launch-")));
+  const handlers: { signal: NodeJS.Signals; handler: () => void }[] = [];
+  try {
+    const mounts = snapshotDraftInputs(prepared, temporary);
+    // Docker discovery uses its existing owner; command configuration is empty
+    // and disposable, without opening Lifecycle installation or provider state.
+    const boundary = createDockerBoundary(environment, {
+      dockerConfig: ensurePrivateDirectory(join(temporary, "docker-config"), "local draft Docker configuration"),
+      runtimeHome: temporary,
+    });
+    const platform = dockerPlatform(boundary);
+    verifyRuntimeImage(manifest, platform, boundary);
+    const child = spawn(boundary.executable, [
+      "--host", boundary.endpoint, "run", "--rm", "--init", "--pull", "never",
+      "--platform", `linux/${platform.architecture}`, "--read-only", "--network", "none",
+      "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user", `${uid}:${gid}`,
+      "--tmpfs", `/tmp:rw,nosuid,nodev,noexec,size=${RUNTIME_TMPFS_BYTES},mode=0700,uid=${uid},gid=${gid}`,
+      ...mounts.flatMap((mount) => ["--mount", mountArgument(mount.source, mount.target, true)]),
+      "--env", "HOME=/tmp", "--workdir", "/opt/lifecycle",
+      "--entrypoint", "/opt/lifecycle/bin/lifecycle",
+      imageReference(manifest.images.runtime), ...prepared.arguments,
+    ], { env: boundary.environment, shell: false, stdio: ["ignore", "inherit", "inherit"] });
+    for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"] as const) {
+      const handler = (): void => { try { child.kill(signal); } catch { /* The local command may already be terminal. */ } };
+      handlers.push({ signal, handler });
+      process.on(signal, handler);
+    }
+    const result = await new Promise<Readonly<{ code: number | null; signal: NodeJS.Signals | null }>>((resolveResult, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code, signal) => resolveResult({ code, signal }));
+    });
+    return result.code ?? signalExitCode(result.signal);
+  } finally {
+    for (const { signal, handler } of handlers) process.removeListener(signal, handler);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+export function dockerTerminalArguments(): readonly string[] {
+  return Object.freeze(["--interactive"]);
 }
 
 function runtimeEnvironmentArguments(
@@ -829,24 +978,6 @@ function runtimeEnvironmentArguments(
   return Object.freeze(Object.entries(values).flatMap(([name, value]) => ["--env", `${name}=${value}`]));
 }
 
-function heartbeat(invocationDirectory: string, counter: number): void {
-  const path = join(invocationDirectory, "heartbeat");
-  const temporary = join(invocationDirectory, `.heartbeat.${randomUUID()}.tmp`);
-  writeFileSync(temporary, `${counter}\n`, { flag: "wx", mode: 0o600 });
-  renameSync(temporary, path);
-}
-
-function writeInvocation(invocationDirectory: string, invocationId: string): void {
-  writeFileSync(join(invocationDirectory, "invocation.json"), canonicalManifestBytes({
-    heartbeatFile: "/run/lifecycle-invocation/heartbeat",
-    heartbeatIntervalMilliseconds: HEARTBEAT_INTERVAL_MS,
-    invocationId,
-    missedHeartbeatLimit: MISSED_HEARTBEAT_LIMIT,
-    schema: RUNTIME_INVOCATION_PROTOCOL,
-  }), { flag: "wx", mode: 0o600 });
-  heartbeat(invocationDirectory, 0);
-}
-
 function recoverStaleInvocations(
   installation: HostInstallation,
   boundary: DockerBoundary,
@@ -861,6 +992,8 @@ function recoverStaleInvocations(
     `label=${INVOCATION_LABEL_PREFIX}.protocol=${RUNTIME_INVOCATION_PROTOCOL}`,
     "--filter",
     `label=${INVOCATION_LABEL_PREFIX}.state-root-digest=${selectedRoot}`,
+    "--filter",
+    `label=${INVOCATION_LABEL_PREFIX}.role=command-runtime`,
     "--format",
     "{{.ID}}",
   ], "stale Runtime invocation discovery");
@@ -883,6 +1016,7 @@ function recoverStaleInvocations(
     const sourceRevision = selectedLabels?.[`${INVOCATION_LABEL_PREFIX}.source-revision`];
     if (typeof invocationId !== "string" || !UUID.test(invocationId) ||
         selectedLabels?.[`${INVOCATION_LABEL_PREFIX}.state-root-digest`] !== selectedRoot ||
+        selectedLabels?.[`${INVOCATION_LABEL_PREFIX}.role`] !== "command-runtime" ||
         typeof sourceRevision !== "string" || !SOURCE_REVISION.test(sourceRevision) ||
         record.Name !== `/lifecycle-runtime-${invocationId}`) {
       fail("stale Runtime invocation labels are incomplete or substituted");
@@ -940,10 +1074,6 @@ function recoverStaleInvocations(
   }
 }
 
-function signalExitCode(signal: NodeJS.Signals | null): number {
-  return signal === "SIGHUP" ? 129 : signal === "SIGINT" ? 130 : signal === "SIGTERM" ? 143 : 1;
-}
-
 async function launchRuntime(
   command: DistributionCommand,
   arguments_: readonly string[],
@@ -970,7 +1100,7 @@ async function launchRuntime(
     join(installation.invocationRoot, invocationId),
     "Lifecycle invocation directory",
   );
-  writeInvocation(invocationDirectory, invocationId);
+  writeRuntimeInvocationSupport(invocationDirectory, invocationId);
   const cidFile = join(invocationDirectory, "container-id");
   const uid = process.getuid();
   const gid = process.getgid();
@@ -979,7 +1109,7 @@ async function launchRuntime(
     "run",
     "--rm",
     "--init",
-    ...dockerTerminalArguments(command, process.stdin.isTTY, process.stdout.isTTY),
+    ...dockerTerminalArguments(),
     "--pull", "never",
     "--platform", `linux/${platform.architecture}`,
     "--name", `lifecycle-runtime-${invocationId}`,
@@ -988,6 +1118,7 @@ async function launchRuntime(
     "--label", `${INVOCATION_LABEL_PREFIX}.invocation-id=${invocationId}`,
     "--label", `${INVOCATION_LABEL_PREFIX}.state-root-digest=${stateRootDigest(installation.machineHome)}`,
     "--label", `${INVOCATION_LABEL_PREFIX}.source-revision=${manifest.distribution.sourceRevision}`,
+    "--label", `${INVOCATION_LABEL_PREFIX}.role=command-runtime`,
     "--read-only",
     "--network", "none",
     "--cap-drop", "ALL",
@@ -996,6 +1127,8 @@ async function launchRuntime(
     "--group-add", String(boundary.socketGid),
     "--tmpfs",
     `/tmp:rw,nosuid,nodev,noexec,size=${RUNTIME_TMPFS_BYTES},mode=0700,uid=${uid},gid=${gid}`,
+    "--tmpfs",
+    `/var/lib/lifecycle/distribution/invocations:rw,nosuid,nodev,noexec,size=${RUNTIME_INVOCATION_MASK_TMPFS_BYTES},mode=0700,uid=${uid},gid=${gid}`,
     "--mount", mountArgument(installation.machineHome, "/var/lib/lifecycle", false),
     "--mount", mountArgument(invocationDirectory, "/run/lifecycle-invocation", true),
     "--mount", mountArgument(boundary.socketPath, "/run/lifecycle/docker.sock", false),
@@ -1013,7 +1146,9 @@ async function launchRuntime(
   let counter = 0;
   const timer = setInterval(() => {
     counter += 1;
-    try { heartbeat(invocationDirectory, counter); } catch { /* The invocation may be completing. */ }
+    try { updateRuntimeInvocationHeartbeat(invocationDirectory, counter); } catch {
+      /* The invocation may be completing. */
+    }
   }, HEARTBEAT_INTERVAL_MS);
   timer.unref();
 
@@ -1055,6 +1190,10 @@ export async function runDistributionLauncher(
 ): Promise<number> {
   try {
     assertDistributionHostPlatform();
+    if (command === "lifecycle" && (arguments_[0] === "draft" ||
+        (arguments_[0] === "help" && arguments_[1] === "draft"))) {
+      return await launchDraft(arguments_, manifest, environment);
+    }
     if (command === "lifecycle" && arguments_[0] === "setup") {
       const selection = setupSelections(arguments_.slice(1));
       const installation = installationPaths(environment, true);

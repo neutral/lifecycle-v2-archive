@@ -54,47 +54,47 @@ ready” are not standard conformance claims.
 
 ## Exact Foundation Cut
 
-The Foundation rc.10 conformance target is one fresh-only generation:
+The Foundation rc.17 conformance target is one fresh-only generation:
 
-- qualification revision `lifecycle.foundation.1.0.0-rc.10`;
-- repository contract `lifecycle.repository.v15` and validation profile
-  `repository-v7`;
-- runtime protocol `lifecycle.runtime.foundation.v10`;
-- interface protocol `lifecycle.interface.foundation.v10`;
-- Provider Adapter `lifecycle.provider-adapter.v6`;
+- qualification revision `lifecycle.foundation.1.0.0-rc.17`;
+- repository contract `lifecycle.repository.v22` and validation profile
+  `repository-v9`;
+- runtime protocol `lifecycle.runtime.foundation.v17`;
+- interface protocol `lifecycle.interface.foundation.v17`;
+- Provider Adapter `lifecycle.provider-adapter.v7`;
 - first production Execution Backend Profile
   `lifecycle.execution-backend-profile.docker-local.v1` and fixed Cell runner
   `lifecycle.execution-cell-runner.v1`;
-- Control Store `lifecycle.control-record-store.v1`;
-- Control revision `lifecycle.control-record-revision.v1`;
-- Control event `lifecycle.control-record-event.v2`, preserving the closed
-  twenty-two event kinds;
+- Control Store `lifecycle.control-record-store.v2`;
+- Control revision `lifecycle.control-record-revision.v2`;
+- Control event `lifecycle.control-record-event.v6`, preserving the closed
+  twenty-five event kinds;
 - referenced file `lifecycle.control-record-file.v1`;
 - Store seal `lifecycle.control-record-store-seal.v1` and archive
   `lifecycle.control-record-store-archive.v1`;
-- Delivery reduction `lifecycle.delivery-reduction.v2`;
-- Control lifecycle profile `foundation-delivery-control-lifecycle-v4`,
-  preserving the closed twelve record families;
-- Agent Work Product parser `lifecycle.agent-work-product-parser.v2` and
-  compiler `lifecycle.agent-work-product-compiler.v2`;
+- Delivery reduction `lifecycle.delivery-reduction.v5`;
+- Control lifecycle profile `foundation-delivery-control-lifecycle-v7`,
+  preserving the closed fourteen record families;
+- Agent Work Product parser `lifecycle.agent-work-product-parser.v4` and
+  compiler `lifecycle.agent-work-product-compiler.v4`;
 - governed Work Product body profiles for reconnaissance, builder, and
   reviewer; and
 - `lifecycle.candidate-revision-carrier-manifest.v1`, Execution Backend Profile
   schema v1, `lifecycle.execution-specification.v1`,
-  `lifecycle.execution-input-set.v1`, `lifecycle.execution-image.v1`,
+  `lifecycle.execution-input-set.v2`, `lifecycle.execution-image.v1`,
   `lifecycle.execution-observation.v1`, and
   `lifecycle.execution-output-manifest.v1`; and
 - Agent Attempt payload v3, Execution Receipt payload v3, Candidate Revision
-  payload v2, Candidate Seal payload v2, Check Receipt payload v2, Closure
-  payload v4, Founder Decision payload v4, Work Boundary payload v4, Capability
-  Profile v2, and Provider Descriptor v6.
+  payload v3, Candidate Seal payload v2, Check Receipt payload v3, Closure
+  payload v6, Director Decision payload v5, Work Boundary payload v6, Capability
+  Profile v2, and Provider Descriptor v7.
 
-A claim against this cut covers only fresh repository contract v15 and the
+A claim against this cut covers only fresh repository contract v22 and the
 exact coordinates above. Bytes from another generation can be recognized only
 far enough to refuse them before Process or authority-bearing work.
 
 Unsupported-generation fixtures or results have no conformance standing and
-cannot be relabeled rc.10 evidence.
+cannot be relabeled rc.17 evidence.
 
 ## Conformance Classes
 
@@ -107,9 +107,10 @@ coverage, and Check Definition authoring.
 
 The tool MUST:
 
-- emit `knowledge-structural-v1` valid Lifecycle Documents;
+- emit `knowledge-structural-v2` valid Lifecycle Documents;
+- emit only `required: false` source declarations for Discipline records;
 - preserve authored bytes, stable identities, and allowed extensions;
-- preserve the distinction between Knowledge v1 source and semantic digests;
+- preserve the distinction between Knowledge v2 source and semantic digests;
 - refuse or surface missing required fields and sections;
 - not infer currentness or authority from path, recency, or model confidence;
 - not make a draft record current without the repository's governed change
@@ -127,12 +128,21 @@ governed Knowledge.
 
 It MUST support:
 
-- `lifecycle-document-v1`, `knowledge-structural-v1`, and `knowledge-set-v1`;
-- all five standard Knowledge kinds;
+- `lifecycle-document-v1`, `knowledge-structural-v2`, and `knowledge-set-v2`;
+- all six standard Knowledge kinds, preserving Discipline as advisory governed
+  Knowledge rather than Product Knowledge;
+- exact refusal of `required: true` on every Discipline source as
+  `lifecycle.discipline.source-required` without making it a required
+  source-resolution input;
+- exact Discipline Registry Pack-provenance fields, adopted-record publisher
+  and digest bindings, and Work Type processing without implicit selection or
+  compatibility solving;
 - the shared strict RFC 8259 JSON-header and CommonMark parser while preserving
   repository-authored Knowledge layout and bytes;
 - stable identity, revision, supersession, currentness, relationships, and
-  graph constraints;
+  graph constraints, preserving complete Product Knowledge predecessor chains
+  while allowing exact current Discipline adoption without local publisher
+  predecessor records;
 - current Behavior and Assurance Check requirements;
 - Description primary coverage and complete `records/control/` exclusion;
 - explicit source requiredness, resolution dispositions, ordered source and
@@ -146,6 +156,20 @@ It MUST support:
 Using one parser family does not make Knowledge canonical runtime-generated
 Control. A semantic-search index can assist discovery; it cannot replace exact
 graph, source, or digest processing.
+
+Discipline Pack structural validation is a separate operation over one exact
+supplied Pack tree. It validates `lifecycle.discipline-pack.v1`, inventoried
+Pack Discipline record bytes and digests, publisher equality, and curated Set
+membership. It MUST reject digest, inventory, publisher, or Set mismatch as
+`lifecycle.discipline.pack-invalid`, while retaining the applicable existing
+schema, record, and path diagnostics. It checks the exact inventory; unrelated
+Pack documentation does not become Knowledge merely by sharing the tree.
+Authoring publication provenance is preserved independently from the current
+Knowledge v2 validation applied to adopted bytes. It does not run as target
+Knowledge processing, install records, or fetch a Pack during Delivery.
+
+Complete-system Discipline adoption and delivery is qualified separately by
+[operated scenario 26](#required-operated-scenarios).
 
 ### Lifecycle Document Processor
 
@@ -173,14 +197,14 @@ Lifecycle Documents under this class.
 A Repository Validator adds exact target and Git semantics to a Knowledge and
 Lifecycle Document Processor.
 
-It MUST support `repository-v7` and:
+It MUST support `repository-v9` and:
 
-- repository contract v15 and exact target identity;
+- repository contract v22 and exact target identity;
 - exact initialization and validation of `records/behavior` as the sole
   Behavior Knowledge root, without a `records/intent` alias or migration path;
 - canonical commit, tree, and Git object-format binding;
 - exact installed schema, standard profile, runtime, provider, interface,
-  Control Store, event v2, reduction v2, Work Product compiler, Candidate
+  Control Store, event v6, reduction v5, Work Product compiler, Candidate
   Carrier, Execution Backend Profile, Cell runner, Atlas integration, extension,
   and source-policy selection;
 - Product State, Atlas State, Atlas Resolution, normalized Atlas model,
@@ -193,10 +217,10 @@ It MUST support `repository-v7` and:
 - Check Binding and Capability Profile registries;
 - complete refusal of repository-visible Delivery Control, runtime custody,
   active-store, archive, Candidate, authority, or recovery carriers; and
-- exact fresh repository-v15 environment bounds.
+- exact fresh repository-v22 environment bounds.
 
 A validator MUST reject every predecessor contract and mixed carrier generation
-before Process or authority-bearing work. It cannot claim `repository-v7`
+before Process or authority-bearing work. It cannot claim `repository-v9`
 when it silently supplies a selection, validates Knowledge from another tree,
 or treats live authoritative worktree bytes as the canonical subject.
 
@@ -226,17 +250,13 @@ It MUST:
 - grant no read authority from an Atlas edge or publication profile; and
 - provide no Atlas write operation or Candidate mutation path.
 
-Conformance requires the selected Atlas fixture matrix and read-only consumer
-interoperability evidence at the exact processor contract revision plus
-Lifecycle fixtures for unsupported selection, missing and invalid Atlas,
-incomplete processing, invalid normalized output, nested boundaries, Resource
-bindings, prohibited Candidate mutation, admitted historical-snapshot
-reproduction, proposal staleness after any canonical movement, exclusive active
-branch leasing, refusal after canonical or authoritative-worktree movement,
-no-ship availability under violation, and exact sealed-Candidate acceptance
-over the admitted parent. Passing Lifecycle JSON Schema alone does not establish
-this class. Foundation rc.10 currently makes no released claim for this class
-until those operated gates exist for the exact implementation.
+Conformance requires exact selected-processor interoperability evidence plus
+Lifecycle fixtures for missing/invalid/unsupported Atlas, incomplete processing,
+invalid normalized output, nested boundaries, Resource binding, prohibited
+Candidate mutation, historical Snapshot reproduction, independently advancing
+canonical context, integration protection over P→I, and context-change
+readmission in the same Delivery. Passing JSON Schema alone establishes none of
+these operated boundaries. No released claim exists without the exact evidence.
 
 Atlas write-boundary evidence also spans the Agent Work Product compiler and
 Delivery Runtime. It MUST prove that `local-read` and `local-write` Effect
@@ -273,7 +293,16 @@ A conforming compiler MUST support:
 - deterministic omission evidence and zero mandatory omission;
 - all seven profile bounds and exact item and byte count reproduction;
 - complete Candidate Seal and sealed observation for reviewer;
+- distinct admitted and Candidate Knowledge occurrences, including changed
+  revisions and equal-byte occurrences, with qualified exact source citations;
 - unique mounted reachable-item citation registry without authority promotion;
+- exact Discipline Registry and Work Type discovery without inferred selection;
+- exact selected advisory Discipline delivery to both builder and reviewer,
+  preserving publisher provenance, the same frozen Registry, and all seven
+  Projection bounds without automatic obligations or acceptance gates;
+- deterministic Role Brief compilation identifying the Worker, its exact
+  assignment, and the Director who supplied the bound Director Brief, with the
+  concise [operating guidance](AUTHORITY.md#operating-roles);
 - cache identity and revalidation; and
 - reproducible Projection digests.
 
@@ -286,7 +315,7 @@ summaries cannot determine mandatory membership.
 This class implements the deterministic boundary between Agent-authored
 semantics and runtime-authenticated mechanics.
 
-It MUST support the exact rc.10 Agent Work Product parser and compiler profiles,
+It MUST support the exact rc.17 Agent Work Product parser and compiler profiles,
 all three exact role body profiles, and:
 
 - exact governed `semantic.md` workspace observation, body-only UTF-8/LF
@@ -298,6 +327,9 @@ all three exact role body profiles, and:
 - fixed Attempt, invocation, Process, role, subject, boundary, Projection,
   Candidate, provider, and provenance binding injection;
 - exact reference resolution and deterministic global identities;
+- Claim Knowledge identities supported through exact qualified citations and
+  the frozen registry's enduring-identity mapping, with ambiguous aliases and
+  missing mappings refused;
 - profile-owned scalar normalization, duplicate handling, and set ordering;
 - for reconnaissance Boundary semantics, portable lexical Atlas-scope
   comparison for `local-read` and `local-write` Effect targets, bidirectional
@@ -342,24 +374,26 @@ service identity, roles, models, Capability Profiles, network and credential
 handling, interruption behavior, mounted-content guarantees, workspace
 semantics, submission, and observation bounds.
 
-The Foundation `codex-exec-standard-v6` claim identifies compatibility range
-`>=0.151.0 <0.152.0` and the current exact production Image tool version
-`0.151.0`. Its operated evidence MUST exercise that exact Image and executable
-identity and MUST prove that Codex 0.150.x is refused before provider dispatch.
-Another 0.151.x Image cannot inherit that evidence merely because it satisfies
+The Foundation `codex-exec-standard-v7` claim identifies compatibility range
+`>=0.153.4 <0.154.0` and the current exact selected Image tool version
+`0.153.4`. Its operated evidence MUST exercise that exact Image and executable
+identity and MUST prove that versions outside the range, including Codex
+`0.151.0`, are refused before provider dispatch.
+Another 0.153.x Image cannot inherit that evidence merely because it satisfies
 the Descriptor range.
 
 A conforming adapter MUST:
 
-- validate the rc.10 Agent Attempt payload v3 and bind one Provider Descriptor
-  v6
+- validate the rc.17 Agent Attempt payload v3 and bind one Provider Descriptor
+  v7
   and one caller-fixed Investment Allocation before dispatch;
 - preserve every mandatory instruction, semantic template, and mounted input;
-- expose no provider-invoked semantic-validator command, callback, endpoint,
-  token, or live validity response;
+- bind the exact local draft assistance profile and compact immutable basis,
+  expose only bounded advisory observations, and provide no host callback,
+  validator token, Store service, or inferred authority;
 - prove capability materialization is a subset of the registered profile and
   refuse unsupported capability before productive work;
-- keep Provider and Founder credentials separate and private;
+- keep Provider and Director credentials separate and private;
 - separate provider control-plane network and authentication from Agent product
   capability or refuse the Attempt as `unsupported` before dispatch;
 - operate only the Cell-created governed semantic workspace and report its exact
@@ -373,7 +407,7 @@ A conforming adapter MUST:
 - supply the observations required for an Execution Receipt in every
   terminal class; and
 - never receive the Docker Engine socket, a Runtime-private target mount,
-  Founder authority, Control SQL, or canonical Git write capability.
+  Director authority, Control SQL, or canonical Git write capability.
 
 An adapter can claim an explicit role subset. The Foundation target requires
 operated support for every role claimed by a Complete Lifecycle System. Adapter
@@ -383,7 +417,7 @@ conformance does not imply Delivery Runtime conformance.
 
 An Execution Backend is a private runtime mechanism that allocates and operates
 one disposable Cell for one Agent Attempt or Check. It does not add a public
-operation, retained record family, Journal event, Process, or Founder-facing
+operation, retained record family, Journal event, Process, or Director-facing
 workflow.
 
 Its claim identifies the exact Backend Profile, implementation and Engine
@@ -406,6 +440,11 @@ A conforming Backend MUST:
 - prove Cell Containment across natural return, timeout, cancellation, runner
   failure, Runtime parent loss, and missing terminal response;
 - support Runtime-owned Retirement without retaining a productive reuse path;
+- for the selected fixed-runner profile, retain the exact private credential
+  claim across interruption, settle refreshed state before Retirement, and
+  prevent a stale settlement from overwriting a later generation; exercise
+  restored temporary custody and conclusively lost credentials through their
+  [specified continuations](EXECUTION.md#private-provider-credential-continuity);
 - reclaim only the exact allocation identified by the Runtime obligation, with
   no discovery-based or broad Docker, filesystem, Carrier, or cross-Delivery
   prune;
@@ -441,6 +480,9 @@ It MUST:
   contracts separate;
 - prove exact Candidate Carrier or Check subject, Projection, Role Brief,
   semantic template, and complete Input Set before Attempt construction;
+- dispatch each reconnaissance, builder, and reviewer assignment as a Worker
+  with its exact Director counterpart and direction, without giving the Worker
+  Director credentials or adding a human approval step;
 - compile the exact Backend Profile, Specification, Image, runner, capability,
   provider-control-plane separation, and idempotent allocation key;
 - on successful revalidation, commit the Agent Attempt, durable dispatch intent,
@@ -459,8 +501,9 @@ It MUST:
   Carrier is authoritatively unavailable;
 - retain raw provider and Check bytes only through bounded referenced-file
   descriptors when their owner requires retention;
-- run the exact parser and compiler bound by the Attempt both for live
-  correction and independently over retrieved final output after Containment;
+- run the exact parser and compiler bound by the Attempt independently over
+  retrieved final output after Containment, without a provider-invoked live
+  validation surface;
 - independently validate and durably publish a complete Candidate Revision
   Carrier before atomically selecting a promoted successor;
 - preserve a valid Candidate successor across cancellation, malformed semantic
@@ -501,8 +544,8 @@ reduction coordinates, and:
   transaction effects;
 - exact operation-support generation/digest continuity and no-redispatch
   recovery;
-- complete twelve-family and twenty-two-event registry enforcement under event
-  profile v2 and Delivery reduction v2;
+- complete fourteen-family and twenty-five-event registry enforcement under event
+  profile v6 and Delivery reduction v5;
 - Candidate Carrier publication-before-selection and optional-successor
   nullability without treating private Backend support as an event source;
 - pure deterministic replay over the complete validated sequence and exact
@@ -518,11 +561,27 @@ milestones, consume provider callbacks as events, choose a latest revision,
 accept exported Markdown, or accept a stored Process State projection as input
 truth.
 
+Work Delegation coverage additionally proves exact applied-admission and
+standing-Brief selection, atomic reserved opening and lifetime charges,
+replacement without accounting reset, readmission invalidation, and
+finish-reserved-operation Stop ordering. A pending Stop must survive reopen,
+prevent a new opening and fold only after settlement. Its acknowledgment must
+preserve the state, seal and head observed by the committing transaction even
+when the writer later advances or optional folding fails.
+
 ### Evidence Engine
 
 An Evidence Engine seals Candidates, executes or authenticates Check Bindings,
 issues Receipts, compiles reviewer subjects, validates independent review, and
 builds Evidence Packets.
+
+Within that owner, an effect-free Evidence verifier MUST own interpretation of
+acceptance justification independently of assembly. Its predicates consume
+exact records, required evaluation provenance, supported rules, and runtime
+observations. The same predicates MUST support Packet construction and
+verification of an already retained Packet. They MUST NOT require the
+originating evaluation Activity to remain open, append Control, authenticate
+authority, or perform an effect.
 
 It MUST support the current Check Receipt, Candidate Seal, and Evidence Packet
 payloads in their exact Control revisions, exact subject and
@@ -541,6 +600,15 @@ outcome.
 
 An engine that merely runs commands and records exit codes is not conforming.
 
+Qualification MUST exercise exact valid and invalid retained justifications
+without relying on the assembling operation to assert readiness. It MUST cover
+altered ledgers, substituted subjects, incomplete provenance, changed rule
+selection, and historical validity without current acceptance eligibility.
+Retained artifact and Description observations establish historical support
+only. Verification before a new acceptance effect MUST use the transaction
+owner's independent observation of the exact physical subject. Pure predicate
+tests do not establish the truth of physical observations or reviewer judgment.
+
 ### Delivery Runtime
 
 A Delivery Runtime implements the Process, authority boundaries, transactions,
@@ -548,10 +616,10 @@ recovery, and information closure in [Delivery](DELIVERY.md).
 
 It MUST support:
 
-- the current Work Boundary, Founder Decision, Candidate Revision, Closure,
+- the current Work Boundary, Director Decision, Candidate Revision, Closure,
   Store event, reduction, seal, and archive contracts;
 - one Work Boundary revision whose proposal-ready and active standings derive
-  from exact baseline Receipts and an observed Founder-authenticated effect;
+  from exact baseline Receipts and an observed Director-authenticated effect;
 - active Boundary standing immediately after the applied initial-admission
   observation, with Candidate condition `absent` and recovery-only eligibility
   until the initialization Candidate observation is durable;
@@ -573,8 +641,16 @@ It MUST support:
   advances beyond preparation;
 - frozen Material Conditions and distinct revision, reaffirmation, and
   readmission;
-- runtime-owned evaluation and Evidence Engine integration;
-- exact Founder admission, acceptance, and no-ship authority;
+- runtime-owned evaluation and Evidence Engine integration, including separate
+  Evidence verification before acceptance authentication and over independent
+  physical observations before a new acceptance effect;
+- exact Director admission, acceptance, and no-ship authority;
+- the same configured-principal and exact-subject authentication contract for
+  human and agent Directors, without a human-only decision gate;
+- narrow execution, Director authority custody, and canonical-transition APIs
+  under the [capability ownership contract](SECURITY.md#consequential-capability-ownership),
+  with general Engine, signing, and canonical-write primitives kept out of
+  ordinary operation composition;
 - recoverable intent/observation transactions;
 - accepted and no-ship Closure sufficient for terminal status after synchronous
   Containment and Runtime-owned Retirement, with closed standing and terminal
@@ -583,32 +659,93 @@ It MUST support:
   with complete bounded private maintenance accounting and without making
   physical absence a Closure precondition.
 
-The runtime MUST ensure an Agent cannot admit, review, accept, close, authorize,
+The runtime MUST ensure a Worker cannot admit, review, accept, close, authorize,
 derive state, or move its own result by provider output alone.
+
+Qualification of these internal APIs MUST exercise direct refusal of a
+substituted effect subject, exact recovery with retained selections, and
+effect-time currentness through the existing owners. Source dependency and
+export checks can establish the intended capability distribution; tests of
+constrained requests can establish their bounded refusal and application
+behavior. Neither establishes operating-system denial to code in the same
+process. A physical isolation claim requires operated evidence of that exact
+deployment boundary, including attempted access from the less-privileged
+domain. No such claim follows from an internal refactor or package-local test.
 
 ### Runtime Facade and Interface Adapter
 
 A Runtime Facade exposes the same Process and validation semantics without
-interface-specific hidden transitions. It MUST implement runtime protocol v10,
+interface-specific hidden transitions. It MUST implement runtime protocol v17,
 preserve typed diagnostics and recovery facts, expose reducer-derived eligible
 operations, bind every write to exact inputs and authority, keep private paths
 and secrets private, and refresh from retained truth after each operation.
 Its public Delivery request binds exact target, Delivery where required,
-operation, and operation-owned input. It accepts bounded semantic Markdown only
-for prepare, continue, evaluate, revise, reaffirm, and no-ship; it requires null
-input for admit, accept, and recover. It accepts no caller-selected Process
-state, record identity, event, digest, time, machine configuration, authority
-bytes, or runtime mechanic.
+operation, and operation-owned input. Prepare and no-ship accept bounded
+semantic Markdown. Continue, evaluate, revise, and reaffirm also require the
+exact positive `expectedGeneration` returned by the complete read on which the
+input was authored. Integration requires the exact generation-only input and
+no semantic Markdown, Agent role, or Investment. Admit, accept, and recover
+require null input. The separate closed `delivery.work` request follows the
+[resource-control contract](CONTROL.md#explicit-resource-controls): set supplies
+finite selections, run binds the saved grant and reviewed generation, and stop
+binds the exact grant without a generation precondition. Runtime-issued
+references and generations select existing subjects; a caller cannot construct
+Process state, records, events, digests, observed times, machine configuration,
+authority bytes, or runtime mechanics through these inputs.
 
-An Interface Adapter MUST implement interface protocol v10, present exact
+An Interface Adapter MUST implement interface protocol v17, present exact
 boundary, obligation, Evidence, Material Condition, provenance, and terminal
-facts without inventing stronger state, obtain Founder input explicitly, use
+facts without inventing stronger state, obtain Director input explicitly, use
 runtime-supplied operation bindings, preserve typed refusal and recovery, and
 derive terminal status from canonical Closure. Presentation can summarize, but
 the exact underlying subject remains available and prose cannot become
-authority. It MAY invoke only runtime-eligible prepare, continue, evaluate,
-revise, and reaffirm through the canonical CLI; admission, terminal authority,
-and exact recovery remain explicit handoffs.
+authority. Productive Process invocations remain limited to runtime-eligible
+prepare, continue, integrate, evaluate, revise, and reaffirm. Resource controls
+use only the closed set/run/stop contract. The canonical CLI supplies the adapter
+route through the Runtime Facade. Admission and terminal authority retain their
+exact authenticated handoff, and recovery remains explicitly selected.
+
+The resource-control claim proves that explicit Save and Run are separate from
+mandate and terminal authority; that one locked foreground caller composes the
+existing productive owners; and that malformed, substituted, stale or uncertain
+requests cannot silently allocate work. Coverage includes useful failed-provider
+output, correction, exact resource restoration, Stop during execution, and lost
+successful returns followed by fresh observation. Read and Stop remain usable
+without current execution defaults. Coordinates-only results cannot overstate
+completion or fail because a course produces more events than a bounded list.
+Repository-local deterministic scenarios do not establish installed or actual
+provider operation at these seams.
+
+The Facade and Adapter claims also prove the closed nine-member context
+inspection union. Each artifact selector and result binds one exact target,
+Delivery, retained selection and historical context basis, with current
+observation kept distinct. Authorization Review binds the complete current
+generation. Paged results use only
+Runtime-issued selector-bound cursors; Source References cannot become
+arbitrary path reads; and Code, Knowledge, Atlas, and Source results enforce
+their exact item, byte, range, depth, and truncation contracts. The operated
+matrix covers every selector, empty and unavailable results, first and
+continued pages, stale and cross-selector cursors, source-range boundaries,
+oversized Code differences, oversized Atlas Resources, and a generation change
+between pages. No selector may reinterpret the live target checkout after the
+Delivery basis is fixed.
+
+Continue, evaluate, revise, and reaffirm conformance proves missing, malformed,
+and stale expected generations are refused before Activity creation, Cell
+allocation, dispatch, record, event, or effect. Retrying requires a complete
+fresh read and freshly authored complete semantic input; silently rebinding old
+semantics to a current generation is a failure.
+
+For admit, accept, and no-ship, the read boundary produces one deterministic
+Authorization Review whose facts and digest rederive from the current Store
+head. Invocation-private challenge conformance proves exact review and subject
+binding, one pending challenge per target-pinned session, single-use atomic
+claim, five-minute expiry, stale-generation and stale-subject refusal, replay
+refusal, bounded terminal tombstones, private secret streaming, and zero
+retention or disclosure of secret bytes. The browser, challenge, and review
+remain non-authoritative; only authentication of the rederived exact subject
+can authorize the operation. Direct CLI authorization remains an equal route
+over the same subject.
 
 Neither protocol exposes an Execution Backend, Cell, Handle, allocation,
 dispatch, retrieval, Reclamation, Docker, or Candidate-materialization
@@ -617,7 +754,7 @@ facts only.
 
 ### Conforming Repository
 
-A repository conforms at one exact commit when `repository-v7` is complete and
+A repository conforms at one exact commit when `repository-v9` is complete and
 valid, every current Knowledge and relationship validates, Description and
 Check coverage is complete, Product State and raw Atlas State reproduce
 exactly, Atlas Resolution is complete and valid under the selected exact Atlas
@@ -630,7 +767,7 @@ Work Boundary is coherent or that the product has no defect.
 
 ### Complete Lifecycle System
 
-A Complete Lifecycle System combines, against one exact rc.10 publication, a
+A Complete Lifecycle System combines, against one exact rc.17 publication, a
 Knowledge Processor, Lifecycle Document Processor, Repository Validator,
 Projection Compiler, Agent Work Product Parser and Compiler, Provider Adapter
 and Agent Attempt Host for all three roles, an Execution Backend, Control Store
@@ -648,21 +785,21 @@ release artifact.
 
 | Class | Minimum standard profiles |
 | --- | --- |
-| Knowledge Authoring Tool | produced files pass `knowledge-structural-v1`; complete change-set validation can remain external |
-| Knowledge Processor | `lifecycle-document-v1`, `knowledge-structural-v1`, `knowledge-set-v1` |
+| Knowledge Authoring Tool | produced files pass `knowledge-structural-v2`; complete change-set validation can remain external |
+| Knowledge Processor | `lifecycle-document-v1`, `knowledge-structural-v2`, `knowledge-set-v2` |
 | Lifecycle Document Processor | `lifecycle-document-v1` over every claimed Knowledge profile |
-| Repository Validator | Knowledge and document profiles plus `repository-v7` and fresh/predecessor/mixed-state fixtures |
+| Repository Validator | Knowledge and document profiles plus `repository-v9` and fresh/predecessor/mixed-state fixtures |
 | Projection Compiler | repository profiles plus both Projection profiles |
-| Agent Work Product Parser and Compiler | exact rc.10 parser/compiler plus payload and operated valid/invalid submissions for all three roles |
-| Provider Adapter | Provider Descriptor v6, Agent Attempt payload v3, governed Cell workspace, provider-control-plane separation, absence of a live semantic-validator surface, and bounded observation evidence for claimed roles |
+| Agent Work Product Parser and Compiler | exact rc.17 parser/compiler plus payload and operated valid/invalid submissions for all three roles |
+| Provider Adapter | Provider Descriptor v7, Agent Attempt payload v3, governed Cell workspace, provider-control-plane separation, exact local draft assistance scope and independent final validation, and bounded observation evidence for claimed roles |
 | Execution Backend | Backend Profile, Specification, Input Set, Image, runner, idempotent allocation, one-time dispatch, terminal observation, retrieval, Containment, Retirement support, exact Reclamation, and private-fact evidence |
 | Agent Attempt Host | Attempt, Work Product, optional Candidate successor, Carrier publication, Receipt v3, post-Containment semantic validation, canonical rendering, invalid-submission, compiler-failure, interruption, Containment, Retirement, and recovery evidence |
 | Control Store and Delivery Reducer | Foundation lifecycle profile, Store/revision/event/file/seal/archive/reduction fixtures, replay, corruption, support CAS, and recovery evidence |
 | Evidence Engine | current Check Receipt, Candidate Seal, reviewer Work Product/Receipt, and Evidence Packet payloads plus operated proof |
-| Delivery Runtime | single Work Boundary topology, Founder Decisions, Store reduction, transactions, Closure, seal, and archive |
-| Runtime Facade | runtime protocol v10 and coherent read-generation fixtures |
-| Interface Adapter | interface protocol v10 presentation, non-authority execution, authority-handoff, typed-error, and recovery fixtures |
-| Conforming Repository | one complete valid `repository-v7` result at an exact commit |
+| Delivery Runtime | single Work Boundary topology, Director Decisions, Store reduction, transactions, Closure, seal, and archive |
+| Runtime Facade | runtime protocol v17, coherent read-generation, nine-selector inspection, productive-generation refusal, and Authorization Review fixtures |
+| Interface Adapter | interface protocol v17 presentation, non-authority execution, exact-review and private-challenge authority handoff, typed-error, and recovery fixtures |
+| Conforming Repository | one complete valid `repository-v9` result at an exact commit |
 | Complete Lifecycle System | every applicable current profile and operated scenario |
 
 <!-- markdownlint-enable MD013 -->
@@ -673,19 +810,44 @@ Summary counts alone are insufficient.
 ## Required Operated Scenarios
 
 A Complete Lifecycle System claim requires operated evidence, not only schema
-or synthetic structural validation. The standard scenario set includes:
+or synthetic structural validation. Each scenario below names a connected
+course: its result depends on the actual owners through which the selected
+inputs, records, and effects pass. A reducer test can establish that recovery
+is eligible; it cannot establish that recovery can reopen its exact resources
+and finish. A deterministic Runtime scenario can establish that composition
+under its supplied external responses; it cannot establish a real provider's
+or production Backend's behavior. Claim evidence identifies those boundaries
+explicitly.
+
+The [productive completeness requirement](DELIVERY.md#productive-completeness)
+is a positive qualification obligation. Refusal coverage cannot substitute for
+operating the permitted changed-Knowledge, failed-Attempt, correction, no-ship,
+and interruption routes below. Exact bindings protect those routes while
+preserving their ability to finish.
+
+The current role contract also requires evidence that all three dispatched
+Worker assignments receive their exact Director direction and counterpart
+guidance. Operated authority evidence MUST exercise a configured agent Director
+through the same exact-subject authentication route as a human Director, with
+no additional human response gate. Worker output and role assertions MUST fail
+to substitute for that authentication. This evidence preserves the selected
+independent reviewer and credential-custody boundaries; it does not claim a
+human-provider execution route.
 
 For the current Codex Provider Adapter row, every applicable Agent scenario
-below uses the exact `0.151.0` production Image selection, preserves fixed-runner
+below uses the exact `0.153.4` Image selection, preserves fixed-runner
 authentication outside the Agent tool environment, and includes pre-dispatch
-refusal of one 0.150.x Image.
+refusal of a `0.151.0` Image. Historical operated evidence for that older tool
+does not qualify the new selection.
 
 1. **Healthy acceptance** — prepare one fresh Delivery, retain its Brief,
    reconnaissance Attempt, Work Product, Receipt, single Work Boundary revision,
    and exact baseline; authenticate admission, publish the initial Candidate
    Revision Carrier, perform builder and Check work in fresh Docker Cells,
-   promote one successor only after complete Carrier publication, seal, prove,
-   independently review, accept, append Closure after Containment and Retirement
+   promote one successor only after complete Carrier publication, integrate
+   against an exact canonical parent, resolve and readmit changed governing
+   context when required, seal, prove, independently review, accept, append
+   Closure after Containment and Retirement
    as the final event, bind any immutable terminal Reclamation handoff, seal the
    Store, verify its archive, and continue asynchronous Reclamation privately.
    Interrupt once after the applied initial-admission observation and before
@@ -695,9 +857,11 @@ refusal of one 0.150.x Image.
    standing, terminal Candidate condition, Closure, completed Activities, and
    Journal head while the exact Store-disposition recovery changes.
 2. **Semantic authoring and compiler separation** — operate one valid governed
-   submission for each standard role; prove that the Role Brief, Input Set,
-   provider environment, and Cell expose no live semantic-validator surface or
-   provisional validity claim; compile semantically equivalent draft layouts to
+   submission for each standard role; observe local draft correction using the
+   installed command and exact frozen basis; refuse missing, substituted,
+   oversized, linked, and stale-profile inputs; prove local success does not
+   bypass final independent validation, create a Work Product, or grant access
+   to Store, credentials, network, or authority; compile equivalent draft layouts to
    byte-identical canonical Work Products; preserve Candidate and direct
    observations after malformed final semantics while producing no Work
    Product; separately inject a parser or compiler invariant failure after
@@ -743,26 +907,34 @@ refusal of one 0.150.x Image.
    condition semantics with the exact Candidate Revision and Receipt, freeze one
    Condition, preserve Candidate through failed resolution, compile one
    successor Work Boundary revision from a fresh Brief and Work Product, run
-   its exact baseline, and authenticate distinct readmission.
-10. **Canonical branch lease, violation, and restoration** — advance
-    Control-only state, prove any post-compilation canonical or authoritative-
-    worktree movement stales initial admission, admit at most one Delivery for
-    one physical target and branch, and require the exact admitted commit, tree,
-    and clean checkout for every productive, evaluation, revision, readmission,
-    and acceptance route. Prove that movement after admission is an operational
-    lease violation rather than a Material Condition, no newer Atlas is adopted,
-    exact restoration resumes the same historical context, no-ship remains
-    available without restoration, and acceptance imports only the exact sealed
-    Candidate Carrier over the exact admitted parent without merge, rebase,
-    composition, or alternate-parent retry.
+   its exact baseline, and authenticate distinct readmission. Exercise the
+   actual resolution Attempt with its exact frozen Candidate and complete
+   read-only inputs; initial preparation still has no Candidate, and a partial
+   or substituted resolution subject cannot dispatch.
+10. **Concurrent Deliveries and explicit integration** — admit retained proposals
+    after canonical movement, continue two independent Deliveries, retain exact
+    C/B/P integration inputs, conserve C on conflicts or invalid assembly, and
+    select a same-identity successor I with P→I delta/protection validation.
+    Prove context-unchanged applicability review and context-change I freeze,
+    W'(P) baseline/readmission, byte-identical rebind, and original B lineage.
+    Race exact acceptance against another publication, conclude stale CAS not
+    applied, then integrate/evaluate/authenticate afresh without restoring P.
+    Recover exact K after later forward movement and preserve uncertainty after
+    force rewrite or missing history; never retarget the original Decision.
 11. **Lower-cost omission defense** — catch an omitted required property or
     fuzz obligation through validation, proof, the Packet ledger, or independent
     review before acceptance.
-12. **Knowledge conflict before labor** — block complete Execution Projection
+12. **Knowledge conflict and authorized change** — block complete Execution Projection
     and productive dispatch without allowing a model to choose conflicting
-    authority.
+    authority. Also operate an admitted change to existing Knowledge:
+    retain distinct admitted and Candidate occurrences of the same enduring
+    identity, review both exact revisions through basis-qualified citations,
+    refuse an ambiguous unqualified citation, correct within the unchanged
+    mandate, and complete evaluation and acceptance of the supported result.
+    Different revisions in different bases are not themselves a conflict
+    between applicable current owners inside one Knowledge Set.
 13. **Acceptance and no-ship recovery** — interrupt each terminal transaction
-    after durable intent and recover the exact Founder Decision and effect
+    after durable intent and recover the exact Director Decision and effect
     subject without rerunning judgment or proof; prove applied acceptance binds
     the actual parent and canonical result in checkpoint and Closure through the
     exact final immutable acceptance-observation facts and matching canonical
@@ -784,24 +956,48 @@ refusal of one 0.150.x Image.
     enters Control or a public view.
 16. **Transactional fresh initialization** — inject initialization and rollback
     faults, restore exact pre-invocation repository and machine-custody state,
-    and create exactly one repository-v15 contract and its exact Behavior,
-    Assurance, Blueprint, and Check roots on clean retry.
-17. **Fresh-only boundary** — accept a fresh v15 target and reject every
+    and create exactly one repository-v22 contract and its exact Behavior,
+    Assurance, Blueprint, Check, and Discipline roots with an empty tracked
+    Discipline Registry on clean retry.
+17. **Fresh-only boundary** — accept a fresh v22 target and reject every
     unsupported or mixed-generation carrier before Process, provider, Backend,
     or authority-bearing work, exposing no alternate-generation operation
     lane.
-18. **Local operation domain** — prove linked worktrees sharing one physical Git
-    common directory serialize guarded canonical work while an independent
-    repository can operate concurrently, without exposing physical lock
-    locators.
+18. **Independent repositories and local operation domains** — refuse linked
+    target worktrees, primary repositories with nonempty `.git/worktrees`
+    registrations, and shared consumed writable metadata; permit an empty
+    registration directory and inspect every consumed symbolic-ref chain path,
+    including intermediate aliases, without requiring a recursive history scan.
+    Create one isolated repository and branch per Delivery, preserve separate refs/index/config,
+    serialize only that Delivery's work, and enforce short canonical publication
+    locking plus exact CAS without exposing physical lock locators.
 19. **Coordinate-bound read models** — enumerate several active and archived
     Deliveries without silent omission, render one selected Delivery View from
-    one generation, expose typed semantic provenance, page exact Control, and
-    refuse corrupt, duplicate, cross-head, or stale joins.
-20. **Next Pass and authority boundary** — submit fresh complete input for each
+    one generation, exercise all nine exact context-inspection selectors and
+    their result bounds, expose typed semantic provenance, page exact Control,
+    and refuse corrupt, duplicate, cross-head, stale joins, stale cursors,
+    cross-selector cursors, arbitrary paths, and range or result overflows.
+    Preserve exact immutable Control, Knowledge, Atlas, Code and Source reads
+    through unrelated Journal appends and private operation checkpoints; after
+    subject advancement and reader restart, reopen the originally selected
+    historical artifacts without relabeling them current. Refuse false or
+    substituted origins, invalid historical Boundary/Candidate/Seal combinations,
+    rollback, lost or changing custody, unavailable required artifacts and
+    content-digest substitutions. Keep full-generation mutation, recovery and
+    Authorization Review guards independent from retained inspection currency.
+20. **Next Pass and authority boundary** — submit fresh complete input with the
+    exact current expected generation for each
     eligible continue, evaluate, revise, and reaffirm course through the
-    canonical CLI, preserve it on refusal, allocate a new Investment, and keep
-    admission, acceptance, no-ship, and recovery as non-executing handoffs.
+    canonical CLI, preserve it on refusal, allocate a new Investment, and prove
+    missing and stale generations have no Activity or effect. Submit eligible
+    integration through its distinct generation-only request with no semantic
+    Markdown, Agent role, or Investment; prove missing or stale generations and
+    caller-supplied semantic, authority, parent, or strategy input are refused
+    without an Activity or effect. Produce exact
+    admit, accept, and no-ship Authorization Reviews; exercise direct CLI and
+    invocation-private challenge handoff with private secret streaming,
+    single-use, expiry, stale-subject, cross-session, and replay refusal; and
+    keep recovery as a non-executing direct handoff.
 21. **Difference and watch** — derive one exact bounded difference from the
     immutable base and Candidate Revision Carriers, disclose binary and
     truncation facts, refuse unavailable exact Carriers, and prove changed,
@@ -847,6 +1043,54 @@ least one claimed provider, production Execution Backend, platform, and
 filesystem combination runs the complete healthy and fault paths in the actual
 release artifact.
 
+26. **Discipline adoption and delivery** — validate one complete end-to-end Discipline route. It MUST validate one supplied exact Pack,
+    adopt selected current v2 records with original authoring provenance, including
+    a publisher revision greater than 1 without local predecessors, and reproduce
+    target Work Type discovery and exact Boundary selection. It MUST also update
+    an adopted revision outside active Delivery without rewriting publisher bytes
+    or weakening Product Knowledge revision-chain refusal. It MUST
+    carry the selected advisory bytes to builder and reviewer, preserve the same
+    Registry and bytes through interrupted recovery, and refuse a Discipline-root
+    Candidate delta before promotion or sealing. A Work Type may contain unselected
+    records without making them mandatory. Inapplicable guidance alone MUST NOT
+    create a Material Condition or prevent otherwise supported acceptance. This
+    scenario preserves the ordinary required Checks, independent Evidence verifier,
+    and Director authentication; source-only fixtures do not establish operated
+    installed-provider qualification.
+
+27. **Operation subject and selection lifetimes** — interrupt preparation after
+    first opening and after provider intent, advance or dirty canonical state,
+    and resume the original retained basis without redispatch. Prove that first
+    opening failure leaves no unnameable Store. Change permitted installation
+    defaults during an open execution and reconcile its retained selections;
+    missing exact resources remain explicit availability failures.
+28. **Measured context refusal and mandate resolution** — exercise complete
+    mandatory overflow and an oversized required Git object without reading
+    beyond its bound. Prove exact builder and reviewer refusal/Condition retention,
+    no corresponding Agent allocation, required prior Check Retirement, and interruption before
+    completion. When an explicitly permitted registered profile supplies the
+    required capacity, prove that its selection survives finalization and
+    readmission and that actual continuation or evaluation succeeds. Exercise
+    no-ship separately when termination is selected. A fabricated same-code error MUST NOT produce a Condition, and
+    terminal accounting MUST NOT invent an Agent Reclamation handoff.
+29. **Semantic Evidence and governing context** — assess exact semantic facts
+    independently of an Activity or recorded reaction, then separately refuse
+    absent Foundation provenance or an unfulfilled required Condition. Mutate
+    physical observations and exact subjects; no caller satisfaction field may
+    replace derived support. Compare B/P with unrelated Atlas navigation,
+    Resource, and Discipline discovery changes, then with selected context or
+    adoption changes. Preserve complete distinct Snapshot bindings in both cases.
+
+30. **Incremental Knowledge and rejected-output repair** — retain a complete
+    contiguous Draft successor chain while its explicit Current owner governs,
+    reopen it from a Carrier and promote it with coherent local predecessor
+    digests. Produce useful Product bytes with malformed Knowledge, conclusively
+    settle the invalid Candidate outcome without a successor, and reopen exact
+    Receipt-bound repair input in a later builder. Complete a valid correction.
+    Repeat through byte-identical unchanged-mandate readmission to a permitted
+    larger context profile. Keep incomplete byte observation recoverable,
+    reject substituted repair provenance, and verify archive Carrier custody.
+
 ## Claim Package
 
 A standard claim package SHOULD contain:
@@ -882,7 +1126,7 @@ failure affecting a claimed requirement.
 An authenticated `candidate` statement requires one frozen non-Draft candidate
 revision, complete inventories and digests, successful schema, link,
 diagnostic, fixture, and `publication-release-v1` checks, immutable Release
-Notes covering every normative delta and the rc.10 hard cut, and an independently
+Notes covering every normative delta and the rc.17 hard cut, and an independently
 trusted publication-authority signature over the exact statement subject.
 
 Candidate status makes the package eligible for qualification only. It is not
@@ -896,8 +1140,8 @@ MUST fail rather than narrow the scope, reuse stale evidence, accept an
 untrusted key, or invent a release result.
 
 Every predecessor release directory and any authenticated statement over its
-exact bytes is a historical immutable subject. This rc.10 Draft MUST NOT rewrite
-one or present its evidence as rc.10 evidence. No rc.10 candidate, released,
+exact bytes is a historical immutable subject. This rc.17 Draft MUST NOT rewrite
+one or present its evidence as rc.17 evidence. No rc.17 candidate, released,
 portable-conformance, or production-qualified claim exists until its exact
 gates are actually satisfied.
 
@@ -954,7 +1198,7 @@ family carries its own exact version.
 
 An implementation MUST reject an unsupported or hard-cut version and MUST NOT
 interpret a new value through an older contract because property names look
-similar. For rc.10, declared compatibility is exactly fresh v15 creation and
+similar. For rc.17, declared compatibility is exactly fresh v22 creation and
 operation plus deterministic predecessor and mixed-state refusal. There is no
 migration, adoption, import, dual reader, dual writer, predecessor recovery, or
 compatibility mode.

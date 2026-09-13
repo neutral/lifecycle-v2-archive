@@ -15,19 +15,19 @@ import { fileURLToPath } from "node:url";
 
 const SCHEMA = "lifecycle.execution-image-tool-inventory.private.v1";
 const CODEX_NAME = "@openai/codex";
-const CODEX_VERSION = "0.151.0";
+const CODEX_VERSION = "0.153.4";
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const SHA512 = /^sha512-[A-Za-z0-9+/]+={0,2}$/u;
 const ARCHITECTURES = Object.freeze({
   amd64: Object.freeze({
     lockPath: "node_modules/@openai/codex-linux-x64",
     packageName: "@openai/codex-linux-x64",
-    packageVersion: "0.151.0-linux-x64",
+    packageVersion: "0.153.4-linux-x64",
   }),
   arm64: Object.freeze({
     lockPath: "node_modules/@openai/codex-linux-arm64",
     packageName: "@openai/codex-linux-arm64",
-    packageVersion: "0.151.0-linux-arm64",
+    packageVersion: "0.153.4-linux-arm64",
   }),
 });
 const LOCK_PACKAGE_PATHS = Object.freeze([
@@ -50,6 +50,8 @@ const REQUIRED_PATHS = Object.freeze([
   "codex-resources/zsh/bin/zsh",
   "runner-contract.private.json",
   "bin/execution-cell-runner",
+  "bin/lifecycle",
+  "runtime-package.tgz",
 ]);
 const EXECUTABLE_PATHS = new Set([
   "bin/codex",
@@ -58,10 +60,18 @@ const EXECUTABLE_PATHS = new Set([
   "codex-resources/bwrap",
   "codex-resources/zsh/bin/zsh",
   "bin/execution-cell-runner",
+  "bin/lifecycle",
 ]);
 const RUNNER_PATH = "bin/execution-cell-runner";
 const CONTRACT_PATH = "runner-contract.private.json";
 const GENERATED_INVENTORY_PATH = "tool-inventory.json";
+
+function inventoryRole(path) {
+  if (path === RUNNER_PATH) return "runner";
+  if (path === CONTRACT_PATH) return "runner-contract";
+  if (path === "bin/lifecycle" || path === "runtime-package.tgz") return "runtime-authoring";
+  return "codex-vendor";
+}
 
 function fail(message) {
   throw new Error(`Execution Image tool inventory verification failed: ${message}`);
@@ -186,9 +196,7 @@ async function observedEntries(rootPath) {
           kind: "regular",
           mode: (status.mode & 0o777).toString(8).padStart(4, "0"),
           path: `/opt/lifecycle/${path}`,
-          role: path === RUNNER_PATH
-            ? "runner"
-            : path === CONTRACT_PATH ? "runner-contract" : "codex-vendor",
+          role: inventoryRole(path),
         }));
         continue;
       }
@@ -207,7 +215,7 @@ async function observedEntries(rootPath) {
   entries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   const observed = entries.map((entry) => entry.path.slice("/opt/lifecycle/".length)).sort();
   if (JSON.stringify(observed) !== JSON.stringify([...REQUIRED_PATHS].sort())) {
-    fail("retained tree differs from the fixed Codex, runner, and contract inventory");
+    fail("retained tree differs from the fixed Codex, runner, contract, and Runtime package inventory");
   }
   return entries;
 }
@@ -243,9 +251,7 @@ function validateEntry(entry, index) {
   }
   const relativePath = path.slice("/opt/lifecycle/".length);
   if (!REQUIRED_PATHS.includes(relativePath)) fail(`${label} path is outside the fixed inventory`);
-  const expectedRole = relativePath === RUNNER_PATH
-    ? "runner"
-    : relativePath === CONTRACT_PATH ? "runner-contract" : "codex-vendor";
+  const expectedRole = inventoryRole(relativePath);
   if (entry.role !== expectedRole) fail(`${label} role is invalid`);
   if (entry.kind === "regular" &&
       entry.mode !== (EXECUTABLE_PATHS.has(relativePath) ? "0555" : "0444")) {

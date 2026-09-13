@@ -88,6 +88,7 @@ export async function packDistributionArtifact({ destination, manifestPath, qual
         name: sourceMetadata.name,
         version: qualificationOnly ? "0.0.0-qualification" : sourceMetadata.version,
         description: sourceMetadata.description,
+        license: sourceMetadata.license,
         type: sourceMetadata.type,
         files: sourceMetadata.files,
         bin: sourceMetadata.bin,

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { realpath, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { TextDecoder } from "node:util";
@@ -148,6 +149,7 @@ export async function gitBytes(
     timeoutMs?: number;
     maxStdoutBytes?: number;
     maxStderrBytes?: number;
+    input?: string | Buffer;
     env?: NodeJS.ProcessEnv;
   } = {},
 ): Promise<CommandBytesResult> {
@@ -158,6 +160,7 @@ export async function gitBytes(
     timeoutMs: options.timeoutMs ?? 30_000,
     maxStdoutBytes: options.maxStdoutBytes ?? 64 * 1024 * 1024,
     maxStderrBytes: options.maxStderrBytes ?? 1024 * 1024,
+    input: options.input,
   });
 }
 
@@ -351,4 +354,179 @@ export async function objectBlobBytes(
   }
   if (result.exitCode !== 0) throw new FoundationError("lifecycle.repository.blob-missing", `Required tracked blob is unavailable: ${objectId}`);
   return result.stdout;
+}
+
+export async function exactBlobSizes(
+  repository: string,
+  objectIds: readonly string[],
+  timeoutMs = 30_000,
+): Promise<ReadonlyMap<string, number>> {
+  const unique = [...new Set(objectIds)].sort();
+  if (unique.length === 0) return new Map();
+  if (unique.length > MAXIMUM_TREE_ENTRIES) {
+    throw new FoundationError("lifecycle.repository.blob-bound", "Exact Git blob inventory exceeds its object-count bound");
+  }
+  for (const objectId of unique) {
+    parseObjectId(objectId, objectId.length === 40 ? "sha1" : "sha256", "Inventoried blob");
+  }
+  const result = await git(repository, ["cat-file", "--batch-check=%(objectname) %(objecttype) %(objectsize)"], {
+    allowFailure: true,
+    input: `${unique.join("\n")}\n`,
+    maxStdoutBytes: Math.max(1024, unique.length * 160),
+    timeoutMs,
+  });
+  return parseGitBlobSizeResult(result, unique);
+}
+
+/** Bind the complete size response to the exact ordered request inventory. */
+export function parseGitBlobSizeResult(result: CommandResult, unique: readonly string[]): ReadonlyMap<string, number> {
+  if (result.exitCode !== 0 || result.signal !== null || result.timedOut || result.stdoutTruncated || result.stderrTruncated || !result.stdout.endsWith("\n")) {
+    throw new FoundationError("lifecycle.projection.content-digest", "Git exact object-size inventory did not complete");
+  }
+  const lines = result.stdout.slice(0, -1).split("\n");
+  if (lines.length !== unique.length) {
+    throw new FoundationError("lifecycle.projection.content-digest", "Git returned an incomplete exact object-size inventory");
+  }
+  const values = new Map<string, number>();
+  for (const [index, line] of lines.entries()) {
+    const match = /^([a-f0-9]{40}|[a-f0-9]{64}) blob (0|[1-9][0-9]*)$/u.exec(line);
+    if (match === null || match[1] !== unique[index]) {
+      throw new FoundationError("lifecycle.projection.content-digest", "Projection input names a missing or non-blob Git object", {
+        observedFacts: { objectId: unique[index] },
+      });
+    }
+    const size = Number(match[2]);
+    if (!Number.isSafeInteger(size) || size < 0) {
+      throw new FoundationError("lifecycle.projection.content-digest", "Git blob size is not one nonnegative safe integer");
+    }
+    values.set(match[1]!, size);
+  }
+  return values;
+}
+
+type ExactBlobSize = Readonly<{ objectId: string; byteLength: number }>;
+
+function blobBatchLength(expected: readonly ExactBlobSize[]): number {
+  if (expected.length > MAXIMUM_TREE_ENTRIES) {
+    throw new FoundationError("lifecycle.repository.blob-bound", "Exact Git blob batch exceeds its object-count bound");
+  }
+  const seen = new Set<string>();
+  let length = 0;
+  for (const { objectId, byteLength } of expected) {
+    parseObjectId(objectId, objectId.length === 40 ? "sha1" : "sha256", "Batch blob");
+    if (seen.has(objectId) || !Number.isSafeInteger(byteLength) || byteLength < 0) {
+      throw new FoundationError("lifecycle.repository.blob-missing", "Exact Git blob batch has an ambiguous expected inventory");
+    }
+    seen.add(objectId);
+    length += Buffer.byteLength(`${objectId} blob ${byteLength}\n`, "ascii") + byteLength + 1;
+    if (!Number.isSafeInteger(length) || length >= Number.MAX_SAFE_INTEGER) {
+      throw new FoundationError("lifecycle.repository.blob-bound", "Exact Git blob batch exceeds its byte bound");
+    }
+  }
+  return length;
+}
+
+/** Parse exactly the requested Git framing and verify each raw blob identity. */
+export function parseGitBlobBatchResult(
+  result: CommandBytesResult,
+  expected: readonly ExactBlobSize[],
+): ReadonlyMap<string, Buffer> {
+  const maximumBytes = blobBatchLength(expected);
+  if (result.timedOut) {
+    throw new FoundationError("lifecycle.repository.blob-timeout", "Tracked blob batch read exceeded its time bound");
+  }
+  if (result.stdoutTruncated || result.stdout.byteLength > maximumBytes) {
+    throw new FoundationError("lifecycle.repository.blob-bound", "Tracked blob batch exceeds its exact byte bound");
+  }
+  if (result.exitCode !== 0 || result.signal !== null || result.stderrTruncated) {
+    throw new FoundationError("lifecycle.repository.blob-missing", "Required tracked blob batch is unavailable");
+  }
+  const blobs = new Map<string, Buffer>();
+  let offset = 0;
+  for (const { objectId, byteLength } of expected) {
+    const header = Buffer.from(`${objectId} blob ${byteLength}\n`, "ascii");
+    const start = offset + header.byteLength;
+    const end = start + byteLength;
+    if (!result.stdout.subarray(offset, start).equals(header) || end >= result.stdout.byteLength || result.stdout[end] !== 10) {
+      throw new FoundationError("lifecycle.repository.blob-missing", "Git returned a missing, substituted, or incomplete blob batch");
+    }
+    const bytes = result.stdout.subarray(start, end);
+    const digest = createHash(objectId.length === 40 ? "sha1" : "sha256")
+      .update(`blob ${byteLength}\0`, "ascii").update(bytes).digest("hex");
+    if (digest !== objectId) {
+      throw new FoundationError("lifecycle.repository.blob-missing", "Git blob batch payload does not match its exact object identity");
+    }
+    blobs.set(objectId, bytes);
+    offset = end + 1;
+  }
+  if (offset !== result.stdout.byteLength) {
+    throw new FoundationError("lifecycle.repository.blob-missing", "Git blob batch contains trailing or unrequested data");
+  }
+  return blobs;
+}
+
+/**
+ * Observe sizes first, then retrieve one bounded exact batch. Repeated object
+ * selections still consume the caller's per-occurrence aggregate byte budget.
+ * No result survives this call as a repository observation or semantic cache.
+ */
+export async function objectBlobBatchBytes(
+  repository: string,
+  objectIds: readonly string[],
+  maximumFileBytes: number,
+  maximumTotalBytes: number,
+  timeoutMs = 30_000,
+): Promise<ReadonlyMap<string, Buffer>> {
+  if (objectIds.length > MAXIMUM_TREE_ENTRIES ||
+      ![maximumFileBytes, maximumTotalBytes, timeoutMs].every((value) => Number.isSafeInteger(value) && value > 0)) {
+    throw new FoundationError("lifecycle.repository.blob-bound", "Exact Git blob batch has invalid read bounds");
+  }
+  for (const objectId of objectIds) {
+    parseObjectId(objectId, objectId.length === 40 ? "sha1" : "sha256", "Batch blob");
+  }
+  const unique = [...new Set(objectIds)].sort();
+  if (unique.length === 0) return new Map();
+  const sizes = await exactBlobSizes(repository, unique, timeoutMs);
+  if (sizes.size !== unique.length || unique.some((objectId) => !sizes.has(objectId))) {
+    throw new FoundationError("lifecycle.repository.blob-missing", "Git returned a substituted exact blob-size inventory");
+  }
+  let totalBytes = 0;
+  for (const objectId of objectIds) {
+    const byteLength = sizes.get(objectId)!;
+    totalBytes += byteLength;
+    if (byteLength > maximumFileBytes || !Number.isSafeInteger(totalBytes) || totalBytes > maximumTotalBytes) {
+      throw new FoundationError("lifecycle.repository.blob-bound", "Tracked blob batch exceeds its per-file or aggregate byte bound");
+    }
+  }
+  const expected = unique.map((objectId) => Object.freeze({ objectId, byteLength: sizes.get(objectId)! }));
+  const result = await gitBytes(repository, ["cat-file", "--batch"], {
+    allowFailure: true,
+    input: `${unique.join("\n")}\n`,
+    maxStdoutBytes: blobBatchLength(expected) + 1,
+    timeoutMs,
+  });
+  return parseGitBlobBatchResult(result, expected);
+}
+
+/** Read one exact path difference without granting a caller arbitrary Git commands. */
+export async function exactFileDifferenceBytes(input: Readonly<{
+  repository: string;
+  before: string;
+  after: string;
+  path: string;
+  maximumBytes: number;
+}>): Promise<CommandBytesResult> {
+  const format = await resolveGitObjectFormat(input.repository);
+  parseObjectId(input.before, format, "Difference before object");
+  parseObjectId(input.after, format, "Difference after object");
+  validateRepositoryPath(input.path, Buffer.byteLength(input.path, "utf8"));
+  return gitBytes(input.repository, [
+    "diff", "--binary", "--full-index", "--no-color", "--no-ext-diff", "--no-renames",
+    input.before, input.after, "--", input.path,
+  ], {
+    allowFailure: true,
+    env: Object.freeze({ GIT_LITERAL_PATHSPECS: "1" }),
+    maxStdoutBytes: input.maximumBytes + 1,
+    timeoutMs: 120_000,
+  });
 }

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { discardFoundationAuthorityCredential, receiveFoundationAuthorityCredential } from "./repository/authority.js";
 import {
   FOUNDATION_SEMANTIC_MARKDOWN_MAXIMUM_BYTES,
   parseFoundationRuntimeOperationRequest,
@@ -8,6 +9,7 @@ import { LifecycleError } from "../errors.js";
 import {
   FOUNDATION_RUNTIME_FACADE_SCHEMA,
   foundationRuntime,
+  renderFoundationRuntimeHuman,
   type FoundationRuntimeExecutionContext,
   type FoundationRuntimeFacade,
   type FoundationRuntimeInitializeInput,
@@ -19,6 +21,11 @@ import { parseStrictJson } from "./validation/strict-json.js";
 import { exactKeys, object } from "./validation/value.js";
 
 const FOUNDATION_CLI_JSON_INPUT_MAXIMUM_BYTES = 1024 * 1024;
+// Two independently bounded semantic directions; JSON can encode each UTF-8
+// source byte with six ASCII bytes. The closed remaining fields fit in 64 KiB.
+// This file-encoding bound does not replace either semantic or Control bounds.
+export const FOUNDATION_CLI_WORK_JSON_INPUT_MAXIMUM_BYTES =
+  2 * 6 * FOUNDATION_SEMANTIC_MARKDOWN_MAXIMUM_BYTES + 65_536;
 
 export const FOUNDATION_CLI_ACTION_NAMES = Object.freeze([
   "initialize",
@@ -28,12 +35,14 @@ export const FOUNDATION_CLI_ACTION_NAMES = Object.freeze([
   "prepare",
   "admit",
   "continue",
+  "integrate",
   "evaluate",
   "revise",
   "reaffirm",
   "accept",
   "no-ship",
   "recover",
+  "work",
   "inspect",
   "diff",
   "watch",
@@ -51,12 +60,14 @@ const ACTION_OPERATIONS: Readonly<Record<FoundationCliAction, FoundationRuntimeO
   prepare: "delivery.prepare",
   admit: "delivery.admit",
   continue: "delivery.continue",
+  integrate: "delivery.integrate",
   evaluate: "delivery.evaluate",
   revise: "delivery.revise",
   reaffirm: "delivery.reaffirm",
   accept: "delivery.accept",
   "no-ship": "delivery.no-ship",
   recover: "delivery.recover",
+  work: "delivery.work",
   inspect: "delivery.inspect",
   diff: "delivery.diff",
   watch: "delivery.watch",
@@ -83,6 +94,7 @@ const JSON_INPUT_ACTIONS = new Set<FoundationCliAction>(["inbox", "inspect", "di
 
 const EXPECTED_GENERATION_ACTIONS = new Set<FoundationCliAction>([
   "continue",
+  "integrate",
   "evaluate",
   "revise",
   "reaffirm",
@@ -92,12 +104,14 @@ const DELIVERY_ACTIONS = new Set<FoundationCliAction>([
   "status",
   "admit",
   "continue",
+  "integrate",
   "evaluate",
   "revise",
   "reaffirm",
   "accept",
   "no-ship",
   "recover",
+  "work",
   "inspect",
   "diff",
   "export",
@@ -105,7 +119,12 @@ const DELIVERY_ACTIONS = new Set<FoundationCliAction>([
 
 const OPTIONAL_DELIVERY_ACTIONS = new Set<FoundationCliAction>(["watch"]);
 
-export function foundationCliOptionNames(action: FoundationCliAction): readonly string[] {
+export const FOUNDATION_CLI_WORK_ACTIONS = Object.freeze(["set", "run", "stop"] as const);
+export type FoundationCliWorkAction = typeof FOUNDATION_CLI_WORK_ACTIONS[number];
+
+export function foundationCliOptionNames(action: FoundationCliAction, workAction?: FoundationCliWorkAction): readonly string[] {
+  if (action === "work") return Object.freeze(workAction === "stop"
+    ? ["input", "format"] : ["input", "expected-generation", "format"]);
   if (action === "initialize") {
     return Object.freeze(["input", "authority-secret-file", "format"]);
   }
@@ -188,8 +207,8 @@ function outputFormat(parsed: Parsed): FoundationCliOutputFormat {
   return value;
 }
 
-function assertOptions(parsed: Parsed, selected: FoundationCliAction): void {
-  const allowed = new Set(foundationCliOptionNames(selected));
+function assertOptions(parsed: Parsed, selected: FoundationCliAction, workAction?: FoundationCliWorkAction): void {
+  const allowed = new Set(foundationCliOptionNames(selected, workAction));
   const unknown = [...parsed.options.keys()].filter((name) => !allowed.has(name));
   if (unknown.length > 0) {
     optionFailure(`Unsupported Lifecycle Foundation option(s): ${unknown.map((name) => `--${name}`).join(", ")}`);
@@ -255,7 +274,7 @@ async function initializationInput(path: string): Promise<FoundationRuntimeIniti
   exactKeys(
     value,
     [],
-    ["targetId", "founderPrincipal", "implementationRoots", "checkBindings", "stage"],
+    ["targetId", "directorPrincipal", "implementationRoots", "checkBindings", "stage"],
     "cli.input",
     "Lifecycle Foundation initialization input",
   );
@@ -267,10 +286,13 @@ async function semanticInput(path: string, operation: FoundationRuntimeOperation
   return decodeUtf8(bytes, operation);
 }
 
-async function jsonInput(path: string, operation: FoundationRuntimeOperationKind): Promise<Record<string, unknown>> {
-  const bytes = await readInputFile(path, operation, FOUNDATION_CLI_JSON_INPUT_MAXIMUM_BYTES);
+async function jsonInput(
+  path: string, operation: FoundationRuntimeOperationKind,
+  maximumBytes = FOUNDATION_CLI_JSON_INPUT_MAXIMUM_BYTES,
+): Promise<Record<string, unknown>> {
+  const bytes = await readInputFile(path, operation, maximumBytes);
   const value = parseStrictJson(decodeUtf8(bytes, operation), {
-    maximumBytes: FOUNDATION_CLI_JSON_INPUT_MAXIMUM_BYTES,
+    maximumBytes,
     source: `Lifecycle Foundation ${operation} input`,
   });
   return object(value, "cli.input", `Lifecycle Foundation ${operation} input`);
@@ -285,7 +307,7 @@ function exactRequest(value: unknown, selected: FoundationCliAction): Foundation
 }
 
 async function deliveryRequest(
-  selected: Exclude<FoundationCliAction, "initialize" | "validate" | "inbox" | "status" | "prepare">,
+  selected: Exclude<FoundationCliAction, "initialize" | "validate" | "inbox" | "status" | "prepare" | "work">,
   parsed: Parsed,
 ): Promise<FoundationRuntimeOperationRequest> {
   const operation = ACTION_OPERATIONS[selected];
@@ -320,12 +342,13 @@ async function deliveryRequest(
   if (selected === "admit" || selected === "accept") {
     return exactRequest({ ...common, input: null }, selected);
   }
-  const expectedGeneration = parsed.options.get("expected-generation");
+  const expectedGeneration = required(parsed, "expected-generation");
+  if (selected === "integrate") return exactRequest({ ...common, input: { expectedGeneration } }, selected);
   return exactRequest({
     ...common,
     input: {
       semanticMarkdown,
-      ...(expectedGeneration === undefined ? {} : { expectedGeneration }),
+      expectedGeneration,
     },
   }, selected);
 }
@@ -348,15 +371,36 @@ export async function dispatchFoundationCli(
     readAuthoritySecret?: (path: string) => Promise<string>;
   }> = {},
 ): Promise<FoundationCliDispatch> {
-  const parsed = parse(args);
-  const selected = action(parsed.positionals[0]);
-  assertOptions(parsed, selected);
+  const original = parse(args);
+  const selected = action(original.positionals[0]);
+  const workAction = selected === "work" ? original.positionals[1] : undefined;
+  if (selected === "work" && !FOUNDATION_CLI_WORK_ACTIONS.includes(workAction as FoundationCliWorkAction)) {
+    usage("Lifecycle work requires one subaction: set, run, or stop");
+  }
+  const parsed = selected === "work"
+    ? Object.freeze({ ...original, positionals: Object.freeze(["work", ...original.positionals.slice(2)]) }) : original;
+  assertOptions(parsed, selected, workAction as FoundationCliWorkAction | undefined);
+  const format = outputFormat(parsed);
   const facade = options.facade ?? foundationRuntime;
   const readAuthoritySecret = options.readAuthoritySecret ?? (async () =>
     optionFailure("Lifecycle Foundation authority-secret file reader is unavailable"));
   let request: FoundationRuntimeOperationRequest;
 
-  if (selected === "initialize") {
+  if (selected === "work") {
+    const common = { schema: FOUNDATION_RUNTIME_FACADE_SCHEMA, operation: "delivery.work",
+      target: target(parsed, selected), deliveryId: deliveryId(parsed, selected) } as const;
+    const expectedGeneration = workAction === "stop" ? undefined : required(parsed, "expected-generation");
+    const supplied = await jsonInput(required(parsed, "input"), "delivery.work", FOUNDATION_CLI_WORK_JSON_INPUT_MAXIMUM_BYTES);
+    if (workAction === "set") {
+      exactKeys(supplied, ["allowedOperations", "directions", "agentChoices", "ceilings", "expiresAt"], [],
+        "cli.input", "Work permission input");
+      request = exactRequest({ ...common, input: { ...supplied, action: "set", expectedGeneration } }, selected);
+    } else {
+      request = exactRequest({ ...common, input: workAction === "stop"
+        ? { action: "stop", delegation: supplied }
+        : { action: "run", expectedGeneration, delegation: supplied } }, selected);
+    }
+  } else if (selected === "initialize") {
     request = exactRequest({
       schema: FOUNDATION_RUNTIME_FACADE_SCHEMA,
       target: target(parsed, selected),
@@ -403,11 +447,40 @@ export async function dispatchFoundationCli(
     : undefined;
   const executionContext: FoundationRuntimeExecutionContext = authoritySecret === undefined
     ? {}
-    : { authoritySecret };
-  const result = await facade.execute(request, executionContext);
-  return Object.freeze({
-    kind: "foundation-cli-dispatch",
-    format: outputFormat(parsed),
-    result,
-  });
+    : { authorityCredential: receiveFoundationAuthorityCredential(
+        authoritySecret,
+        selected === "initialize" ? "initialize" : "director-decision",
+      ) };
+  try {
+    const result = await facade.execute(request, executionContext);
+    return Object.freeze({
+      kind: "foundation-cli-dispatch",
+      format,
+      result,
+    });
+  } finally {
+    discardFoundationAuthorityCredential(executionContext.authorityCredential);
+  }
+}
+
+/** Resource-control narration stays in the canonical CLI; state remains Runtime-owned. */
+export function renderFoundationCliHuman(result: FoundationRuntimeOperationResult): string {
+  const value = result.value;
+  if (value === null || !("kind" in value) || value.kind !== "work-control") return renderFoundationRuntimeHuman(result);
+  const lines = [
+    value.action === "set" ? result.status === "completed"
+      ? "Work permission saved. Work has not started." : "The work permission request returned. Inspect its status and observations below."
+      : value.action === "stop" ? value.stop?.disposition === "pending"
+        ? "Stop request saved. The current finite operation may finish; no next reservation is permitted."
+        : "Work permission stopped. No next reservation is permitted."
+      : "The foreground work run returned. Inspect the observed result below before choosing another action.",
+    `Permission: ${value.delegation.id}@${value.delegation.revision} ${value.delegation.digest}`,
+    `Settled operations observed: ${value.completedOperations}`,
+    `Returned reason: ${value.reason}`,
+    ...(value.lastActivity === null ? [] : [`Latest operation: ${value.lastActivity.operation} · ${value.lastActivity.activityId}`]),
+    "The result reports Journal coordinates only. Settled operations do not mean Product acceptance.",
+    "Publication still requires your explicit approval of the exact checked and reviewed result.",
+    "",
+  ];
+  return `${lines.join("\n")}\n${renderFoundationRuntimeHuman(result)}`;
 }

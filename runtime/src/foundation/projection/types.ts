@@ -1,8 +1,9 @@
-import type { FoundationKnowledgeKind } from "../knowledge/types.js";
+import type { FoundationKnowledgeKind, FoundationKnowledgeRevisionIdentity } from "../knowledge/types.js";
 import type {
   FoundationCapabilityProfile,
   FoundationCheckBinding,
   FoundationProjectionProfile,
+  FoundationRepositorySnapshot,
 } from "../repository/types.js";
 import type { Sha256 } from "../validation/canonical.js";
 import type { FoundationValidationResult } from "../validation/result.js";
@@ -19,6 +20,10 @@ export const FOUNDATION_STANDARD_PROJECTION_PROFILES = [
   "execution-large-v1",
 ] as const;
 export type FoundationStandardProjectionProfile = (typeof FOUNDATION_STANDARD_PROJECTION_PROFILES)[number];
+
+export const FOUNDATION_IMPLEMENTATION_PROJECTION_PROFILES = ["orientation-large-v1"] as const;
+export type FoundationProjectionProfileId = FoundationStandardProjectionProfile |
+  (typeof FOUNDATION_IMPLEMENTATION_PROJECTION_PROFILES)[number];
 
 export type FoundationProjectionCompilerIdentity = Readonly<{
   id: string;
@@ -70,6 +75,13 @@ export type FoundationProjectionCandidateBasis = Readonly<{
   carrierManifestDigest: Sha256;
   sealedTree: string | null;
   seal: FoundationProjectionControlReference<"candidate-seal"> | null;
+  integration: FoundationProjectionIntegrationBasis | null;
+}>;
+
+export type FoundationProjectionIntegrationBasis = Readonly<{
+  assessment: FoundationProjectionControlReference<"integration-assessment">;
+  sourceCandidate: FoundationProjectionControlReference<"candidate-revision">;
+  canonicalParent: FoundationRepositorySnapshot;
 }>;
 
 export type FoundationProjectionBasis = Readonly<{
@@ -104,12 +116,24 @@ export type FoundationOrientationProjectionCore = Readonly<{
   purpose: string;
   conditions: readonly FoundationProjectionCondition[];
   knowledgeIndex: FoundationProjectionKnowledgeIndex;
+  disciplineIndex: FoundationProjectionDisciplineIndex;
   coverageIndex: FoundationProjectionCoverageIndex;
   bindingIndex: FoundationProjectionBindingIndex;
   capabilityIndex: FoundationProjectionCapabilityIndex;
   profileIndex: FoundationProjectionProfileIndex;
   retrievalIndex: FoundationProjectionRetrievalIndex;
   indexDigest: Sha256;
+}>;
+
+export type FoundationProjectionDisciplineIndex = Readonly<{
+  registryDigest: Sha256;
+  workTypes: readonly Readonly<{
+    id: string;
+    title: string;
+    description: string;
+    disciplineIds: readonly string[];
+  }>[];
+  digest: Sha256;
 }>;
 
 export type FoundationProjectionKnowledgeIndex = Readonly<{
@@ -254,6 +278,7 @@ export type FoundationExecutionProjectionCore = Readonly<{
   excluded: readonly string[];
   assumptions: readonly string[];
   falsifiers: readonly string[];
+  disciplines: FoundationProjectionDisciplineSelection;
   obligations: readonly FoundationProjectionObligation[];
   requiredArtifacts: readonly FoundationProjectionArtifact[];
   effects: readonly FoundationProjectionEffect[];
@@ -269,12 +294,18 @@ export type FoundationExecutionProjectionCore = Readonly<{
   workBoundaryDigest: Sha256;
 }>;
 
-/** Exact authenticated citation supplied by the later Work Boundary parser. */
-export type FoundationProjectionKnowledgeRoot = Readonly<{
-  id: string;
-  revision: number;
-  sourceDigest: Sha256;
-  semanticDigest: Sha256;
+export type FoundationProjectionDisciplineSelection = Readonly<{
+  registryDigest: Sha256;
+  workTypeIds: readonly string[];
+  records: readonly (FoundationKnowledgeRevisionIdentity & Readonly<{
+    title: string;
+    summary: string;
+    path: string;
+  }>)[];
+}>;
+
+/** Exact Knowledge selection resolved from the Work Boundary by its owning compiler. */
+export type FoundationProjectionKnowledgeRoot = FoundationKnowledgeRevisionIdentity & Readonly<{
   reason: string;
 }>;
 
@@ -303,8 +334,8 @@ export type FoundationProjectionSourceRoot =
   }>;
 
 /**
- * The exact, already-authenticated execution data subject consumed here.
- * This is deliberately not a Work Boundary parser or validity claim.
+ * Exact execution data resolved from the selected Work Boundary by its owner.
+ * This carrier does not parse the Boundary or authenticate a Director Decision.
  */
 export type FoundationExecutionProjectionSubject = Readonly<{
   workBoundary: FoundationProjectionBoundaryBasis;
@@ -337,7 +368,7 @@ export type FoundationProjectionRequestRetrieval = Readonly<{
 }>;
 
 type FoundationProjectionRequestCommon = Readonly<{
-  schema: "lifecycle.projection-request.v4";
+  schema: "lifecycle.projection-request.v5";
   specificationRevision: string;
   target: FoundationProjectionTargetBasis;
   repository: FoundationProjectionRequestRepositoryBasis;
@@ -386,7 +417,7 @@ export type FoundationProjectionMandatoryItem = Readonly<{
   category: "knowledge";
   sourceIdentity: string;
   kind: FoundationKnowledgeKind | "implementation" | "binding" | "source" | null;
-  authority: "product-knowledge" | "atlas" | "repository-reality" | "check-binding" | "informational-source";
+  authority: "product-knowledge" | "discipline-guidance" | "atlas" | "repository-reality" | "check-binding" | "informational-source";
   locator: string;
   revision: number | string | null;
   sourceDigest: Sha256;
@@ -529,11 +560,11 @@ export type FoundationProjectionOmission = Readonly<{
 }>;
 
 export type FoundationKnowledgeProjection = Readonly<{
-  schema: "lifecycle.knowledge-projection.v4";
+  schema: "lifecycle.knowledge-projection.v6";
   projectionId: string;
   class: FoundationProjectionClass;
   role: FoundationProjectionRole;
-  profile: FoundationStandardProjectionProfile;
+  profile: FoundationProjectionProfileId;
   profileDigest: Sha256;
   compiler: FoundationProjectionCompilerIdentity;
   specificationRevision: string;
@@ -578,7 +609,7 @@ export type FoundationProjectionCacheKey = Readonly<{
   compilerDigest: Sha256;
   class: FoundationProjectionClass;
   role: FoundationProjectionRole;
-  profile: FoundationStandardProjectionProfile;
+  profile: FoundationProjectionProfileId;
   basis: FoundationProjectionBasis;
   profileBoundsDigest: Sha256;
   requestSubjectDigest: Sha256;

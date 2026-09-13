@@ -10,20 +10,16 @@ The Lifecycle Foundation core can be built directly from this repository.
 
 ## Install the source workspace
 
+Follow [source setup](source-setup.md) to install the locked workspace
+dependencies and build the protocol and Runtime. Invoke the canonical CLI
+from the source tree:
+
 ```sh
-git clone https://github.com/neutral/lifecycle.git
-cd lifecycle
-npm ci
-npm run build -w @neutral/lifecycle-protocol
-npm run build:self -w @neutral/lifecycle-runtime
 npm run lifecycle -- version
+npm run lifecycle -- help
 ```
 
-This installs the locked workspace dependencies, builds the shared protocol
-and Runtime, and invokes the canonical CLI from the source tree. Atlas source
-and its processor implementation are not vendored into this workspace. Their
-publication and Runtime integration are separate prerequisites for target
-operation. See [source setup](source-setup.md) for the repository boundary.
-
-Registry installation instructions will be published with the corresponding
-npm package and Runtime and Execution Images.
+The source workspace includes the pinned Atlas processor and its provenance.
+Target operation additionally requires a complete valid target Atlas and the
+Runtime's selected execution environment. These prerequisites are separate from
+compiling and inspecting the source CLI.

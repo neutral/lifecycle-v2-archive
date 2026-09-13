@@ -5,16 +5,18 @@ import { join, resolve } from "node:path";
 import {
   discoverRuntimeTestFiles,
   planRuntimeTestBatches,
+  selectRuntimeTestFiles,
 } from "./runtime-test-plan.mjs";
 
 const runtimeRoot = resolve(import.meta.dirname, "..");
 const testDirectory = join(runtimeRoot, "dist", "tests");
 
-if (process.argv.length !== 2) {
-  throw new Error("Runtime test runner does not accept arguments");
+const profile = process.argv[2] ?? "all";
+if (process.argv.length > 3 || !["all", "connected-fast", "connected-bounded"].includes(profile)) {
+  throw new Error("Runtime test runner accepts only all, connected-fast, or connected-bounded");
 }
 
-const testFiles = await discoverRuntimeTestFiles(testDirectory, runtimeRoot);
+const testFiles = selectRuntimeTestFiles(await discoverRuntimeTestFiles(testDirectory, runtimeRoot), profile);
 
 // Package staging temporarily materializes runtime/node_modules so npm can
 // bundle the exact production closure. Running that filesystem-owning check

@@ -118,7 +118,7 @@ async function main() {
       normative: path.startsWith("spec/"),
     })),
     schemas: await entries(schemas, () => ({ role: "json-schema", normative: true })),
-    fixtures: await entries(fixtures, (path) => path.endsWith("provider-descriptor-codex-exec-standard-v6.json")
+    fixtures: await entries(fixtures, (path) => path.endsWith("provider-descriptor-codex-exec-standard-v7.json")
       ? { role: "provider-descriptor", normative: true }
       : { role: "conformance-fixture", normative: false }),
   };

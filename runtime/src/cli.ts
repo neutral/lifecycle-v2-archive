@@ -13,8 +13,9 @@ import {
 import {
   dispatchFoundationCli,
   isFoundationCliDispatch,
+  renderFoundationCliHuman,
 } from "./foundation/cli.js";
-import { renderFoundationRuntimeHuman } from "./foundation/facade.js";
+import { dispatchFoundationDraftCli, isFoundationDraftCliDispatch, renderFoundationDraftCli } from "./foundation/draft/cli.js";
 import {
   FOUNDATION_AUTHENTICATED_PUBLICATION_STATUS,
   FOUNDATION_SPECIFICATION_ID,
@@ -30,10 +31,18 @@ import {
   withProcessCancellation,
 } from "./util/process.js";
 import { CODEX_COMPATIBILITY, RUNTIME_PROTOCOL, RUNTIME_VERSION } from "./version.js";
+import {
+  FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MAXIMUM_BYTES,
+  FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MINIMUM_BYTES,
+  parseFoundationInvocationPrivateAuthorizationChallengeV1,
+  preflightFoundationInvocationPrivateAuthorizationV1,
+  sendFoundationInvocationPrivateAuthorizationV1,
+} from "./foundation/invocation-private-authorization-channel-v1.js";
 
-async function readAuthoritySecretFile(path: string): Promise<string> {
+async function readAuthoritySecretFileBytes(path: string): Promise<Buffer> {
   const absolute = resolve(path);
   let handle;
+  let allocation: Buffer | undefined;
   try {
     handle = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW);
     const metadata = await handle.stat();
@@ -49,23 +58,28 @@ async function readAuthoritySecretFile(path: string): Promise<string> {
         observedFacts: { path: absolute },
       });
     }
-    const maximum = 4_096;
+    const maximum = FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MAXIMUM_BYTES;
     const buffer = Buffer.alloc(maximum + 1);
+    allocation = buffer;
     let offset = 0;
     while (offset < buffer.length) {
       const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, null);
       if (bytesRead === 0) break;
       offset += bytesRead;
     }
-    if (offset > maximum) {
+    if (
+      offset < FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MINIMUM_BYTES
+      || offset > maximum
+    ) {
       throw new LifecycleError({
         code: "cli.authority-secret-file",
-        message: "--authority-secret-file exceeds the 4096-byte authority-secret bound",
+        message: "--authority-secret-file must contain 32 through 4096 UTF-8 secret bytes",
         observedFacts: { path: absolute },
       });
     }
+    let decoded: string;
     try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, offset));
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, offset));
     } catch {
       throw new LifecycleError({
         code: "cli.authority-secret-file",
@@ -73,6 +87,14 @@ async function readAuthoritySecretFile(path: string): Promise<string> {
         observedFacts: { path: absolute },
       });
     }
+    if (decoded.includes("\0")) {
+      throw new LifecycleError({
+        code: "cli.authority-secret-file",
+        message: "--authority-secret-file must not contain NUL bytes",
+        observedFacts: { path: absolute },
+      });
+    }
+    return Buffer.from(buffer.subarray(0, offset));
   } catch (error) {
     if (error instanceof LifecycleError) throw error;
     throw new LifecycleError({
@@ -81,12 +103,74 @@ async function readAuthoritySecretFile(path: string): Promise<string> {
       observedFacts: { path: absolute, cause: error instanceof Error ? error.message : String(error) },
     });
   } finally {
+    allocation?.fill(0);
     await handle?.close().catch(() => undefined);
   }
 }
 
-async function dispatch(args: readonly string[]): Promise<unknown> {
+async function readAuthoritySecretFile(path: string): Promise<string> {
+  const bytes = await readAuthoritySecretFileBytes(path);
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } finally {
+    bytes.fill(0);
+  }
+}
+
+function parseAuthorizeArguments(args: readonly string[]): Readonly<{
+  challenge: string;
+  authoritySecretFile: string;
+}> {
+  if (
+    (args.length !== 3 && args.length !== 4)
+    || args[0] !== "authorize"
+    || args[1] === undefined
+  ) {
+    throw new LifecycleError({
+      code: "cli.usage",
+      message: "authorize requires one exact challenge and --authority-secret-file FILE",
+    });
+  }
+  const challenge = parseFoundationInvocationPrivateAuthorizationChallengeV1(args[1]);
+  if (challenge === null) {
+    throw new LifecycleError({
+      code: "cli.usage",
+      message: "authorize requires one exact invocation-private challenge",
+    });
+  }
+  let authoritySecretFile: string | undefined;
+  if (args.length === 4 && args[2] === "--authority-secret-file") {
+    authoritySecretFile = args[3];
+  } else if (args.length === 3 && args[2]?.startsWith("--authority-secret-file=")) {
+    authoritySecretFile = args[2].slice("--authority-secret-file=".length);
+  }
+  if (authoritySecretFile === undefined || authoritySecretFile.length === 0) {
+    throw new LifecycleError({
+      code: "cli.option",
+      message: "authorize requires --authority-secret-file FILE exactly once",
+    });
+  }
+  return Object.freeze({ challenge: challenge.token, authoritySecretFile });
+}
+
+async function dispatchAuthorize(args: readonly string[], signal?: AbortSignal): Promise<unknown> {
+  const parsed = parseAuthorizeArguments(args);
+  await preflightFoundationInvocationPrivateAuthorizationV1(parsed.challenge);
+  const authoritySecret = await readAuthoritySecretFileBytes(parsed.authoritySecretFile);
+  try {
+    return await sendFoundationInvocationPrivateAuthorizationV1({
+      challenge: parsed.challenge,
+      authoritySecret,
+      signal,
+    });
+  } finally {
+    authoritySecret.fill(0);
+  }
+}
+
+async function dispatch(args: readonly string[], signal?: AbortSignal): Promise<unknown> {
   const command = args[0];
+  if (command === "draft") return await dispatchFoundationDraftCli(args.slice(1));
   if (command === "version") {
     if (args.length !== 1) {
       throw new LifecycleError({ code: "cli.usage", message: "version accepts no arguments or options" });
@@ -107,6 +191,7 @@ async function dispatch(args: readonly string[]): Promise<unknown> {
       codex: CODEX_COMPATIBILITY,
     });
   }
+  if (command === "authorize") return await dispatchAuthorize(args, signal);
   if (command !== undefined && command !== "version" && TOP_LEVEL_COMMANDS.includes(command as never)) {
     return await dispatchFoundationCli(args, { readAuthoritySecret: readAuthoritySecretFile });
   }
@@ -217,11 +302,14 @@ export async function main(
     }
     const result = await withProcessCancellation(
       { signal: controller.signal, forceSignal: forceController.signal },
-      async () => await dispatch(normalizedArgs),
+      async () => await dispatch(normalizedArgs, controller.signal),
     );
-    const rendered = isFoundationCliDispatch(result)
+    if (isFoundationDraftCliDispatch(result)) process.exitCode = result.exitCode;
+    const rendered = isFoundationDraftCliDispatch(result)
+      ? renderFoundationDraftCli(result)
+      : isFoundationCliDispatch(result)
       ? result.format === "human"
-        ? renderFoundationRuntimeHuman(result.result)
+        ? renderFoundationCliHuman(result.result)
         : canonicalJsonLine(result.result)
       : canonicalJsonLine(result);
     await writeStream(process.stdout, rendered);

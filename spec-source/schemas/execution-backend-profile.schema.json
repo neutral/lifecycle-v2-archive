@@ -58,7 +58,7 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/qualificationClaim" }
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "allOf": [
     {
@@ -116,10 +116,10 @@
       "additionalProperties": false,
       "required": ["id", "version", "implementationDigest", "contractDigest"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "engineContract": {
@@ -128,9 +128,9 @@
       "required": ["kind", "compatibilityProfileId", "compatibleVersion", "contractDigest"],
       "properties": {
         "kind": { "enum": ["docker-engine", "deterministic-test-engine"] },
-        "compatibilityProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "compatibleVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
-        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "compatibilityProfileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "compatibleVersion": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
+        "contractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "platform": {
@@ -143,7 +143,7 @@
         "variant": {
           "oneOf": [
             { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" }
           ]
         }
       }
@@ -300,13 +300,13 @@
         "maximumEvents"
       ],
       "properties": {
-        "maximumWallTimeMilliseconds": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumProcesses": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumStorageBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumOutputEntries": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumOutputBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumOutputEntryBytes": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "maximumEvents": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+        "maximumWallTimeMilliseconds": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumProcesses": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumStorageBytes": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumOutputEntries": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumOutputBytes": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumOutputEntryBytes": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "maximumEvents": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" }
       }
     },
     "outputPolicy": {
@@ -326,8 +326,8 @@
       "additionalProperties": false,
       "required": ["claimId", "evidenceDigest"],
       "properties": {
-        "claimId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "evidenceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "claimId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "evidenceDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     }
   }

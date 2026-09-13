@@ -1,8 +1,7 @@
 {
   "name": "@neutral/lifecycle",
   "version": "1.0.0",
-  "description": "Container-distributed Lifecycle Foundation launcher.",
-  "license": "CC0-1.0 OR 0BSD",
+  "description": "Lifecycle Foundation CLI launcher source.",
   "type": "module",
   "files": [
     "README.md",
@@ -11,19 +10,15 @@
     "manifest"
   ],
   "bin": {
-    "lifecycle": "bin/lifecycle.mjs",
-    "lifecycle-tui": "bin/lifecycle-tui.mjs"
+    "lifecycle": "bin/lifecycle.mjs"
   },
   "engines": {
     "node": ">=24.14.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/neutral/lifecycle.git",
+    "url": "https://github.com/neutral/lifecycle-v2-archive.git",
     "directory": "distribution/package"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "clean": "node ../scripts/clean-package.mjs",
@@ -38,5 +33,9 @@
   "devDependencies": {
     "@types/node": "26.1.1",
     "typescript": "5.8.3"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "CC0-1.0 OR 0BSD"
 }

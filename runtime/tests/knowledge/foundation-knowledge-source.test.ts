@@ -1,14 +1,16 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { validateKnowledgeSources } from "../../src/foundation/knowledge/sources.js";
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
 import type { FoundationKnowledgeRecord, FoundationSourceBinding } from "../../src/foundation/knowledge/types.js";
 import { createFoundationAuthority } from "../../src/foundation/repository/authority.js";
 import { createRepositoryContract } from "../../src/foundation/repository/contract.js";
 import { exactTreeEntries, git, resolveGitObjectFormat } from "../../src/foundation/repository/git.js";
-import { sha256Bytes, type Sha256 } from "../../src/foundation/validation/canonical.js";
+import { selfDigest, sha256Bytes, type Sha256 } from "../../src/foundation/validation/canonical.js";
 import { DiagnosticCollector } from "../../src/foundation/validation/result.js";
 import { writeMinimalAtlas } from "../helpers/atlas-fixture.js";
 
@@ -21,13 +23,19 @@ async function write(root: string, path: string, content: string): Promise<void>
 
 function record(
   sources: readonly FoundationSourceBinding[],
-  options: { id?: string; status?: "draft" | "current" | "superseded" | "retired"; revision?: number } = {},
+  options: {
+    id?: string;
+    kind?: "behavior" | "discipline";
+    status?: "draft" | "current" | "superseded" | "retired";
+    revision?: number;
+  } = {},
 ): FoundationKnowledgeRecord {
   const digest = sha256Bytes("record");
-  const id = options.id ?? "behavior.source";
+  const kind = options.kind ?? "behavior";
+  const id = options.id ?? `${kind}.source`;
   const revision = options.revision ?? 1;
   return {
-    path: `records/behavior/${id.replaceAll(".", "-")}-${revision}.md`,
+    path: `records/${kind === "discipline" ? "disciplines" : kind}/${id.replaceAll(".", "-")}-${revision}.md`,
     mode: "100644",
     objectId: "a".repeat(40),
     sourceText: "",
@@ -35,20 +43,20 @@ function record(
     bodyNormalized: "",
     headings: [],
     frontMatter: {
-      schema: "lifecycle.knowledge-record.v1",
-      kind: "behavior",
+      schema: "lifecycle.knowledge-record.v2",
+      kind,
       id,
       title: "Source",
       status: options.status ?? "current",
       revision,
       supersedes: null,
       summary: "Source",
-      owners: ["founder"],
+      owners: ["director"],
       sources,
       relationships: [],
       conflicts: [],
       tags: [],
-      spec: {
+      spec: kind === "behavior" ? {
         outcome: "Source",
         actors: ["caller"],
         conditions: [],
@@ -56,6 +64,12 @@ function record(
         excluded: [],
         examples: [],
         falsifiers: ["missing"],
+      } : {
+        practice: "Treat provenance as optional advisory context.",
+        appliesWhen: ["using this Discipline"],
+        doesNotApplyWhen: [],
+        guidance: ["Use judgment."],
+        verification: [],
       },
       extensions: {},
       canonicalValue: {},
@@ -64,6 +78,60 @@ function record(
     semanticDigest: digest,
   };
 }
+
+test("Discipline provenance cannot become a required Knowledge source", async () => {
+  const fixture = await repository();
+  const source = Object.freeze({
+    id: "external-practice",
+    required: true,
+    reference: "https://example.invalid/practice",
+    revision: "v1",
+    digest: sha256Bytes("external practice"),
+    role: "research" as const,
+  });
+  const discipline = record([source], { id: "discipline.source", kind: "discipline" });
+  const registrySubject = {
+    schema: "lifecycle.discipline-registry.v1" as const,
+    packs: [{
+      id: "source-practices",
+      publisher: "director",
+      version: "1.0.0",
+      source: "https://example.invalid/source-practices",
+      revision: "revision-1",
+      manifestDigest: sha256Bytes("source-practices pack"),
+    }],
+    adoptions: [{
+      id: discipline.frontMatter.id,
+      revision: discipline.frontMatter.revision,
+      path: discipline.path,
+      sourceDigest: discipline.sourceDigest,
+      semanticDigest: discipline.semanticDigest,
+      packId: "source-practices",
+    }],
+    workTypes: [],
+  };
+  const registry = Object.freeze({ ...registrySubject, digest: selfDigest(registrySubject) });
+  const collector = new DiagnosticCollector();
+  const sourceResult = await validateKnowledgeSources({
+    repository: fixture.root,
+    commit: fixture.commit,
+    contract: fixture.contract,
+    treeEntries: fixture.treeEntries,
+    records: [discipline],
+    disciplineRegistry: registry,
+    collector,
+  });
+  const result = collector.result({
+    profile: "knowledge-set-v2",
+    subjectKind: "test",
+    subjectId: "discipline-source-required",
+    stages: ["records", "sources"],
+  });
+  assert.equal(result.valid, false);
+  assert(result.diagnostics.some(({ code }) => code === "lifecycle.discipline.source-required"));
+  assert.equal(sourceResult.complete, true);
+  assert.deepEqual(sourceResult.resolutions, []);
+});
 
 async function repository(): Promise<{
   root: string;
@@ -88,7 +156,7 @@ async function repository(): Promise<{
   const objectFormat = await resolveGitObjectFormat(root);
   const treeEntries = await exactTreeEntries(root, tree, objectFormat);
   const objectId = treeEntries.find((entry) => entry.path === "docs/source.txt")!.objectId;
-  const authority = await createFoundationAuthority(home, "knowledge-source-target", SECRET);
+  const authority = await createFoundationAuthority(home, "knowledge-source-target", receiveFoundationAuthorityCredential(SECRET, "initialize"));
   const contract = createRepositoryContract({
     targetId: "knowledge-source-target",
     canonicalBranch: "refs/heads/main",
@@ -117,9 +185,10 @@ test("repository sources bind exact tree blobs even when live worktree bytes cha
     contract: fixture.contract,
     treeEntries: fixture.treeEntries,
     records: [record([source])],
+    disciplineRegistry: createEmptyDisciplineRegistry(),
     collector,
   });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "source", stages: ["records", "sources"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "source", stages: ["records", "sources"] });
   assert.equal(result.valid, true);
   assert.equal(sourceResult.complete, true);
   assert.equal(sourceResult.resolutions[0]?.disposition, "resolved");
@@ -162,9 +231,10 @@ test("local digest mismatch and denied authority claims fail while external rese
     contract: fixture.contract,
     treeEntries: fixture.treeEntries,
     records: [record(sources)],
+    disciplineRegistry: createEmptyDisciplineRegistry(),
     collector,
   });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "source-errors", stages: ["records", "sources"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "source-errors", stages: ["records", "sources"] });
   assert.equal(result.valid, false);
   assert.equal(sourceResult.complete, false);
   assert(result.diagnostics.some((entry) => entry.code === "lifecycle.knowledge.source-unresolved" && entry.severity === "error"));
@@ -195,10 +265,11 @@ test("source requiredness and record currentness alone determine source-stage co
       contract: fixture.contract,
       treeEntries: fixture.treeEntries,
       records: [record([unresolved(scenario.required)], { id: scenario.id, status: scenario.status })],
+      disciplineRegistry: createEmptyDisciplineRegistry(),
       collector,
     });
     const result = collector.result({
-      profile: "knowledge-set-v1",
+      profile: "knowledge-set-v2",
       subjectKind: "test",
       subjectId: scenario.id,
       stages: ["records", { id: "sources", complete: sourceResult.complete }],
@@ -238,10 +309,11 @@ test("aggregate source count and byte bounds accept the limit and reject limit p
       contract: withLimits(maximumSources, maximumTotalSourceBytes),
       treeEntries: fixture.treeEntries,
       records: [record(sources)],
+      disciplineRegistry: createEmptyDisciplineRegistry(),
       collector,
     });
     const result = collector.result({
-      profile: "knowledge-set-v1",
+      profile: "knowledge-set-v2",
       subjectKind: "test",
       subjectId: `source-limits-${maximumSources}-${maximumTotalSourceBytes}`,
       stages: ["records", { id: "sources", complete: sourceResult.complete }],

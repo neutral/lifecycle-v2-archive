@@ -312,7 +312,7 @@ const authoritySecret = authoritySecretFromStdin
 delete process.env.LIFECYCLE_AUTHORITY_SECRET;
 
 if (!existsSync(entry) || !existsSync(bootstrapSupervisor)) {
-  process.stderr.write("Lifecycle runtime is not built. Run `npm run build` from the Lifecycle source root.\n");
+  process.stderr.write("Lifecycle runtime is not built. Run `npm run build` from the workspace root.\n");
   process.exit(1);
 }
 

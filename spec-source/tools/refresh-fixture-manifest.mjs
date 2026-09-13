@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const toolDirectory = dirname(fileURLToPath(import.meta.url));
 const examplesRoot = resolve(toolDirectory, "../examples");
 const manifestPath = resolve(examplesRoot, "fixture-manifest.json");
-const REPOSITORY_PROFILE = "repository-contract-fixture-v7";
+const REPOSITORY_PROFILE = "repository-contract-fixture-v9";
 
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;

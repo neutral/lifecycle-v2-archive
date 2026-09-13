@@ -14,15 +14,21 @@ import { digestCanonical, selfDigest, type Sha256 } from "../../src/foundation/v
 
 export const MINIMAL_ATLAS_FILES = Object.freeze({
   "atlas/atlas.md": `---
-type: atlas
-format: 1
-id: target
-title: Target Atlas
-summary: Exact project context for the Lifecycle target fixture.
-navigation:
-- title: Project
-  maps:
-  - project
+{
+  "type": "atlas",
+  "format": 1,
+  "id": "target",
+  "title": "Target Atlas",
+  "summary": "Exact project context for the Lifecycle target fixture.",
+  "navigation": [
+    {
+      "title": "Project",
+      "maps": [
+        "project"
+      ]
+    }
+  ]
+}
 ---
 
 # Target Atlas
@@ -30,17 +36,22 @@ navigation:
 This Atlas supplies one bounded current project-context model for Lifecycle tests.
 `,
   "atlas/maps/project/map.md": `---
-type: map
-id: project
-title: Project
-summary: Current project context for the Lifecycle target fixture.
-question: What durable context governs this target fixture?
-status: active
-areas:
-- id: scope
-  title: Scope
-  summary: The bounded product scope exercised by this target fixture.
-  question: What belongs inside the current product scope?
+{
+  "type": "map",
+  "id": "project",
+  "title": "Project",
+  "summary": "Current project context for the Lifecycle target fixture.",
+  "question": "What durable context governs this target fixture?",
+  "status": "active",
+  "areas": [
+    {
+      "id": "scope",
+      "title": "Scope",
+      "summary": "The bounded product scope exercised by this target fixture.",
+      "question": "What belongs inside the current product scope?"
+    }
+  ]
+}
 ---
 
 # Project
@@ -48,18 +59,24 @@ areas:
 This Map routes the target fixture's bounded and current project context.
 `,
   "atlas/maps/project/points/project-scope.md": `---
-type: point
-record: anchor
-id: project-scope
-title: Project scope
-summary: The fixture exercises only its explicitly declared target behavior.
-kinds:
-- constraint
-posture: asserted
-lifecycle: active
-areas:
-- area: scope
-  context: This Point fixes the bounded scope exercised by the target fixture.
+{
+  "type": "point",
+  "record": "anchor",
+  "id": "project-scope",
+  "title": "Project scope",
+  "summary": "The fixture exercises only its explicitly declared target behavior.",
+  "kinds": [
+    "constraint"
+  ],
+  "posture": "asserted",
+  "lifecycle": "active",
+  "areas": [
+    {
+      "area": "scope",
+      "context": "This Point fixes the bounded scope exercised by the target fixture."
+    }
+  ]
+}
 ---
 
 # Project scope
@@ -184,7 +201,7 @@ export function minimalResolvedAtlas(atlasStateDigest: Sha256): FoundationResolv
     complete: true as const,
     valid: true as const,
     specificationRevision: FOUNDATION_ATLAS_SELECTION.specificationRevision,
-    implementation: Object.freeze({ name: "atlas-reference-validator" as const, version: "0.7.0" as const, status: "working" as const }),
+    implementation: Object.freeze({ name: "atlas-reference-validator" as const, version: "0.8.0" as const, status: "stable" as const }),
     diagnostics: Object.freeze([]),
     normalized: model,
   });

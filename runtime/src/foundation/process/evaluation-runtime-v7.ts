@@ -1,11 +1,12 @@
+import { foundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
 import { createDeliveryActivityId } from "../control/activity.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
 import type { ControlRecordRevision } from "../control/types.js";
 import type { ControlRecordStore } from "../control/store.js";
+import type { WorkDelegationReservation } from "../control/work-delegation.js";
 import { FoundationError } from "../error.js";
-import type { FoundationInstalledRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
+import type { FoundationProcessRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
 import type { FoundationRepositoryContract } from "../repository/types.js";
-import { canonicalJson } from "../validation/canonical.js";
 import {
   createFoundationEvaluationEvidenceObservationOwnerV7,
   observeFoundationReviewerProjectionCandidateV7,
@@ -13,6 +14,7 @@ import {
 import {
   advancePromotedFoundationReviewAgentActivityV7,
   inspectFoundationAgentActivityKernelV7,
+  settleFoundationUnallocatedReviewV7,
   promoteFoundationReviewAgentActivityV7,
   type FoundationAgentOperationV7Input,
   type FoundationAgentOperationV7Options,
@@ -32,6 +34,8 @@ import {
   compileFoundationAgentInvestmentV7,
   compileFoundationRetainedAgentOperationContextV7,
   compileFoundationUnpromotedReviewAgentOperationContextV7,
+  foundationAgentPreIntentMatchesContextV7,
+  sameFoundationAgentOperationContextV7,
   type FoundationFreshAgentOperationContextV7Options,
   type FoundationRetainedAgentOperationContextV7,
   type FoundationUnpromotedReviewAgentOperationContextV7,
@@ -39,7 +43,7 @@ import {
 
 type ReviewContext =
   | FoundationUnpromotedReviewAgentOperationContextV7
-  | FoundationRetainedAgentOperationContextV7;
+  | Extract<FoundationRetainedAgentOperationContextV7, { role: "reviewer" }>;
 
 type EvaluationRuntimeOwners = Readonly<{
   prepare: typeof prepareDeliveryEvaluationV7;
@@ -66,18 +70,19 @@ export type FoundationFreshEvaluationRuntimeV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
   contract: FoundationRepositoryContract;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   semanticMarkdown: string;
-  founderId: string;
+  directorId: string;
   agentId: string;
   runtimeId: string;
+  reservation?: WorkDelegationReservation;
 }>;
 
 export type FoundationRecoverEvaluationRuntimeV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
   contract: FoundationRepositoryContract;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   runtimeId: string;
 }>;
@@ -140,13 +145,8 @@ function contextOpening(
     submittedAt: context.opening.submittedAt,
     startedAt: context.opening.startedAt,
     attemptCreatedAt,
-    founderId: context.opening.founderId,
+    directorId: context.opening.directorId,
   });
-}
-
-function sameRevision(left: ControlRecordRevision, right: ControlRecordRevision): boolean {
-  return left.recordId === right.recordId && left.revision === right.revision &&
-    left.digest === right.digest && canonicalJson(left) === canonicalJson(right);
 }
 
 function assertRevalidatedContext(
@@ -154,14 +154,8 @@ function assertRevalidatedContext(
   observed: FoundationRetainedAgentOperationContextV7,
 ): void {
   if (
-    expected.activityId !== observed.activityId || expected.operation !== "delivery.evaluate" ||
-    observed.operation !== "delivery.evaluate" || observed.role !== "reviewer" ||
-    !sameRevision(expected.boundary, observed.boundary) ||
-    !sameRevision(expected.candidate, observed.candidate) ||
-    expected.seal === null || observed.attemptSeal === null ||
-    !sameRevision(expected.seal, observed.attemptSeal) ||
-    expected.projection.manifest.digest !== observed.projection.manifest.digest ||
-    canonicalJson(expected.projection.manifest.basis) !== canonicalJson(observed.projection.manifest.basis)
+    observed.operation !== "delivery.evaluate" ||
+    !foundationAgentPreIntentMatchesContextV7(observed, expected)
   ) {
     fail("pre-intent-drift", "Reviewer pre-intent basis differs from the exact promoted execution plan");
   }
@@ -198,13 +192,7 @@ function reviewerRequest(input: Readonly<{
   options: FoundationEvaluationRuntimeV7Options;
   owners: EvaluationRuntimeOwners;
 }>): FoundationAgentOperationV7Input & Readonly<{ operation: "delivery.evaluate" }> {
-  if (input.context.attemptSeal === null || input.context.evidenceSet === null ||
-      input.context.propositionSet === null) {
-    fail("review-context", "Evaluation reviewer context lacks its exact Seal, Evidence, or propositions");
-  }
-  const configuration = "configuration" in input.context
-    ? input.context.configuration
-    : fail("review-context", "Evaluation reviewer context lacks retained provider configuration");
+  const configuration = input.context.configuration;
   const opening = contextOpening(input.context, input.attemptCreatedAt);
   return Object.freeze({
     store: input.store,
@@ -243,6 +231,9 @@ function reviewerRequest(input: Readonly<{
         reviewerObservation: observation,
       }, input.options.context);
       assertRevalidatedContext(expected, observed);
+      if (!sameFoundationAgentOperationContextV7(input.context, observed)) {
+        fail("pre-intent-drift", "Reviewer context differs from its retained operation bindings");
+      }
     },
     finalizeRoleControl: async (control) => await finalizeDeliveryEvaluationV7({
       ...control,
@@ -260,7 +251,7 @@ async function advanceEvaluation(input: Readonly<{
   target: string;
   store: ControlRecordStore;
   contract: FoundationRepositoryContract;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   runtimeId: string;
   preparationComplete?: boolean;
@@ -287,6 +278,10 @@ async function advanceEvaluation(input: Readonly<{
     support = inspection.support;
   }
 
+  if (support.stage === "pre-intent-refused" && support.plan === null) {
+    settleFoundationUnallocatedReviewV7({ ...input, refusal: null, now: options.now ?? (() => new Date().toISOString()) });
+  }
+
   const subjects = currentSubjects(input.store);
   const observation = await reviewerObservation({
     store: input.store,
@@ -299,6 +294,7 @@ async function advanceEvaluation(input: Readonly<{
   let context: ReviewContext;
   let attemptCreatedAt: string;
   if (support.stage === "evaluation-opened") {
+    try {
     context = await owners.compileUnpromoted({
       target: input.target,
       store: input.store,
@@ -306,6 +302,11 @@ async function advanceEvaluation(input: Readonly<{
       activityId: input.activityId,
       reviewerObservation: observation,
     }, options.context);
+    } catch (error) {
+      const refusal = foundationMandatoryProjectionRefusalV1(error);
+      if (refusal === null) throw error;
+      settleFoundationUnallocatedReviewV7({ ...input, refusal, now: options.now ?? (() => new Date().toISOString()) });
+    }
     attemptCreatedAt = controlTimestamp(
       (options.now ?? (() => new Date().toISOString()))(),
       "Reviewer Attempt creation time",
@@ -326,7 +327,7 @@ async function advanceEvaluation(input: Readonly<{
     );
   }
 
-  context = await owners.compileRetained({
+  const retained = await owners.compileRetained({
     target: input.target,
     store: input.store,
     configuration: input.configuration,
@@ -334,7 +335,11 @@ async function advanceEvaluation(input: Readonly<{
     operation: "delivery.evaluate",
     reviewerObservation: observation,
   }, options.context);
-  attemptCreatedAt = context.opening.attemptCreatedAt;
+  if (retained.role !== "reviewer") {
+    fail("review-context", "Evaluation recovery requires the exact retained reviewer context");
+  }
+  context = retained;
+  attemptCreatedAt = retained.opening.attemptCreatedAt;
   const request = reviewerRequest({
     ...input,
     context,
@@ -356,7 +361,7 @@ export async function evaluateDeliveryV7(
 ): Promise<FoundationAgentOperationV7Result> {
   const owners = selectedOwners(options);
   const activityId = controlIdentifier(
-    (options.createActivityId ?? (() => createDeliveryActivityId("delivery.evaluate")))(),
+    (options.createActivityId ?? (() => input.reservation?.activityId ?? createDeliveryActivityId("delivery.evaluate")))(),
     "Evaluation activity identity",
   );
   const investment = compileFoundationAgentInvestmentV7({
@@ -364,6 +369,7 @@ export async function evaluateDeliveryV7(
     activityId,
     operation: "delivery.evaluate",
     configuration: input.configuration,
+    ...(input.reservation === undefined ? {} : { reservation: input.reservation }),
   });
   const prepared = await owners.prepare({
     target: input.target,
@@ -371,10 +377,11 @@ export async function evaluateDeliveryV7(
     store: input.store,
     contract: input.contract,
     semanticMarkdown: input.semanticMarkdown,
-    founderId: input.founderId,
+    directorId: input.directorId,
     agentId: input.agentId,
     investment,
     runtimeId: input.runtimeId,
+    ...(input.reservation === undefined ? {} : { reservation: input.reservation }),
   }, Object.freeze({
     ...options.preparation,
     createActivityId: () => activityId,

@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   chmod,
@@ -22,6 +23,7 @@ import {
   createFoundationRuntimeFacadeForTesting,
   renderFoundationRuntimeHuman,
   type FoundationRuntimeMutationExecutor,
+  type FoundationRuntimeExecutionContext,
 } from "../../src/foundation/facade.js";
 import type { FoundationInstalledRuntimeConfigurationV7 } from
   "../../src/foundation/installed-configuration-v7.js";
@@ -32,6 +34,7 @@ import { FOUNDATION_GENERATED_PUBLICATION_DIGEST } from
 import { writeMinimalAtlas } from "../helpers/atlas-fixture.js";
 
 const NOW = "2026-08-29T12:00:00.000Z";
+const GENERATION = `sha256:${"a".repeat(64)}` as const;
 
 function configuration(machineHome: string): FoundationInstalledRuntimeConfigurationV7 {
   return Object.freeze({
@@ -40,14 +43,14 @@ function configuration(machineHome: string): FoundationInstalledRuntimeConfigura
     codexHome: join(machineHome, "codex-exec-home"),
     model: "test-model",
     reasoning: "high",
-    specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
+    specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
     publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
   });
 }
 
 function emptyRepository() {
   return FoundationRepositoryObservationSchema.parse({
-    schema: "lifecycle.repository-observation.v10",
+    schema: "lifecycle.repository-observation.v17",
     initialized: false,
     valid: false,
     targetId: null,
@@ -64,7 +67,7 @@ function emptyRepository() {
 
 function readResult(request: FoundationRuntimeOperationRequest) {
   const observation = FoundationRuntimeObservationSchema.parse({
-    schema: "lifecycle.foundation-runtime-observation.v10",
+    schema: "lifecycle.foundation-runtime-observation.v17",
     observedAt: NOW,
     repository: emptyRepository(),
     delivery: null,
@@ -86,7 +89,7 @@ function readResult(request: FoundationRuntimeOperationRequest) {
 
 function refusedMutationResult(request: FoundationRuntimeOperationRequest) {
   const observation = FoundationRuntimeObservationSchema.parse({
-    schema: "lifecycle.foundation-runtime-observation.v10",
+    schema: "lifecycle.foundation-runtime-observation.v17",
     observedAt: NOW,
     repository: emptyRepository(),
     delivery: null,
@@ -106,7 +109,7 @@ function refusedMutationResult(request: FoundationRuntimeOperationRequest) {
   });
 }
 
-test("v8 facade routes exact read requests without private mutation mechanics", async () => {
+test("Facade routes exact read requests without private mutation mechanics", async () => {
   const machineHome = await mkdtemp(join(tmpdir(), "lifecycle-facade-read-home-"));
   const seen: FoundationRuntimeOperationRequest[] = [];
   const readSurface: FoundationRuntimeReadSurface = Object.freeze({
@@ -177,7 +180,7 @@ test("installed facade resolves configuration at the exact operation boundary", 
   }
 });
 
-test("installed v7 initializes from machine custody without Provider configuration", async () => {
+test("installed Facade initializes from machine custody without Provider configuration", async () => {
   const target = await mkdtemp(join(tmpdir(), "lifecycle-facade-init-target-"));
   const machineHome = await mkdtemp(join(tmpdir(), "lifecycle-facade-init-home-"));
   await chmod(machineHome, 0o700);
@@ -197,7 +200,7 @@ test("installed v7 initializes from machine custody without Provider configurati
       environment: { LIFECYCLE_MACHINE_HOME: await realpath(machineHome) },
       now: () => NOW,
     }).execute(request, {
-      authoritySecret: "facade-test-founder-secret-at-least-thirty-two-bytes",
+      authorityCredential: receiveFoundationAuthorityCredential("facade-test-director-secret-at-least-thirty-two-bytes", "initialize"),
     });
     assert.equal(result.status, "completed");
     assert.equal(result.targetId, "target-facade-v7");
@@ -215,7 +218,7 @@ test("installed v7 initializes from machine custody without Provider configurati
   }
 });
 
-test("v8 facade passes only exact mutation request, context, and installed configuration", async () => {
+test("Facade passes only exact mutation request, context, and installed configuration", async () => {
   const machineHome = await mkdtemp(join(tmpdir(), "lifecycle-facade-mutation-home-"));
   const selected = configuration(machineHome);
   const observed: unknown[] = [];
@@ -231,7 +234,7 @@ test("v8 facade passes only exact mutation request, context, and installed confi
     target: "/target",
     input: { semanticMarkdown: "# Prepare\n" },
   });
-  const context = Object.freeze({ authoritySecret: "not-required-for-prepare" });
+  const context = Object.freeze({});
   const result = await createFoundationRuntimeFacadeForTesting({
     configuration: selected,
     mutation,
@@ -246,7 +249,7 @@ test("v8 facade passes only exact mutation request, context, and installed confi
   assert.equal(installedFactoryCalls, 0);
 });
 
-test("installed v8 facade delegates locking to each mutation owner", async () => {
+test("installed Facade delegates locking to each mutation owner", async () => {
   const machineHome = await mkdtemp(join(tmpdir(), "lifecycle-facade-installed-mutation-home-"));
   const selected = configuration(machineHome);
   const now = () => NOW;
@@ -267,25 +270,25 @@ test("installed v8 facade delegates locking to each mutation owner", async () =>
       operation: "delivery.continue",
       target: "/target",
       deliveryId: "delivery-1",
-      input: { semanticMarkdown: "Continue.\n" },
+      input: { semanticMarkdown: "Continue.\n", expectedGeneration: GENERATION },
     }),
     createFoundationRuntimeOperationRequest({
       operation: "delivery.evaluate",
       target: "/target",
       deliveryId: "delivery-1",
-      input: { semanticMarkdown: "Evaluate.\n" },
+      input: { semanticMarkdown: "Evaluate.\n", expectedGeneration: GENERATION },
     }),
     createFoundationRuntimeOperationRequest({
       operation: "delivery.revise",
       target: "/target",
       deliveryId: "delivery-1",
-      input: { semanticMarkdown: "Revise.\n" },
+      input: { semanticMarkdown: "Revise.\n", expectedGeneration: GENERATION },
     }),
     createFoundationRuntimeOperationRequest({
       operation: "delivery.reaffirm",
       target: "/target",
       deliveryId: "delivery-1",
-      input: { semanticMarkdown: "Reaffirm.\n" },
+      input: { semanticMarkdown: "Reaffirm.\n", expectedGeneration: GENERATION },
     }),
     createFoundationRuntimeOperationRequest({
       operation: "delivery.accept",
@@ -331,4 +334,52 @@ test("installed v8 facade delegates locking to each mutation owner", async () =>
     "factory",
     `execute:${request.operation}`,
   ]));
+});
+
+
+test("facade rejects legacy and opaque authority custody on reads, productive work, and recovery before dispatch", async () => {
+  let dispatches = 0;
+  const forbiddenOwner = async (): Promise<never> => {
+    dispatches += 1;
+    throw new Error("authority material reached an ordinary owner");
+  };
+  const facade = createFoundationRuntimeFacadeForTesting({
+    configuration: configuration("/unused-machine-custody"),
+    readSurface: { execute: forbiddenOwner },
+    mutation: { execute: forbiddenOwner },
+    now: () => NOW,
+  });
+  const requests = [
+    createFoundationRuntimeOperationRequest({ operation: "repository.validate", target: "/target", input: null }),
+    createFoundationRuntimeOperationRequest({ operation: "delivery.status", target: "/target", deliveryId: "delivery-1", input: null }),
+    createFoundationRuntimeOperationRequest({ operation: "delivery.prepare", target: "/target", input: { semanticMarkdown: "Prepare.\n" } }),
+    ...(["delivery.continue", "delivery.evaluate", "delivery.revise", "delivery.reaffirm"] as const).map((operation) =>
+      createFoundationRuntimeOperationRequest({ operation, target: "/target", deliveryId: "delivery-1", input: { semanticMarkdown: "Exact input.\n", expectedGeneration: GENERATION } })),
+    createFoundationRuntimeOperationRequest({ operation: "delivery.recover", target: "/target", deliveryId: "delivery-1", input: null }),
+  ];
+  const secret = "facade-credential-refusal-secret-at-least-thirty-two-bytes";
+  const contexts: unknown[] = [
+    { authoritySecret: secret },
+    { authorityCredential: receiveFoundationAuthorityCredential(secret, "initialize") },
+    { authorityCredential: receiveFoundationAuthorityCredential(secret, "director-decision") },
+    { authorityCredential: Object.freeze({}) },
+    { authorityCredential: undefined },
+    Object.defineProperty({}, "authoritySecret", { value: secret, enumerable: false }),
+    Object.create({ authoritySecret: secret }),
+  ];
+  for (const request of requests) {
+    for (const context of contexts) {
+      await assert.rejects(facade.execute(request, context as FoundationRuntimeExecutionContext), (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.equal((error as { code?: string }).code, "lifecycle.authority.context");
+        assert.equal(JSON.stringify(error).includes(secret), false);
+        return true;
+      });
+    }
+  }
+  const admit = createFoundationRuntimeOperationRequest({ operation: "delivery.admit", target: "/target", deliveryId: "delivery-1", input: null });
+  await assert.rejects(facade.execute(admit, { authoritySecret: secret } as never), /opaque Director credential/u);
+  await assert.rejects(facade.execute(admit, { authorityCredential: Object.freeze({}) } as never), /live credential/u);
+  await assert.rejects(facade.execute(admit, { authorityCredential: receiveFoundationAuthorityCredential(secret, "initialize") }), /exact purpose/u);
+  assert.equal(dispatches, 0);
 });

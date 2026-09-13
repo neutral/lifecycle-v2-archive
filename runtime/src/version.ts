@@ -6,8 +6,8 @@ export const RUNTIME_MINIMUM_NODE_VERSION = "24.14.0" as const;
 export const RUNTIME_PROTOCOL = FOUNDATION_RUNTIME_PROTOCOL;
 
 export const CODEX_COMPATIBILITY = {
-  executableRange: ">=0.151.0 <0.152.0",
-  generatedWith: "0.151.0",
+  executableRange: ">=0.153.4 <0.154.0",
+  generatedWith: "0.153.4",
   protocol: "exec-jsonl-v1",
 } as const;
 

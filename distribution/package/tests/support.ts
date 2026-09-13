@@ -5,7 +5,7 @@ export function distributionSelectionFixture(): Record<string, unknown> {
     images: {
       execution: {
         agentAdapterImplementationDigest: digest("1"),
-        codexVersion: "0.151.0",
+        codexVersion: "0.153.4",
         imageId: "lifecycle.execution-image.codex-standard.v1",
         indexDigest: digest("2"),
         nonRootUser: "65532:65532",

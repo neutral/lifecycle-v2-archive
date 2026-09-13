@@ -121,6 +121,7 @@ function storeFor(revisions: readonly ControlRecordRevision[], active: ControlRe
         candidateCondition: "ready-for-work" as const,
         activities: Object.freeze([]),
         subjects: Object.freeze({
+          integrationAssessment: null,
           proposedBoundary: null,
           activeBoundary: Object.freeze({
             id: active.recordId,
@@ -133,6 +134,7 @@ function storeFor(revisions: readonly ControlRecordRevision[], active: ControlRe
           evidence: null,
           closure: null,
         }),
+        delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
         journal: Object.freeze({ eventCount: 0, headDigest: null }),
         eligibleOperations: Object.freeze([]),
       });
@@ -189,7 +191,7 @@ test("agent context derives sorted exact Evidence bindings and their proof subje
     id: "agent-work-product-zeta",
     kind: "agent-work-product",
     authority: "agent-proposed",
-    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v2" }),
+    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v5" }),
     relationships: Object.freeze([relationship("result-of", attempt)]),
   });
   const receipt = revision({
@@ -239,7 +241,7 @@ test("agent context derives Evidence from exact Execution Projection sources", (
     id: "agent-work-product-projected-evidence",
     kind: "agent-work-product",
     authority: "agent-proposed",
-    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v2" }),
+    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v5" }),
     relationships: Object.freeze([relationship("result-of", attempt)]),
   });
   const store = storeFor([selectedBoundary, attempt, workProduct], selectedBoundary);
@@ -309,7 +311,7 @@ test("agent context refuses substituted evidence and a noncurrent proposition so
     id: "agent-work-product-substitution",
     kind: "agent-work-product",
     authority: "agent-proposed",
-    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v2" }),
+    payload: Object.freeze({ schema: "lifecycle.agent-work-product-payload.v5" }),
     relationships: Object.freeze([relationship("result-of", attempt)]),
   });
   const store = storeFor([selectedBoundary, attempt, workProduct], selectedBoundary);

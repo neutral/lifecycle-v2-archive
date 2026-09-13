@@ -1,3 +1,4 @@
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
 import { FOUNDATION_SPECIFICATION_REVISION } from "../../src/foundation/constants.js";
 import type { ControlJsonObject, ControlRecordRevision } from "../../src/foundation/control/types.js";
 import { FoundationError } from "../../src/foundation/error.js";
@@ -155,6 +156,7 @@ function orientationCore(
   capability: FoundationCapabilityProfile,
 ): FoundationOrientationProjectionCore {
   const knowledgeIndex = signed({ records: Object.freeze([]), relationships: Object.freeze([]) });
+  const disciplineIndex = signed({ registryDigest: createEmptyDisciplineRegistry().digest, workTypes: Object.freeze([]) });
   const coverageIndex = signed({
     implementationRoots: Object.freeze([]),
     exemptions: Object.freeze([]),
@@ -179,6 +181,7 @@ function orientationCore(
   const retrievalIndex = signed({ entries: Object.freeze([]) });
   const indexDigest = digestCanonical({
     knowledgeIndexDigest: knowledgeIndex.digest,
+    disciplineIndexDigest: disciplineIndex.digest,
     coverageIndexDigest: coverageIndex.digest,
     bindingIndexDigest: bindingIndex.digest,
     capabilityIndexDigest: capabilityIndex.digest,
@@ -191,6 +194,7 @@ function orientationCore(
     purpose: "Provide deterministic repository orientation for an Agent Attempt fixture.",
     conditions: Object.freeze([]),
     knowledgeIndex,
+    disciplineIndex,
     coverageIndex,
     bindingIndex,
     capabilityIndex,
@@ -210,7 +214,7 @@ function executionKnowledgeDigests(commit: string): Readonly<{
       commit,
     }),
     set: digestCanonical({
-      fixture: "foundation-attempt-projection-knowledge-set-v1",
+      fixture: "foundation-attempt-projection-knowledge-set-v2",
       commit,
     }),
   });
@@ -232,6 +236,7 @@ function executionCandidate(
       carrierManifestDigest: subject.candidate.carrierManifestDigest,
       sealedTree: null,
       seal: null,
+      integration: null,
     });
   }
   if (reviewerSeal === undefined || reviewerCandidate === undefined) {
@@ -267,7 +272,6 @@ function executionCandidate(
       reviewerSeal.digest !== subject.candidate.sealDigest ||
       reviewerCandidate.recordKind !== "candidate-revision" ||
       reviewerSeal.processId !== reviewerCandidate.processId ||
-      reviewerCandidate.payload.availability !== "available" ||
       state === null || Array.isArray(state) || typeof state !== "object" ||
       carrierManifest === null || Array.isArray(carrierManifest) || typeof carrierManifest !== "object" ||
       sealedCandidate.length !== 1 || !exactReference(sealedCandidate[0]?.target, candidateReference) ||
@@ -287,6 +291,7 @@ function executionCandidate(
     stateDigest: subject.candidate.currentDigest,
     carrierManifestDigest: carrierManifest.digest as Sha256,
     sealedTree: subject.candidate.sealedTree,
+    integration: null,
     seal: Object.freeze({
       kind: "candidate-seal" as const,
       id: reviewerSeal.recordId,
@@ -310,6 +315,7 @@ function executionCore(
     excluded: Object.freeze(["unadmitted work"]),
     assumptions: Object.freeze([]),
     falsifiers: Object.freeze(["the fixture Projection basis changes"]),
+    disciplines: Object.freeze({ registryDigest: createEmptyDisciplineRegistry().digest, workTypeIds: Object.freeze([]), records: Object.freeze([]) }),
     obligations: Object.freeze([Object.freeze({
       id: `obligation.fixture.${suffix}`,
       kind: "acceptance" as const,
@@ -395,14 +401,14 @@ function completeProjection(options: Readonly<{
   const atlas = Object.freeze([atlasItem]);
   const atlasPair = Object.freeze({ items: atlas.length, bytes: atlasBytes });
   const manifestBase = {
-    schema: "lifecycle.knowledge-projection.v4" as const,
+    schema: "lifecycle.knowledge-projection.v6" as const,
     projectionId: `projection:${digestCanonical({
       compilerDigest: FOUNDATION_PROJECTION_COMPILER_IDENTITY.digest,
       requestDigest: options.basis.requestDigest,
     }).slice("sha256:".length)}`,
     class: options.subject.kind === "orientation" ? "orientation" as const : "execution" as const,
     role: options.subject.kind === "orientation" ? "reconnaissance" as const : options.subject.kind,
-    profile: options.profile.id as "orientation-standard-v1" | "execution-standard-v1",
+    profile: options.profile.id as "orientation-standard-v1" | "orientation-large-v1" | "execution-standard-v1",
     profileDigest: options.profile.digest,
     compiler: FOUNDATION_PROJECTION_COMPILER_IDENTITY,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -470,6 +476,7 @@ export function foundationAttemptProjectionFixture(
     reviewerSeal?: ControlRecordRevision;
     reviewerCandidate?: ControlRecordRevision;
     capability?: Readonly<{ profileId: string; profileDigest: Sha256 }>;
+    orientationProfile?: FoundationProjectionProfile;
     orientationRepository?: Readonly<{
       commit: string;
       tree: string;
@@ -507,7 +514,7 @@ export function foundationAttemptProjectionFixture(
     );
   }
   if (subject.kind === "orientation") {
-    const profile = selectedProfile("orientation-standard-v1");
+    const profile = options.orientationProfile ?? selectedProfile("orientation-standard-v1");
     const defaultCapability = defaultCapabilityProfiles()["local-development-v1"]!;
     const capabilityBinding = options.capability ?? Object.freeze({
       profileId: defaultCapability.id,

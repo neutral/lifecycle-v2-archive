@@ -7,8 +7,9 @@ import {
   compileFoundationAttemptView,
 } from "../../src/foundation/control/attempt-view.js";
 import { inspectDeliveryAttemptView } from "../../src/foundation/control/inspection.js";
+import { assertDeliveryControlRecordPayload } from "../../src/foundation/control/payload-registry.js";
 import { foundationDockerExecutionBackendProfileV1 } from "../../src/foundation/execution/docker-profile-v1.js";
-import { compileFoundationInstalledAgentExecutionPolicyV1 } from "../../src/foundation/execution/installed-agent-runtime-v1.js";
+import { compileFoundationInstalledAgentExecutionPolicyV1 } from "../../src/foundation/execution/installed-agent-policy-v1.js";
 import {
   compileControlRecordEvent,
   compileControlRecordRevision,
@@ -75,7 +76,7 @@ function subject(revision: ControlRecordRevision) {
   });
 }
 
-function fixture(complete: boolean, invalidSubmission = false) {
+function fixture(complete: boolean, invalidSubmission = false, options: Readonly<{ baselinePostcondition?: boolean }> = {}) {
   const identity: ControlRecordStoreIdentity = Object.freeze({
     schema: CONTROL_RECORD_STORE_SCHEMA,
     storeId: "store-attempt-view",
@@ -135,14 +136,14 @@ function fixture(complete: boolean, invalidSubmission = false) {
   });
   const brief = record({
     id: "brief.attempt-view",
-    kind: "founder-brief",
-    payload: validDeliveryControlPayload("founder-brief"),
-    semanticAuthority: "founder-supplied",
-    semanticAuthor: { kind: "founder", id: "founder-one" },
+    kind: "director-brief",
+    payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: ACTIVITY } },
+    semanticAuthority: "director-supplied",
+    semanticAuthor: { kind: "director", id: "director-one" },
   });
   event({
     eventId: "event.brief.attempt-view",
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     occurredAt: "2026-08-29T21:00:01.000Z",
     actor: { kind: "runtime", id: RUNTIME },
     subject: subject(brief),
@@ -210,7 +211,7 @@ function fixture(complete: boolean, invalidSubmission = false) {
         kind: "agent-work-product",
         payload: Object.freeze({
           ...workProductBase,
-          profileId: "lifecycle.agent-work-product-body.reconnaissance.v2",
+          profileId: "lifecycle.agent-work-product-body.reconnaissance.v4",
           role: "reconnaissance",
           disposition: "complete",
           claims: Object.freeze([Object.freeze({
@@ -236,7 +237,7 @@ function fixture(complete: boolean, invalidSubmission = false) {
             workBoundary: Object.freeze({ selectedKnowledgeIds: Object.freeze(["check.demo"]) }),
           }),
           body: Object.freeze({
-            profileId: "lifecycle.agent-work-product-body.reconnaissance.v2",
+            profileId: "lifecycle.agent-work-product-body.reconnaissance.v4",
             digest: digest("semantic-body"),
             fragments: Object.freeze([]),
           }),
@@ -337,12 +338,17 @@ function fixture(complete: boolean, invalidSubmission = false) {
     if (workProduct !== null) {
       const boundaryPayload = validDeliveryControlPayload("work-boundary");
       const boundaryMandate = boundaryPayload.mandate as ControlJsonObject;
-      const boundaryCheck = (boundaryMandate.checks as readonly ControlJsonObject[])[0]!;
+      const originalCheck = (boundaryMandate.checks as readonly ControlJsonObject[])[0]!;
+      const boundaryCheck: ControlJsonObject = options.baselinePostcondition
+        ? Object.freeze({ ...originalCheck, modality: "postcondition" })
+        : originalCheck;
       const boundaryBinding = (boundaryCheck.bindings as readonly ControlJsonObject[])[0]!;
       boundary = record({
         id: "boundary.attempt-view",
         kind: "work-boundary",
-        payload: boundaryPayload,
+        payload: options.baselinePostcondition
+          ? { ...boundaryPayload, mandate: { ...boundaryMandate, checks: [boundaryCheck] } }
+          : boundaryPayload,
         semanticAuthority: "runtime-derived",
         semanticAuthor: { kind: "runtime", id: RUNTIME },
         relationships: [
@@ -368,6 +374,15 @@ function fixture(complete: boolean, invalidSubmission = false) {
           binding: boundaryBinding,
           phase: "baseline",
           modality: boundaryCheck.modality!,
+          ...(options.baselinePostcondition ? {
+            disposition: "not-run", startedAt: null, finishedAt: null,
+            reasonCode: "baseline-postcondition", notRunAuthorization: { kind: "baseline-postcondition" },
+            operationalFailure: null, execution: { allocation: "not-allocated" },
+            resultFacts: [{ name: "non-execution", value: "baseline-postcondition" }], rawMaterials: [],
+            subjectIntegrity: "unverified",
+            containment: { classification: "not-required", factsDigest: null },
+            retirement: { classification: "not-required", factsDigest: null },
+          } : {}),
         }),
         semanticAuthority: "runtime-observed",
         semanticAuthor: { kind: "runtime", id: RUNTIME },
@@ -434,13 +449,13 @@ function incompleteBuilderFixture() {
   const admissionActivity = "activity.admit.attempt-view";
   const admissionDecision = value.record({
     id: "decision.admit.attempt-view",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: Object.freeze({
-      ...validDeliveryControlPayload("founder-decision"),
+      ...validDeliveryControlPayload("director-decision"),
       decision: "admit",
     }),
-    semanticAuthority: "founder-authenticated",
-    semanticAuthor: { kind: "founder", id: "founder-one" },
+    semanticAuthority: "director-authenticated",
+    semanticAuthor: { kind: "director", id: "director-one" },
     relationships: [
       { relation: "selects-boundary", target: reference(value.boundary) },
       { relation: "selects-baseline-receipt", target: reference(value.check) },
@@ -455,7 +470,7 @@ function incompleteBuilderFixture() {
   });
   value.event({
     eventId: "event.decision.admit.attempt-view",
-    eventKind: "founder-decision-authenticated",
+    eventKind: "director-decision-authenticated",
     occurredAt: "2026-08-29T21:00:12.000Z",
     actor: { kind: "runtime", id: RUNTIME },
     subject: subject(admissionDecision),
@@ -517,14 +532,14 @@ function incompleteBuilderFixture() {
   const builderActivity = "activity.continue.attempt-view";
   const builderBrief = value.record({
     id: "brief.continue.attempt-view",
-    kind: "founder-brief",
-    payload: validDeliveryControlPayload("founder-brief"),
-    semanticAuthority: "founder-supplied",
-    semanticAuthor: { kind: "founder", id: "founder-one" },
+    kind: "director-brief",
+    payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: builderActivity } },
+    semanticAuthority: "director-supplied",
+    semanticAuthor: { kind: "director", id: "director-one" },
   });
   value.event({
     eventId: "event.brief.continue.attempt-view",
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     occurredAt: "2026-08-29T21:00:17.000Z",
     actor: { kind: "runtime", id: RUNTIME },
     subject: subject(builderBrief),
@@ -638,6 +653,40 @@ test("compiles one complete nonretained Attempt View from the exact Journal head
   });
   assert(latest !== null);
   assert.equal(canonicalJson(latest), canonicalJson(exact));
+  assert.equal(value.appendCalls(), 0);
+});
+
+test("authorized baseline non-execution leaves final proof open without prescribing Check correction", () => {
+  // This owner-adjacent retained-Control fixture exercises the read compiler,
+  // not Check execution or installed qualification. The shared predicate's
+  // semantic negatives remain beside Evidence assessment.
+  const value = fixture(true, false, { baselinePostcondition: true });
+  assert(value.check !== null && value.boundary !== null);
+  assert.doesNotThrow(() => assertDeliveryControlRecordPayload(value.check!));
+  const view = compileFoundationAttemptView({
+    store: value.store, physical: ACTIVE, selection: { kind: "latest-attempt" },
+  });
+  assert(view !== null);
+  const check = view.processAndProof.checks[0]!;
+  assert.equal(check.modality, "postcondition");
+  assert.equal(check.baselineRequired, true);
+  assert.equal(check.finalRequired, true);
+  assert.equal(check.baseline?.disposition, "not-run");
+  assert.equal(check.baseline?.reference.digest, value.check.digest);
+  assert.equal(check.baseline?.proofSubject.digest, value.boundary.digest);
+  assert.equal(check.baseline?.reasonCode, "baseline-postcondition");
+  assert.equal(check.baseline?.execution, null);
+  assert.equal(check.final, null);
+  assert.equal(check.freshExecutionRequired, true, "The baseline does not replace a final Check");
+  assert.equal(view.processAndProof.obligations[0]?.standing, "satisfied-for-current-phase");
+  assert.equal(view.processAndProof.obligations[0]?.establishmentRoute, "none");
+  assert.equal(view.processAndProof.obligations[0]?.blocking, false);
+  assert.equal(view.processAndProof.standing, "awaiting-admission");
+  assert.deepEqual(view.processAndProof.eligibleOperations, ["delivery.admit", "delivery.no-ship"]);
+  assert.deepEqual(view.processAndProof.blockers, []);
+  assert.equal(Object.hasOwn(view, "authorizedBaselineReceiptDigests"), false);
+  assert.equal(Object.hasOwn(view.processAndProof, "authorizedBaselineReceiptDigests"), false);
+  assert.equal(Object.hasOwn(check, "authorizedBaselineReceiptDigests"), false);
   assert.equal(value.appendCalls(), 0);
 });
 

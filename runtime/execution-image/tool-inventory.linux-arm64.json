@@ -1,40 +1,48 @@
 {
   "codexPackage": {
-    "integrity": "sha512-mhtWmOZRdmWD1jPbLDnQb59BsaVP/V+lXe/OFNR9ZcLZU0UCiBwn98Fcav1ss7sDIlHkuqj6nWd44IPeXoOhJA==",
+    "integrity": "sha512-wbHDmit7S/YvBGVX1DQmk13xtWblZ2cApeJ/pB7xDZ10Cna+DZc5ij7f0F4OxdsXN4FW1oLT48OpogUI1+8Y2w==",
     "name": "@openai/codex",
-    "platformIntegrity": "sha512-CsLgFeX4TQ6I2Gdrxd2r5UbgIbDLCdtcLAlnMYjr06bCL057MTNGec7Ewb3+Z2DBiMuXCljdTBGqLOePkMV0sQ==",
+    "platformIntegrity": "sha512-QKdjYLYV4hXIuUQDP3P6F4NXuWFoKo9WUoV4nAREIx55kiUyi8UsYdsVobkeXir5n/maEQgYMCKLHVma4rNPiw==",
     "platformPackage": "@openai/codex-linux-arm64",
-    "platformVersion": "0.151.0-linux-arm64",
-    "version": "0.151.0"
+    "platformVersion": "0.153.4-linux-arm64",
+    "version": "0.153.4"
   },
   "entries": [
     {
-      "byteLength": 233773456,
-      "digest": "sha256:56f026015ccc3ebc12895282200d89c216892bf6fa15fa7f228e6e0c6ad6ce76",
+      "byteLength": 222567456,
+      "digest": "sha256:4d76e542c222ea8c75861d8c4ade60a1a332a63255ce1c60bdaebf7c2a2869e6",
       "kind": "regular",
       "mode": "0555",
       "path": "/opt/lifecycle/bin/codex",
       "role": "codex-vendor"
     },
     {
-      "byteLength": 63316120,
-      "digest": "sha256:b7eb4262936dc2185407327be40c15092d17e5d6ca53676ce76ea6621a28eed7",
+      "byteLength": 63381656,
+      "digest": "sha256:d677dedf8179ca28ceb869a2e0b60d3ffad3d26f6e7738f7617d34500128a369",
       "kind": "regular",
       "mode": "0555",
       "path": "/opt/lifecycle/bin/codex-code-mode-host",
       "role": "codex-vendor"
     },
     {
-      "byteLength": 118300,
-      "digest": "sha256:81d448e948bec426c7fb93135ee020e09b510702ee3bdaa0bc88ea14024b5b97",
+      "byteLength": 148245,
+      "digest": "sha256:03d94eb8ed240372171629523efbaf50a0dbeb4c8af458f1fe944c5f8273e010",
       "kind": "regular",
       "mode": "0555",
       "path": "/opt/lifecycle/bin/execution-cell-runner",
       "role": "runner"
     },
     {
+      "byteLength": 166,
+      "digest": "sha256:8d13b72b7b54295e4aadd5385f8533747c2d036dec1af749295278954b8db4a7",
+      "kind": "regular",
+      "mode": "0555",
+      "path": "/opt/lifecycle/bin/lifecycle",
+      "role": "runtime-authoring"
+    },
+    {
       "byteLength": 206,
-      "digest": "sha256:c2fbe0eb420d56538ce132475ef7b71f285e6a649f587c506907755909240d7b",
+      "digest": "sha256:a3c985c334a13f6168900d9aa900d875797e4c7a8a6432768bd1d64740f53f54",
       "kind": "regular",
       "mode": "0444",
       "path": "/opt/lifecycle/codex-package.json",
@@ -56,7 +64,7 @@
     },
     {
       "byteLength": 529168,
-      "digest": "sha256:c6949b5053988498976467bd9972c5d3695ecaac64a5f2de09af20f579fb7e31",
+      "digest": "sha256:c547cbdc762a70ed216789ffaa4c6c0e7d2beabe32245a498f8e365a9fc8dab4",
       "kind": "regular",
       "mode": "0555",
       "path": "/opt/lifecycle/codex-resources/bwrap",
@@ -71,12 +79,20 @@
       "role": "codex-vendor"
     },
     {
-      "byteLength": 4115,
-      "digest": "sha256:fc08419d767b3ae027a9977e6d1f1730c4ef4776ae3d07226172dbd2ad3bf240",
+      "byteLength": 6246,
+      "digest": "sha256:fa0e09bb40ab656f0a9b6012b26c1652f94d57cb31f05fe5585243601940cdc7",
       "kind": "regular",
       "mode": "0444",
       "path": "/opt/lifecycle/runner-contract.private.json",
       "role": "runner-contract"
+    },
+    {
+      "byteLength": 4082764,
+      "digest": "sha256:5a554b99dc4a7bc0b2bd0151c9c2a117e2fa35d5c16bb2d8069f8e8735477027",
+      "kind": "regular",
+      "mode": "0444",
+      "path": "/opt/lifecycle/runtime-package.tgz",
+      "role": "runtime-authoring"
     }
   ],
   "platform": {

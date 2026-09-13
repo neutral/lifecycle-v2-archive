@@ -22,12 +22,12 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.execution-output-manifest.v1" },
-    "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "inputSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "outputContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "completedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+    "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "inputSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "imageDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "outputContractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "completedAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" },
     "entries": {
       "type": "array",
       "maxItems": 1000000,
@@ -44,8 +44,8 @@
       "minimum": 0,
       "maximum": 9007199254740991
     },
-    "entryInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "entryInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "entry": {
@@ -55,7 +55,7 @@
       "properties": {
         "path": {
           "description": "Normalized carrier-relative file path. For candidate-output this must be strictly below its declared root and maps to the repository path after that exact root prefix is stripped.",
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
         },
         "entryKind": { "const": "file" },
         "purpose": {
@@ -80,7 +80,7 @@
           "minimum": 0,
           "maximum": 9007199254740991
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     }
   }

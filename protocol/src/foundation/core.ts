@@ -22,23 +22,24 @@ export type { FoundationStrictJsonLimits };
 export { FOUNDATION_DELIVERY_RECOVERY_STEPS };
 export type { FoundationDeliveryRecoveryStep };
 
-export const FOUNDATION_INTERFACE_PROTOCOL = "lifecycle.interface.foundation.v10" as const;
-export const FOUNDATION_RUNTIME_PROTOCOL = "lifecycle.runtime.foundation.v10" as const;
-export const FOUNDATION_RUNTIME_FACADE_SCHEMA = "lifecycle.foundation-runtime-facade.v10" as const;
-export const FOUNDATION_RUNTIME_RESULT_SCHEMA = "lifecycle.foundation-runtime-result.v10" as const;
-export const FOUNDATION_RUNTIME_OBSERVATION_SCHEMA = "lifecycle.foundation-runtime-observation.v10" as const;
+export const FOUNDATION_INTERFACE_PROTOCOL = "lifecycle.interface.foundation.v17" as const;
+export const FOUNDATION_RUNTIME_PROTOCOL = "lifecycle.runtime.foundation.v17" as const;
+export const FOUNDATION_RUNTIME_FACADE_SCHEMA = "lifecycle.foundation-runtime-facade.v17" as const;
+export const FOUNDATION_RUNTIME_RESULT_SCHEMA = "lifecycle.foundation-runtime-result.v17" as const;
+export const FOUNDATION_RUNTIME_OBSERVATION_SCHEMA = "lifecycle.foundation-runtime-observation.v17" as const;
 export const FOUNDATION_DELIVERY_GENERATION_SCHEMA = "lifecycle.delivery-generation.v1" as const;
-export const FOUNDATION_DELIVERY_VIEW_SCHEMA = "lifecycle.delivery-view.v1" as const;
+export const FOUNDATION_DELIVERY_VIEW_SCHEMA = "lifecycle.delivery-view.v2" as const;
 export const FOUNDATION_DELIVERY_INBOX_SCHEMA = "lifecycle.delivery-inbox.v1" as const;
 export const FOUNDATION_DELIVERY_DIFF_SCHEMA = "lifecycle.delivery-diff.v1" as const;
 export const FOUNDATION_ATTEMPT_VIEW_SCHEMA = "lifecycle.attempt-view.v1" as const;
 export const FOUNDATION_ATTEMPT_VIEW_PROFILE_ID = "lifecycle.attempt-view.foundation-v1" as const;
-export const FOUNDATION_DELIVERY_REDUCER_ID = "lifecycle.delivery-reducer.foundation-v2" as const;
+export const FOUNDATION_DELIVERY_REDUCER_ID = "lifecycle.delivery-reducer.foundation-v3" as const;
 
 export const FOUNDATION_DELIVERY_OPERATIONS = Object.freeze([
   "delivery.prepare",
   "delivery.admit",
   "delivery.continue",
+  "delivery.integrate",
   "delivery.evaluate",
   "delivery.revise",
   "delivery.reaffirm",
@@ -53,6 +54,7 @@ export const FOUNDATION_RUNTIME_OPERATION_KINDS = Object.freeze([
   "delivery.inbox",
   "delivery.status",
   ...FOUNDATION_DELIVERY_OPERATIONS,
+  "delivery.work",
   "delivery.inspect",
   "delivery.diff",
   "delivery.watch",
@@ -60,14 +62,16 @@ export const FOUNDATION_RUNTIME_OPERATION_KINDS = Object.freeze([
 ] as const);
 
 export const FOUNDATION_CONTROL_RECORD_KINDS = Object.freeze([
-  "founder-brief",
+  "director-brief",
+  "work-delegation",
   "agent-attempt",
   "agent-work-product",
   "execution-receipt",
   "candidate-revision",
+  "integration-assessment",
   "work-boundary",
   "material-condition",
-  "founder-decision",
+  "director-decision",
   "candidate-seal",
   "check-receipt",
   "evidence-packet",
@@ -76,7 +80,9 @@ export const FOUNDATION_CONTROL_RECORD_KINDS = Object.freeze([
 
 export const FOUNDATION_CONTROL_EVENT_KINDS = Object.freeze([
   "delivery-created",
-  "founder-brief-submitted",
+  "director-brief-submitted",
+  "work-delegation-set",
+  "work-delegation-stopped",
   "activity-started",
   "activity-recovery-recorded",
   "agent-pre-intent-refused",
@@ -86,13 +92,14 @@ export const FOUNDATION_CONTROL_EVENT_KINDS = Object.freeze([
   "agent-work-product-submitted",
   "agent-work-product-abandoned",
   "candidate-revision-observed",
+  "integration-assessed",
   "execution-receipt-recorded",
   "work-boundary-finalized",
   "material-condition-frozen",
   "candidate-sealed",
   "check-receipt-recorded",
   "evidence-packet-finalized",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "activity-completed",
@@ -385,7 +392,7 @@ export const FoundationControlEventReferenceSchema = z.object({
 }).strict();
 
 export const FoundationControlActorSchema = z.object({
-  kind: z.enum(["agent", "founder", "runtime"]),
+  kind: z.enum(["agent", "director", "runtime"]),
   id: FoundationOpaqueIdSchema,
 }).strict();
 
@@ -398,13 +405,187 @@ const FoundationEventSubjectSchema = z.object({
 const FoundationEmptyPayloadSchema = z.object({}).strict();
 const FoundationActivityPayloadSchema = z.object({ activityId: FoundationOpaqueIdSchema }).strict();
 const FoundationMaterialConditionFrozenPayloadSchema = z.object({
-  sourceKind: z.literal("agent-proposal"),
+  sourceKind: z.enum(["agent-proposal", "integration-assessment", "projection-compilation"]),
   activityId: FoundationOpaqueIdSchema,
   observedFactsDigest: FoundationSha256Schema,
+}).strict();
+const FoundationWorkDelegationIdSchema = FoundationOpaqueIdSchema.refine(value => !/[\r\n\u2028\u2029]/u.test(value));
+const FoundationWorkDelegationDigestSchema = FoundationSha256Schema.refine(value => value.length === 71);
+export const FoundationWorkDelegationTimeSchema = FoundationRfc3339Schema.refine(value => {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.valueOf())) return false;
+  const canonical = parsed.toISOString();
+  return value === canonical || value === canonical.replace(/\.000Z$/u, "Z");
+}, "Work time must be one canonical RFC 3339 UTC timestamp");
+export const FoundationWorkDelegationOperationSchema = z.enum([
+  "delivery.continue", "delivery.evaluate", "delivery.integrate",
+]);
+export const FoundationWorkDelegationAccountingSchema = z.object({
+  operations: FoundationNonnegativeSafeIntegerSchema,
+  agentAttempts: FoundationNonnegativeSafeIntegerSchema,
+  reservedCellWallTimeMs: FoundationNonnegativeSafeIntegerSchema,
+}).strict();
+export const FoundationWorkDelegationReferenceSchema = FoundationControlReferenceSchema.extend({
+  kind: z.literal("work-delegation"), id: FoundationWorkDelegationIdSchema, digest: FoundationWorkDelegationDigestSchema,
+}).strict();
+export const FoundationWorkDelegationAllowedOperationsSchema = z.array(FoundationWorkDelegationOperationSchema)
+  .min(1).max(3).refine(values => values.every((value, index) => index === 0 || values[index - 1]! < value),
+    "Delegated operations must be unique and in ascending codepoint order");
+export const FoundationWorkDelegationCeilingsSchema = FoundationWorkDelegationAccountingSchema.extend({
+  operations: FoundationPositiveSafeIntegerSchema,
+}).strict();
+export const FOUNDATION_WORK_DELEGATION_OPERATION_REASONS = Object.freeze([
+  "develop-candidate", "integrate-ready-candidate", "evaluate-integrated-candidate", "correct-in-scope-findings",
+] as const);
+export const FOUNDATION_WORK_DELEGATION_STOP_REASONS = Object.freeze([
+  "recovery-required", "operation-in-progress", "closed", "admission-required", "material-condition",
+  "delegation-required", "delegation-stopped", "delegation-expired", "allowance-exhausted", "acceptance-required",
+  "director-decision-required", "operation-not-delegated", "operation-ineligible", "operational-failure",
+  "observation-unavailable", "no-useful-work", "repeated-unchanged-result", "unresolved-proof",
+] as const);
+export const FoundationWorkDelegationStopReasonSchema = z.enum(FOUNDATION_WORK_DELEGATION_STOP_REASONS);
+export const FoundationWorkDelegationContinuationSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("operation"), operation: FoundationWorkDelegationOperationSchema,
+    reason: z.enum(FOUNDATION_WORK_DELEGATION_OPERATION_REASONS) }).strict(),
+  z.object({ kind: z.literal("stop"), reason: FoundationWorkDelegationStopReasonSchema }).strict(),
+]).superRefine((value, context) => {
+  if (value.kind !== "operation") return;
+  const reasons = value.operation === "delivery.continue" ? ["develop-candidate", "correct-in-scope-findings"]
+    : value.operation === "delivery.integrate" ? ["integrate-ready-candidate"] : ["evaluate-integrated-candidate"];
+  if (!reasons.includes(value.reason)) context.addIssue({ code: "custom", path: ["reason"],
+    message: "Continuation reason must describe its exact selected operation" });
+});
+export const FoundationWorkDelegationStopRequestSchema = z.object({
+  schema: z.literal("lifecycle.work-delegation-stop-request.v1"),
+  storeId: FoundationWorkDelegationIdSchema, processId: FoundationWorkDelegationIdSchema,
+  delegation: FoundationWorkDelegationReferenceSchema,
+  requestedBy: FoundationWorkDelegationIdSchema, requestedAt: FoundationWorkDelegationTimeSchema,
+  digest: FoundationWorkDelegationDigestSchema,
+}).strict().superRefine((value, context) => {
+  if (value.digest !== selfDigestFoundationCarrier(value)) context.addIssue({ code: "custom", path: ["digest"],
+    message: "Work stop request must retain its exact canonical digest" });
+  if (utf8ToBytes(canonicalFoundationJson(value)).length > 65_536) context.addIssue({ code: "custom",
+    message: "Work stop request exceeds the Control event JSON byte bound" });
+});
+const FoundationWorkDelegationBackendSchema = z.object({
+  profileId: z.enum(["lifecycle.execution-backend-profile.docker-local.v1", "lifecycle.execution-backend-profile.fault-injection.v1"]),
+  profileDigest: FoundationWorkDelegationDigestSchema,
+  implementationDigest: FoundationWorkDelegationDigestSchema,
+}).strict();
+const FoundationWorkDelegationImageSchema = z.object({
+  imageId: FoundationWorkDelegationIdSchema,
+  imageDigest: FoundationWorkDelegationDigestSchema,
+}).strict();
+const FoundationWorkDelegationResourceReferenceSchema = z.object({
+  id: FoundationWorkDelegationIdSchema, digest: FoundationWorkDelegationDigestSchema,
+}).strict();
+export const FoundationWorkDelegationAgentSelectionSchema = z.object({
+  providerDescriptor: FoundationWorkDelegationResourceReferenceSchema,
+  backendProfile: FoundationWorkDelegationBackendSchema,
+  image: FoundationWorkDelegationImageSchema,
+  model: FoundationWorkDelegationIdSchema.max(160),
+  reasoning: FoundationWorkDelegationIdSchema.max(160),
+  wallTimeMs: FoundationPositiveSafeIntegerSchema.max(86_400_000),
+  limits: z.object({
+    tokens: FoundationPositiveSafeIntegerSchema.nullable(),
+    events: FoundationPositiveSafeIntegerSchema.nullable(),
+    outputBytes: FoundationPositiveSafeIntegerSchema.nullable(),
+    toolCalls: FoundationPositiveSafeIntegerSchema.nullable(),
+    processes: FoundationPositiveSafeIntegerSchema.nullable(),
+    storageBytes: FoundationPositiveSafeIntegerSchema.nullable(),
+  }).strict(),
+}).strict();
+export const FoundationWorkDelegationCurrentSchema = z.object({
+  reference: FoundationWorkDelegationReferenceSchema,
+  boundary: FoundationControlReferenceSchema.extend({ kind: z.literal("work-boundary") }).strict(),
+  admission: FoundationControlReferenceSchema.extend({ kind: z.literal("director-decision") }).strict(),
+  policy: z.object({ id: z.literal("lifecycle.work-delegation.standard-v1"), digest: FoundationSha256Schema }).strict(),
+  allowedOperations: FoundationWorkDelegationAllowedOperationsSchema,
+  directions: z.object({
+    continue: FoundationControlReferenceSchema.extend({ kind: z.literal("director-brief") }).strict().nullable(),
+    evaluate: FoundationControlReferenceSchema.extend({ kind: z.literal("director-brief") }).strict().nullable(),
+  }).strict(),
+  agentSelections: z.object({ builder: FoundationWorkDelegationAgentSelectionSchema.nullable(),
+    reviewer: FoundationWorkDelegationAgentSelectionSchema.nullable() }).strict(),
+  ceilings: FoundationWorkDelegationCeilingsSchema,
+  expiresAt: FoundationWorkDelegationTimeSchema.nullable(),
+  stopPolicy: z.literal("finish-reserved-operation"),
+}).strict().superRefine((value, context) => {
+  const builder = value.allowedOperations.includes("delivery.continue");
+  const reviewer = value.allowedOperations.includes("delivery.evaluate");
+  if ((value.directions.continue !== null) !== builder || (value.agentSelections.builder !== null) !== builder ||
+      (value.directions.evaluate !== null) !== reviewer || (value.agentSelections.reviewer !== null) !== reviewer) {
+    context.addIssue({ code: "custom", message: "Delegated Agent operations require exactly their standing directions and resource selections" });
+  }
+  if ((builder || reviewer) && (value.ceilings.agentAttempts < 1 || value.ceilings.reservedCellWallTimeMs < 1)) {
+    context.addIssue({ code: "custom", path: ["ceilings"], message: "Agent work requires finite positive attempt and Cell wall-time allowances" });
+  }
+});
+export const FoundationDeliveryWorkSchema = z.object({
+  current: FoundationWorkDelegationCurrentSchema.nullable(),
+  pendingStop: FoundationWorkDelegationStopRequestSchema.nullable(),
+  continuation: FoundationWorkDelegationContinuationSchema,
+}).strict();
+const FoundationWorkDelegationCheckLimitsSchema = z.object({
+  wallTimeMilliseconds: FoundationPositiveSafeIntegerSchema.max(86_400_000),
+  processes: FoundationPositiveSafeIntegerSchema,
+  storageBytes: FoundationPositiveSafeIntegerSchema,
+  outputEntries: FoundationPositiveSafeIntegerSchema,
+  outputBytes: FoundationPositiveSafeIntegerSchema,
+  outputEntryBytes: FoundationPositiveSafeIntegerSchema,
+  events: FoundationPositiveSafeIntegerSchema,
+}).strict();
+export const FoundationWorkDelegationReservationSchema = z.object({
+  schema: z.literal("lifecycle.work-delegation-reservation.v1"),
+  reservationId: FoundationWorkDelegationIdSchema,
+  delegation: FoundationControlReferenceSchema.extend({ kind: z.literal("work-delegation"), id: FoundationWorkDelegationIdSchema, digest: FoundationWorkDelegationDigestSchema }).strict(),
+  activityId: FoundationWorkDelegationIdSchema,
+  operation: FoundationWorkDelegationOperationSchema,
+  decision: z.object({
+    journalHead: z.object({ sequence: FoundationPositiveSafeIntegerSchema, digest: FoundationWorkDelegationDigestSchema }).strict(),
+    basisDigest: FoundationWorkDelegationDigestSchema,
+    reason: z.enum(FOUNDATION_WORK_DELEGATION_OPERATION_REASONS),
+  }).strict(),
+  charges: FoundationWorkDelegationAccountingSchema.extend({ operations: z.literal(1), agentAttempts: FoundationNonnegativeSafeIntegerSchema.max(1) }).strict(),
+  slots: z.array(z.discriminatedUnion("purpose", [
+    z.object({ slotId: FoundationWorkDelegationIdSchema, purpose: z.literal("agent"), role: z.enum(["builder", "reviewer"]),
+      selection: FoundationWorkDelegationAgentSelectionSchema }).strict(),
+    z.object({ slotId: FoundationWorkDelegationIdSchema, purpose: z.literal("check"), phase: z.literal("final"),
+      selectionId: FoundationWorkDelegationIdSchema,
+      definition: z.object({ id: FoundationWorkDelegationIdSchema.max(160).regex(/^check(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/u), revision: FoundationPositiveSafeIntegerSchema,
+        sourceDigest: FoundationWorkDelegationDigestSchema, semanticDigest: FoundationWorkDelegationDigestSchema }).strict(),
+      binding: FoundationWorkDelegationResourceReferenceSchema,
+      backendProfile: FoundationWorkDelegationBackendSchema, image: FoundationWorkDelegationImageSchema,
+      wallTimeMs: FoundationPositiveSafeIntegerSchema.max(86_400_000), limits: FoundationWorkDelegationCheckLimitsSchema,
+    }).strict(),
+  ])).max(4_097),
+}).strict().superRefine((value, context) => {
+  const agents = value.slots.filter(slot => slot.purpose === "agent");
+  const reasons = value.operation === "delivery.continue" ? ["develop-candidate", "correct-in-scope-findings"]
+    : value.operation === "delivery.integrate" ? ["integrate-ready-candidate"] : ["evaluate-integrated-candidate"];
+  const role = value.operation === "delivery.continue" ? "builder" : "reviewer";
+  const validSlots = value.operation === "delivery.integrate"
+    ? value.slots.length === 0 && value.charges.agentAttempts === 0 && value.charges.reservedCellWallTimeMs === 0
+    : agents.length === 1 && agents[0]!.role === role && value.charges.agentAttempts === 1 &&
+      value.charges.reservedCellWallTimeMs > 0 && (value.operation !== "delivery.continue" || value.slots.length === 1);
+  if (!validSlots || !reasons.includes(value.decision.reason)) {
+    context.addIssue({ code: "custom", path: ["slots"], message: "Reserved operation must retain its declared role, slot cardinality, charges and reason" });
+  }
+});
+const FoundationStandingBriefSubmittedPayloadSchema = z.object({
+  delegationId: FoundationWorkDelegationIdSchema,
+  delegationRevision: FoundationPositiveSafeIntegerSchema,
+  operation: z.enum(["delivery.continue", "delivery.evaluate"]),
+}).strict();
+const FoundationWorkDelegationStoppedPayloadSchema = z.object({
+  requestDigest: FoundationWorkDelegationDigestSchema,
+  requestedAt: FoundationRfc3339Schema,
+  requestedBy: FoundationWorkDelegationIdSchema,
 }).strict();
 const FoundationActivityStartedPayloadSchema = z.object({
   activityId: FoundationOpaqueIdSchema,
   operation: FoundationDeliveryOperationSchema,
+  reservation: FoundationWorkDelegationReservationSchema.optional(),
 }).strict();
 const FoundationActivityRecoveryPayloadSchema = z.object({
   activityId: FoundationOpaqueIdSchema,
@@ -447,8 +628,13 @@ const FoundationTerminalRepositoryObservationFactsSchema =
   }).strict();
 const FoundationTerminalAcceptanceObservationFactsSchema =
   FoundationTerminalRepositoryCoordinateSchema.extend({
-    schema: z.literal("lifecycle.terminal-acceptance-effect-observation.v1"),
+    schema: z.literal("lifecycle.terminal-acceptance-effect-observation.v2"),
     canonicalResultDigest: FoundationSha256Schema,
+    observedTip: z.object({
+      commit: FoundationGitObjectSchema,
+      tree: FoundationGitObjectSchema,
+    }).strict(),
+    recognition: z.enum(["at-tip", "ancestor"]),
   }).strict();
 const FoundationTerminalDetachedObservationFactsSchema = z.object({
   schema: z.literal("lifecycle.terminal-detached-canonical-effect-observation.v1"),
@@ -549,19 +735,31 @@ const FoundationTransactionEffectObservedPayloadSchema = z.object({
   };
   if (
     value.facts.schema === "lifecycle.terminal-repository-effect-observation.v1" ||
-    value.facts.schema === "lifecycle.terminal-acceptance-effect-observation.v1"
+    value.facts.schema === "lifecycle.terminal-acceptance-effect-observation.v2"
   ) {
     assertObjectFormat(value.facts, ["facts"]);
   }
-  if (
-    value.facts.schema === "lifecycle.terminal-acceptance-effect-observation.v1" &&
-    value.outcome !== "applied"
-  ) {
-    context.addIssue({
-      code: "custom",
-      path: ["outcome"],
-      message: "Acceptance result facts require an applied outcome",
-    });
+  if (value.facts.schema === "lifecycle.terminal-acceptance-effect-observation.v2") {
+    const facts = value.facts;
+    assertObjectFormat({ ...facts.observedTip, objectFormat: facts.objectFormat }, ["facts", "observedTip"]);
+    if (
+      (facts.recognition === "at-tip" &&
+        (facts.observedTip.commit !== facts.commit || facts.observedTip.tree !== facts.tree)) ||
+      (facts.recognition === "ancestor" && facts.observedTip.commit === facts.commit)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["facts", "recognition"],
+        message: "Acceptance recognition must distinguish the accepted commit from its observed canonical tip",
+      });
+    }
+    if (value.outcome !== "applied") {
+      context.addIssue({
+        code: "custom",
+        path: ["outcome"],
+        message: "Acceptance result facts require an applied outcome",
+      });
+    }
   }
   if (value.facts.schema === "lifecycle.terminal-detached-canonical-effect-observation.v1") {
     assertObjectFormat(value.facts.attached, ["facts", "attached"]);
@@ -610,10 +808,11 @@ const FoundationAgentPreIntentRefusedPayloadSchema = z.object({
   activityId: FoundationOpaqueIdSchema,
   diagnosticCode: FoundationOpaqueIdSchema,
   refusalFactsDigest: FoundationSha256Schema,
+  resolution: z.enum(["none", "projection-condition-required"]),
 }).strict();
 
 const FoundationControlEventBaseSchema = z.object({
-  schema: z.literal("lifecycle.control-record-event.v2"),
+  schema: z.literal("lifecycle.control-record-event.v6"),
   storeId: FoundationOpaqueIdSchema,
   processId: FoundationOpaqueIdSchema,
   sequence: FoundationPositiveSafeIntegerSchema,
@@ -646,30 +845,39 @@ function subjectlessEvent<Kind extends FoundationControlEventKind, Payload exten
   }).strict();
 }
 
-export const FoundationControlEventSchema = z.discriminatedUnion("eventKind", [
-  subjectlessEvent("delivery-created", FoundationEmptyPayloadSchema),
-  subjectEvent("founder-brief-submitted", FoundationActivityPayloadSchema),
-  subjectlessEvent("activity-started", FoundationActivityStartedPayloadSchema),
-  subjectlessEvent("activity-recovery-recorded", FoundationActivityRecoveryPayloadSchema),
-  subjectlessEvent("agent-pre-intent-refused", FoundationAgentPreIntentRefusedPayloadSchema),
-  subjectEvent("agent-attempt-prepared", FoundationActivityPayloadSchema),
-  subjectEvent("provider-effect-intended", FoundationEffectIntendedPayloadSchema),
-  subjectEvent("provider-effect-observed", FoundationProviderEffectObservedPayloadSchema),
-  subjectEvent("agent-work-product-submitted", FoundationActivityPayloadSchema),
-  subjectEvent("agent-work-product-abandoned", FoundationActivityPayloadSchema),
-  subjectEvent("candidate-revision-observed", FoundationActivityPayloadSchema),
-  subjectEvent("execution-receipt-recorded", FoundationActivityPayloadSchema),
-  subjectEvent("work-boundary-finalized", FoundationActivityPayloadSchema),
-  subjectEvent("material-condition-frozen", FoundationMaterialConditionFrozenPayloadSchema),
-  subjectEvent("candidate-sealed", FoundationActivityPayloadSchema),
-  subjectEvent("check-receipt-recorded", FoundationActivityPayloadSchema),
-  subjectEvent("evidence-packet-finalized", FoundationActivityPayloadSchema),
-  subjectEvent("founder-decision-authenticated", FoundationActivityPayloadSchema),
-  subjectEvent("transaction-effect-intended", FoundationEffectIntendedPayloadSchema),
-  subjectEvent("transaction-effect-observed", FoundationTransactionEffectObservedPayloadSchema),
-  subjectlessEvent("activity-completed", FoundationActivityCompletedPayloadSchema),
-  subjectEvent("closure-recorded", FoundationActivityPayloadSchema),
-]).superRefine((value, context) => {
+// Every current kind has one decoder whose discriminator matches its registration.
+const foundationControlEventDecoders = {
+  "delivery-created": subjectlessEvent("delivery-created", FoundationEmptyPayloadSchema),
+  "director-brief-submitted": subjectEvent("director-brief-submitted", z.union([FoundationActivityPayloadSchema, FoundationStandingBriefSubmittedPayloadSchema])),
+  "work-delegation-set": subjectEvent("work-delegation-set", FoundationEmptyPayloadSchema),
+  "work-delegation-stopped": subjectEvent("work-delegation-stopped", FoundationWorkDelegationStoppedPayloadSchema),
+  "activity-started": subjectlessEvent("activity-started", FoundationActivityStartedPayloadSchema),
+  "activity-recovery-recorded": subjectlessEvent("activity-recovery-recorded", FoundationActivityRecoveryPayloadSchema),
+  "agent-pre-intent-refused": subjectlessEvent("agent-pre-intent-refused", FoundationAgentPreIntentRefusedPayloadSchema),
+  "agent-attempt-prepared": subjectEvent("agent-attempt-prepared", FoundationActivityPayloadSchema),
+  "provider-effect-intended": subjectEvent("provider-effect-intended", FoundationEffectIntendedPayloadSchema),
+  "provider-effect-observed": subjectEvent("provider-effect-observed", FoundationProviderEffectObservedPayloadSchema),
+  "agent-work-product-submitted": subjectEvent("agent-work-product-submitted", FoundationActivityPayloadSchema),
+  "agent-work-product-abandoned": subjectEvent("agent-work-product-abandoned", FoundationActivityPayloadSchema),
+  "candidate-revision-observed": subjectEvent("candidate-revision-observed", FoundationActivityPayloadSchema),
+  "integration-assessed": subjectEvent("integration-assessed", FoundationActivityPayloadSchema),
+  "execution-receipt-recorded": subjectEvent("execution-receipt-recorded", FoundationActivityPayloadSchema),
+  "work-boundary-finalized": subjectEvent("work-boundary-finalized", FoundationActivityPayloadSchema),
+  "material-condition-frozen": subjectEvent("material-condition-frozen", FoundationMaterialConditionFrozenPayloadSchema),
+  "candidate-sealed": subjectEvent("candidate-sealed", FoundationActivityPayloadSchema),
+  "check-receipt-recorded": subjectEvent("check-receipt-recorded", FoundationActivityPayloadSchema),
+  "evidence-packet-finalized": subjectEvent("evidence-packet-finalized", FoundationActivityPayloadSchema),
+  "director-decision-authenticated": subjectEvent("director-decision-authenticated", FoundationActivityPayloadSchema),
+  "transaction-effect-intended": subjectEvent("transaction-effect-intended", FoundationEffectIntendedPayloadSchema),
+  "transaction-effect-observed": subjectEvent("transaction-effect-observed", FoundationTransactionEffectObservedPayloadSchema),
+  "activity-completed": subjectlessEvent("activity-completed", FoundationActivityCompletedPayloadSchema),
+  "closure-recorded": subjectEvent("closure-recorded", FoundationActivityPayloadSchema),
+} satisfies { [Kind in FoundationControlEventKind]: z.ZodType<{ eventKind: Kind }> };
+type FoundationControlEventDecoder = (typeof foundationControlEventDecoders)[FoundationControlEventKind];
+// The required closed kind set is nonempty; retain the concrete decoder union.
+export const FoundationControlEventSchema = z.discriminatedUnion("eventKind",
+  Object.values(foundationControlEventDecoders) as [FoundationControlEventDecoder, ...FoundationControlEventDecoder[]],
+).superRefine((value, context) => {
   if (value.digest !== selfDigestFoundationCarrier(value)) {
     context.addIssue({ code: "custom", path: ["digest"], message: "Control event digest mismatch" });
   }
@@ -679,6 +887,17 @@ export const FoundationControlEventSchema = z.discriminatedUnion("eventKind", [
       path: ["predecessorDigest"],
       message: "Only the first Control event has no predecessor digest",
     });
+  }
+  if (value.eventKind === "activity-started" && value.payload.reservation !== undefined) {
+    const reservation = value.payload.reservation;
+    if (reservation.activityId !== value.payload.activityId || reservation.operation !== value.payload.operation ||
+        reservation.decision.journalHead.sequence !== value.sequence - 1 ||
+        reservation.decision.journalHead.digest !== value.predecessorDigest) {
+      context.addIssue({ code: "custom", path: ["payload", "reservation"], message: "Reservation must bind this exact opening and its preceding Journal head" });
+    }
+  }
+  if (value.eventKind === "work-delegation-stopped" && Date.parse(value.payload.requestedAt) > Date.parse(value.occurredAt)) {
+    context.addIssue({ code: "custom", path: ["payload", "requestedAt"], message: "A stop cannot precede its retained request" });
   }
 });
 
@@ -698,7 +917,7 @@ export const FoundationSemanticMarkdownSchema = z.string().min(1)
   });
 
 export const FoundationControlRevisionSchema = z.object({
-  schema: z.literal("lifecycle.control-record-revision.v1"),
+  schema: z.literal("lifecycle.control-record-revision.v2"),
   processId: FoundationOpaqueIdSchema,
   recordId: FoundationOpaqueIdSchema,
   recordKind: FoundationControlRecordKindSchema,
@@ -707,8 +926,8 @@ export const FoundationControlRevisionSchema = z.object({
   semanticAuthor: FoundationControlActorSchema,
   semanticAuthority: z.enum([
     "agent-proposed",
-    "founder-supplied",
-    "founder-authenticated",
+    "director-supplied",
+    "director-authenticated",
     "runtime-observed",
     "runtime-derived",
   ]),
@@ -733,7 +952,7 @@ export const FoundationControlRevisionSchema = z.object({
 export const FoundationDeliveryActivitySchema = z.object({
   id: FoundationOpaqueIdSchema,
   operation: FoundationDeliveryOperationSchema,
-  family: z.enum(["agent", "transaction"]),
+  family: z.enum(["agent", "integration", "transaction"]),
   stage: z.enum([
     "started",
     "prepared",
@@ -780,6 +999,7 @@ export const FoundationDeliveryRecoverySchema = z.object({
 export const FoundationDeliverySubjectsSchema = z.object({
   proposedBoundary: FoundationControlReferenceSchema.nullable(),
   activeBoundary: FoundationControlReferenceSchema.nullable(),
+  integrationAssessment: FoundationControlReferenceSchema.nullable(),
   candidate: FoundationControlReferenceSchema.nullable(),
   materialCondition: FoundationControlReferenceSchema.nullable(),
   seal: FoundationControlReferenceSchema.nullable(),
@@ -816,7 +1036,7 @@ export const FoundationDeliveryStoreDispositionSchema = z.object({
 }).strict();
 
 export const FoundationDeliveryStateSchema = z.object({
-  schema: z.literal("lifecycle.delivery-reduction.v2"),
+  schema: z.literal("lifecycle.delivery-reduction.v5"),
   storeId: FoundationOpaqueIdSchema,
   processId: FoundationOpaqueIdSchema,
   standing: z.enum([
@@ -843,6 +1063,14 @@ export const FoundationDeliveryStateSchema = z.object({
   activities: z.array(FoundationDeliveryActivitySchema).max(10_000),
   recovery: FoundationDeliveryRecoverySchema.nullable(),
   subjects: FoundationDeliverySubjectsSchema,
+  delegation: z.object({
+    admission: FoundationControlReferenceSchema.extend({ kind: z.literal("director-decision") }).strict().nullable(),
+    current: z.object({
+      reference: FoundationControlReferenceSchema.extend({ kind: z.literal("work-delegation") }).strict(),
+      stopped: z.boolean(),
+    }).strict().nullable(),
+    charged: FoundationWorkDelegationAccountingSchema,
+  }).strict(),
   journal: FoundationDeliveryJournalSummarySchema,
   storeDisposition: FoundationDeliveryStoreDispositionSchema,
   eligibleOperations: z.array(FoundationDeliveryOperationSchema).max(9),
@@ -923,26 +1151,35 @@ export const FoundationTypedSemanticsSchema = z.object({
   }).strict().nullable(),
 }).strict();
 
-export const FoundationNextPassRequirementSchema = z.object({
+const foundationNextPassSubject = {
+  eligible: z.boolean(),
+  boundary: FoundationControlReferenceSchema.nullable(),
+  candidate: FoundationControlReferenceSchema.nullable(),
+  consequence: FoundationPlainTextSchema,
+};
+
+export const FoundationNextPassRequirementSchema = z.discriminatedUnion("operation", [z.object({
+  ...foundationNextPassSubject,
   operation: z.enum([
     "delivery.continue",
     "delivery.evaluate",
     "delivery.revise",
     "delivery.reaffirm",
   ]),
-  eligible: z.boolean(),
   role: z.enum(["reconnaissance", "builder", "reviewer"]),
-  boundary: FoundationControlReferenceSchema.nullable(),
-  candidate: FoundationControlReferenceSchema.nullable(),
-  consequence: FoundationPlainTextSchema,
   investment: z.object({
     freshness: z.literal("fresh-on-invocation"),
     model: FoundationOpaqueIdSchema,
     reasoning: FoundationOpaqueIdSchema,
     wallTimeMs: FoundationPositiveSafeIntegerSchema,
     maximumOutputBytes: FoundationPositiveSafeIntegerSchema,
-  }).strict(),
-}).strict();
+  }).strict().nullable(),
+}).strict(), z.object({
+  ...foundationNextPassSubject,
+  operation: z.literal("delivery.integrate"),
+  role: z.null(),
+  investment: z.null(),
+}).strict()]);
 
 export const FoundationDecisionReadinessSchema = z.object({
   boundary: FoundationControlReferenceSchema.nullable(),
@@ -980,7 +1217,8 @@ export const FoundationDeliveryViewSchema = z.object({
   state: FoundationDeliveryStateSchema,
   currentSubjects: FoundationDeliverySubjectsSchema,
   semantics: FoundationTypedSemanticsSchema,
-  nextPass: z.array(FoundationNextPassRequirementSchema).max(4),
+  work: FoundationDeliveryWorkSchema,
+  nextPass: z.array(FoundationNextPassRequirementSchema).max(5),
   decisionReadiness: FoundationDecisionReadinessSchema,
   activity: FoundationDeliveryActivityPresentationSchema.nullable(),
   controlFamilies: z.array(FoundationControlFamilySummarySchema).max(FOUNDATION_CONTROL_RECORD_KINDS.length),
@@ -1028,6 +1266,20 @@ export const FoundationDeliveryViewSchema = z.object({
     ["currentSubjects"],
     "Delivery View current subjects must match the reduction",
   );
+  requireSameCoordinate(value.work.current?.reference ?? null, value.state.delegation.current?.reference ?? null,
+    ["work", "current", "reference"], "Work resources must describe the reducer-selected exact grant");
+  // A retained grant can outlive the admission it selected. Do not relabel it
+  // with a later Boundary or infer that it permits work under that admission.
+  if (value.work.pendingStop !== null) {
+    requireSameCoordinate(
+      { storeId: value.work.pendingStop.storeId, processId: value.work.pendingStop.processId,
+        delegation: value.work.pendingStop.delegation },
+      { storeId: value.state.storeId, processId: value.state.processId,
+        delegation: value.state.delegation.current?.reference ?? null },
+      ["work", "pendingStop"], "Pending stop must bind this exact Store, Delivery and retained grant");
+    if (value.state.delegation.current?.stopped !== false) context.addIssue({ code: "custom", path: ["work", "pendingStop"],
+      message: "Pending stop custody cannot describe an absent or already stopped grant" });
+  }
   requireSameCoordinate(
     value.activity,
     value.generation.activeOperation,
@@ -1102,7 +1354,7 @@ export const FoundationDeliveryViewSchema = z.object({
       });
     }
     nextPassOperations.add(requirement.operation);
-    const expectedRole = requirement.operation === "delivery.continue"
+    const expectedRole = requirement.operation === "delivery.integrate" ? null : requirement.operation === "delivery.continue"
       ? "builder"
       : requirement.operation === "delivery.evaluate"
         ? "reviewer"
@@ -1179,7 +1431,7 @@ export const FoundationDeliveryInboxRowSchema = z.discriminatedUnion("status", [
       "abandoned",
     ]),
     activity: FoundationDeliveryActivityPresentationSchema.nullable(),
-    attentionOwner: z.enum(["founder", "runtime", "provider", "reviewer", "none"]),
+    attentionOwner: z.enum(["director", "runtime", "provider", "reviewer", "none"]),
     evidenceReadiness: z.enum([
       "acceptance-ready",
       "correctable",
@@ -1236,18 +1488,18 @@ export const FoundationDeliveryDiffSchema = z.object({
 
 export const FoundationRepositoryAtlasObservationSchema = z.object({
   selection: z.object({
-    release: z.literal("0.7.0"),
-    specificationRevision: z.literal("429fee62966f4d30e91ec2a15d27ecf353f5d68f"),
+    release: z.literal("0.8.0"),
+    specificationRevision: z.literal("2c7a78540ac30138218b12803f1c045cee8b109a"),
     authoredFormat: z.literal(1),
-    processorRevision: z.literal("746cbce73c51b28d617b96ca08f18d498ac749c4"),
+    processorRevision: z.literal("2c7a78540ac30138218b12803f1c045cee8b109a"),
     validationProfile: z.literal("neutral.atlas-validator.resolved"),
     validationResultSchema: z.literal("urn:atlas:schema:validation-result:1"),
     normalizedModelSchema: z.literal("urn:atlas:schema:normalized:1"),
-    consumerProfile: z.literal("lifecycle.atlas-consumer.v1"),
+    consumerProfile: z.literal("lifecycle.atlas-consumer.v2"),
   }).strict(),
   processor: z.object({
     id: z.literal("atlas-reference-validator"),
-    version: z.literal("0.7.0"),
+    version: z.literal("0.8.0"),
     implementationDigest: FoundationSha256Schema,
   }).strict(),
   stateDigest: FoundationSha256Schema,
@@ -1259,11 +1511,11 @@ export const FoundationRepositoryAtlasObservationSchema = z.object({
 }).strict();
 
 export const FoundationRepositoryObservationSchema = z.object({
-  schema: z.literal("lifecycle.repository-observation.v10"),
+  schema: z.literal("lifecycle.repository-observation.v17"),
   initialized: z.boolean(),
   valid: z.boolean(),
   targetId: FoundationOpaqueIdSchema.nullable(),
-  repositoryContract: z.literal("lifecycle.repository.v15").nullable(),
+  repositoryContract: z.literal("lifecycle.repository.v22").nullable(),
   repositoryContractDigest: FoundationSha256Schema.nullable(),
   headCommit: FoundationGitObjectSchema.nullable(),
   headTree: FoundationGitObjectSchema.nullable(),
@@ -1313,6 +1565,14 @@ export const FoundationDiagnosticSchema = z.object({
 }).strict();
 
 export type FoundationControlReference = z.output<typeof FoundationControlReferenceSchema>;
+export type FoundationWorkDelegationAccounting = z.output<typeof FoundationWorkDelegationAccountingSchema>;
+export type FoundationWorkDelegationReference = z.output<typeof FoundationWorkDelegationReferenceSchema>;
+export type FoundationWorkDelegationStopRequest = z.output<typeof FoundationWorkDelegationStopRequestSchema>;
+export type FoundationWorkDelegationContinuation = z.output<typeof FoundationWorkDelegationContinuationSchema>;
+export type FoundationWorkDelegationCurrent = z.output<typeof FoundationWorkDelegationCurrentSchema>;
+export type FoundationDeliveryWork = z.output<typeof FoundationDeliveryWorkSchema>;
+export type FoundationWorkDelegationAgentSelection = z.output<typeof FoundationWorkDelegationAgentSelectionSchema>;
+export type FoundationWorkDelegationReservation = z.output<typeof FoundationWorkDelegationReservationSchema>;
 export type FoundationControlEventReference = z.output<typeof FoundationControlEventReferenceSchema>;
 export type FoundationControlEvent = z.output<typeof FoundationControlEventSchema>;
 export type FoundationControlRevision = z.output<typeof FoundationControlRevisionSchema>;

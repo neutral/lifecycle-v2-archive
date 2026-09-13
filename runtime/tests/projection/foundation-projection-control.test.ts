@@ -1,17 +1,25 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
+import { foundationIntegrationValidationFactsDigestV1, resolveFailedIntegrationCorrectionV1 } from "../../src/foundation/control/integration-assessment.js";
 import type {
   ControlJsonObject,
   ControlJsonValue,
   ControlRecordRevision,
 } from "../../src/foundation/control/types.js";
 import { loadKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
+import { knowledgeOccurrence, knowledgeOccurrenceItemId } from "../../src/foundation/knowledge/identity.js";
+import { parseKnowledgeRecord } from "../../src/foundation/knowledge/records.js";
+import type { FoundationSupersession } from "../../src/foundation/knowledge/types.js";
 import { ProjectionByteInventoryBuilder } from "../../src/foundation/projection/content.js";
+import { compileKnowledgeProjection } from "../../src/foundation/projection/compiler.js";
+import { foundationRepositorySourceMaterials } from "../../src/foundation/projection/source-context.js";
 import { compileExecution } from "../../src/foundation/projection/execution.js";
+import { verifyCompiledProjection } from "../../src/foundation/projection/verification.js";
 import {
   parseProjectionRequest,
   projectionRepositoryEpochDigest,
@@ -35,24 +43,34 @@ import {
   sha256Bytes,
   type Sha256,
 } from "../../src/foundation/validation/canonical.js";
+import { DiagnosticCollector } from "../../src/foundation/validation/result.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
+import {
+  foundationDisciplineAdoptionFixture,
+  TEST_DISCIPLINE_ID,
+  TEST_DISCIPLINE_PATH,
+} from "../helpers/foundation-discipline-fixture.js";
 import { minimalResolvedAtlas, writeMinimalAtlas } from "../helpers/atlas-fixture.js";
 
 const PUBLICATION = sha256Bytes("projection-control-publication");
 const PROCESS = "delivery.projection-control";
 const CREATED = "2026-08-29T20:00:00.000Z";
 
-function description(): string {
+function description(options: Readonly<{
+  revision?: number;
+  status?: "current" | "superseded";
+  supersedes?: FoundationSupersession;
+}> = {}): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.projection-control",
     title: "Projection control fixture",
-    status: "current",
-    revision: 1,
-    supersedes: null,
+    status: options.status ?? "current",
+    revision: options.revision ?? 1,
+    supersedes: options.supersedes ?? null,
     summary: "Own the governed external-source fixture used by reviewer Projection tests.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -101,6 +119,7 @@ function revision(input: Readonly<{
   id: string;
   kind:
     | "work-boundary"
+    | "integration-assessment"
     | "candidate-revision"
     | "candidate-seal"
     | "check-receipt"
@@ -134,7 +153,8 @@ function revision(input: Readonly<{
   });
 }
 
-test("reviewer Projection resolves exact v7 Control values and renders typed facts beside semantic Markdown", async () => {
+for (const knowledgeChange of ["unchanged", "revised"] as const) {
+test(`reviewer Projection resolves exact v7 Control values and preserves ${knowledgeChange} Knowledge occurrences`, async () => {
   const root = await mkdtemp(join(tmpdir(), "lifecycle-projection-control-"));
   const candidateRoot = await mkdtemp(join(tmpdir(), "lifecycle-projection-control-candidate-"));
   const home = await mkdtemp(join(tmpdir(), "lifecycle-projection-control-home-"));
@@ -148,9 +168,9 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     await git(root, ["commit", "-m", "Create target"]);
     const contract = await initializeRepository(root, {
       targetId: "projection-control-target",
-      founderPrincipal: "founder",
+      directorPrincipal: "director",
       home,
-      authoritySecret: "projection-control-secret-at-least-thirty-two-bytes",
+      authorityCredential: receiveFoundationAuthorityCredential("projection-control-secret-at-least-thirty-two-bytes", "initialize"),
       publicationDigest: PUBLICATION,
       implementationRoots: ["docs"],
       stage: true,
@@ -158,6 +178,11 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     await write(root, "docs/_source.desc.md", description());
     await git(root, ["add", "--", "docs/_source.desc.md"]);
     await git(root, ["commit", "-m", "Attach Lifecycle Foundation"]);
+    const adopted = foundationDisciplineAdoptionFixture(contract);
+    await write(root, TEST_DISCIPLINE_PATH, adopted.document);
+    await write(root, "records/disciplines/registry.json", adopted.registryDocument);
+    await git(root, ["add", "--", TEST_DISCIPLINE_PATH, "records/disciplines/registry.json"]);
+    await git(root, ["commit", "-m", "Adopt focused Go review Discipline"]);
     const commit = (await git(root, ["rev-parse", "HEAD"])).stdout.trim();
     const tree = (await git(root, ["rev-parse", "HEAD^{tree}"])).stdout.trim();
     const treeEntries = await exactTreeEntries(root, tree, "sha1");
@@ -181,6 +206,20 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     const baseKnowledge = await loadKnowledgeSet(epoch);
     assert.equal(baseKnowledge.validation.complete, true);
     assert.equal(baseKnowledge.validation.valid, true);
+    const discipline = baseKnowledge.index.currentByIdentity.get(TEST_DISCIPLINE_ID);
+    if (discipline === undefined) assert.fail("adopted Discipline is absent from reviewer Knowledge");
+    const disciplineFact = Object.freeze({
+      id: discipline.frontMatter.id,
+      revision: discipline.frontMatter.revision,
+      sourceDigest: discipline.sourceDigest,
+      semanticDigest: discipline.semanticDigest,
+    });
+    const selectedDiscipline = Object.freeze({
+      ...disciplineFact,
+      title: discipline.frontMatter.title,
+      summary: discipline.frontMatter.summary,
+      path: discipline.path,
+    });
     const snapshotBase = {
       targetId: contract.targetId,
       commit,
@@ -199,6 +238,15 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
       snapshot: Object.freeze({ ...snapshotBase, digest: digestCanonical(snapshotBase) }),
     });
 
+    const repositoryValidation = new DiagnosticCollector().result({
+      profile: "repository-v9",
+      publicationDigest: contract.specification.publicationDigest,
+      subjectKind: "repository",
+      subjectId: contract.targetId,
+      subjectDigest: loaded.snapshot.digest,
+      subjectRevision: contract.generation,
+      stages: ["snapshot"],
+    });
     const boundaryPayload = validDeliveryControlPayload("work-boundary");
     const boundary = revision({
       id: "boundary.projection-control",
@@ -207,10 +255,12 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
       payload: Object.freeze({
         ...boundaryPayload,
         targetId: contract.targetId,
+        knowledge: Object.freeze([Object.freeze({ ...disciplineFact })]),
+        disciplines: Object.freeze({ registryDigest: baseKnowledge.disciplineRegistry.digest, workTypeIds: Object.freeze([]), records: Object.freeze([Object.freeze({ ...disciplineFact })]) }),
         basis: Object.freeze({
           specificationRevision: contract.specification.revision,
-          repositoryContract: "lifecycle.repository.v15",
-          providerAdapter: "lifecycle.provider-adapter.v6",
+          repositoryContract: "lifecycle.repository.v22",
+          providerAdapter: "lifecycle.provider-adapter.v7",
           productBaseCommit: loaded.snapshot.commit,
           productBaseTree: loaded.snapshot.tree,
           productStateDigest: loaded.snapshot.productStateDigest,
@@ -227,7 +277,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         Object.freeze({
           relation: "uses-brief",
           target: Object.freeze({
-            kind: "founder-brief",
+            kind: "director-brief",
             id: "brief.projection-control",
             revision: 1,
             digest: sha256Bytes("brief.projection-control"),
@@ -247,6 +297,10 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
 
     await git(root, ["commit", "--allow-empty", "-m", "Record admission"]);
     const candidateBaseCommit = (await git(root, ["rev-parse", "HEAD"])).stdout.trim();
+    const parentBasis = { ...snapshotBase, commit: candidateBaseCommit };
+    const parentLoaded = { ...loaded, epoch: { ...loaded.epoch, commit: candidateBaseCommit },
+      snapshot: { ...parentBasis, digest: digestCanonical(parentBasis) } };
+
     await git(candidateRoot, ["init", "-b", "candidate"]);
     await git(candidateRoot, ["config", "user.name", "Lifecycle Test"]);
     await git(candidateRoot, ["config", "user.email", "lifecycle@example.invalid"]);
@@ -256,7 +310,30 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     const priorSource = await objectBlobBytes(root, priorSourceEntry.objectId);
     const candidateSource = "# Candidate external source\n\nThe admitted reference changed.\n";
     await write(candidateRoot, "docs/external-source.md", candidateSource);
-    await git(candidateRoot, ["add", "--", "docs/external-source.md"]);
+    const changedKnowledge: { path: string; change: "added" | "modified"; beforeDigest: Sha256 | null; afterDigest: Sha256 }[] = [];
+    if (knowledgeChange === "revised") {
+      const historicalPath = "docs/_source-r1.desc.md";
+      const historicalText = description({ status: "superseded" });
+      await write(candidateRoot, historicalPath, historicalText);
+      const historical = parseKnowledgeRecord({
+        path: historicalPath,
+        mode: "100644",
+        objectId: (await git(candidateRoot, ["hash-object", "--", historicalPath])).stdout.trim(),
+        bytes: Buffer.from(historicalText),
+        contract,
+      });
+      const revisedText = description({ revision: 2, supersedes: {
+        id: historical.frontMatter.id,
+        revision: 1,
+        sourceDigest: historical.sourceDigest,
+        semanticDigest: historical.semanticDigest,
+      } });
+      await write(candidateRoot, "docs/_source.desc.md", revisedText);
+      changedKnowledge.push({ path: historicalPath, change: "added", beforeDigest: null, afterDigest: historical.sourceDigest }, {
+        path: "docs/_source.desc.md", change: "modified", beforeDigest: sha256Bytes(description()), afterDigest: sha256Bytes(revisedText),
+      });
+    }
+    await git(candidateRoot, ["add", "--", "docs"]);
     const sealedTree = (await git(candidateRoot, ["write-tree"])).stdout.trim();
     const candidateEntries = await exactTreeEntries(candidateRoot, sealedTree, "sha1");
     assert.notEqual(
@@ -293,7 +370,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
       sealedTree,
       "--",
     ])).stdout, "utf8");
-    const changedSubjects = Object.freeze([Object.freeze({
+    const changedSubjects = Object.freeze([...changedKnowledge.map((entry) => Object.freeze(entry)), Object.freeze({
       path: "docs/external-source.md",
       change: "modified" as const,
       beforeDigest: sha256Bytes(priorSource),
@@ -337,6 +414,20 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         changedSubjects,
       }),
     });
+    const sourceCandidate = revision({ id: "candidate.projection-control", kind: "candidate-revision", revision: 1,
+      markdown: "# Source Candidate\n", payload: { ...validDeliveryControlPayload("candidate-revision"), candidateBaseCommit: commit },
+      relationships: [{ relation: "governed-by", target: reference(boundary) }] });
+    const assessment = revision({ id: "integration.projection-control", kind: "integration-assessment",
+      markdown: "# Integration Assessment\n", payload: {
+        schema: "lifecycle.integration-assessment-payload.v1", profileId: "lifecycle.integration-assessment.foundation-v1",
+        canonicalParent: parentLoaded.snapshot,
+        mergeRule: { id: "lifecycle.integration.three-way.v2", implementationId: "lifecycle.integration.git-merge-tree.v1", implementationDigest: sha256Bytes("merge") },
+        outcome: "constructed", conflicts: [], validation: { complete: true, valid: true, diagnosticCodes: [],
+          factsDigest: foundationIntegrationValidationFactsDigestV1({
+            manifestFileDigest: ((candidatePayload as ControlJsonObject).carrierManifest as ControlJsonObject).digest as `sha256:${string}`,
+            state: candidatePayload.state, observer: (candidatePayload as ControlJsonObject).observer }) },
+        contextualApplicability: { disposition: "unchanged", changes: [] }, assessedAt: CREATED, limitations: [],
+      }, relationships: [{ relation: "governed-by", target: reference(boundary) }, { relation: "integrates", target: reference(sourceCandidate) }] });
     const candidate = revision({
       id: "candidate.projection-control",
       kind: "candidate-revision",
@@ -383,7 +474,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     const profile = contract.projectionProfiles["execution-standard-v1"]!;
     const capability = contract.capabilityProfiles[contract.defaults.capabilityProfileId]!;
     const requestBase = {
-      schema: "lifecycle.projection-request.v4" as const,
+      schema: "lifecycle.projection-request.v5" as const,
       class: "execution" as const,
       role: "reviewer" as const,
       specificationRevision: contract.specification.revision,
@@ -396,7 +487,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         productStateDigest: loaded.snapshot.productStateDigest,
         repositoryContractDigest: loaded.snapshot.contractDigest,
         repositorySnapshotDigest: loaded.snapshot.digest,
-        validationDigest: sha256Bytes("repository-validation"),
+        validationDigest: repositoryValidation.digest,
         complete: true,
         valid: true,
       }),
@@ -438,6 +529,11 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
           }),
           stateDigest: candidateDigest,
           carrierManifestDigest: candidateCarrierManifestDigest,
+          integration: Object.freeze({
+            assessment: { ...reference(assessment), kind: "integration-assessment" as const },
+            sourceCandidate: { ...reference(sourceCandidate), kind: "candidate-revision" as const },
+            canonicalParent: parentLoaded.snapshot,
+          }),
           sealedTree,
           seal: Object.freeze({
             kind: "candidate-seal" as const,
@@ -497,6 +593,11 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
       excluded: Object.freeze(["candidate writes"]),
       assumptions: Object.freeze([]),
       falsifiers: Object.freeze(["changed path omitted"]),
+      disciplines: Object.freeze({
+        registryDigest: baseKnowledge.disciplineRegistry.digest,
+        workTypeIds: Object.freeze([]),
+        records: Object.freeze([selectedDiscipline]),
+      }),
       obligations: Object.freeze([Object.freeze({
         id: "obligation-projection-control",
         kind: "artifact" as const,
@@ -509,7 +610,12 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         path: "docs/external-source.md",
         role: "external-source" as const,
         mustChange: true,
-      })]),
+      }), ...(knowledgeChange === "revised" ? [Object.freeze({
+        id: "artifact-description",
+        path: "docs/_source.desc.md",
+        role: "documentation" as const,
+        mustChange: true,
+      })] : [])]),
       effects: Object.freeze([]),
       risks: Object.freeze([]),
       checks: Object.freeze([]),
@@ -534,14 +640,21 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
       requestDigest: request.digest,
       workBoundaryDigest: boundary.digest,
     });
+    const repositoryAnchor = (await foundationRepositorySourceMaterials({ loaded, maximumItemBytes: profile.maximumItemBytes,
+      sourceIds: new Set(["source.repository-context"]) }))[0]!;
     const subjectBase = {
       workBoundary: Object.freeze({
         ...request.subject.workBoundary,
       }),
       core,
-      knowledgeRoots: Object.freeze([]),
-      implementationRoots: Object.freeze([]),
-      sourceRoots: Object.freeze([]),
+      knowledgeRoots: Object.freeze([Object.freeze({ ...disciplineFact, reason: "selected advisory Discipline" })]),
+      implementationRoots: Object.freeze(knowledgeChange === "revised" ? [Object.freeze({
+        path: "docs/_source.desc.md",
+        reason: "selected Description edit",
+      })] : []),
+      sourceRoots: Object.freeze([{ owner: "source-anchor" as const, sourceId: repositoryAnchor.id,
+        reference: repositoryAnchor.reference, revision: repositoryAnchor.revision, digest: repositoryAnchor.digest,
+        authority: repositoryAnchor.authority, required: true, reason: "exact repository context" }]),
       candidate: request.subject.candidate,
     };
     const subject: FoundationExecutionProjectionSubject = Object.freeze({
@@ -585,7 +698,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         Object.freeze({
           relation: "uses-brief",
           target: Object.freeze({
-            kind: "founder-brief",
+            kind: "director-brief",
             id: "brief.projection-control-evidence",
             revision: 1,
             digest: sha256Bytes("brief.projection-control-evidence"),
@@ -625,7 +738,7 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         return true;
       },
     );
-    const compiled = await compileExecution({
+    const executionInput = {
       request,
       loaded,
       knowledge: baseKnowledge,
@@ -639,23 +752,178 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
         diff: Object.freeze({ digest: diffDigest, bytes: diffBytes }),
       }),
       candidateObjectRepository: candidateRoot,
+      integrationParent: { loaded: parentLoaded, knowledge: baseKnowledge },
+      integrationRecords: { assessment, sourceCandidate },
       checkReceipts: Object.freeze([receipt]),
       agentWorkProducts: Object.freeze([Object.freeze({
         attempt: evidenceAttempt,
         workProduct: evidenceWorkProduct,
       })]),
-      inventory: new ProjectionByteInventoryBuilder(),
+    };
+    const compiled = await compileExecution({ ...executionInput, inventory: new ProjectionByteInventoryBuilder() });
+    // The execution owner preserves all occurrences; the common compiler must
+    // also accept that result through its independent completed-value verifier.
+    const complete = await compileKnowledgeProjection({
+      ...executionInput,
+      repository: loaded,
+      repositoryValidation,
     });
+    assert.equal(complete.validation.complete, true);
+    assert.equal(complete.validation.valid, true, canonicalJson(complete.validation.diagnostics));
+    if (complete.projection === null) assert.fail("Reviewer Projection did not complete");
+    verifyCompiledProjection(complete.projection);
 
+    const repositoryAnchors = compiled.sources.filter(({ reference }) => reference === repositoryAnchor.reference);
+    if (knowledgeChange === "unchanged") {
+      const failed = revision({ id: "integration.failed", kind: "integration-assessment", markdown: "# Conflicted integration\n",
+        payload: { ...assessment.payload, outcome: "conflicted", conflicts: [
+          { path: "docs/external-source.md", kind: "content" }, { path: "docs/missing.md", kind: "modify-delete" },
+        ], validation: { complete: false, valid: false, diagnosticCodes: [], factsDigest: sha256Bytes("conflict-facts") } },
+        relationships: [{ relation: "governed-by", target: reference(boundary) }, { relation: "integrates", target: reference(candidate) }] });
+      const corrected = (predecessor: ControlRecordRevision) => revision({ id: predecessor.recordId, kind: "candidate-revision",
+        revision: predecessor.revision + 1, markdown: "# Ordinary correction\n", payload: { ...predecessor.payload, observation: "builder-successor" },
+        relationships: [{ relation: "governed-by", target: reference(boundary) }, { relation: "revises", target: reference(predecessor) }] });
+      const firstCorrection = corrected(candidate);
+      const secondCorrection = corrected(firstCorrection);
+      const nextBoundary = revision({ id: boundary.recordId, kind: "work-boundary", revision: boundary.revision + 1,
+        markdown: "# Readmitted Boundary\n", payload: boundary.payload, relationships: boundary.relationships });
+      const retained = new Map([boundary, nextBoundary, candidate, firstCorrection, secondCorrection, failed, assessment]
+        .map((record) => [`${record.recordId}\0${record.revision}`, record]));
+      const store = { identity: { targetId: contract.targetId, storeId: "correction-test", processId: PROCESS },
+        getRevision: (id: string, selectedRevision: number) => retained.get(`${id}\0${selectedRevision}`) ?? null };
+      const correction = resolveFailedIntegrationCorrectionV1({ store, assessment: reference(failed), boundary, candidate: secondCorrection });
+      assert(correction !== null);
+      assert.deepEqual(correction.candidateLineage.map(({ revision }) => revision), [4, 3, 2]);
+      assert.equal(resolveFailedIntegrationCorrectionV1({ store, assessment: reference(assessment), boundary, candidate: secondCorrection }), null);
+      assert.equal(resolveFailedIntegrationCorrectionV1({ store, assessment: reference(failed), boundary: nextBoundary, candidate: secondCorrection }), null);
+      const broken = revision({ id: firstCorrection.recordId, kind: "candidate-revision", revision: 3, markdown: "# Broken base\n",
+        payload: { ...firstCorrection.payload, candidateBaseCommit: "f".repeat(40) }, relationships: firstCorrection.relationships });
+      assert.throws(() => resolveFailedIntegrationCorrectionV1({ store: { ...store,
+        getRevision: (id, selectedRevision) => selectedRevision === 3 && id === broken.recordId ? broken : store.getRevision(id, selectedRevision) },
+        assessment: reference(failed), boundary, candidate: broken }), /application base/);
+      const builderBase = { ...request, role: "builder" as const, subject: { ...request.subject, candidate: {
+        ...request.subject.candidate!, revision: { ...reference(secondCorrection), kind: "candidate-revision" as const }, sealedTree: null, seal: null } } };
+      const builderRequest = { ...builderBase, digest: selfDigest(builderBase) };
+      const builderSubject = { ...subject, core: { ...subject.core, requestDigest: builderRequest.digest } };
+      const correctionOptions = { request: builderRequest, loaded, knowledge: baseKnowledge, subject: builderSubject, workBoundary: boundary,
+        failedIntegration: { correction, parent: { loaded: parentLoaded, knowledge: baseKnowledge } } };
+      const correctionProjection = await compileExecution({ ...correctionOptions, inventory: new ProjectionByteInventoryBuilder() });
+      const inputs = correctionProjection.sources.filter(({ reference }) => reference.startsWith("candidate:integration-correction:"));
+      assert.equal(inputs.length, 4, "only A, source C, complete conflict paths, and the one present P blob are mandatory");
+      assert.equal(inputs.filter(({ authority }) => authority === "runtime-authenticated-fact").length, 3);
+      for (const input of inputs) {
+        assert.equal(input.semantic.class, input.authority === "runtime-authenticated-fact" ? "candidate" : "source");
+      }
+      const bytesFor = (reference: string) => {
+        const item = inputs.find((item) => item.reference === reference)!;
+        const content = item.content;
+        assert.equal(content.mode, "mounted");
+        if (content.mode !== "mounted") assert.fail("correction input is not mounted");
+        const entry = correctionProjection.inventory.find(({ path }) => path === content.path)!;
+        return Buffer.from(entry.bytes, "base64").toString("utf8");
+      };
+      const paths = JSON.parse(bytesFor("candidate:integration-correction:parent-paths"));
+      assert.equal(paths.completeConflictPaths, true);
+      assert.deepEqual(paths.paths.map(({ path, disposition }: { path: string; disposition: string }) => [path, disposition]),
+        [["docs/external-source.md", "entry"], ["docs/missing.md", "absent"]]);
+      assert.deepEqual(paths.entries.map(({ path }: { path: string }) => path), ["docs/external-source.md"]);
+      assert.equal(bytesFor(paths.entries[0].sourceReference), priorSource.toString("utf8"));
+      assert.equal(inputs.find(({ reference }) => reference === paths.entries[0].sourceReference)!.authority, "repository-reality");
+      const admittedIds = new Set(baseKnowledge.currentRecords.map((record) => knowledgeOccurrenceItemId(knowledgeOccurrence(record, "base"))));
+      assert.equal(correctionProjection.mandatory.every(({ id }) => admittedIds.has(id)), true,
+        "attempted P does not become governing Knowledge");
+      const replay = await compileExecution({ ...correctionOptions, inventory: new ProjectionByteInventoryBuilder() });
+      assert.deepEqual(replay.sources, correctionProjection.sources);
+      await assert.rejects(compileExecution({ ...correctionOptions, failedIntegration: { correction,
+        parent: { loaded: { ...parentLoaded, snapshot: loaded.snapshot }, knowledge: baseKnowledge } }, inventory: new ProjectionByteInventoryBuilder() }),
+        /exact complete retained attempted parent/);
+    }
+    assert.equal(repositoryAnchors.length, 2);
+    assert.equal(new Set(repositoryAnchors.map(({ id }) => id)).size, 2, "admitted and parent source anchors keep distinct occurrences");
+    assert.equal(new Set(compiled.sources.map(({ id }) => id)).size, compiled.sources.length);
+    const integrationFacts = compiled.sources.filter(({ reference }) => reference.startsWith("candidate:integration-"));
+    assert.equal(integrationFacts.length, 2);
+    assert.deepEqual(integrationFacts.map(({ semantic }) => semantic.subjectId).sort(), [assessment.recordId, sourceCandidate.recordId].sort());
     const descriptions = compiled.mandatory.filter(({ sourceIdentity }) =>
       sourceIdentity === "description.projection-control");
-    assert.equal(descriptions.length, 1);
-    assert(descriptions[0]!.inclusionReasons.includes(
+    assert.equal(descriptions.length, 3);
+    const admittedDescription = baseKnowledge.currentRecords.find(({ frontMatter }) => frontMatter.id === "description.projection-control")!;
+    const candidateDescription = candidateKnowledge.currentRecords.find(({ frontMatter }) => frontMatter.id === "description.projection-control")!;
+    const admittedItem = descriptions.find(({ id }) => id === knowledgeOccurrenceItemId(knowledgeOccurrence(admittedDescription, "base")))!;
+    const parentItem = descriptions.find(({ id }) => id === knowledgeOccurrenceItemId(knowledgeOccurrence(admittedDescription, "integration-parent")))!;
+    assert(parentItem);
+    assert.notEqual(parentItem.id, admittedItem.id);
+    assert.equal(parentItem.sourceDigest, admittedDescription.sourceDigest);
+    const candidateItem = descriptions.find(({ id }) => id === knowledgeOccurrenceItemId(knowledgeOccurrence(candidateDescription, "candidate")))!;
+    assert(admittedItem.inclusionReasons.includes(
       "description-coverage:docs/external-source.md",
     ));
-    assert(descriptions[0]!.inclusionReasons.includes(
+    assert(!admittedItem.inclusionReasons.includes("candidate-coverage:docs/external-source.md"));
+    assert(candidateItem.inclusionReasons.includes(
       "candidate-coverage:docs/external-source.md",
     ));
+    assert.equal(admittedItem.revision, 1);
+    assert.equal(candidateItem.revision, knowledgeChange === "revised" ? 2 : 1);
+    assert.equal(admittedItem.sourceDigest, admittedDescription.sourceDigest);
+    assert.equal(candidateItem.sourceDigest, candidateDescription.sourceDigest);
+    assert.equal(admittedItem.sourceDigest === candidateItem.sourceDigest, knowledgeChange === "unchanged");
+    assert(compiled.implementation.every(({ path }) => !path.endsWith(".desc.md")));
+    if (knowledgeChange === "revised") {
+      assert(admittedItem.inclusionReasons.includes("required-artifact:artifact-description"));
+      assert(admittedItem.inclusionReasons.includes("work-boundary:selected Description edit"));
+    }
+    for (const item of descriptions) {
+      assert.equal(item.content.mode, "mounted");
+      if (item.content.mode !== "mounted") assert.fail("Expected mounted Knowledge bytes");
+      const path = item.content.path;
+      const bytes = Buffer.from(compiled.inventory.find((entry) => entry.path === path)!.bytes, "base64");
+      assert.equal(sha256Bytes(bytes), item.sourceDigest);
+    }
+
+    const disciplineItem = compiled.mandatory.find(({ sourceIdentity }) => sourceIdentity === TEST_DISCIPLINE_ID);
+    assert(disciplineItem !== undefined);
+    assert.equal(disciplineItem.authority, "discipline-guidance");
+    assert.match(disciplineItem.useLimit ?? "", /Admitted basis occurrence.*Advisory Discipline/u);
+    assert.equal(disciplineItem.content.mode, "mounted");
+    if (disciplineItem.content.mode !== "mounted") assert.fail("Reviewer Discipline was not mounted");
+    const disciplinePath = disciplineItem.content.path;
+    const disciplineBytes = compiled.inventory.find(({ path }) => path === disciplinePath);
+    assert(disciplineBytes !== undefined);
+    assert.equal(Buffer.from(disciplineBytes.bytes, "base64").toString("utf8"), discipline.sourceText);
+    const disciplineOccurrences = complete.projection.manifest.mandatory.filter(
+      ({ sourceIdentity }) => sourceIdentity === TEST_DISCIPLINE_ID,
+    );
+    const expectedOccurrenceIds = ["base", "integration-parent", "candidate"].map((basis) =>
+      knowledgeOccurrenceItemId(knowledgeOccurrence(discipline, basis as "base" | "integration-parent" | "candidate")),
+    );
+    assert.deepEqual(disciplineOccurrences.map(({ id }) => id).sort(), [...expectedOccurrenceIds].sort());
+    for (const item of disciplineOccurrences) {
+      assert.equal(item.authority, "discipline-guidance");
+      assert.equal(item.sourceDigest, discipline.sourceDigest);
+      assert.equal(item.semanticDigest, discipline.semanticDigest);
+    }
+    const admittedDisciplineId = expectedOccurrenceIds[0]!;
+    const manifest = complete.projection.manifest;
+    if (manifest.core.class !== "execution") assert.fail("Reviewer requires an execution core");
+    const refusal = (changed: typeof manifest, expectedCode = "lifecycle.projection.discipline-invalid") => {
+      const changedProjection = { ...complete.projection!, manifest: { ...changed, digest: selfDigest(changed) } };
+      assert.throws(() => verifyCompiledProjection(changedProjection),
+        (error: unknown) => (error as { code?: string }).code === expectedCode);
+    };
+    // Equal Candidate/parent bytes cannot stand in for the admitted occurrence.
+    refusal({ ...manifest, mandatory: manifest.mandatory.filter(({ id }) => id !== admittedDisciplineId) });
+    for (const changed of [
+      { ...selectedDiscipline, revision: selectedDiscipline.revision + 1 },
+      { ...selectedDiscipline, sourceDigest: sha256Bytes("another adopted source") },
+      { ...selectedDiscipline, semanticDigest: sha256Bytes("another adopted meaning") },
+      { ...selectedDiscipline, path: "records/disciplines/another.md" },
+    ]) {
+      refusal({ ...manifest, core: { ...manifest.core, disciplines: { ...manifest.core.disciplines, records: [changed] } } });
+    }
+    refusal({ ...manifest, mandatory: manifest.mandatory.map((item) => item.id === admittedDisciplineId
+      ? { ...item, authority: "product-knowledge" as const } : item) }, "lifecycle.schema.invalid");
+    // Refusal leaves the original exact result usable; no occurrence is retired.
+    verifyCompiledProjection(complete.projection);
 
     const candidateDiff = compiled.sources.find(({ reference: selected }) =>
       selected === "candidate:sealed-diff");
@@ -707,3 +975,4 @@ test("reviewer Projection resolves exact v7 Control values and renders typed fac
     await rm(home, { recursive: true, force: true });
   }
 });
+}

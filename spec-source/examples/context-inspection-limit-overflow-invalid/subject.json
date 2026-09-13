@@ -1,0 +1,31 @@
+{
+  "kind": "code-index",
+  "subject": "candidate",
+  "afterCursor": null,
+  "limit": 201,
+  "selection": {
+    "schema": "lifecycle.code-selection.v1",
+    "targetId": "target.one",
+    "storeId": "store.one",
+    "processId": "delivery.one",
+    "origin": {
+      "sequence": 1,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "subject": "candidate",
+    "boundary": {
+      "kind": "work-boundary",
+      "id": "boundary.one",
+      "revision": 1,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "candidate": {
+      "kind": "candidate-revision",
+      "id": "candidate.one",
+      "revision": 1,
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "seal": null,
+    "digest": "sha256:dfee9ad15bb42aece6c7f7dee836192d37d67a2cad4fde813a4fa1b14c9d73f8"
+  }
+}

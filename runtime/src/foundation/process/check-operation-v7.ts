@@ -1,6 +1,5 @@
 import {
-  operateFoundationCheckCellV1,
-  type FoundationCheckCellRuntimeV1,
+  type FoundationCheckCellOperatorV1,
 } from "../check/execution-cell-v1.js";
 import {
   compileCheckReceiptAppend,
@@ -74,7 +73,7 @@ export type FoundationOperateCheckV7Input = Readonly<{
   binding: FoundationCheckBinding;
   runtimeId: string;
   support: FoundationCheckOperationSupportV7;
-  cellRuntime?: FoundationCheckCellRuntimeV1;
+  cellOperator?: FoundationCheckCellOperatorV1;
 }>;
 
 type CheckOwners = Readonly<{
@@ -487,7 +486,7 @@ async function operateCheckCell(input: Readonly<{
     }
     return input.existing;
   }
-  if (input.operation.machineHome === undefined || input.operation.cellRuntime === undefined) {
+  if (input.operation.machineHome === undefined || input.operation.cellOperator === undefined) {
     fail(
       "execution-backend-unavailable",
       "Executable Check requires the exact installed Docker Execution Backend and machine custody",
@@ -541,16 +540,15 @@ async function operateCheckCell(input: Readonly<{
       specification,
       inputSet,
     }),
-    runtime: input.operation.cellRuntime,
   } as const;
   const operated = input.coordinate.phase === "baseline"
-    ? await operateFoundationCheckCellV1({
+    ? await input.operation.cellOperator.operate({
         ...common,
         phase: "baseline",
         candidate: null,
         productBase: productBase!,
       })
-    : await operateFoundationCheckCellV1({
+    : await input.operation.cellOperator.operate({
         ...common,
         phase: "final",
         candidate: candidate!,
@@ -564,7 +562,7 @@ async function operateCheckCell(input: Readonly<{
     bindingId: input.operation.bindingId,
     observation: operated.observation,
     recordedAt: controlTimestamp(
-      input.operation.cellRuntime.clock.now(),
+      input.operation.cellOperator.clock.now(),
       "Check Receipt retention time",
     ),
     runtimeId: input.operation.runtimeId,
@@ -642,7 +640,7 @@ function baselinePostconditionObservation(selection: ExactSelection): CheckRecei
         requestedConditions: selection.requestedConditions,
       })),
       runtimeEnforced: Object.freeze([]),
-      founderManaged: Object.freeze([...selection.requestedConditions]),
+      directorManaged: Object.freeze([...selection.requestedConditions]),
     }),
     disposition: "not-run",
     resultFacts: Object.freeze([Object.freeze({

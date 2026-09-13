@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   chmod,
@@ -5,6 +6,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   lstat,
   rm,
   writeFile,
@@ -19,6 +21,8 @@ import {
 } from "../../src/foundation/candidate/carrier-binding.js";
 import {
   FOUNDATION_CANDIDATE_REVISION_CARRIER_STATE_OBSERVER_V1,
+  candidateOutputRejectionV1,
+  parseCandidateOutputRejectionV1,
   observeCandidateRevisionCarrierState,
   type CandidateRevisionCarrierAdmittedContext,
   withCandidateRevisionCarrierStateRepository,
@@ -63,7 +67,7 @@ async function write(root: string, path: string, contents: string): Promise<void
 
 function description(): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.carrier-state-observer",
     title: "Carrier state observer fixture",
@@ -71,7 +75,7 @@ function description(): string {
     revision: 1,
     supersedes: null,
     summary: "Own the complete Carrier-state observation fixture source tree.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -101,7 +105,7 @@ type Fixture = Readonly<{
 }>;
 
 async function fixture(): Promise<Fixture> {
-  const root = await mkdtemp(join(tmpdir(), "lifecycle-carrier-state-observer-"));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "lifecycle-carrier-state-observer-")));
   const target = join(root, "target");
   const authorityHome = join(root, "authority");
   const machineHome = join(root, "machine");
@@ -118,9 +122,9 @@ async function fixture(): Promise<Fixture> {
   await git(target, ["commit", "-m", "Initialize target"]);
   await initializeRepository(target, {
     targetId: "carrier-state-observer-target",
-    founderPrincipal: "founder",
+    directorPrincipal: "director",
     home: authorityHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: PUBLICATION_DIGEST,
     implementationRoots: ["src"],
     stage: true,
@@ -166,13 +170,14 @@ function retainedBoundary(value: Fixture): Readonly<{
   store: ControlRecordStore;
 }> {
   const boundary = Object.freeze({
+    processId: "carrier-state-observer-delivery",
     recordId: "boundary-carrier-state-observer",
     recordKind: "work-boundary",
     revision: 1,
     digest: sha256Bytes("boundary-carrier-state-observer"),
     payload: Object.freeze({
       schema: FOUNDATION_WORK_BOUNDARY_PAYLOAD_SCHEMA,
-      profileId: "lifecycle.work-boundary.foundation-v1",
+      profileId: "lifecycle.work-boundary.foundation-v3",
       targetId: value.loaded.contract.targetId,
       basis: Object.freeze({
         specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
@@ -192,7 +197,11 @@ function retainedBoundary(value: Fixture): Readonly<{
     }),
   }) as unknown as ControlRecordRevision;
   const store = Object.freeze({
-    identity: Object.freeze({ targetId: value.loaded.contract.targetId }),
+    identity: Object.freeze({
+      targetId: value.loaded.contract.targetId,
+      storeId: "carrier-state-observer-store",
+      processId: "carrier-state-observer-delivery",
+    }),
     getRevision: (recordId: string, revision: number) =>
       recordId === boundary.recordId && revision === boundary.revision
         ? boundary
@@ -442,7 +451,7 @@ test("Carrier state observer refuses substituted admitted context", async (conte
     }),
     (error: unknown) => error instanceof FoundationError &&
       error.code === "lifecycle.candidate.carrier-admitted-context-invalid" &&
-      error.message.includes("exact retained Work Boundary"),
+      error.message.includes("exact retained basis"),
   );
 
   await assert.rejects(
@@ -611,6 +620,81 @@ test("Carrier state observer rejects a Carrier that changes admitted Atlas bytes
   );
 });
 
+test("Candidate rejection witnesses bind complete malformed output and permit exact corrected bytes", async (context) => {
+  const value = await fixture();
+  context.after(async () => await rm(value.root, { recursive: true, force: true }));
+  await write(value.candidateSourceRoot, "src/current.ts", "export const current = 2;\n");
+  await write(value.candidateSourceRoot, "src/_source.desc.md", "---\n{ unfinished Description\n---\nUseful work is still provisional.\n");
+  await git(value.candidateSourceRoot, ["add", "--", "src"]);
+  const rejectedTree = (await git(value.candidateSourceRoot, ["write-tree"])).stdout.trim();
+  const rejectedCarrier = await publishCandidateRevisionCarrierFromGitTree({
+    machineHome: value.machineHome, repository: value.candidateSourceRoot, rootTree: rejectedTree,
+  });
+  await assert.rejects(observeCandidateRevisionCarrierState({
+    machineHome: value.machineHome, manifestBytes: rejectedCarrier.manifestBytes,
+    admitted: value.admitted, predecessor: null,
+  }), (error: unknown) => {
+    const witness = candidateOutputRejectionV1(error);
+    assert(witness !== null, "only the actual Candidate owner issues a complete rejection witness");
+    assert.equal(witness.manifestFileDigest, sha256Bytes(rejectedCarrier.manifestBytes));
+    assert.equal(witness.candidateTree, rejectedTree);
+    assert.equal(witness.applicationBaseCommit, value.admitted.epoch.commit);
+    assert.deepEqual(parseCandidateOutputRejectionV1(JSON.parse(JSON.stringify(witness))), witness);
+    assert.throws(() => parseCandidateOutputRejectionV1({ ...witness, candidateTree: value.admitted.epoch.tree }));
+    return true;
+  });
+  assert.equal(candidateOutputRejectionV1(new FoundationError("lifecycle.candidate.carrier-state-invalid", "copied diagnostic")), null);
+  await assert.rejects(observeCandidateRevisionCarrierState({
+    machineHome: value.machineHome, manifestBytes: rejectedCarrier.manifestBytes,
+    admitted: { ...value.admitted, knowledgeSetDigest: sha256Bytes("wrong governing basis") }, predecessor: null,
+  }), (error: unknown) => {
+    assert.equal(candidateOutputRejectionV1(error), null, "invalid governing input is not failed Candidate work");
+    return true;
+  });
+  await write(value.candidateSourceRoot, "src/_source.desc.md", description());
+  await git(value.candidateSourceRoot, ["add", "--", "src"]);
+  const correctedTree = (await git(value.candidateSourceRoot, ["write-tree"])).stdout.trim();
+  const correctedCarrier = await publishCandidateRevisionCarrierFromGitTree({
+    machineHome: value.machineHome, repository: value.candidateSourceRoot, rootTree: correctedTree,
+  });
+  const corrected = await observeCandidateRevisionCarrierState({
+    machineHome: value.machineHome, manifestBytes: correctedCarrier.manifestBytes,
+    admitted: value.admitted, predecessor: null,
+  });
+  assert.equal(corrected.state.tree, correctedTree);
+  assert.notEqual(corrected.state.tree, rejectedTree);
+  assert(corrected.state.changedSubjects.some(({ path }) => path === "src/current.ts"));
+});
+
+test("Carrier state observer rejects changes throughout the adopted Discipline root", async (context) => {
+  for (const mutation of ["registry-content", "registry-delete", "registry-rename", "guidance-create"] as const) {
+    await context.test(mutation, async (child) => {
+      const value = await fixture();
+      child.after(async () => await rm(value.root, { recursive: true, force: true }));
+      const disciplinePath = "records/disciplines/registry.json";
+      const registryPath = join(value.candidateSourceRoot, disciplinePath);
+      if (mutation === "registry-content") {
+        await writeFile(registryPath, `${await readFile(registryPath, "utf8")}\n`, "utf8");
+      } else if (mutation === "registry-delete") {
+        await rm(registryPath);
+      } else if (mutation === "registry-rename") {
+        await git(value.candidateSourceRoot, ["mv", "--", disciplinePath, "records/disciplines/renamed.json"]);
+      } else {
+        await writeFile(join(value.candidateSourceRoot, "records/disciplines/new-guidance.md"), "# Unadopted guidance\n", "utf8");
+      }
+      await git(value.candidateSourceRoot, ["add", "-A", "--", "records/disciplines"]);
+      const changedTree = (await git(value.candidateSourceRoot, ["write-tree"])).stdout.trim();
+      const carrier = await publishCandidateRevisionCarrierFromGitTree({
+        machineHome: value.machineHome, repository: value.candidateSourceRoot, rootTree: changedTree,
+      });
+      await assert.rejects(observeCandidateRevisionCarrierState({
+        machineHome: value.machineHome, manifestBytes: carrier.manifestBytes, admitted: value.admitted, predecessor: null,
+      }), (error: unknown) => error instanceof FoundationError &&
+        error.code === "lifecycle.candidate.carrier-state-invalid" && error.message.includes("Discipline"));
+    });
+  }
+});
+
 test("Carrier state observer rejects every Repository Contract substitution", async (context) => {
   const variants = [
     {
@@ -711,31 +795,22 @@ test("Carrier context and replay failures do not disclose private locators", asy
   context.after(async () => await rm(value.root, { recursive: true, force: true }));
   const carrier = await publishIndexedCandidateTree(value);
   const boundary = retainedBoundary(value);
-  const verificationRoot = join(
-    value.machineHome,
-    "candidate-revision-carriers",
-    "v1",
-    "verification",
+  const unavailableHome = join(value.machineHome, "unavailable-basis-custody");
+  await assert.rejects(
+    candidateRevisionCarrierVerifierFromWorkBoundary({
+      machineHome: unavailableHome,
+      repository: value.target,
+      store: boundary.store,
+      boundary: boundary.boundary,
+      predecessor: null,
+    }),
+    (error: unknown) => assertLocatorFreeFailure(
+      error,
+      "lifecycle.candidate.carrier-admitted-context-incomplete",
+      [value.root, value.target, value.machineHome, unavailableHome],
+      "filesystem",
+    ),
   );
-  await chmod(verificationRoot, 0o755);
-  try {
-    await assert.rejects(
-      candidateRevisionCarrierVerifierFromWorkBoundary({
-        machineHome: value.machineHome,
-        repository: value.target,
-        store: boundary.store,
-        boundary: boundary.boundary,
-        predecessor: null,
-      }),
-      (error: unknown) => assertLocatorFreeFailure(
-        error,
-        "lifecycle.candidate.carrier-admitted-context-incomplete",
-        [value.root, value.target, value.machineHome, verificationRoot],
-      ),
-    );
-  } finally {
-    await chmod(verificationRoot, 0o700);
-  }
 
   const privateRepositoryLocator = join(
     value.root,

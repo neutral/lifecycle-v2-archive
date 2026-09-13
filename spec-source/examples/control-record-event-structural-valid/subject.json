@@ -1,12 +1,15 @@
 {
-  "schema": "lifecycle.control-record-event.v2",
+  "schema": "lifecycle.control-record-event.v6",
   "storeId": "store.delivery.demo",
   "processId": "delivery.demo",
   "sequence": 1,
   "eventId": "event.delivery-created",
   "eventKind": "delivery-created",
   "occurredAt": "2026-08-29T12:00:00Z",
-  "actor": { "kind": "runtime", "id": "runtime.foundation" },
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
   "subject": null,
   "payload": {},
   "predecessorDigest": null,

@@ -1,0 +1,23 @@
+{
+  "schema": "lifecycle.knowledge-record.v2",
+  "kind": "discipline",
+  "id": "discipline.go.context-cancellation",
+  "title": "Context and cancellation",
+  "status": "current",
+  "revision": 1,
+  "supersedes": null,
+  "summary": "An invalid Discipline attempts to create an obligation.",
+  "owners": ["neutral-lifecycle-disciplines"],
+  "sources": [],
+  "relationships": [],
+  "conflicts": [],
+  "tags": ["go"],
+  "spec": {
+    "practice": "Make cancellation ownership explicit.",
+    "appliesWhen": ["Work starts goroutines."],
+    "doesNotApplyWhen": [],
+    "guidance": ["Pass context explicitly."],
+    "verification": [],
+    "obligations": ["Every call must pass a context."]
+  }
+}

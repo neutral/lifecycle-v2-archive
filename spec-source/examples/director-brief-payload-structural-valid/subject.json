@@ -1,0 +1,15 @@
+{
+  "schema": "lifecycle.director-brief-payload.v2",
+  "inputProfile": "delivery.prepare",
+  "templateProfileId": "director-brief.prepare-v1",
+  "semanticMarkdownDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "submission": {
+    "rawDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "rawByteLength": 128,
+    "normalizedByteLength": 128
+  },
+  "scope": {
+    "kind": "activity",
+    "activityId": "activity.fixture"
+  }
+}

@@ -1,3 +1,4 @@
+import { deliveryGitContextFixture } from "../helpers/delivery-git-context-fixture.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compileCandidateRevisionCarrierManifest } from "../../src/foundation/candidate/carrier-manifest.js";
@@ -29,7 +30,7 @@ const RUNNER_DIGEST = digest("runner-contract");
 const AGENT_KINDS = Object.freeze([
   "projection",
   "role-subject",
-  "founder-direction",
+  "director-direction",
   "role-brief",
   "semantic-template",
   "capability-profile",
@@ -170,7 +171,7 @@ function candidateSubjects(state: ResolverState): Readonly<{
   );
   state.subjectProofs.set(
     revision.digest,
-    subjectProof(revision, bytes("candidate-revision"), Object.freeze({
+    subjectProof(revision, Buffer.from(`${canonicalJson({ processId: "test-delivery" })}\n`), Object.freeze({
       carrierManifestFileDigest: manifest.digest,
       rootTree,
     })),
@@ -254,7 +255,7 @@ function productBaseSubjects(
 }
 
 function fixture(
-  ownerKind: "reconnaissance" | "builder" | "reviewer" | "check",
+  ownerKind: "reconnaissance" | "resolution" | "builder" | "reviewer" | "check",
   checkPhase: "baseline" | "final" = "final",
 ): Fixture {
   const state: ResolverState = {
@@ -308,7 +309,7 @@ function fixture(
       kind: "agent-attempt",
       activityId: `activity-${ownerKind}`,
       attemptId: `attempt-${ownerKind}`,
-      role: ownerKind,
+      role: ownerKind === "resolution" ? "reconnaissance" : ownerKind,
       ownerSubjectDigest: role.digest,
     });
   }
@@ -326,6 +327,20 @@ function fixture(
     entries.push(candidate.artifact);
     manifestDigest = candidate.manifestDigest;
     revisionDigest = candidate.revisionDigest;
+    if (ownerKind !== "check") {
+      const revision = candidate.subjects.find(({ kind }) => kind === "candidate-revision")!;
+      const context = deliveryGitContextFixture({ candidate: { recordId: revision.id, revision: revision.revision!, digest: revision.digest, processId: "test-delivery" }, rootTree: "a".repeat(40) });
+      const subject = logicalSubject("delivery-git-context", context.subjectDigest);
+      subjects.push(subject);
+      state.subjectProofs.set(subject.digest, subjectProof(subject, context.manifestBytes));
+      for (const [path, mediaType, content] of [
+        ["candidate/git-context.json", "application/json", context.manifestBytes],
+        ["candidate/git-context.pack", "application/octet-stream", context.artifactBytes],
+      ] as const) {
+        entries.push({ ...entryPlan(path, "operation-input", subject), mediaType });
+        state.entryBytes.set(path, content);
+      }
+    }
   }
 
   // Reverse the subject input to prove compilation owns canonical order.
@@ -508,7 +523,7 @@ test("resolution refuses missing sources and independently detected subject or e
   );
 });
 
-test("reconnaissance forbids Candidate subjects and Carrier artifacts", async () => {
+test("reconnaissance refuses an incomplete Candidate, Carrier and Git context selection", async () => {
   const selected = fixture("reconnaissance");
   const candidate = candidateSubjects(selected.state);
   const withSubjects = Object.freeze({
@@ -518,12 +533,29 @@ test("reconnaissance forbids Candidate subjects and Carrier artifacts", async ()
   });
   await assert.rejects(
     compileFoundationExecutionInputSet(withSubjects),
-    inputSetRefusal("candidate-policy"),
+    inputSetRefusal("subject-policy"),
   );
 });
 
-test("builder and reviewer bind the exact Candidate Revision, manifest, and Carrier artifact", async () => {
-  for (const role of ["builder", "reviewer"] as const) {
+test("resolution reconnaissance requires its complete selected Candidate input triple", async () => {
+  const selected = fixture("resolution");
+  const compiled = await compileFoundationExecutionInputSet(selected.compilation);
+  assert.equal(compiled.owner.kind, "agent-attempt");
+  assert.equal(compiled.owner.kind === "agent-attempt" && compiled.owner.role, "reconnaissance");
+  for (const omitted of ["candidate-revision", "candidate-revision-carrier-manifest", "delivery-git-context"]) {
+    await assert.rejects(compileFoundationExecutionInputSet({
+      ...selected.compilation,
+      subjects: selected.compilation.subjects.filter(({ kind }) => kind !== omitted),
+    }), inputSetRefusal("subject-policy"));
+  }
+  await assert.rejects(compileFoundationExecutionInputSet({
+    ...selected.compilation,
+    entries: selected.compilation.entries.filter(({ purpose }) => purpose !== "candidate-carrier-artifact"),
+  }), inputSetRefusal("candidate-policy"));
+});
+
+test("builder, reviewer and resolution bind the exact Candidate Revision, manifest, and Carrier artifact", async () => {
+  for (const role of ["builder", "reviewer", "resolution"] as const) {
     const selected = fixture(role);
     const compiled = await compileFoundationExecutionInputSet(selected.compilation);
     assert.equal(
@@ -736,4 +768,41 @@ test("owner, runner, and closed subject-kind bindings reject cross-owner substit
     })),
     inputSetRefusal("subject-policy"),
   );
+});
+
+test("Delivery Git context binds Candidate identity, tree, history bytes, and stable Delivery branch", async (t) => {
+  for (const role of ["builder", "resolution"] as const) {
+    for (const mutation of ["candidate", "tree", "branch", "history", "missing"] as const) {
+      await t.test(`${role}: ${mutation}`, async () => {
+        const selected = fixture(role);
+        await compileFoundationExecutionInputSet(selected.compilation);
+        const contextSubject = selected.compilation.subjects.find(({ kind }) => kind === "delivery-git-context")!;
+        const proof = selected.state.subjectProofs.get(contextSubject.digest)!;
+        if (mutation === "missing") {
+          await assert.rejects(compileFoundationExecutionInputSet({ ...selected.compilation,
+            subjects: selected.compilation.subjects.filter(({ kind }) => kind !== "delivery-git-context"),
+          }), inputSetRefusal("subject-policy"));
+          return;
+        }
+        if (mutation === "history") {
+          selected.state.entryBytes.set("candidate/git-context.pack", bytes("another history"));
+          await assert.rejects(compileFoundationExecutionInputSet(selected.compilation), inputSetRefusal("git-context-binding"));
+          return;
+        }
+        const context = JSON.parse(Buffer.from(proof.bytes).toString("utf8")) as Record<string, unknown>;
+        if (mutation === "candidate") (context.candidate as Record<string, unknown>).digest = digest("different Candidate");
+        if (mutation === "tree") context.rootTree = "c".repeat(40);
+        if (mutation === "branch") context.branch = "refs/heads/another-delivery";
+        context.digest = selfDigest(context);
+        const newBytes = Buffer.from(`${canonicalJson(context)}\n`);
+        const nextSubject = { ...contextSubject, digest: sha256Bytes(newBytes) };
+        selected.state.subjectProofs.set(nextSubject.digest, subjectProof(nextSubject, newBytes));
+        selected.state.entryBytes.set("candidate/git-context.json", newBytes);
+        await assert.rejects(compileFoundationExecutionInputSet({ ...selected.compilation,
+          subjects: selected.compilation.subjects.map((subject) => subject === contextSubject ? nextSubject : subject),
+          entries: selected.compilation.entries.map((entry) => entry.sourceSubjectDigest === contextSubject.digest ? { ...entry, sourceSubjectDigest: nextSubject.digest } : entry),
+        }), inputSetRefusal("git-context-binding"));
+      });
+    }
+  }
 });

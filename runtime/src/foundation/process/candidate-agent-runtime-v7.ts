@@ -1,11 +1,11 @@
 import type { ControlRecordRevision } from "../control/types.js";
 import type { ControlRecordStore } from "../control/store.js";
 import { FoundationError } from "../error.js";
-import type { FoundationInstalledRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
-import { sameProviderInputV4 } from "../attempt/provider-input-v4.js";
-import { canonicalJson } from "../validation/canonical.js";
+import { foundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
+import type { FoundationProcessRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
 import {
   operateFoundationAgentActivityV7,
+  settleFoundationUnallocatedBuilderV7,
   recoverFoundationAgentActivityV7,
   type FoundationAgentOperationOpeningV7,
   type FoundationAgentOperationPreIntentContextV7,
@@ -21,6 +21,10 @@ import {
 import {
   compileFoundationFreshAgentOperationContextV7,
   compileFoundationRetainedAgentOperationContextV7,
+  foundationAgentPreIntentMatchesContextV7,
+  sameFoundationAgentOperationContextV7,
+  type FoundationBuilderAgentOperationContextV7,
+  type FoundationBoundaryResolutionAgentOperationContextV7,
   type FoundationFreshAgentOperationContextV7,
   type FoundationFreshAgentOperationContextV7Options,
   type FoundationRetainedAgentOperationContextV7,
@@ -38,7 +42,7 @@ export type FoundationCandidateAgentRuntimeOperationV7 =
 export type FoundationFreshCandidateAgentRuntimeV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   operation: FoundationCandidateAgentRuntimeOperationV7;
   runtimeId: string;
@@ -49,7 +53,7 @@ export type FoundationFreshCandidateAgentRuntimeV7Input = Readonly<{
 export type FoundationRecoverCandidateAgentRuntimeV7Input = Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   operation: FoundationCandidateAgentRuntimeOperationV7;
 }>;
@@ -73,8 +77,8 @@ export type FoundationCandidateAgentRuntimeV7Options = Readonly<{
 }>;
 
 type RuntimeContext = Readonly<{
-  context: FoundationFreshAgentOperationContextV7;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  context: FoundationBuilderAgentOperationContextV7 | FoundationBoundaryResolutionAgentOperationContextV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   opening: FoundationAgentOperationOpeningV7;
   runtimeId: string;
   agentId: string;
@@ -118,12 +122,9 @@ function sameRevision(left: ControlRecordRevision, right: ControlRecordRevision)
 function assertOperationContext(
   context: FoundationFreshAgentOperationContextV7,
   operation: FoundationCandidateAgentRuntimeOperationV7,
-): void {
+): asserts context is FoundationBuilderAgentOperationContextV7 | FoundationBoundaryResolutionAgentOperationContextV7 {
   if (
-    context.operation !== operation || context.boundary.recordKind !== "work-boundary" ||
-    context.candidate.recordKind !== "candidate-revision" || context.attemptSeal !== null ||
-    (operation === "delivery.continue") !== (context.role === "builder") ||
-    (operation !== "delivery.continue") !== (context.role === "reconnaissance")
+    context.operation !== operation
   ) fail("context", "Agent context does not reproduce the selected Candidate operation");
 }
 
@@ -131,34 +132,16 @@ function assertPreIntentContext(
   expected: FoundationFreshAgentOperationContextV7,
   actual: FoundationAgentOperationPreIntentContextV7,
 ): void {
-  if (
-    actual.activityId !== expected.activityId || actual.operation !== expected.operation ||
-    actual.role !== expected.role || !sameRevision(actual.boundary, expected.boundary) ||
-    !sameRevision(actual.candidate, expected.candidate) || actual.seal !== null ||
-    actual.projection.manifest.digest !== expected.projection.manifest.digest
-  ) fail("pre-intent-substitution", "Provider pre-intent subjects differ from the compiled operation context");
+  if (!foundationAgentPreIntentMatchesContextV7(expected, actual)) {
+    fail("pre-intent-substitution", "Provider pre-intent subjects differ from the compiled operation context");
+  }
 }
 
 function assertRecompiledContext(
   expected: FoundationFreshAgentOperationContextV7,
   actual: FoundationRetainedAgentOperationContextV7,
 ): void {
-  if (
-    actual.activityId !== expected.activityId || actual.operation !== expected.operation ||
-    actual.role !== expected.role || !sameRevision(actual.boundary, expected.boundary) ||
-    !sameRevision(actual.candidate, expected.candidate) ||
-    actual.attemptSeal !== expected.attemptSeal && (
-      actual.attemptSeal === null || expected.attemptSeal === null ||
-      !sameRevision(actual.attemptSeal, expected.attemptSeal)
-    ) ||
-    actual.projection.manifest.digest !== expected.projection.manifest.digest ||
-    canonicalJson(actual.roleSubject) !== canonicalJson(expected.roleSubject) ||
-    canonicalJson(actual.capabilityProfile) !== canonicalJson(expected.capabilityProfile) ||
-    !sameProviderInputV4(actual.providerInput, expected.providerInput) ||
-    canonicalJson(actual.investment) !== canonicalJson(expected.investment) ||
-    (actual.evidenceSet?.digest ?? null) !== (expected.evidenceSet?.digest ?? null) ||
-    (actual.propositionSet?.digest ?? null) !== (expected.propositionSet?.digest ?? null)
-  ) {
+  if (!sameFoundationAgentOperationContextV7(expected, actual)) {
     fail(
       "pre-intent-substitution",
       "Recompiled Agent subjects differ from the immutable Activity plan before provider intent",
@@ -167,7 +150,7 @@ function assertRecompiledContext(
 }
 
 function boundaryFinalizationOptions(
-  configuration: FoundationInstalledRuntimeConfigurationV7,
+  configuration: FoundationProcessRuntimeConfigurationV7,
   options: FoundationCandidateAgentRuntimeV7Options,
 ): FoundationWorkBoundaryFinalizationV7Options {
   return Object.freeze({
@@ -178,15 +161,15 @@ function boundaryFinalizationOptions(
       ? {} : { retainBoundary: options.boundaryFinalization.retainBoundary }),
     ...(options.boundaryFinalization?.checkOperation === undefined
       ? {} : { checkOperation: options.boundaryFinalization.checkOperation }),
-    ...(options.boundaryFinalization?.checkCellRuntime === undefined
-      ? {} : { checkCellRuntime: options.boundaryFinalization.checkCellRuntime }),
+    ...(options.boundaryFinalization?.checkCellOperator === undefined
+      ? {} : { checkCellOperator: options.boundaryFinalization.checkCellOperator }),
   });
 }
 
 async function retainedResolutionBasis(input: Readonly<{
   target: string;
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   context: FoundationFreshAgentOperationContextV7;
   owners: CandidateRuntimeOwners;
   options: FoundationCandidateAgentRuntimeV7Options;
@@ -218,7 +201,6 @@ async function agentRequest(input: Readonly<{
   options: FoundationCandidateAgentRuntimeV7Options;
 }>): Promise<FoundationAgentOperationV7Input> {
   const { context } = input.runtime;
-  assertOperationContext(context, context.operation as FoundationCandidateAgentRuntimeOperationV7);
   const revalidateBeforeIntent = async (actual: FoundationAgentOperationPreIntentContextV7): Promise<void> => {
     assertPreIntentContext(context, actual);
     const reopened = await input.owners.compileRetainedContext({
@@ -271,7 +253,7 @@ async function agentRequest(input: Readonly<{
     capabilityProfile: context.capabilityProfile,
     investment: context.investment,
     evidenceSetDigest: context.evidenceSet?.digest ?? null,
-    propositionSet: context.propositionSet?.subject ?? null,
+    propositionSet: null,
     revalidateBeforeIntent,
     finalizeRoleControl,
   });
@@ -283,21 +265,32 @@ export async function operateFoundationCandidateAgentRuntimeV7(
   options: FoundationCandidateAgentRuntimeV7Options = {},
 ): Promise<FoundationAgentOperationV7Result> {
   const selected = owners(options);
-  const context = await selected.compileFreshContext({
+  let context: FoundationFreshAgentOperationContextV7;
+  try {
+  context = await selected.compileFreshContext({
     target: input.target,
     store: input.store,
     configuration: input.configuration,
     activityId: input.activityId,
     operation: input.operation,
     semanticMarkdown: input.opening.semanticMarkdown,
+    ...(input.opening.reservation === undefined ? {} : { reservation: input.opening.reservation }),
   }, options.context);
+  } catch (error) {
+    const refusal = foundationMandatoryProjectionRefusalV1(error);
+    if (input.operation !== "delivery.continue" || refusal === null) throw error;
+    settleFoundationUnallocatedBuilderV7({ store: input.store, activityId: input.activityId, runtimeId: input.runtimeId,
+      opening: input.opening, refusal, now: options.agentOperation?.now ?? (() => new Date().toISOString()) });
+  }
   assertOperationContext(context, input.operation);
   const request = await agentRequest({
     target: input.target,
     store: input.store,
     runtime: Object.freeze({
       context,
-      configuration: input.configuration,
+      configuration: input.opening.reservation === undefined ? input.configuration : Object.freeze({
+        ...input.configuration, model: context.investment.model, reasoning: context.investment.reasoning,
+      }),
       opening: input.opening,
       runtimeId: input.runtimeId,
       agentId: input.agentId,
@@ -333,7 +326,7 @@ export async function recoverFoundationCandidateAgentRuntimeV7(
         submittedAt: retained.opening.submittedAt,
         startedAt: retained.opening.startedAt,
         attemptCreatedAt: retained.opening.attemptCreatedAt,
-        founderId: retained.opening.founderId,
+        directorId: retained.opening.directorId,
       }),
       runtimeId: retained.opening.runtimeId,
       agentId: retained.opening.agentId,

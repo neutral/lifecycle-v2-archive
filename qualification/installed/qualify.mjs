@@ -85,11 +85,11 @@ function syntheticManifest() {
   });
   return {
     coordinates: {
-      interfaceProtocol: "lifecycle.interface.foundation.v10",
-      providerAdapter: "lifecycle.provider-adapter.v6",
-      qualificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-      repositoryContract: "lifecycle.repository.v15",
-      runtimeProtocol: "lifecycle.runtime.foundation.v10",
+      interfaceProtocol: "lifecycle.interface.foundation.v17",
+      providerAdapter: "lifecycle.provider-adapter.v7",
+      qualificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+      repositoryContract: "lifecycle.repository.v22",
+      runtimeProtocol: "lifecycle.runtime.foundation.v17",
     },
     distribution: {
       nodeMinimum: "24.14.0",
@@ -101,7 +101,7 @@ function syntheticManifest() {
     images: {
       execution: {
         agentAdapterImplementationDigest: SYNTHETIC.runner,
-        codexVersion: "0.151.0",
+        codexVersion: "0.153.4",
         imageId: "lifecycle-execution-synthetic-qualification",
         indexDigest: SYNTHETIC.executionIndex,
         nonRootUser: "65532:65532",
@@ -343,12 +343,15 @@ if (operation[0] === "version") {
 } else if (operation[0] === "ps") {
   process.stdout.write("");
 } else if (operation[0] === "run") {
-  const cidfile = operation[operation.indexOf("--cidfile") + 1];
-  writeFileSync(cidfile, "c".repeat(64) + "\\n", { mode: 0o600 });
+  if (operation.includes("--cidfile")) {
+    const cidfile = operation[operation.indexOf("--cidfile") + 1];
+    writeFileSync(cidfile, "c".repeat(64) + "\\n", { mode: 0o600 });
+  }
   const imageIndex = operation.indexOf(runtimeReference);
   if (imageIndex === -1) process.exit(94);
-  const command = operation[imageIndex + 1];
-  const forwarded = operation.slice(imageIndex + 2);
+  const localDraft = operation[operation.indexOf("--entrypoint") + 1] === "/opt/lifecycle/bin/lifecycle";
+  const command = localDraft ? "lifecycle" : operation[imageIndex + 1];
+  const forwarded = operation.slice(imageIndex + (localDraft ? 1 : 2));
   if (forwarded[0] === "signal-test") {
     writeFileSync(signalReadyPath, "ready\\n", { mode: 0o600 });
     for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"]) {
@@ -374,8 +377,11 @@ if (operation[0] === "version") {
 function assertPackageInventory(paths) {
   assert.deepEqual(paths, [
     "package/README.md",
-    "package/bin/lifecycle-tui.mjs",
     "package/bin/lifecycle.mjs",
+    "package/dist/src/invocation-support.d.ts",
+    "package/dist/src/invocation-support.js",
+    "package/dist/src/launcher-context.d.ts",
+    "package/dist/src/launcher-context.js",
     "package/dist/src/launcher.d.ts",
     "package/dist/src/launcher.js",
     "package/dist/src/main.d.ts",
@@ -400,7 +406,6 @@ async function assertInstalledContent(packageRoot, manifest) {
   assert.equal(metadata.version, QUALIFICATION_PACKAGE_VERSION);
   assert.deepEqual(metadata.bin, {
     lifecycle: "bin/lifecycle.mjs",
-    "lifecycle-tui": "bin/lifecycle-tui.mjs",
   });
   assert.equal("scripts" in metadata, false, "published metadata must have no npm lifecycle scripts");
   assert.equal("dependencies" in metadata, false, "launcher package must have no installed dependencies");
@@ -428,7 +433,10 @@ async function assertInstalledContent(packageRoot, manifest) {
   const files = [
     "README.md",
     "bin/lifecycle.mjs",
-    "bin/lifecycle-tui.mjs",
+    "dist/src/invocation-support.d.ts",
+    "dist/src/invocation-support.js",
+    "dist/src/launcher-context.d.ts",
+    "dist/src/launcher-context.js",
     "dist/src/launcher.d.ts",
     "dist/src/launcher.js",
     "dist/src/main.d.ts",
@@ -616,10 +624,8 @@ async function main() {
     );
 
     const lifecycle = join(install, "bin", "lifecycle");
-    const tui = join(install, "bin", "lifecycle-tui");
     const beforeSetup = await readLog(dockerLog);
     assert.equal(beforeSetup.length, 0, "packing and installation must not execute Docker or npm lifecycle effects");
-
     const setup = succeeded(await run(lifecycle, ["setup", "--model", "synthetic-model", "--reasoning", "high"], {
       cwd: root,
       env: environment,
@@ -664,6 +670,19 @@ async function main() {
     assert.match(mismatchedDoctor.stderr, /Runtime Image labels differ from the Distribution Manifest/u);
     await rm(imageMismatch);
 
+    const beforeTargetRefusal = (await readLog(dockerLog)).length;
+    const missingGit = await run(lifecycle, ["initialize", target, "--input", input,
+      "--authority-secret-file", authority], { cwd: root, env: environment });
+    assert.equal(missingGit.code, 2, "installed launcher accepted a target without independent Git metadata");
+    assert.match(missingGit.stderr, /requires independent local Git metadata at \.git/u);
+    assert.equal((await readLog(dockerLog)).slice(beforeTargetRefusal)
+      .some((entry) => ["run", "create"].includes(dockerOperation(entry)[0])), false,
+    "invalid target allocated a Runtime container");
+    succeeded(await run("/usr/bin/git", ["init", "--template=", "--object-format=sha1", "-b", "main"], {
+      cwd: target,
+      env: cleanEnvironment({ HOME: home, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" }),
+    }), "independent installed-qualification Git target");
+
     const initialize = succeeded(await run(lifecycle, [
       "initialize",
       target,
@@ -681,11 +700,26 @@ async function main() {
     for (const [label, executable, arguments_, expected] of [
       ["Runtime help", lifecycle, ["--help"], "synthetic-runtime:lifecycle:[\"--help\"]\n"],
       ["Runtime version", lifecycle, ["version"], "synthetic-runtime:lifecycle:[\"version\"]\n"],
-      ["TUI forwarding", tui, ["--target", target], `synthetic-runtime:lifecycle-tui:[\"--target\",\"${target}\"]\n`],
     ]) {
       const result = succeeded(await run(executable, arguments_, { cwd: root, env: environment }), label);
       assert.equal(result.stdout, expected);
     }
+
+    const draftStart = (await readLog(dockerLog)).length;
+    const draftMachine = join(root, "unused-draft-machine");
+    const draft = succeeded(await run(lifecycle, ["draft", "forms", "knowledge", "--format", "json"], {
+      cwd: root,
+      env: { ...environment, LIFECYCLE_MACHINE_HOME: draftMachine },
+    }), "installed local draft transport");
+    assert.equal(draft.stdout, 'synthetic-runtime:lifecycle:["draft","forms","knowledge","--format","json"]\n');
+    const draftOperations = (await readLog(dockerLog)).slice(draftStart).map(dockerOperation);
+    assert.deepEqual(draftOperations.map((args) => args[0]), ["version", "info", "image", "run"]);
+    const draftRun = draftOperations.at(-1);
+    assert.equal(optionValue(draftRun, "--entrypoint"), "/opt/lifecycle/bin/lifecycle");
+    assert.equal(optionValue(draftRun, "--network"), "none");
+    assert.equal(draftRun.includes("--read-only"), true);
+    assert.equal(draftRun.includes("--mount"), false);
+    await assert.rejects(lstat(draftMachine), { code: "ENOENT" });
 
     const exit = await run(lifecycle, ["exit-37"], { cwd: root, env: environment });
     assert.equal(exit.signal, null);

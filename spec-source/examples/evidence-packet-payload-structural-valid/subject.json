@@ -1,6 +1,6 @@
 {
-  "schema": "lifecycle.evidence-packet-payload.v1",
-  "profileId": "lifecycle.evidence-packet.foundation-v1",
+  "schema": "lifecycle.evidence-packet-payload.v2",
+  "profileId": "lifecycle.evidence-packet.foundation-v2",
   "ruleSet": {
     "id": "rules.evidence",
     "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
@@ -59,8 +59,12 @@
       "reviewerDisposition": "accepted",
       "reviewWorkProductId": "work-product.review.1",
       "fragmentDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-      "citationIds": ["citation.receipt.check.demo.final"],
-      "inspectedSubjectIds": ["candidate-seal.demo"],
+      "citationIds": [
+        "citation.receipt.check.demo.final"
+      ],
+      "inspectedSubjectIds": [
+        "candidate-seal.demo"
+      ],
       "limitationIds": [],
       "uncertainty": "none",
       "provenance": "agent-proposed",
@@ -72,9 +76,16 @@
       "id": "obligation-state.1",
       "obligationId": "obligation.1",
       "state": "satisfied",
-      "checkIds": ["selection.check.demo"],
-      "receiptIds": ["receipt.check.demo.baseline", "receipt.check.demo.final"],
-      "propositionDecisionIds": ["proposition-decision.1"],
+      "checkIds": [
+        "selection.check.demo"
+      ],
+      "receiptIds": [
+        "receipt.check.demo.baseline",
+        "receipt.check.demo.final"
+      ],
+      "propositionDecisionIds": [
+        "proposition-decision.1"
+      ],
       "artifactLedgerIds": [],
       "reasonCode": "evidence-satisfied",
       "provenance": "runtime-derived"
@@ -89,5 +100,24 @@
     "id": "runtime.evidence-validator",
     "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
   },
-  "readiness": "acceptance-ready"
+  "readiness": "acceptance-ready",
+  "integrationApplicability": {
+    "assessment": {
+      "kind": "integration-assessment",
+      "id": "integration.demo",
+      "revision": 1,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "mandate": {
+      "disposition": "applicable",
+      "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "baselines": [
+      {
+        "receiptId": "receipt.check.demo.baseline",
+        "disposition": "applicable",
+        "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  }
 }

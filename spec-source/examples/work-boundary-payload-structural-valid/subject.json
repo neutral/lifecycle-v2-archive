@@ -1,12 +1,12 @@
 {
-  "schema": "lifecycle.work-boundary-payload.v4",
-  "profileId": "lifecycle.work-boundary.foundation-v1",
+  "schema": "lifecycle.work-boundary-payload.v6",
+  "profileId": "lifecycle.work-boundary.foundation-v3",
   "targetId": "target.demo",
   "proposalKind": "initial",
   "basis": {
-    "specificationRevision": "lifecycle.foundation.1.0.0-rc.10",
-    "repositoryContract": "lifecycle.repository.v15",
-    "providerAdapter": "lifecycle.provider-adapter.v6",
+    "specificationRevision": "lifecycle.foundation.1.0.0-rc.17",
+    "repositoryContract": "lifecycle.repository.v22",
+    "providerAdapter": "lifecycle.provider-adapter.v7",
     "productBaseCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "productBaseTree": "cccccccccccccccccccccccccccccccccccccccc",
     "productStateDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -45,7 +45,9 @@
       "id": "direction.1",
       "selectedMeaning": "Preserve one coherent bounded result.",
       "whyNow": "The demonstration requires one exact runtime contract.",
-      "included": ["The demonstration behavior is present."],
+      "included": [
+        "The demonstration behavior is present."
+      ],
       "excluded": [],
       "authorityFacts": [],
       "chosenTradeoffs": [],
@@ -60,10 +62,16 @@
         "id": "obligation.1",
         "kind": "check",
         "statement": "The required demonstration check passes.",
-        "sourceIds": ["check.demo"],
-        "requiredEvidenceArtifactIds": ["artifact.1"],
+        "sourceIds": [
+          "check.demo"
+        ],
+        "requiredEvidenceArtifactIds": [
+          "artifact.1"
+        ],
         "severity": "required",
-        "propositionIds": ["proposition.1"],
+        "propositionIds": [
+          "proposition.1"
+        ],
         "fragmentDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ],
@@ -73,7 +81,9 @@
         "path": "src/demo.ts",
         "role": "code",
         "mustChange": true,
-        "obligationIds": ["obligation.1"],
+        "obligationIds": [
+          "obligation.1"
+        ],
         "changeRule": "The bounded implementation must carry the demonstrated behavior.",
         "fragmentDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       }
@@ -98,7 +108,9 @@
         "purpose": "Establish the admitted baseline and final result.",
         "baselineRequired": true,
         "finalRequired": true,
-        "obligationIds": ["obligation.1"],
+        "obligationIds": [
+          "obligation.1"
+        ],
         "environmentRequirements": [],
         "fragmentDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
@@ -107,9 +119,15 @@
       {
         "id": "proposition.1",
         "claim": "The bounded demonstration outcome is complete.",
-        "evidenceKinds": ["check"],
-        "evidenceArtifactIds": ["artifact.1"],
-        "obligationIds": ["obligation.1"],
+        "evidenceKinds": [
+          "check"
+        ],
+        "evidenceArtifactIds": [
+          "artifact.1"
+        ],
+        "obligationIds": [
+          "obligation.1"
+        ],
         "effectIds": [],
         "riskIds": [],
         "path": "src/demo.ts",
@@ -126,5 +144,10 @@
     "profileDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
     "implementationId": "runtime.compiler",
     "implementationDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "disciplines": {
+    "registryDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "workTypeIds": [],
+    "records": []
   }
 }

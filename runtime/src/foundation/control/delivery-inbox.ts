@@ -33,7 +33,7 @@ function attentionOwner(
   state: ReturnType<typeof publicDeliveryState>,
   activity: ReturnType<typeof compileDeliveryGeneration>["activeOperation"],
 ) {
-  if (state.recovery !== null) return "founder" as const;
+  if (state.recovery !== null) return "director" as const;
   if (activity !== null) {
     if (activity.stage === "provider-running") return "provider" as const;
     if (activity.operation === "delivery.evaluate") return "reviewer" as const;
@@ -42,7 +42,7 @@ function attentionOwner(
   if (
     state.standing === "awaiting-admission" || state.standing === "awaiting-readmission" ||
     state.standing === "boundary-paused" || state.standing === "decision-ready"
-  ) return "founder" as const;
+  ) return "director" as const;
   return "none" as const;
 }
 

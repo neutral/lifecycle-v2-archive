@@ -3,15 +3,21 @@ import { dirname, join } from "node:path";
 
 const QUALIFICATION_ATLAS_FILES = Object.freeze({
   "atlas/atlas.md": `---
-type: atlas
-format: 1
-id: qualification-target
-title: Qualification target Atlas
-summary: Exact current project context for the disposable Lifecycle qualification target.
-navigation:
-- title: Project
-  maps:
-  - project
+{
+  "type": "atlas",
+  "format": 1,
+  "id": "qualification-target",
+  "title": "Qualification target Atlas",
+  "summary": "Exact current project context for the disposable Lifecycle qualification target.",
+  "navigation": [
+    {
+      "title": "Project",
+      "maps": [
+        "project"
+      ]
+    }
+  ]
+}
 ---
 
 # Qualification target Atlas
@@ -19,17 +25,22 @@ navigation:
 This separately maintained Atlas supplies bounded read-only context to Lifecycle.
 `,
   "atlas/maps/project/map.md": `---
-type: map
-id: project
-title: Project
-summary: Current project context for the disposable Lifecycle qualification target.
-question: What durable context governs this qualification target?
-status: active
-areas:
-- id: scope
-  title: Scope
-  summary: The bounded scope exercised by the qualification route.
-  question: What belongs inside the current qualification scope?
+{
+  "type": "map",
+  "id": "project",
+  "title": "Project",
+  "summary": "Current project context for the disposable Lifecycle qualification target.",
+  "question": "What durable context governs this qualification target?",
+  "status": "active",
+  "areas": [
+    {
+      "id": "scope",
+      "title": "Scope",
+      "summary": "The bounded scope exercised by the qualification route.",
+      "question": "What belongs inside the current qualification scope?"
+    }
+  ]
+}
 ---
 
 # Project
@@ -37,18 +48,24 @@ areas:
 This Map routes the qualification target's bounded current context.
 `,
   "atlas/maps/project/points/project-scope.md": `---
-type: point
-record: anchor
-id: project-scope
-title: Project scope
-summary: The qualification route exercises only its explicitly declared target behavior.
-kinds:
-- constraint
-posture: asserted
-lifecycle: active
-areas:
-- area: scope
-  context: This Point fixes the bounded scope exercised by qualification.
+{
+  "type": "point",
+  "record": "anchor",
+  "id": "project-scope",
+  "title": "Project scope",
+  "summary": "The qualification route exercises only its explicitly declared target behavior.",
+  "kinds": [
+    "constraint"
+  ],
+  "posture": "asserted",
+  "lifecycle": "active",
+  "areas": [
+    {
+      "area": "scope",
+      "context": "This Point fixes the bounded scope exercised by qualification."
+    }
+  ]
+}
 ---
 
 # Project scope

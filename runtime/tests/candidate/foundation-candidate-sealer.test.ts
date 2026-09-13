@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   chmod,
@@ -78,7 +79,7 @@ async function write(root: string, path: string, contents: string): Promise<void
 
 function description(): string {
   const header = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.candidate-sealer",
     title: "Candidate sealer fixture",
@@ -86,7 +87,7 @@ function description(): string {
     revision: 1,
     supersedes: null,
     summary: "Own the complete Candidate sealer fixture source tree.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -128,9 +129,9 @@ async function fixture(): Promise<Fixture> {
   await git(target, ["commit", "-m", "Initialize target"]);
   await initializeRepository(target, {
     targetId: "candidate-sealer-target",
-    founderPrincipal: "founder",
+    directorPrincipal: "director",
     home: authorityHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: sha256Bytes("candidate-sealer-publication"),
     implementationRoots: ["src"],
     stage: true,
@@ -220,6 +221,7 @@ function fakeStore(input: Readonly<{
       recovery: null,
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: ref(input.boundary),
       candidate: ref(input.candidate),
@@ -228,6 +230,7 @@ function fakeStore(input: Readonly<{
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: 0, headDigest: null }),
     eligibleOperations: Object.freeze([]),
   });
@@ -295,7 +298,7 @@ function boundary(
     semanticMarkdown: "# Work Boundary\n",
     payload: {
       schema: FOUNDATION_WORK_BOUNDARY_PAYLOAD_SCHEMA,
-      profileId: "lifecycle.work-boundary.foundation-v1",
+      profileId: "lifecycle.work-boundary.foundation-v3",
       targetId: value.contract.targetId,
       basis: {
         specificationRevision: FOUNDATION_SPECIFICATION_REVISION,

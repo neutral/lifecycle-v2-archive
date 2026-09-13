@@ -1,3 +1,4 @@
+import { assertFoundationAuthorityCredential, receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -5,38 +6,51 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   createFoundationRuntimeOperationRequest,
+  parseFoundationRuntimeOperationResultForRequest,
   type FoundationRuntimeOperationRequestInput,
 } from "@neutral/lifecycle-protocol";
 import {
   createDeliveryControlRecordStore,
+  listDeliveryControlRecordStores,
   openDeliveryControlRecordStore,
 } from "../../src/foundation/control/delivery-custody.js";
+import { compileDeliveryGeneration } from "../../src/foundation/control/delivery-view.js";
+import { withDeliveryOperationLock } from "../../src/foundation/control/delivery-operation-lock.js";
+import { withTargetOperationLock } from "../../src/foundation/repository/operation-lock.js";
 import {
   compileAgentPreIntentRefusalAppend,
   compileDeliveryActivityCompletionAppend,
 } from "../../src/foundation/control/activity.js";
-import { openAgentActivity } from "../../src/foundation/control/founder-brief.js";
+import { openAgentActivity } from "../../src/foundation/control/director-brief.js";
 import { FoundationError } from "../../src/foundation/error.js";
+import { LifecycleError } from "../../src/errors.js";
+import { foundationExecutionBackendInterruptionFacts } from "../../src/foundation/execution/backend-diagnostic.js";
 import type { FoundationInstalledRuntimeConfigurationV7 } from "../../src/foundation/installed-configuration-v7.js";
-import type { FoundationRuntimeMutationRequest } from "../../src/foundation/facade.js";
+import { createFoundationRuntimeFacadeForTesting, type FoundationRuntimeMutationRequest } from "../../src/foundation/facade.js";
 import { git } from "../../src/foundation/repository/git.js";
 import { initializeRepository } from "../../src/foundation/repository/initialize.js";
 import { loadRepositoryEpoch } from "../../src/foundation/repository/snapshot.js";
 import {
-  assertExclusiveActiveDeliveryLeaseV7,
   createFoundationRuntimeMutationExecutorV7,
   type FoundationRuntimeMutationV7Admission,
   type FoundationRuntimeMutationV7Candidate,
   type FoundationRuntimeMutationV7Evaluation,
   type FoundationRuntimeMutationV7Preparation,
 } from "../../src/foundation/runtime-mutation-v7.js";
-import type { FoundationPreparationBasisV7 } from "../../src/foundation/process/preparation-context-v7.js";
+import { preflightFoundationPreparationBasisV7, type FoundationPreparationBasisV7 } from "../../src/foundation/process/preparation-context-v7.js";
+import { compileKnowledgeProjection } from "../../src/foundation/projection/compiler.js";
+import { parseProjectionRequest } from "../../src/foundation/projection/request.js";
+import { completeMandatoryProjectionSizeErrorV1, foundationMandatoryProjectionRefusalV1, retainFoundationMandatoryProjectionRefusalV1 } from "../../src/foundation/projection/mandatory-refusal.js";
 import { foundationMutationResultV7 } from "../../src/foundation/process/mutation-result-v7.js";
 import {
   FOUNDATION_GENERATED_PUBLICATION_DIGEST,
   FOUNDATION_GENERATED_SPECIFICATION_REVISION,
 } from "../../src/foundation/validation/generated-schemas.js";
 import { writeMinimalAtlas } from "../helpers/atlas-fixture.js";
+import { selfDigest, sha256Bytes } from "../../src/foundation/validation/canonical.js";
+import { createConnectedDeliveryFixture, writeConnectedFile } from "../support/connected-delivery-fixture.js";
+import { prepareAndAdmit } from "../support/connected-delivery-assertions.js";
+import { readConnectedCandidateFile } from "../support/connected-candidate-inspection.js";
 
 const NOW = "2026-08-29T18:00:00.000Z";
 const SECRET = "runtime-mutation-compositor-secret-with-at-least-thirty-two-bytes";
@@ -69,9 +83,9 @@ async function withScenario(
     await git(target, ["commit", "-m", "Initialize target"]);
     const contract = await initializeRepository(target, {
       targetId: "runtime-compositor-target",
-      founderPrincipal: "founder:runtime-compositor",
+      directorPrincipal: "director:runtime-compositor",
       home: machineHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
       publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
       implementationRoots: [],
       stage: true,
@@ -125,6 +139,64 @@ function sentinel(label: string): Error {
   return new Error(`sentinel:${label}`);
 }
 
+test("integration checks the exact Delivery generation before its generation-only owner dispatch", async () => {
+  await withScenario(async (scenario) => {
+    const deliveryId = "delivery-integration-dispatch";
+    const created = await createStore(scenario, deliveryId);
+    const epoch = await loadRepositoryEpoch(scenario.target);
+    const before = created.store.state();
+    const expectedGeneration = compileDeliveryGeneration({
+      store: created.store,
+      physical: { disposition: "active", archiveManifestDigest: null },
+      repository: { headCommit: epoch.epoch.commit, headTree: epoch.epoch.tree, repositoryContractDigest: epoch.contract.digest },
+    }).digest;
+    created.store.close();
+    let activityIds = 0;
+    let integrationCalls = 0;
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      now: () => NOW,
+      createActivityId: (operation) => {
+        assert.equal(operation, "delivery.integrate");
+        activityIds += 1;
+        return "activity-integrate-dispatch";
+      },
+      integration: {
+        operate: async (input, options) => {
+          integrationCalls += 1;
+          assert.equal(input.target, scenario.target);
+          assert.equal(input.machineHome, scenario.machineHome);
+          assert.equal(input.store.identity.processId, deliveryId);
+          assert.equal(input.activityId, "activity-integrate-dispatch");
+          assert.deepEqual(Object.keys(input).sort(), ["activityId", "machineHome", "runtimeId", "store", "target"]);
+          assert.equal(options?.now?.(), NOW);
+          // The operation owner owns eligibility; this routing fixture stops
+          // before it can synthesize any valid integration state.
+          throw sentinel("exact-integration-owner");
+        },
+        recover: async () => { throw sentinel("unexpected-integration-recovery"); },
+      },
+    });
+    const invoke = (generation: typeof expectedGeneration) => mutation.execute({
+      request: request({ target: scenario.target, deliveryId, operation: "delivery.integrate", input: { expectedGeneration: generation } }),
+      context: {}, configuration: scenario.configuration,
+    });
+    const refused = await invoke(`sha256:${"f".repeat(64)}`);
+    assert.equal(refused.status, "refused");
+    assert.equal(refused.diagnostics[0]?.code, "lifecycle.read-model.generation-stale");
+    assert.equal(activityIds, 0);
+    assert.equal(integrationCalls, 0);
+    await assert.rejects(invoke(expectedGeneration), /sentinel:exact-integration-owner/u);
+    assert.equal(activityIds, 1);
+    assert.equal(integrationCalls, 1);
+    const reopened = await openDeliveryControlRecordStore({ machineHome: scenario.machineHome, targetId: scenario.targetId, deliveryId });
+    try {
+      assert.deepEqual(reopened.store.state().journal, before.journal);
+    } finally {
+      reopened.store.close();
+    }
+  });
+});
+
 test("completed mutation results expose one bounded durable submission diagnostic", async () => {
   await withScenario(async (scenario) => {
     const created = await createStore(scenario, "delivery-public-submission-diagnostic");
@@ -158,6 +230,76 @@ test("completed mutation results expose one bounded durable submission diagnosti
     } finally {
       created.store.close();
     }
+  });
+});
+
+test("mutation recovery diagnostics disclose only closed Backend stage and failure class", async () => {
+  await withScenario(async (scenario) => {
+    const created = await createStore(scenario, "delivery-public-backend-diagnostic");
+    try {
+      const prepare = request({
+        target: scenario.target, operation: "delivery.prepare",
+        input: { semanticMarkdown: "Inspect this target." },
+      });
+      const selected = foundationExecutionBackendInterruptionFacts("terminal-retrieval", new FoundationError(
+        "lifecycle.execution.docker-cli-driver.command-timeout", "fixture-secret-provider-text",
+      ));
+      const cases = [
+        { code: "lifecycle.execution.operation-host.backend-interrupted",
+          facts: { ...selected, privatePath: "/private/fixture-secret-path", stderr: "fixture-secret-provider-text" },
+          expected: selected },
+        { code: "lifecycle.execution.operation-host.backend-interrupted",
+          facts: { backendOperation: "fixture-secret-stage", backendFailureClass: "command-timeout" },
+          expected: {} },
+        { code: "lifecycle.execution.operation-host.backend-interrupted",
+          facts: { backendOperation: "observe", backendFailureClass: "fixture-secret-code" },
+          expected: {} },
+        { code: "lifecycle.execution.operation-host.persistence", facts: selected, expected: {} },
+      ];
+      const before = created.store.state().journal;
+      for (const row of cases) {
+        const result = await foundationMutationResultV7({
+          request: prepare, store: created.store, status: "recovery-required",
+          error: new FoundationError(row.code, "fixture-secret-message", { observedFacts: row.facts }),
+          observedAt: NOW, afterSequence: 0,
+        });
+        assert.equal(result.status, "recovery-required");
+        assert.equal(result.diagnostics[0]?.code, row.code);
+        assert.equal(result.diagnostics[0]?.retryable, true);
+        assert.deepEqual(result.diagnostics[0]?.facts, row.expected);
+        assert.equal(JSON.stringify(result).includes("fixture-secret"), false);
+        assert.deepEqual(created.store.state().journal, before);
+      }
+    } finally {
+      created.store.close();
+    }
+  });
+});
+
+test("mutation results retain bounded Projection codes and validation identity without changing the selected outcome", async () => {
+  await withScenario(async (scenario) => {
+    const created = await createStore(scenario, "delivery-public-projection-diagnostic");
+    try {
+      const prepare = request({ target: scenario.target, operation: "delivery.prepare",
+        input: { semanticMarkdown: "Inspect this target." } });
+      const validationDigest = sha256Bytes("exact completed invalid reviewer Projection validation");
+      const diagnosticCodes = ["lifecycle.projection.discipline-invalid"];
+      const before = created.store.state();
+      for (const status of ["refused", "recovery-required"] as const) {
+        const result = await foundationMutationResultV7({
+          request: prepare, store: created.store, status, observedAt: NOW, afterSequence: 0,
+          error: new FoundationError("lifecycle.operation-context-v7.projection", "fixture-private-message", {
+            observedFacts: { validationDigest, diagnostics: diagnosticCodes, path: "/private/fixture-private-path" },
+          }),
+        });
+        assert.equal(result.status, status);
+        assert.equal(result.diagnostics[0]?.code, "lifecycle.operation-context-v7.projection");
+        assert.equal(result.diagnostics[0]?.retryable, status === "recovery-required");
+        assert.deepEqual(result.diagnostics[0]?.facts, { validationDigest, diagnosticCodes });
+        assert.equal(JSON.stringify(result).includes("fixture-private"), false);
+        assert.deepEqual(created.store.state(), before);
+      }
+    } finally { created.store.close(); }
   });
 });
 
@@ -232,6 +374,148 @@ test("retained terminal results remain public when the current Atlas is invalid"
   });
 });
 
+test("Facade returns a pre-Store context refusal without losing its diagnostic or inventing a Delivery", async () => {
+  await withScenario(async (scenario) => {
+    let expectedLimit = 0;
+    let dispatched = false;
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      preparation: {
+        preflight: async (input) => await preflightFoundationPreparationBasisV7(input, {
+          compileKnowledgeProjection: async (input) => {
+            const request = parseProjectionRequest(input.request);
+            expectedLimit = request.profile.maximumMandatoryItems;
+            const failure = completeMandatoryProjectionSizeErrorV1(request, {
+              mandatoryItems: expectedLimit + 16,
+              mandatoryBytes: 0,
+              sourceBytes: 0,
+              maximumMandatoryItems: expectedLimit,
+              maximumMandatoryBytes: request.profile.maximumMandatoryBytes,
+              maximumItemBytes: request.profile.maximumItemBytes,
+              maximumSourceBytes: request.profile.maximumSourceBytes,
+              oversized: [],
+            });
+            const compiled = Object.freeze({ ...await compileKnowledgeProjection(input), projection: null });
+            const refusal = foundationMandatoryProjectionRefusalV1(failure);
+            assert.ok(refusal);
+            retainFoundationMandatoryProjectionRefusalV1(compiled, refusal);
+            return compiled;
+          },
+        }),
+        operate: async () => { dispatched = true; throw sentinel("unexpected-dispatch"); },
+        recover: async () => { throw sentinel("unexpected-recovery"); },
+      },
+      now: () => NOW,
+      randomId: () => { throw sentinel("unexpected-delivery-allocation"); },
+    });
+    const facade = createFoundationRuntimeFacadeForTesting({
+      configuration: scenario.configuration, mutation, now: () => NOW,
+    });
+    const prepare = request({
+      target: scenario.target, operation: "delivery.prepare",
+      input: { semanticMarkdown: "Preserve this exact useful direction." },
+    });
+    const result = parseFoundationRuntimeOperationResultForRequest(await facade.execute(prepare), prepare);
+    assert.equal(result.status, "refused");
+    assert.equal(result.deliveryId, null);
+    assert.equal(result.observation.delivery, null);
+    assert.equal(result.targetId, scenario.targetId);
+    assert.equal(result.observation.repository.valid, true);
+    assert.equal(result.diagnostics[0]?.code, "lifecycle.projection.mandatory-too-large");
+    assert.match(result.diagnostics[0]!.message, /before creating a Delivery or starting Agent execution/u);
+    assert.ok(result.diagnostics[0]!.message.includes(`${expectedLimit + 16} mandatory items exceed the ${expectedLimit} item limit`));
+    assert.deepEqual(result.diagnostics[0]?.facts, {});
+    assert.equal(result.changes.control.advanced, false);
+    assert.deepEqual(result.events, []);
+    assert.deepEqual(result.control, []);
+    assert.equal(dispatched, false);
+    assert.deepEqual((await listDeliveryControlRecordStores({
+      machineHome: scenario.machineHome, targetId: scenario.targetId,
+    })).deliveries, []);
+    assert.equal(JSON.stringify(result).includes(scenario.root), false);
+  });
+});
+
+test("a pre-Store Projection compiler refusal exposes its exact validation digest and code", async () => {
+  await withScenario(async (scenario) => {
+    let expectedFacts: { validationDigest: string; diagnosticCodes: string[] } | null = null;
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      preparation: {
+        preflight: async (input) => await preflightFoundationPreparationBasisV7(input, {
+          compileKnowledgeProjection: async (input) => {
+            const selected = parseProjectionRequest(input.request);
+            assert.equal(selected.class, "orientation");
+            if (selected.class !== "orientation") assert.fail("Preparation requires Orientation");
+            // The compiler receives one invalid request through its normal parser;
+            // its diagnostic and validation identity are not fabricated by the fixture.
+            const changed = { ...selected, subject: { ...selected.subject, objective: "", objectiveDigest: sha256Bytes("") } };
+            const compiled = await compileKnowledgeProjection({ ...input, request: { ...changed, digest: selfDigest(changed) } });
+            assert.equal(compiled.projection, null);
+            assert.equal(compiled.validation.valid, false);
+            expectedFacts = { validationDigest: compiled.validation.digest,
+              diagnosticCodes: compiled.validation.diagnostics.map(({ code }) => code) };
+            assert.deepEqual(expectedFacts.diagnosticCodes, ["lifecycle.schema.invalid"]);
+            return compiled;
+          },
+        }),
+        operate: async () => { throw sentinel("unexpected-dispatch"); },
+        recover: async () => { throw sentinel("unexpected-recovery"); },
+      },
+      now: () => NOW,
+      randomId: () => { throw sentinel("unexpected-delivery-allocation"); },
+    });
+    const facade = createFoundationRuntimeFacadeForTesting({ configuration: scenario.configuration, mutation, now: () => NOW });
+    const prepare = request({ target: scenario.target, operation: "delivery.prepare",
+      input: { semanticMarkdown: "Inspect this exact target." } });
+    const result = parseFoundationRuntimeOperationResultForRequest(await facade.execute(prepare), prepare);
+    assert(expectedFacts !== null);
+    assert.equal(result.status, "refused");
+    assert.equal(result.deliveryId, null);
+    assert.equal(result.observation.delivery, null);
+    assert.equal(result.diagnostics[0]?.code, "lifecycle.preparation-context-v7.projection");
+    assert.deepEqual(result.diagnostics[0]?.facts, expectedFacts);
+    assert.equal(result.changes.control.advanced, false);
+    assert.deepEqual(result.events, []);
+    assert.deepEqual(result.control, []);
+    assert.equal(JSON.stringify(result).includes(scenario.root), false);
+    assert.deepEqual((await listDeliveryControlRecordStores({ machineHome: scenario.machineHome,
+      targetId: scenario.targetId })).deliveries, []);
+  });
+});
+
+test("preparation does not flatten uncertain failures or a same-code failure after Store creation into a preflight refusal", async () => {
+  await withScenario(async (scenario) => {
+    const prepare = request({ target: scenario.target, operation: "delivery.prepare", input: { semanticMarkdown: "Inspect this target." } });
+    const epoch = await loadRepositoryEpoch(scenario.target);
+    for (const failure of [new Error("unexpected preflight"), new FoundationError("lifecycle.test.uncertain", "uncertain", { operationalStateChanged: true }),
+      Object.assign(new FoundationError("lifecycle.test.uncertain", "Unknown repository effects"), { repositoryChanged: null }),
+      Object.assign(new FoundationError("lifecycle.test.uncertain", "Unknown operational effects"), { operationalStateChanged: null })]) {
+      const mutation = createFoundationRuntimeMutationExecutorV7({
+        preparation: {
+          preflight: async () => { throw failure; },
+          operate: async () => { throw sentinel("unexpected-dispatch"); },
+          recover: async () => { throw sentinel("unexpected-recovery"); },
+        },
+        now: () => NOW,
+      });
+      await assert.rejects(mutation.execute({ request: prepare, context: {}, configuration: scenario.configuration }), (error) => error === failure);
+    }
+    const failure = new FoundationError("lifecycle.projection.mandatory-too-large", "Private detail must not become a no-effect claim");
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      preparation: {
+        preflight: async () => Object.freeze({ epoch }) as FoundationPreparationBasisV7,
+        operate: async () => { throw failure; },
+        recover: async () => { throw sentinel("unexpected-recovery"); },
+      },
+      now: () => NOW,
+      randomId: () => "post-store-failure",
+    });
+    await assert.rejects(mutation.execute({ request: prepare, context: {}, configuration: scenario.configuration }), (error) => error === failure);
+    assert.deepEqual((await listDeliveryControlRecordStores({
+      machineHome: scenario.machineHome, targetId: scenario.targetId,
+    })).deliveries.map(({ identity }) => identity.processId), ["delivery-post-store-failure"]);
+  });
+});
+
 test("fresh preparation remains independently parallel and delegates one exact preflight basis", async () => {
   await withScenario(async (scenario) => {
     const epoch = await loadRepositoryEpoch(scenario.target);
@@ -290,71 +574,50 @@ test("fresh preparation remains independently parallel and delegates one exact p
   });
 });
 
-test("the cross-Delivery lease permits preparations and refuses another admitted active Delivery", async () => {
-  const targetId = "runtime-lease-target";
-  const selectedDeliveryId = "delivery-selected-for-admission";
-  const otherDeliveryId = "delivery-other-preparation";
-  const identity = (deliveryId: string) => Object.freeze({
-    schema: "lifecycle.control-record-store.v1" as const,
-    storeId: `store-${deliveryId}`,
-    targetId,
-    processKind: "delivery" as const,
-    processId: deliveryId,
-    createdAt: NOW,
-  });
-  let otherActiveBoundary: Readonly<Record<string, unknown>> | null = null;
-  let closes = 0;
-  const owners = Object.freeze({
-    async listDeliveryStores() {
-      return Object.freeze({
-        deliveries: Object.freeze([
-          Object.freeze({ identity: identity(selectedDeliveryId), disposition: "active" as const }),
-          Object.freeze({ identity: identity(otherDeliveryId), disposition: "active" as const }),
-          Object.freeze({ identity: identity("delivery-archived"), disposition: "archived" as const }),
-        ]),
-        nextAfterDeliveryId: null,
-        inventoryDigest: `sha256:${"1".repeat(64)}` as const,
+test("mutation entry excludes only its exact Delivery and leaves the canonical publication lock independent", async () => {
+  await withScenario(async (scenario) => {
+    const first = await createStore(scenario, "delivery-lock-first");
+    const second = await createStore(scenario, "delivery-lock-second");
+    first.store.close();
+    second.store.close();
+    const dispatched: string[] = [];
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      now: () => NOW,
+      terminal: {
+        accept: async () => { throw sentinel("unexpected-accept"); },
+        recover: async () => { throw sentinel("unexpected-recover"); },
+        noShip: async (input) => {
+          dispatched.push(input.store.identity.processId);
+          throw sentinel("selected-no-ship");
+        },
+      },
+    });
+    const invoke = (deliveryId: string) => mutation.execute({
+      request: request({
+        target: scenario.target,
+        deliveryId,
+        operation: "delivery.no-ship",
+        input: { semanticMarkdown: "Close this exact Delivery." },
+      }),
+      configuration: scenario.configuration,
+      context: { authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision") },
+    });
+    await withDeliveryOperationLock({
+      machineHome: scenario.machineHome,
+      targetId: scenario.targetId,
+      deliveryId: first.identity.processId,
+    }, "test-first-holder", async () => {
+      await assert.rejects(invoke(first.identity.processId), (error: unknown) =>
+        error instanceof FoundationError && error.code === "operation.busy");
+      await withTargetOperationLock(scenario.target, "test-publication-holder", async () => {
+        await writeFile(join(scenario.target, "unrelated-dirty-work.txt"), "preserve live checkout\n");
+        await assert.rejects(invoke(second.identity.processId), /sentinel:selected-no-ship/u);
       });
-    },
-    async openDeliveryStoreReadOnly() {
-      return Object.freeze({
-        identity: identity(otherDeliveryId),
-        disposition: "active" as const,
-        archiveManifestDigest: null,
-        store: Object.freeze({
-          state: () => Object.freeze({
-            subjects: Object.freeze({ activeBoundary: otherActiveBoundary }),
-          }),
-          close: () => { closes += 1; },
-        }),
-      });
-    },
-  }) as unknown as NonNullable<
-    Parameters<typeof assertExclusiveActiveDeliveryLeaseV7>[1]
-  >;
-
-  await assertExclusiveActiveDeliveryLeaseV7({
-    machineHome: "/runtime/machine",
-    targetId,
-    deliveryId: selectedDeliveryId,
-  }, owners);
-  assert.equal(closes, 1, "another preparation was treated as an active branch lease");
-
-  otherActiveBoundary = Object.freeze({
-    id: "work-boundary-other",
-    revision: 1,
-    digest: `sha256:${"2".repeat(64)}`,
+    });
+    assert.deepEqual(dispatched, [second.identity.processId]);
+    await assert.rejects(invoke(first.identity.processId), /sentinel:selected-no-ship/u);
+    assert.deepEqual(dispatched, [second.identity.processId, first.identity.processId]);
   });
-  await assert.rejects(
-    assertExclusiveActiveDeliveryLeaseV7({
-      machineHome: "/runtime/machine",
-      targetId,
-      deliveryId: selectedDeliveryId,
-    }, owners),
-    (error: unknown) => error instanceof FoundationError &&
-      error.code === "lifecycle.runtime-mutation-v7.active-delivery-lease",
-  );
-  assert.equal(closes, 2, "conflicting Store was not closed after lease refusal");
 });
 
 test("a completed pre-intent refusal is returned as refusal rather than successful preparation", async () => {
@@ -372,7 +635,7 @@ test("a completed pre-intent refusal is returned as refusal rather than successf
           semanticMarkdown: "Inspect the exact repository basis.",
           submittedAt: NOW,
           startedAt: NOW,
-          founderId: epoch.contract.authority.principalId,
+          directorId: epoch.contract.authority.principalId,
           runtimeId: RUNTIME_ID,
         });
         input.store.append(compileAgentPreIntentRefusalAppend({
@@ -434,10 +697,20 @@ test("a completed pre-intent refusal is returned as refusal rather than successf
   });
 });
 
-test("the public compositor refuses active Agent work before owner dispatch without an admitted branch lease", async () => {
+test("the public compositor refuses active Agent work before owner dispatch without an exact active Work Boundary", async () => {
   await withScenario(async (scenario) => {
     const deliveryId = "delivery-agent-routing";
     const created = await createStore(scenario, deliveryId);
+    const epoch = await loadRepositoryEpoch(scenario.target);
+    const expectedGeneration = compileDeliveryGeneration({
+      store: created.store,
+      physical: Object.freeze({ disposition: "active", archiveManifestDigest: null }),
+      repository: Object.freeze({
+        headCommit: epoch.epoch.commit,
+        headTree: epoch.epoch.tree,
+        repositoryContractDigest: epoch.contract.digest,
+      }),
+    }).digest;
     created.store.close();
     const observed: string[] = [];
     const candidate: FoundationRuntimeMutationV7Candidate = Object.freeze({
@@ -483,7 +756,7 @@ test("the public compositor refuses active Agent work before owner dispatch with
         target: scenario.target,
         deliveryId,
         operation,
-        input: { semanticMarkdown: `Semantics for ${operation}.` },
+        input: { semanticMarkdown: `Semantics for ${operation}.`, expectedGeneration },
       });
       await assert.rejects(
         mutation.execute({ request: selected, context: {}, configuration: scenario.configuration }),
@@ -493,6 +766,141 @@ test("the public compositor refuses active Agent work before owner dispatch with
     assert.deepEqual(observed, []);
     assert.equal(activitySequence, 0);
   });
+});
+
+test("Facade reports a typed pre-Activity context refusal and preserves the corrected productive course", async (context) => {
+  const fixture = await createConnectedDeliveryFixture({ id: "facade-pre-activity-refusal" });
+  try {
+    await prepareAndAdmit(fixture);
+    const before = fixture.store.state();
+    const candidate = fixture.current("candidate");
+    const dispatches = fixture.invocations.length;
+    const basis = await preflightFoundationPreparationBasisV7({
+      target: fixture.target, semanticMarkdown: "# Context\n\nObserve the exact current basis.\n", observedAt: fixture.now(),
+    });
+    const objective = "x".repeat(1_048_577);
+    const oversized = { ...basis.request, subject: { ...basis.request.subject, objective, objectiveDigest: sha256Bytes(objective) } };
+    const invalidRequest = { ...oversized, digest: selfDigest(oversized) };
+    let ownerFailure: FoundationError | null = null;
+    let selectedFailure: Error | null = null;
+    let openBeforeFailure = false;
+    let activitySequence = 0;
+    // Parsing this bounded invalid request exercises the actual schema owner.
+    // The substitute is confined to context compilation; no finalized Control
+    // record or physical-effect observation is manufactured by this refusal.
+    const mutation = createFoundationRuntimeMutationExecutorV7({
+      now: fixture.now,
+      createActivityId: () => `context-refusal-${++activitySequence}`,
+      candidate: {
+        operate: async (input) => {
+          if (selectedFailure !== null) throw selectedFailure;
+          if (openBeforeFailure) {
+            openAgentActivity({ store: input.store, activityId: input.activityId, operation: input.operation,
+              semanticMarkdown: input.opening.semanticMarkdown, submittedAt: input.opening.submittedAt,
+              startedAt: input.opening.startedAt, directorId: input.opening.directorId, runtimeId: input.runtimeId });
+          }
+          try { parseProjectionRequest(invalidRequest); }
+          catch (error) {
+            assert(error instanceof FoundationError);
+            assert.equal(error.code, "lifecycle.schema.invalid");
+            assert(error.diagnostics.some(({ facts }) => facts.keyword === "maxLength"));
+            ownerFailure = error;
+            throw error;
+          }
+          throw new Error("Oversized Orientation unexpectedly passed its owning schema");
+        },
+        recover: async () => { throw new Error("This test does not operate recovery"); },
+      },
+    });
+    const { execution: _execution, ...processConfiguration } = fixture.configuration;
+    const facade = createFoundationRuntimeFacadeForTesting({
+      configuration: { ...processConfiguration, codexHome: join(fixture.workspace, "unused-provider-home") },
+      mutation, now: fixture.now,
+    });
+    const selectedRequest = async () => {
+      const epoch = await loadRepositoryEpoch(fixture.target);
+      const expectedGeneration = compileDeliveryGeneration({ store: fixture.store,
+        physical: { disposition: "active", archiveManifestDigest: null },
+        repository: { headCommit: epoch.epoch.commit, headTree: epoch.epoch.tree, repositoryContractDigest: epoch.contract.digest },
+      }).digest;
+      return request({ target: fixture.target, deliveryId: fixture.deliveryId, operation: "delivery.continue",
+        input: { semanticMarkdown: "# Continue\n\nPreserve the admitted source change.\n", expectedGeneration } });
+    };
+    const selected = await selectedRequest();
+    context.diagnostic(JSON.stringify({ starting: before.subjects, sequence: ["context schema refusal", "reopen", "corrected continue"],
+      fault: "Orientation objective has 1,048,577 ASCII bytes against the 1,048,576-byte owner limit",
+      intendedOutcome: "Refusal retains the same Journal and Candidate; corrected input advances the exact retained Product without redispatch" }));
+    const refused = parseFoundationRuntimeOperationResultForRequest(await facade.execute(selected), selected);
+    assert.equal(refused.status, "refused");
+    assert.equal(refused.diagnostics[0]?.code, "lifecycle.schema.invalid");
+    assert.deepEqual(refused.diagnostics[0]?.facts, {});
+    assert.equal(refused.targetId, fixture.contract.targetId);
+    assert.equal(refused.deliveryId, fixture.deliveryId);
+    assert.deepEqual(refused.observation.delivery?.subjects, {
+      ...before.subjects,
+      activeBoundary: before.subjects.activeBoundary === null ? null : {
+        kind: "work-boundary", ...before.subjects.activeBoundary,
+      },
+      candidate: before.subjects.candidate === null ? null : {
+        kind: "candidate-revision", ...before.subjects.candidate,
+      },
+    });
+    assert.equal(refused.changes.repository.changed, false);
+    assert.equal(refused.changes.candidate.changed, false);
+    assert.equal(refused.changes.control.advanced, false);
+    assert.deepEqual(refused.events, []);
+    assert.deepEqual(refused.control, []);
+    assert.equal(fixture.invocations.length, dispatches);
+    assert.equal(JSON.stringify(refused).includes(objective), false);
+    assert.equal(JSON.stringify(refused).includes(fixture.machineHome), false);
+    await fixture.reopenStore();
+    assert.deepEqual(fixture.store.state(), before);
+
+    for (const failure of [
+      new Error("Unexpected context failure"),
+      new LifecycleError({ code: "foundation.value.text", message: "Private reason", repositoryChanged: true }),
+      new LifecycleError({ code: "runtime.authorization-result-unavailable", message: "Unknown effects", repositoryChanged: null, operationalStateChanged: null,
+        observedFacts: { invocationId: "a1111111-1111-4111-8111-111111111111", authorizationSubmission: "may-have-started" } }),
+      new FoundationError("lifecycle.schema.invalid", "Private reason", { operationalStateChanged: true }),
+      new LifecycleError({ code: "foundation.value.text", message: "Private reason", recoveryActions: [{ action: "observe", detail: "private obligation" }] }),
+    ]) {
+      selectedFailure = failure;
+      await assert.rejects(facade.execute(selected), (error) => error === failure);
+      assert.deepEqual(fixture.store.state(), before);
+    }
+    selectedFailure = new LifecycleError({ code: "foundation.value.text", message: "private-marker", observedFacts: { path: fixture.machineHome } });
+    const typed = await facade.execute(selected);
+    assert.equal(typed.status, "refused");
+    assert.equal(typed.diagnostics[0]?.code, "foundation.value.text");
+    assert.equal(JSON.stringify(typed).includes("private-marker"), false);
+    assert.deepEqual(typed.diagnostics[0]?.facts, {});
+    selectedFailure = null;
+
+    // A fresh explicit correction uses the normal context, Agent, semantic
+    // finalization and Candidate retention owners with bounded backend output.
+    const product = "export const value = 'continued-after-context-refusal';\n";
+    const continued = await fixture.continue({
+      direction: "# Continue\n\nComplete the admitted source change with the bounded context.\n",
+      edit: (repository) => writeConnectedFile(repository, "src/demo.ts", product),
+    });
+    assert.equal(continued.outcome, "completed");
+    assert.equal(fixture.invocations.length, dispatches + 1);
+    const successor = fixture.current("candidate");
+    assert.equal(successor.revision, candidate.revision + 1);
+    assert.deepEqual(successor.relationships.find(({ relation }) => relation === "revises")?.target,
+      { kind: "candidate-revision", id: candidate.recordId, revision: candidate.revision, digest: candidate.digest });
+    assert.deepEqual(fixture.store.state().subjects.activeBoundary, before.subjects.activeBoundary);
+    assert.equal(await readConnectedCandidateFile(fixture, "src/demo.ts"), product);
+    assert.equal((await git(fixture.target, ["show", "HEAD:src/demo.ts"])).stdout, "export const value = 'base';\n");
+
+    openBeforeFailure = true;
+    const openedRequest = await selectedRequest();
+    const unresolved = await facade.execute(openedRequest);
+    assert(ownerFailure !== null);
+    assert.equal(unresolved.status, "recovery-required", "The same schema error after an Activity opening must retain its recovery course");
+    assert.equal(unresolved.changes.control.advanced, true);
+    assert.notEqual(unresolved.observation.delivery?.recovery, null);
+  } finally { await fixture.dispose(); }
 });
 
 test("a stale semantic generation refuses before allocating or opening an Activity", async () => {
@@ -532,7 +940,7 @@ test("a stale semantic generation refuses before allocating or opening an Activi
       configuration: scenario.configuration,
     });
     assert.equal(result.status, "refused");
-    assert.equal(result.diagnostics[0]?.code, "lifecycle.runtime-mutation-v7.generation-mismatch");
+    assert.equal(result.diagnostics[0]?.code, "lifecycle.read-model.generation-stale");
     assert.equal(activityIds, 0);
     assert.equal(candidateCalls, 0);
 
@@ -563,7 +971,7 @@ test("the public compositor refuses admission before authority dispatch without 
         calls += 1;
         assert.equal(input.target, scenario.target);
         assert.equal(input.store.identity.processId, deliveryId);
-        assert.equal(input.authoritySecret, SECRET);
+        assertFoundationAuthorityCredential(input.authorityCredential, "director-decision");
         assert.equal(options?.now?.(), NOW);
         throw sentinel("admission");
       },
@@ -579,7 +987,7 @@ test("the public compositor refuses admission before authority dispatch without 
     await assert.rejects(
       mutation.execute({
         request: admit,
-        context: { authoritySecret: SECRET },
+        context: { authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision") },
         configuration: scenario.configuration,
       }),
       /Delivery has no exact proposed Work Boundary coordinate/u,
@@ -600,7 +1008,7 @@ test("recovery dispatches preparation from the reducer coordinate without a rout
       semanticMarkdown: "Resume this exact preparation.",
       submittedAt: NOW,
       startedAt: NOW,
-      founderId: "founder:runtime-compositor",
+      directorId: "director:runtime-compositor",
       runtimeId: RUNTIME_ID,
     });
     created.store.close();

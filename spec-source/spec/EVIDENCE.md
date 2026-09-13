@@ -11,8 +11,18 @@ independent review, Evidence Packet ledgers, acceptance readiness, and evidence
 failure locality.
 
 Evidence answers a bounded question about one exact subject. It does not create
-the requirement, alter the Work Boundary, grant Founder authority, integrate
+the requirement, alter the Work Boundary, grant Director authority, integrate
 Candidate bytes, or abandon a Candidate.
+
+The question is whether the admitted obligations have adequate support for the
+evaluated result. A Check outcome supplies one observation under specified
+conditions; independent review supplies judgments about the result and its
+obligations. Assessment interprets those inputs, while provenance validation
+establishes their exact source and relationships. Completing acceptance also
+requires current subjects, an authenticated Director Decision, and truthful
+observation of the authorized effect. This document develops the Evidence
+contribution to that relationship; it does not collapse the later conclusions
+into Packet readiness.
 
 [Control](CONTROL.md) owns the common Control Record Store carrier, immutable
 revision lifecycle, exact relationships, Journal events, Activity-kernel
@@ -21,7 +31,7 @@ reviewer execution and Agent Work Product submission. [Execution](EXECUTION.md)
 owns the subordinate Backend, Cell, Carrier, Containment, Retirement, and
 Reclamation contracts.
 [Delivery](DELIVERY.md) owns operation eligibility,
-correction, transactions, and recovery. [Authority](AUTHORITY.md) owns Founder
+correction, transactions, and recovery. [Authority](AUTHORITY.md) owns Director
 authentication. This document owns the evidence meaning of the exact records
 those mechanisms retain.
 
@@ -31,15 +41,15 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 and **MAY** are normative only when they appear in uppercase. Their meanings
 follow BCP 14.
 
-## Foundation rc.10 Evidence Cut
+## Foundation rc.17 Evidence Cut
 
-Foundation rc.10 retains Delivery Evidence only through these Control families:
+Foundation rc.17 retains Delivery Evidence only through these Control families:
 
 - `candidate-seal`;
 - `check-receipt`;
 - reviewer `agent-work-product` and `execution-receipt`;
 - `evidence-packet`;
-- the selecting `founder-decision`; and
+- the selecting `director-decision`; and
 - terminal `closure`.
 
 Artifact observations, Description coverage, Receipt reuse, invalidation,
@@ -47,8 +57,8 @@ reviewer independence, proposition decisions, and obligation states are typed
 ledgers inside one Evidence Packet. They are not separate records, files,
 schemas, identities, or promotion units.
 
-Foundation rc.10 applies the predecessor Evidence-carrier refusal owned by
-[Control](CONTROL.md#foundation-rc10-hard-cut) and
+Foundation rc.17 applies the predecessor Evidence-carrier refusal owned by
+[Control](CONTROL.md#foundation-rc17-hard-cut) and
 [Evolution](EVOLUTION.md#fresh-only-hard-cut).
 An export that resembles a retained Evidence value is presentation only and
 cannot be imported as Evidence.
@@ -56,7 +66,7 @@ cannot be imported as Evidence.
 No Evidence record is promoted to repository HEAD. The complete Evidence
 history remains in the Delivery Control Record Store, and terminal store
 sealing and archive preserve it off HEAD. Acceptance makes only the exact
-sealed Candidate tree canonical over the exact admitted parent. Candidate
+sealed Candidate tree canonical over the exact integration parent. Candidate
 confinement already proves that tree contains no Atlas delta. Closure remains
 the sufficient terminal Control summary.
 
@@ -72,17 +82,31 @@ Knowledge obligation
     -> Evidence Packet for one sealed Candidate
 ```
 
+Selected Discipline guidance sits beside this chain, not inside it. A
+Discipline record can suggest useful ways to work or verify work, and a reviewer
+can discuss whether it helped. Selection does not create a Knowledge
+obligation, Check, proposition, Receipt requirement, obligation-ledger entry,
+or acceptance gate. A discipline-derived requirement enters Evidence only
+after its actual product claim is deliberately authored in an existing
+authoritative carrier and selected by the Work Boundary.
+
+An explicitly authored Work Boundary Obligation can cite a selected Discipline
+as informational provenance. Evidence evaluates that admitted requirement
+through its exact required Checks, artifacts, and propositions; it does not
+promote the cited advice into independent authority or proof.
+
 The layers remain independently identifiable:
 
 - a Check Definition owns a falsifiable proposition;
 - a Check Binding selects an executable proof mechanism;
 - a Check Receipt authenticates one runtime-observed execution outcome;
 - a reviewer Work Product supplies independent agent-proposed judgments; and
-- an Evidence Packet validates and derives the complete readiness result.
+- an Evidence Packet retains the ledgers and readiness derived and validated
+  by the Evidence verifier.
 
 A command name is not a Check Definition. An exit code is not a Check Receipt.
 A builder claim is not Evidence. A reviewer judgment is not a runtime-observed
-fact. An Evidence Packet is not Founder acceptance.
+fact. An Evidence Packet is not Director acceptance.
 
 An Execution Receipt authenticates one Agent Attempt's execution and submission
 boundary. It does not establish a Check proposition merely because the provider
@@ -92,9 +116,9 @@ from one exact read-only Attempt; the Work Product still has
 `agent-proposed` authority.
 
 An exact Candidate difference and Decision Readiness section are disposable
-runtime read models. They may help a Founder inspect the selected proof subject,
+runtime read models. They may help a Director inspect the selected proof subject,
 but they are not Check Receipts, independent review, an Evidence Packet,
-acceptance readiness, or Founder acceptance. Only the exact retained Evidence
+acceptance readiness, or Director acceptance. Only the exact retained Evidence
 owners below can establish those facts.
 
 The runtime constructs all Evidence Control revisions. It assigns identities,
@@ -106,13 +130,133 @@ cannot supply or override an Evidence fact.
 
 The evaluation operation definition owns its immutable semantic plan, Carrier
 validation, Check and reviewer Execution Specifications and observations, and
-compilation of the resulting Evidence Control. The common
+assembly and retention of the resulting Evidence Control. It delegates Evidence
+interpretation to the verifier defined below. The common
 [Activity kernel](CONTROL.md#common-activity-kernel) owns the durable opening,
 checkpoint coordination, reducer-checked recovery, completion, and support
 Retirement for that evaluation. The reducer is the sole legal Process state
 machine. A Backend phase, Check-runner phase, reviewer-adapter phase, operation
 checkpoint, or Evidence compiler step is not another persisted workflow
 coordinate and cannot make an evaluation milestone legal.
+
+### Evidence verifier
+
+The **Evidence verifier** owns deterministic interpretation of acceptance
+justification within the Evidence owner. It MUST derive and validate Evidence
+ledgers and readiness from exact subject-bound requirements, trusted Check
+observations, independent review judgments, physical observation facts, and the
+selected supported Evidence rules. Required Foundation record and event
+provenance establishes those inputs; it does not define their semantic
+sufficiency. Delivery orchestration MUST NOT supply an alternative
+readiness algorithm or make its own successful assembly sufficient proof.
+
+The verifier applies pure predicates to those inputs. It MUST NOT append
+Control, change Process state, invoke an Agent or Check, authenticate a Director
+Decision, or perform a repository effect. Its interpretation grants no semantic
+authority beyond the rules in this document. In particular, it cannot create
+an obligation, waive a required condition, or promote agent-proposed reviewer
+judgment into a runtime-observed fact.
+
+### Semantic assessment and provenance
+
+Consider a required regression Check for Seal S17 of Candidate Revision C17.
+A passing Receipt for the earlier Seal S16 does not satisfy that requirement.
+Even a correctly bound passing Receipt supplies only its Check evidence: the required review,
+other obligations, and applicability judgments still need their own support.
+The semantic question is what the exact inputs justify. The provenance question
+is whether those inputs are the trusted observations and judgments required by
+Foundation. Both questions must be answered, but a valid evaluation history
+alone cannot make an inadequate result sufficient.
+
+The Evidence owner MUST separate semantic assessment from the selected
+Foundation provenance adapter. Semantic assessment consumes the exact mandate,
+Candidate, evaluation Seal, application parent and integration subject;
+mandate-derived obligations; subject-bound Check facts and review judgments;
+and observed artifact and Description facts. It MUST NOT require an Activity
+identity, event sequence, Store, frozen Material Condition, currentness result,
+or Director decision to decide what those facts justify.
+
+Assessment derives the required ledgers, findings, disposition, and any required
+mandate response. Physical observation supplies existence, exact changes,
+ownership, and validator findings; it MUST NOT decide that a mandate artifact
+or Description obligation is satisfied. Evidence applies that predicate once.
+Review judgments remain judgments, including their uncertainty and provenance.
+Sufficient review independence requires established context separation and
+observed integrity of the exact read-only subject. The Foundation adapter owns
+provider-session comparison and exact role, capability, Projection, Attempt,
+and Receipt joins. It supplies established separation or its absence, not a
+caller-claimed satisfaction verdict. Assessment applies the independence
+requirement to those facts without interpreting provider session machinery;
+the Packet adapter preserves its selected provenance ledger.
+
+A material review finding MUST be classifiable before Delivery records its
+reaction. Assessment identifies the exact required response; the Process owner
+then freezes the corresponding Material Condition. Foundation Packet retention
+MUST verify that required reaction and legal evaluation provenance. A missing
+reaction cannot erase a material finding, convert it into support, or make
+assessing the finding impossible. Ordinary unmet evidence and a required
+mandate response remain distinguishable.
+
+The Foundation adapter MUST independently validate immutable records, exact
+relationship joins, trusted observation provenance, and selected rules before
+constructing assessment inputs. It MUST NOT accept a caller's trust flag or
+claimed readiness in place of those checks. Historical verification reconstructs
+assessment facts, recomputes the result, and compares the claimed Packet;
+retained ledgers are outputs to verify, not satisfaction inputs. Foundation's
+selected Check and reviewer provenance remains mandatory at this adapter.
+Another orchestration would require an explicitly selected provenance contract,
+not a change to the meaning of a satisfied obligation.
+
+Record collection and physical observation remain with their existing owners.
+The verifier MUST validate the complete exact relationship closure, required
+evaluation provenance, selected rules, and correspondence between retained
+ledgers and their supporting inputs. A structurally valid Packet, its recorded
+readiness, or the identity of its assembling operation cannot substitute for
+that verification. Each interpretation applies only to its exact evaluation
+subject and supporting inputs; verification of a retained Packet additionally
+binds that exact revision. The result is not a new retained record or transition
+permit.
+
+Verification remains possible after the originating evaluation Activity has
+completed. The verifier checks that evaluation's exact retained Activity and
+event provenance; it does not require that Activity to remain open. Foundation
+still requires the Check, Seal, reviewer, and Packet provenance defined here
+and in [Delivery](DELIVERY.md#evaluation-activity). This separation does not
+admit imported CI output, exported Packets, or unrelated reviewer results.
+
+Historical interpretation MAY use the Packet's retained artifact and
+Description observations as runtime-observed inputs. This establishes what the
+retained observations justify; it does not independently establish fresh
+physical bytes. Before applying a new acceptance effect, the transaction
+owner MUST independently reopen and observe the exact physical subject and
+require the same Evidence verifier to validate its correspondence with the
+retained Packet. It MUST NOT substitute the Packet's observation fields for
+that fresh observation. Recovery preserves the same selected subject and
+recognizes or completes only the retained effect under Delivery's exact
+recovery contract.
+
+The Delivery reducer owns legal event order, current subjects, and eligibility.
+The verifier owns Evidence meaning for the selected evaluation subject. A
+historically valid Packet can be noncurrent and therefore unusable for a new
+acceptance. Director authentication selects the exact current Decision subject;
+the canonical transaction separately validates and applies the authorized
+effect. None of these conclusions substitutes for another.
+
+For acceptance interpretation, the verifier checks correspondence with the
+exact current references and parent supplied by their owning validators. It
+does not originate those currentness facts. Its result MUST distinguish
+justification without a supplied Director subject from justification matched to
+exact Director subject values. The authority owner MAY supply prospective values
+before authentication or a subject it has separately authenticated. Matching
+those values does not verify a signature or grant permission to execute;
+authentication remains independently required. Missing required or mismatched
+subjects, unsupported rules, and unjustified readiness MUST refuse the claimed
+result.
+The verifier reports whether acceptance is justified and preserves the exact
+typed reason when it is not. [Validation](VALIDATION.md) owns the corresponding
+subject, Packet, readiness, currentness, parent, and verifier-selection
+diagnostics. Structural and provenance failures retain their owning validation
+diagnostic; they cannot become a successful interpretation.
 
 ## Evidence Kinds
 
@@ -142,7 +286,9 @@ A Check Definition is governed Product Knowledge under
 - falsifiers.
 
 A current Behavior or Assurance requires at least one current Check Definition.
-A Check can also support Blueprint and Description obligations.
+A Check can also support Blueprint and Description obligations. Discipline
+verification suggestions are not Check Definitions and do not require a Check
+Binding.
 
 A Check Definition MUST remain understandable without reading its executable
 Binding. It MUST distinguish a product failure from an unavailable mechanism
@@ -168,7 +314,7 @@ one exact mechanism for one or more Check Definitions and contains:
 
 Requested capability or environment values are not proof of enforcement. The
 runner separately records requested conditions, conditions it directly
-enforced and verified, and Founder-managed host assumptions. A Binding cannot
+enforced and verified, and Director-managed host assumptions. A Binding cannot
 label requested or ambient behavior as runtime-enforced.
 
 A Binding carries at most 128 explicit environment variable names. The bound
@@ -176,7 +322,7 @@ applies to the complete requested name set; a runtime cannot truncate the set
 to fit a Receipt. Secret values are bound into the environment identity and
 never copied into public semantic Markdown.
 
-The Foundation rc.10 repository Binding carrier supports only `command`.
+The Foundation rc.17 repository Binding carrier supports only `command`.
 Inspection, artifact, diff, analysis, and mixed Evidence remain valid semantic
 kinds, but a repository Binding for another mechanism requires a later
 published carrier. A command Binding MUST NOT claim another mechanism kind.
@@ -285,7 +431,7 @@ different proposition remains.
 
 A regression guard protects an existing required property. It must pass at
 baseline and final proof. A baseline failure prevents admission unless the
-Founder-visible Work Boundary classifies that exact defect as a repair target.
+Director-visible Work Boundary classifies that exact defect as a repair target.
 
 ### Postcondition
 
@@ -322,13 +468,12 @@ environment identity, and proof-request digest. A caller-supplied subject,
 cached display, path, latest-row lookup, provider claim, or similar digest
 cannot substitute for this join.
 
-For a final Receipt, that repository and Knowledge basis is the active
-Boundary's admitted historical snapshot. Its Atlas State, Resolution,
-normalized model, Resource bindings, and source bytes MUST reproduce there and
-MUST NOT be replaced by a live Atlas selection. Before execution, the runtime
-also proves that the canonical branch still names the exact admitted commit and
-that the authoritative target checkout is completely clean. Any movement is a
-branch-lease violation and the Check does not run.
+A final Receipt binds the exact Seal and Candidate, including its integration
+application parent, while the active Boundary retains its governing Snapshot.
+Atlas-dependent mandate context reproduces the exact Boundary selection; the
+parent and result observations reproduce their own retained subjects. Checks
+MUST NOT treat current live HEAD as either subject. Canonical movement alone
+does not prevent executing proof of the exact retained integration.
 
 Baseline Receipts are retained after truthful execution even when a required
 baseline fails. A Work Boundary becomes proposal-ready only when the reducer
@@ -346,7 +491,7 @@ Final proof operates outside builder write authority. The environment MUST:
 
 - materialize the exact sealed Candidate Revision Carrier read-only in one
   fresh Check Cell;
-- keep canonical Git state, Control, Founder authority material, and unrelated
+- keep canonical Git state, Control, Director authority material, and unrelated
   target locators out of runtime-supplied Check input;
 - prevent Candidate mutation;
 - isolate or deterministically identify caches and temporary state;
@@ -362,22 +507,34 @@ Final proof operates outside builder write authority. The environment MUST:
   Reclamation before retaining the Receipt.
 
 The Check Receipt distinguishes conditions the runtime directly enforced from
-Backend or Founder-managed host assumptions. General host filesystem access,
+Backend or Director-managed host assumptions. General host filesystem access,
 transitive tool behavior, network isolation, and daemon isolation MUST NOT be
 claimed as enforced merely because Docker or a disposable Cell was used. A
 required condition the selected Backend Profile cannot establish produces
 `unsupported`, not a limited `pass`.
 
 The fixed cell-side runner protects its exact environment contract from Binding
-replacement. Other explicit Binding values remain requested conditions: the
-Receipt records their public names and binds secret values into environment
-identity without disclosing them or treating them as general isolation.
+replacement. For the isolated Check tree and index, it fixes `GIT_DIR`,
+`GIT_WORK_TREE`, and `GIT_INDEX_FILE`, excludes ambient Git configuration and
+object replacement, and disables lazy fetch, prompts, and optional Git writes.
+It MUST reject every Binding-supplied environment name beginning with `GIT_`,
+including names it does not itself set. The view grants neither canonical Git
+access nor additional proof subjects. Other explicit Binding values remain
+requested conditions: the Receipt records their public names and binds secret
+values into environment identity without disclosing them or treating them as
+general isolation.
 
 A Binding requiring a mutable environment can write only outside the read-only
 Candidate materialization into bounded Output Carrier paths. The runtime
 revalidates the sealed Carrier and materialized subject after Containment.
-Observed mutation or an output path outside the policy makes the Receipt
-`operational-error` and invalidates the evaluation coordinate.
+The runner also validates its bounded private Git administration and index as
+regular, non-executable files without symlinks or hardlink aliases, and includes
+their paths and bytes in the before-and-after subject observation. These
+observations do not establish filesystem-enforced read-only access or detect
+every temporary mutation that a command restores before the final observation.
+Observed product or Git metadata mutation, invalid private Git entries, or an
+output path outside the policy makes the Receipt `operational-error` and
+invalidates the evaluation coordinate, even when the Check command succeeds.
 
 ## Candidate Seal
 
@@ -453,7 +610,7 @@ the result:
   Manifest digest only when complete output was retrieved;
 - start and finish times;
 - environment identity and the requested, runtime-enforced, and
-  Founder-managed condition sets;
+  Director-managed condition sets;
 - disposition, exactly `pass`, `fail`, `indeterminate`, `not-run`,
   `unsupported`, or `operational-error`;
 - normalized bounded result facts;
@@ -569,6 +726,13 @@ For every required artifact, final Evidence establishes:
 - linked obligation identities; and
 - prohibited or unexpected sibling changes.
 
+A Knowledge Artifact is validated at its exact path in the complete validated
+Candidate Knowledge Set. Valid Draft, Superseded, or Retired output does not
+become schema-invalid merely because it is nongoverning. Its kind and required
+final disposition must still satisfy the Work Boundary. Governing Knowledge
+roots, Check Definitions, and primary Description coverage continue to select
+Current records; Artifact validity does not confer governing standing.
+
 `mustChange: true` requires a final base-to-Candidate content or metadata
 difference. Touching and restoring a file does not satisfy it.
 `mustChange: false` does not universally prohibit change; the Work Boundary
@@ -594,13 +758,19 @@ records.
 Independent review judges every acceptance proposition against the exact sealed
 Candidate and authenticated Evidence.
 
+The reviewer acts as a Worker and returns independent judgment for the
+Director's decision. Either actor may hold other roles at another work level;
+those roles do not weaken this review's independence, capability, or subject
+requirements. An agent Director's acceptance still requires the same supported
+result and exact authenticated Decision as a human Director's acceptance.
+
 ### Independence profile
 
 The standard profile requires:
 
 - one fresh Agent Attempt with role `reviewer`;
 - no Candidate write capability;
-- no Founder secret or transition authority;
+- no Director secret or transition authority;
 - no builder provider-session continuation, hidden transcript, or private
   reasoning;
 - the exact reviewer Projection compiled from the active Work Boundary,
@@ -657,7 +827,11 @@ missing requirement into an optional opportunity.
 When admitted and sealed bases expose different bytes for one Knowledge
 identity, the unqualified identity is ambiguous. The reviewer cites the exact
 basis-qualified Projection item and source digest. A runtime can retain an
-unqualified alias only when it resolves to one exact digest in that Projection.
+unqualified alias only when it resolves to one exact digest in that Projection. The
+Claim may still name the enduring Knowledge identity: its exact supporting
+citation selects the occurrence, and the Attempt-frozen registry binds that
+occurrence to the identity. Naming an identity alone cannot support the Claim
+or disambiguate changed bytes.
 
 ## Evidence Packet
 
@@ -677,17 +851,15 @@ and Boundary. Every final Receipt must check that Seal. Every baseline Receipt
 must check that Boundary. The reviewer Work Product and Execution Receipt must
 join through the same reviewer Attempt and exact evaluation subject.
 
-The Work Boundary owns the repository and Knowledge authority basis admitted
-for the mandate. The Candidate Revision owns the immutable Candidate base and
-derived result state. Those bases can differ, including after readmission. The
-Packet validator traverses and preserves both exact identities; it MUST NOT
-collapse them or require their Product State or Knowledge Set digests to match.
-Every Atlas-dependent input in the Seal, final Checks, reviewer Projection, and
-Packet resolves from the active Boundary's historical admitted Atlas snapshot.
-A canonical or authoritative-worktree change during the lease is an operational
-violation that blocks active routes. It does not silently replace the historical
-Atlas dependency or create a different Evidence subject; exact restoration or
-no-ship is required.
+The Work Boundary owns admitted governing meaning. The current Candidate owns
+its immutable application base and result state, and its Integration Assessment
+binds the selected full parent Snapshot. The Packet validator preserves all
+three exact subjects. It MUST NOT require their Product State or Knowledge Set
+digests to match or classify upstream changes as Delivery contribution.
+Independent review explicitly judges the mandate and original baseline Receipts
+for the exact parent/result pair. Canonical movement cannot change that
+historical interpretation; current parent equality remains a separate acceptance
+predicate.
 
 The Packet payload owns:
 
@@ -740,6 +912,22 @@ or `excluded`, its derived freshness and subject-equivalence disposition, its
 age and applicable maximum age when temporal reuse applies, and the exact
 reason.
 
+A baseline postcondition Receipt with the exact `baseline-postcondition`
+non-execution authorization is retained in this ledger as `use: excluded`,
+`freshness: not-applicable`, and `subjectEquivalence: exact`, with its exact
+Receipt identity, null age and maximum age, and reason
+`baseline-postcondition-not-run`. The exclusion concerns execution: the
+authorized Receipt still satisfies the required baseline recording and remains
+subject to exact Check selection, proof-subject, and reviewer original-baseline
+applicability validation. It MUST have no allocated execution or start and
+finish times. It establishes neither an executed result nor reusable final
+proof; the selected final postcondition MUST pass independently.
+
+This case does not authorize exclusion of a missing required Receipt, an
+upstream-condition non-execution, another modality or phase, an unsupported or
+operational-error result, or an execution whose finish time is absent. An
+excluded phase with no selected Receipt retains a null Receipt identity.
+
 A reused Receipt must match the Check Definition and Binding coordinates,
 subject facts, environment class, implementation policy, freshness contract,
 and unaffected dependency set. Candidate or Product State equivalence requires
@@ -759,12 +947,12 @@ input identity, exact cause identifiers, `current` or `invalidated` state, and
 reason. It does not mutate or annotate an earlier record.
 
 A later Candidate Revision, active Work Boundary, Check Definition, Binding,
-admitted Knowledge basis, environment, or reviewer subject invalidates every
-dependent item whose declared equivalence is not preserved. Control-only motion
-that does not change an Evidence dependency does not invalidate product
-Evidence. A canonical branch or authoritative-worktree lease violation blocks
-productive operations; it does not silently replace an Evidence dependency or
-create a new subject. A provider restart alone does not invalidate a runtime-
+governing Knowledge basis, environment, or reviewer subject invalidates every
+dependent item whose declared equivalence is not preserved. A new integration
+successor clears prior current Seal/Evidence. Control-only movement does not
+reinterpret historical Evidence. Later canonical movement makes an old parent
+ineligible for a new acceptance effect without relabeling any Receipt or
+rewriting the Packet. A provider restart alone does not invalidate a runtime-
 authenticated Receipt.
 
 Historical Seal and Packet currentness is independently derived from the event
@@ -777,7 +965,22 @@ The independence ledger records each selected independence rule, the exact
 Attempt, Work Product, Receipt, capability, Projection, provider-session, and
 subject facts used to evaluate it, and `satisfied`, `failed`, or
 `indeterminate` state. Exact Control coordinates come from Packet relationship
-closure rather than caller assertions.
+closure rather than caller assertions. The selected fresh Cell, empty provider
+home, ephemeral invocation, and closed reviewer Input Set establish context
+separation when the trusted Execution Receipt reproduces the exact Attempt's
+execution, provider, and curated-input bindings. The Execution owner validates
+the selected Specification, Input Set, and runner before retaining that Receipt;
+the synchronous Evidence adapter does not reconstruct runner bytes from current
+installation defaults.
+
+Provider-session telemetry is an additional contradiction check. A known builder
+session collision fails independence. Missing prior-builder or reviewer session
+telemetry does not negate positively established isolated construction: the
+ledger MAY retain `providerSession: indeterminate` with `state: satisfied` when
+that construction and exact read-only subject observation establish independence.
+This combination MAY support `acceptance-ready`; `providerSession: reused` MUST
+NOT. An unknown construction or indeterminate physical subject remains
+insufficient regardless of session telemetry.
 
 ### Proposition-decision ledger
 
@@ -808,10 +1011,19 @@ several lower-risk passes cannot offset one unsatisfied required obligation.
 
 ### Packet finalization and Process reduction
 
-The runtime derives every ledger and readiness value from exact retained
-records, the active Boundary's admitted historical repository snapshot, and the
-exact Candidate observation, validates the complete Packet, then atomically
-finalizes it with `evidence-packet-finalized`.
+The Evidence verifier derives every ledger and readiness value from exact
+retained records, the active Boundary's admitted historical repository
+snapshot, and the exact Candidate observation. The evaluation owner uses that
+interpretation to construct the Packet, requires complete verification, then
+atomically finalizes it with `evidence-packet-finalized` through Control.
+
+The verifier MUST preserve Control's nondecreasing event time. Evaluation time
+MUST NOT precede the required evaluation opening, Seal, Check observations,
+reviewer Attempt and provider observations, Work Product submission, Execution
+Receipt, or selected Material Condition. Packet creation MUST NOT precede that
+evaluation time, and its finalization event MUST NOT precede Packet creation.
+These times need not be equal. Later recovery coordination does not reset the
+historical evaluation time or change what its required observations justify.
 
 That event payload contains only event-owned activity coordination. It MUST NOT
 repeat readiness, Seal or Candidate digest, Check outcome, proposition result,
@@ -845,7 +1057,7 @@ The Packet is `acceptance-ready` only when:
 `correctable` means the exact failures can be repaired under the active Work
 Boundary. `revision-required` means honest correction would change product
 meaning, exclusions, effects, risk, architecture, Assurance, capability, or a
-Founder-owned tradeoff. `no-ship-recommended` means the runtime can derive no
+Director-owned tradeoff. `no-ship-recommended` means the runtime can derive no
 legal acceptance or correction route from the retained facts. It remains a
 recommendation, never a no-ship decision.
 
@@ -877,22 +1089,55 @@ then follows
 revise/reaffirm/readmit or no-ship. A reviewer recommendation cannot freeze that
 condition by itself.
 
-## Founder Decision and Terminal Disposition
+## Integration Applicability Review
+
+Independent review MUST receive the exact governing Boundary W, source Candidate
+lineage, Integration Assessment A, parent Snapshot P, sealed result I, and every
+required original baseline Receipt. The Agent judges whether W's mandate and
+those observations remain sufficient for P/I. Mechanical contextual equality
+alone does not establish semantic applicability.
+
+The reviewer Work Product carries `mandateApplicability` with disposition
+`applicable`, `requires-readmission`, or `indeterminate`, rationale, exact
+citation ids, and parser-derived fragment digest. It carries one
+`baselineApplicability` entry for every required baseline Receipt, identified by
+its exact projected Receipt id, with disposition `applicable`, `insufficient`,
+or `indeterminate`, rationale, citations, and fragment digest. Duplicate,
+missing, unprojected, or wrong-subject entries fail validation. Each applicability
+judgment has at least one exact resolved citation; each baseline judgment cites
+its own original Receipt.
+
+An applicable baseline remains an observation of its original B subject. Review
+MUST NOT relabel Receipt(B) as Check(P). If new governing context or P-specific
+baseline observation is required, the Condition and successor W'(P) route
+supplies fresh baseline Checks and authenticated readmission. Ordinary correctable
+implementation defects retain the active mandate.
+
+The v2 Evidence Packet's `integrationApplicability` ledger binds exact A and the
+reviewer's mandate and per-Receipt dispositions/fragment digests. Rationale and
+citations remain in the exact referenced Work Product. The effect-free verifier
+rederives the ledger, checks A/C/P/I lineage and any required Condition/readmission
+provenance, and requires applicable mandate and every required baseline alongside
+all existing proof, temporal, Artifact, Description, and independence rules.
+Missing or indeterminate applicability cannot produce acceptance-ready Evidence.
+This interpretation does not authenticate Director authority or execute a transition.
+
+## Director Decision and Terminal Disposition
 
 Evidence readiness is not canonical Product State. Acceptance requires a fresh
-`founder-decision` with the `accept` variant and exact relationships selecting
+`director-decision` with the `accept` variant and exact relationships selecting
 the current Candidate Revision, Candidate Seal, and acceptance-ready Evidence
 Packet. The runtime constructs the canonical authority subject from those
-resolved revisions. The Founder authenticates that subject; authentication
+resolved revisions. The Director authenticates that subject; authentication
 does not claim the transaction completed. The subject authorizes the exact
-sealed Candidate tree over the exact admitted parent; it authorizes no alternate
+sealed Candidate tree over the exact integration parent; it authorizes no alternate
 parent, Atlas selection, merge, rebase, or composition.
 
 The exact terminal relationship matrix is:
 
 <!-- markdownlint-disable MD013 -->
 
-| Variant and current subject | Founder Decision relationships | Closure relationships |
+| Variant and current subject | Director Decision relationships | Closure relationships |
 | --- | --- | --- |
 | `accept`; active Boundary, Candidate, current Seal, ready Packet | one `selects-boundary`, one `selects-candidate`, one `selects-seal`, one `selects-evidence`; no `resolves` | one `closes-with`, one `governed-by`, one `accepts-candidate`, one `accepts-evidence`; no `abandons-candidate` |
 | `no-ship`; no current proposed or active Boundary and no Candidate | no selection or resolution relationship | one `closes-with`; no Boundary, Candidate, or Evidence relationship |
@@ -908,24 +1153,22 @@ that exact revision. When a Candidate exists, the no-ship Decision and Closure
 MUST bind that exact current Candidate Revision and the Decision payload MUST
 select its legal disposition. A caller cannot choose the sparser variant.
 
-The acceptance transaction revalidates the exact join immediately before
-canonical motion. It proves that the Candidate has no Atlas delta, the
-canonical branch still names the exact admitted parent, and the authoritative
-checkout is completely clean. It then applies the exact sealed Candidate tree
-over that parent. Its terminal `closure` has `closes-with`, `governed-by`,
-`accepts-candidate`, and `accepts-evidence` relationships under
-[Control](CONTROL.md#relationship-registry) and separately binds the Candidate
-tree, digest, Product State, and Knowledge Set digests; the exact admitted
-parent; and the accepted commit, tree, and generic canonical result digest.
-Candidate identities remain the Evidence subject. Transaction observation, not
-Packet readiness or Founder intent alone, establishes the accepted result.
+The acceptance transaction requires Evidence verification independently of
+Delivery assembly. It reobserves the exact retained parent and sealed Candidate,
+validates P→I scope and protected roots, and verifies the same justification.
+Under the short publication lock it proves the clean canonical target still
+names P and conditionally applies exactly I. Closure binds the actual P/K/I
+result plus Product State and Knowledge Set facts. Observation of this effect,
+not Packet readiness or Director intent, establishes acceptance.
 
-Any canonical or authoritative-worktree movement makes acceptance
-`not-applied`. The same Decision, transaction plan, intent, and effect digest
-cannot be reinterpreted against a newer parent. Recovery may only recognize or
-complete the same exact retained effect; no-ship remains available.
+Parent or checkout movement before publication makes the retained acceptance
+not applied. The same Decision and plan cannot be interpreted against P'. A
+fresh integration, evaluation, and Decision can proceed in the same Delivery.
+Indeterminate recovery retains its exact effect. Exact K ancestry after later
+forward publication can prove application; rewritten or missing history cannot
+prove non-application.
 
-A no-ship Founder Decision does not require a passing Packet and cannot turn
+A no-ship Director Decision does not require a passing Packet and cannot turn
 failed Evidence into passing Evidence. Its exact relationship set depends on
 the latest subject Delivery actually established:
 
@@ -955,9 +1198,13 @@ applied terminal effect followed by complete Execution Containment, Runtime
 Retirement, and Reclamation-handoff facts can compile Closure. Completed
 Reclamation is not required. `closure-recorded` atomically finalizes that
 record, completes the terminal activity, and is the final Journal head. No
-later `activity-completed` event is legal. A not-applied or indeterminate effect
-requires exact transaction recovery and cannot produce Closure or permit Store
-sealing.
+later `activity-completed` event is legal. An indeterminate effect retains exact
+transaction recovery and cannot produce Closure or permit Store sealing. A
+conclusive not-applied effect likewise produces no Closure, but can finish its
+failed Activity and exact support disposition. If that settlement is
+interrupted, recovery completes it. Once settled, Delivery derives the next
+lawful work, including fresh integration and renewed justification after
+stale-parent refusal; it does not retry the old Decision against another parent.
 
 ## Evidence Storage and Disclosure
 

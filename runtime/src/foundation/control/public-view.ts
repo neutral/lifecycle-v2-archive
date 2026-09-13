@@ -10,6 +10,7 @@ import {
 } from "../process/delivery-reducer.js";
 import { digestCanonical, type Sha256 } from "../validation/canonical.js";
 import type { ControlRecordStore } from "./store.js";
+import type { ControlRecordStoreIdentity, ControlRecordStoreSeal } from "./types.js";
 
 export type DeliveryControlPhysicalDisposition = Readonly<{
   disposition: "active" | "archived";
@@ -18,7 +19,10 @@ export type DeliveryControlPhysicalDisposition = Readonly<{
 
 type SubjectKind =
   | "work-boundary"
+  | "director-decision"
+  | "work-delegation"
   | "candidate-revision"
+  | "integration-assessment"
   | "material-condition"
   | "candidate-seal"
   | "evidence-packet"
@@ -34,10 +38,10 @@ function controlReference(
 }
 
 function storeDispositionState(
-  store: ControlRecordStore,
+  state: ReducedDeliveryState,
+  seal: ControlRecordStoreSeal | null,
   physical: DeliveryControlPhysicalDisposition,
 ): ReducedDeliveryState {
-  const seal = store.getSeal();
   if (physical.disposition === "archived") {
     if (seal === null || physical.archiveManifestDigest === null) {
       throw new FoundationError(
@@ -45,7 +49,7 @@ function storeDispositionState(
         "An archived Delivery view requires its exact Store seal and archive manifest digest",
       );
     }
-    return composeDeliveryStoreDisposition(store.state(), "archived-verified");
+    return composeDeliveryStoreDisposition(state, "archived-verified");
   }
   if (physical.archiveManifestDigest !== null) {
     throw new FoundationError(
@@ -54,7 +58,7 @@ function storeDispositionState(
     );
   }
   return composeDeliveryStoreDisposition(
-    store.state(),
+    state,
     seal === null ? "active-unsealed" : "sealed-unarchived",
   );
 }
@@ -63,7 +67,18 @@ export function publicDeliveryState(
   store: ControlRecordStore,
   physical: DeliveryControlPhysicalDisposition,
 ): FoundationDeliveryState {
-  const state = storeDispositionState(store, physical);
+  return publicObservedDeliveryState({ identity: store.identity, state: store.state(), seal: store.getSeal(), physical });
+}
+
+/** Project one owner-observed boundary without rereading mutable Store custody. */
+export function publicObservedDeliveryState(input: Readonly<{
+  identity: ControlRecordStoreIdentity;
+  state: ReducedDeliveryState;
+  seal: ControlRecordStoreSeal | null;
+  physical: DeliveryControlPhysicalDisposition;
+}>): FoundationDeliveryState {
+  const { seal, physical } = input;
+  const state = storeDispositionState(input.state, seal, physical);
   const recoveries = state.activities
     .filter(({ recovery }) => recovery !== null)
     .map(({ id, recovery }) => Object.freeze({ activityId: id, recovery: recovery! }));
@@ -74,7 +89,6 @@ export function publicDeliveryState(
     );
   }
   const activityRecovery = recoveries[0] ?? null;
-  const seal = store.getSeal();
   const closureRecorded = state.subjects.closure !== null;
   const stage = physical.disposition === "archived"
     ? "archived"
@@ -84,9 +98,9 @@ export function publicDeliveryState(
         ? "closure-recorded"
         : "active";
   const source = {
-    schema: "lifecycle.delivery-reduction.v2",
-    storeId: store.identity.storeId,
-    processId: store.identity.processId,
+    schema: "lifecycle.delivery-reduction.v5",
+    storeId: input.identity.storeId,
+    processId: input.identity.processId,
     standing: state.standing,
     candidateCondition: state.candidateCondition,
     activities: state.activities.map(({ id, operation, family, stage: activityStage }) => ({
@@ -115,11 +129,20 @@ export function publicDeliveryState(
     subjects: {
       proposedBoundary: controlReference("work-boundary", state.subjects.proposedBoundary),
       activeBoundary: controlReference("work-boundary", state.subjects.activeBoundary),
+      integrationAssessment: controlReference("integration-assessment", state.subjects.integrationAssessment),
       candidate: controlReference("candidate-revision", state.subjects.candidate),
       materialCondition: controlReference("material-condition", state.subjects.materialCondition),
       seal: controlReference("candidate-seal", state.subjects.seal),
       evidence: controlReference("evidence-packet", state.subjects.evidence),
       closure: controlReference("closure", state.subjects.closure),
+    },
+    delegation: {
+      admission: controlReference("director-decision", state.delegation.admission),
+      current: state.delegation.current === null ? null : {
+        reference: controlReference("work-delegation", state.delegation.current.reference),
+        stopped: state.delegation.current.stopped,
+      },
+      charged: state.delegation.charged,
     },
     journal: {
       eventCount: state.journal.eventCount,

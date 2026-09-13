@@ -572,7 +572,11 @@ test("lost terminal-completion commit response recovers before strict output val
       sourceObservation: FoundationExecutionObservationV1,
     ) {
       retrievals += 1;
-      if (retrievals === 2) throw new Error("injected whole-Carrier retrieval interruption");
+      if (retrievals === 2) throw new FoundationError(
+        "lifecycle.execution.docker-cli-driver.command-timeout",
+        "private whole-Carrier retrieval detail must remain excluded",
+        { retryable: true, observedFacts: { privatePath: "/private/fixture-only" } },
+      );
       return await delegate.retrieve(handle, sourceObservation);
     },
     createReclamationBinding: delegate.createReclamationBinding.bind(delegate),
@@ -655,8 +659,17 @@ test("lost terminal-completion commit response recovers before strict output val
       specification: fixture.specification,
       runnerDigest: RUNNER_DIGEST,
     }),
-    (error: unknown) => error instanceof FoundationError &&
-      error.code === "lifecycle.execution.operation-host.backend-interrupted",
+    (error: unknown) => {
+      assert.ok(error instanceof FoundationError);
+      assert.equal(error.code, "lifecycle.execution.operation-host.backend-interrupted");
+      assert.deepEqual(error.observedFacts, {
+        backendOperation: "output-retrieval",
+        backendFailureClass: "command-timeout",
+      });
+      assert.equal(error.operationalStateChanged, true);
+      assert.equal(JSON.stringify(error.toJSON()).includes("private whole-Carrier"), false);
+      return true;
+    },
   );
   const retrievalInterrupted = await recovered.read(fixture.specification);
   assert.notEqual(retrievalInterrupted, null);
@@ -966,15 +979,28 @@ test("allocation preserves deterministic Backend refusals and masks uncertain fa
       error.code === "lifecycle.execution.operation-host.backend-interrupted",
   );
 
+  for (const flags of [{ repositoryChanged: null }, { operationalStateChanged: null }]) {
+    allocationFailure = Object.assign(new FoundationError("lifecycle.execution.test-backend.allocation-duplicate", "Unobserved effect"), flags);
+    await assert.rejects(operationHost.advance({ specification: fixture.specification, runnerDigest: RUNNER_DIGEST }),
+      (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.execution.operation-host.backend-interrupted");
+    assert.equal((await operationHost.read(fixture.specification))?.checkpoint.handle, null);
+  }
+
   allocationFailure = new Error("private Backend interruption detail");
   await assert.rejects(
     operationHost.advance({
       specification: fixture.specification,
       runnerDigest: RUNNER_DIGEST,
     }),
-    (error: unknown) => error instanceof FoundationError &&
-      error.code === "lifecycle.execution.operation-host.backend-interrupted" &&
-      !error.message.includes("private Backend interruption detail"),
+    (error: unknown) => {
+      assert.ok(error instanceof FoundationError);
+      assert.equal(error.code, "lifecycle.execution.operation-host.backend-interrupted");
+      assert.deepEqual(error.observedFacts, {
+        backendOperation: "allocate", backendFailureClass: "unknown",
+      });
+      assert.equal(JSON.stringify(error.toJSON()).includes("private Backend interruption detail"), false);
+      return true;
+    },
   );
 });
 

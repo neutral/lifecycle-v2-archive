@@ -14,6 +14,7 @@ import type {
   FoundationAgentRoleCheckpointAdapterV7,
 } from "../../src/foundation/process/agent-operation-v7.js";
 import { finalizeCandidateDevelopmentV7 } from "../../src/foundation/process/candidate-development-finalization-v7.js";
+import { FoundationError } from "../../src/foundation/error.js";
 import { sha256Bytes, type Sha256 } from "../../src/foundation/validation/canonical.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
 
@@ -62,7 +63,10 @@ function reference(value: ControlRecordRevision) {
   return Object.freeze({ id: value.recordId, revision: value.revision, digest: value.digest });
 }
 
-function fixture(proposal: "absent" | "progress" | "material-condition") {
+function fixture(
+  proposal: "absent" | "progress" | "material-condition",
+  successorDisposition: "promoted" | "invalid" | "unavailable" | "not-produced" = "promoted",
+) {
   const candidatePayload = validDeliveryControlPayload("candidate-revision");
   const boundary = revision({
     id: "work-boundary-candidate-finalization",
@@ -76,9 +80,9 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
     relationships: Object.freeze([relation("governed-by", boundary)]),
   });
   const brief = revision({
-    id: "founder-brief-candidate-finalization",
-    kind: "founder-brief",
-    payload: Object.freeze({ schema: "lifecycle.founder-brief-payload.v1" }),
+    id: "director-brief-candidate-finalization",
+    kind: "director-brief",
+    payload: Object.freeze({ schema: "lifecycle.director-brief-payload.v2", scope: { kind: "activity", activityId: ACTIVITY } }),
   });
   const attempt = revision({
     id: "agent-attempt-candidate-finalization",
@@ -96,7 +100,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
       relation("uses-candidate", attempted),
     ]),
   });
-  const result = revision({
+  const result = successorDisposition === "promoted" ? revision({
     id: "candidate-revision-candidate-result",
     kind: "candidate-revision",
     payload: Object.freeze({
@@ -120,7 +124,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
       relation("governed-by", boundary),
       relation("result-of", attempt),
     ]),
-  });
+  }) : attempted;
   const workProduct = proposal === "absent"
     ? null
     : revision({
@@ -128,7 +132,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
         kind: "agent-work-product",
         authority: "agent-proposed",
         payload: Object.freeze({
-          schema: "lifecycle.agent-work-product-payload.v2",
+          schema: "lifecycle.agent-work-product-payload.v5",
           role: "builder",
           roleSemantics: Object.freeze({
             role: "builder",
@@ -148,10 +152,22 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
       ...validDeliveryControlPayload("execution-receipt"),
       activityId: ACTIVITY,
       role: "builder",
+      candidate: Object.freeze({
+        input: Object.freeze({
+          revision: relation("uses-candidate", attempted).target,
+          carrierManifestDigest: (attempted.payload.carrierManifest as ControlJsonObject).digest!,
+        }),
+        successorDisposition,
+        successor: successorDisposition === "promoted" ? Object.freeze({
+          revision: relation("observes-candidate", result).target,
+          carrierManifestDigest: (result.payload.carrierManifest as ControlJsonObject).digest!,
+        }) : null,
+        contentDisposition: successorDisposition === "promoted" ? "changed" : null,
+      }),
     }),
     relationships: Object.freeze([
       relation("observes-attempt", attempt),
-      relation("observes-candidate", result),
+      ...(successorDisposition === "promoted" ? [relation("observes-candidate", result)] : []),
       ...(workProduct === null ? [] : [relation("observes-work-product", workProduct)]),
     ]),
   });
@@ -161,7 +177,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
         id: "material-condition-candidate-finalization",
         kind: "material-condition",
         payload: Object.freeze({
-          schema: "lifecycle.material-condition-payload.v1",
+          schema: "lifecycle.material-condition-payload.v4",
           source: Object.freeze({
             kind: "agent-proposal",
             conditionId: "condition.material",
@@ -234,6 +250,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
         candidateCondition: currentCondition === null ? "in-progress" as const : "boundary-resolution" as const,
         activities: Object.freeze([]),
         subjects: Object.freeze({
+          integrationAssessment: null,
           proposedBoundary: null,
           activeBoundary: reference(boundary),
           candidate: reference(result),
@@ -242,6 +259,7 @@ function fixture(proposal: "absent" | "progress" | "material-condition") {
           evidence: null,
           closure: null,
         }),
+        delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
         journal: Object.freeze({ eventCount: journal.length, headDigest: predecessorDigest }),
         eligibleOperations: Object.freeze([]),
       });
@@ -302,6 +320,63 @@ test("candidate finalization fails a builder pass without a Work Product", async
   assert.deepEqual(result.controls, []);
 });
 
+test("failed builder finalization refuses fallback to the attempted Candidate after a successor was observed", async () => {
+  const value = fixture("absent");
+  await assert.rejects(() => finalizeCandidateDevelopmentV7({
+    ...value.context,
+    resultCandidate: value.context.attemptedCandidate,
+    runtimeId: "runtime-v7",
+  }), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.control-execution-receipt.candidate");
+  assert.equal(value.checkpoint(), null);
+});
+
+for (const disposition of ["invalid", "unavailable", "not-produced"] as const) {
+  test(`candidate finalization preserves the input after ${disposition} output without semantics`, async () => {
+    const value = fixture("absent", disposition);
+    assert.equal(value.context.resultCandidate, value.context.attemptedCandidate);
+    const result = await finalizeCandidateDevelopmentV7({ ...value.context, runtimeId: "runtime-v7" });
+    assert.equal(result.outcome, "failed");
+    assert.deepEqual(result.controls, []);
+    assert.equal(value.checkpoint(), null);
+  });
+}
+
+test("non-promoted Receipt facts refuse a substituted input, Carrier, result or successor edge", async () => {
+  const value = fixture("absent", "invalid");
+  const inputBinding = (value.context.receipt.payload.candidate as ControlJsonObject).input as ControlJsonObject;
+  const receiptWith = (candidate: ControlJsonObject, relationships = value.context.receipt.relationships) => revision({
+    id: value.context.receipt.recordId,
+    kind: "execution-receipt",
+    authority: "runtime-observed",
+    payload: { ...value.context.receipt.payload, candidate },
+    relationships,
+  });
+  const candidate = value.context.receipt.payload.candidate as ControlJsonObject;
+  const cases = [
+    { attemptedCandidate: { ...value.context.attemptedCandidate, digest: sha256Bytes("substitute-input") } },
+    { resultCandidate: fixture("absent").context.resultCandidate },
+    { receipt: receiptWith({ ...candidate, input: { ...inputBinding, carrierManifestDigest: sha256Bytes("substitute-carrier") } }) },
+    { receipt: receiptWith(candidate, [...value.context.receipt.relationships, relation("observes-candidate", value.context.resultCandidate)]) },
+  ];
+  for (const mutation of cases) {
+    await assert.rejects(() => finalizeCandidateDevelopmentV7({ ...value.context, ...mutation, runtimeId: "runtime-v7" }),
+      (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.control-execution-receipt.candidate");
+    assert.equal(value.checkpoint(), null);
+  }
+});
+
+test("failed builder finalization refuses a substituted Attempt despite unavailable semantics", async () => {
+  const value = fixture("absent");
+  await assert.rejects(() => finalizeCandidateDevelopmentV7({
+    ...value.context,
+    attempt: Object.freeze({ ...value.context.attempt, digest: sha256Bytes("another-attempt") }),
+    runtimeId: "runtime-v7",
+  }), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.candidate-development-finalization-v7.subject");
+  assert.equal(value.checkpoint(), null);
+});
+
 test("candidate finalization completes ordinary progress without manufacturing another Control record", async () => {
   const value = fixture("progress");
   const result = await finalizeCandidateDevelopmentV7({ ...value.context, runtimeId: "runtime-v7" });
@@ -310,8 +385,9 @@ test("candidate finalization completes ordinary progress without manufacturing a
   assert.equal(value.checkpoint(), null);
 });
 
-test("candidate finalization resumes an exact Material Condition without resampling its time", async () => {
-  const value = fixture("material-condition");
+for (const disposition of ["promoted", "invalid", "unavailable", "not-produced"] as const) {
+test(`candidate finalization resumes an exact Material Condition after ${disposition} output without resampling its time`, async () => {
+  const value = fixture("material-condition", disposition);
   let retained = 0;
   const options = Object.freeze({
     now: () => "2026-08-29T21:01:00.000Z",
@@ -338,3 +414,4 @@ test("candidate finalization resumes an exact Material Condition without resampl
   assert.equal(value.checkpoint(), null);
   assert.equal(retained, 1);
 });
+}

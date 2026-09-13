@@ -8,6 +8,7 @@ import {
   FoundationRuntimeObservationSchema,
   createFoundationRuntimeOperationResult,
   parseFoundationRuntimeOperationRequest,
+  type FoundationDeliveryInbox,
   type FoundationRuntimeInitializeRequest,
   type FoundationRuntimeOperationKind as ProtocolRuntimeOperationKind,
   type FoundationRuntimeOperationRequest as ProtocolRuntimeOperationRequest,
@@ -16,6 +17,7 @@ import {
 import { FoundationError } from "./error.js";
 import {
   resolveFoundationInstalledMachineCustodyV7,
+  resolveFoundationInstalledReadInvestmentV7,
   resolveFoundationInstalledRepositoryInitializationV7,
   resolveFoundationInstalledRuntimeConfigurationV7,
   type FoundationInstalledMachineCustodyV7,
@@ -34,7 +36,8 @@ import {
   type FoundationRuntimeReadRequest,
   type FoundationRuntimeReadSurface,
 } from "./runtime-read.js";
-import { createFoundationRuntimeMutationExecutorV7 } from "./runtime-mutation-v7.js";
+import { createFoundationRuntimeMutationExecutorV7, executeFoundationWorkStop } from "./runtime-mutation-v7.js";
+import { assertFoundationAuthorityCredential, assertFoundationAuthorityExecutionContext, type FoundationAuthorityCredential } from "./repository/authority.js";
 
 export const FOUNDATION_RUNTIME_FACADE_SCHEMA = FOUNDATION_PROTOCOL_RUNTIME_FACADE_SCHEMA;
 export const FOUNDATION_RUNTIME_RESULT_SCHEMA = FOUNDATION_PROTOCOL_RUNTIME_RESULT_SCHEMA;
@@ -48,8 +51,8 @@ export type FoundationRuntimeOperationValue = ProtocolRuntimeOperationResult["va
 export type FoundationRuntimeInitializeInput = FoundationRuntimeInitializeRequest["input"];
 
 export type FoundationRuntimeExecutionContext = Readonly<{
-  /** Ephemeral Founder secret; never enters a request, Store, result, or log. */
-  authoritySecret?: string;
+  /** Opaque invocation custody; never enters a request, Store, result, or log. */
+  authorityCredential?: FoundationAuthorityCredential;
 }>;
 
 export type FoundationRuntimeMutationRequest = Exclude<
@@ -79,12 +82,13 @@ type FoundationInstalledMutationFactory = (input: Readonly<{
 
 type FoundationRuntimeFacadeOwners = Readonly<{
   resolveMachineCustody(): Promise<FoundationInstalledMachineCustodyV7>;
+  resolveReadInvestment(): Readonly<{ model: string; reasoning: string }> | null;
   resolveInitialization(): Promise<FoundationInstalledRepositoryInitializationV7>;
   resolveConfiguration(): Promise<FoundationInstalledRuntimeConfigurationV7>;
   initialize: typeof initializeRepository;
   createReadSurface(input: Readonly<{
     machineHome: string | null;
-    investment?: Readonly<{ model: string; reasoning: string }>;
+    investment?: Readonly<{ model: string; reasoning: string }> | null;
     now: () => string;
   }>): FoundationRuntimeReadSurface;
   mutation: FoundationRuntimeMutationExecutor | null;
@@ -122,15 +126,9 @@ function readRequiresInstalledInvestment(request: FoundationRuntimeReadRequest):
     (request.operation === "delivery.watch" && request.input.scope === "delivery");
 }
 
-function exactSecret(context: FoundationRuntimeExecutionContext): string {
-  const value = context.authoritySecret;
-  if (
-    value === undefined || value.length === 0 || value.includes("\0") ||
-    Buffer.byteLength(value, "utf8") > 4_096
-  ) {
-    fail("authority", "This operation requires one bounded ephemeral Founder authority secret");
-  }
-  return value;
+function initializationCredential(context: FoundationRuntimeExecutionContext): FoundationAuthorityCredential {
+  assertFoundationAuthorityCredential(context.authorityCredential, "initialize");
+  return context.authorityCredential;
 }
 
 async function executeInitialization(input: Readonly<{
@@ -145,9 +143,9 @@ async function executeInitialization(input: Readonly<{
   const before = await attachedHead(repository);
   const contract = await input.initialize(repository, {
     targetId: input.request.input.targetId,
-    founderPrincipal: input.request.input.founderPrincipal,
+    directorPrincipal: input.request.input.directorPrincipal,
     home: input.initialization.machineHome,
-    authoritySecret: exactSecret(input.context),
+    authorityCredential: initializationCredential(input.context),
     publicationDigest: input.initialization.publicationDigest,
     implementationRoots: input.request.input.implementationRoots,
     checkBindings: parseFoundationCheckBindingRegistry(input.request.input.checkBindings ?? {}),
@@ -200,6 +198,7 @@ function buildFoundationRuntimeFacade(input: Readonly<{
       context: FoundationRuntimeExecutionContext = {},
     ): Promise<FoundationRuntimeOperationResult> {
       const request = parseFoundationRuntimeOperationRequest(supplied);
+      assertFoundationAuthorityExecutionContext(context, request.operation);
       if (request.operation === "repository.validate") {
         return input.owners.createReadSurface({
           machineHome: null,
@@ -207,22 +206,16 @@ function buildFoundationRuntimeFacade(input: Readonly<{
         }).execute(request);
       }
       if (readRequest(request)) {
-        if (readRequiresInstalledInvestment(request)) {
-          const configuration = await input.owners.resolveConfiguration();
-          return input.owners.createReadSurface({
-            machineHome: configuration.machineHome,
-            investment: Object.freeze({
-              model: configuration.model,
-              reasoning: configuration.reasoning,
-            }),
-            now: input.now,
-          }).execute(request);
-        }
         const custody = await input.owners.resolveMachineCustody();
         return input.owners.createReadSurface({
           machineHome: custody.machineHome,
+          ...(readRequiresInstalledInvestment(request) ? { investment: input.owners.resolveReadInvestment() } : {}),
           now: input.now,
         }).execute(request);
+      }
+      if (request.operation === "delivery.work" && request.input.action === "stop") {
+        const custody = await input.owners.resolveMachineCustody();
+        return executeFoundationWorkStop({ request, machineHome: custody.machineHome, now: input.now });
       }
       if (request.operation === "repository.initialize") {
         const initialization = await input.owners.resolveInitialization();
@@ -234,7 +227,7 @@ function buildFoundationRuntimeFacade(input: Readonly<{
           now: input.now,
         });
       }
-      if (!mutationRequest(request)) fail("operation", "Unsupported Foundation v8 operation");
+      if (!mutationRequest(request)) fail("operation", "Unsupported Foundation operation");
       const configuration = await input.owners.resolveConfiguration();
       const invocation = Object.freeze({ request, context, configuration });
       if (input.owners.mutation !== null) {
@@ -248,7 +241,7 @@ function buildFoundationRuntimeFacade(input: Readonly<{
   });
 }
 
-/** Create the sole installed Foundation v8 facade. */
+/** Create the installed Runtime Facade for the selected public Foundation protocol. */
 export function createFoundationRuntimeFacade(options: Readonly<{
   mutation?: FoundationRuntimeMutationExecutor;
   environment?: NodeJS.ProcessEnv;
@@ -261,6 +254,7 @@ export function createFoundationRuntimeFacade(options: Readonly<{
       resolveMachineCustody: async () => resolveFoundationInstalledMachineCustodyV7({
         environment: options.environment,
       }),
+      resolveReadInvestment: () => resolveFoundationInstalledReadInvestmentV7({ environment: options.environment }),
       resolveInitialization: async () => resolveFoundationInstalledRepositoryInitializationV7({
         environment: options.environment,
       }),
@@ -292,6 +286,7 @@ export function createFoundationRuntimeFacadeForTesting(options: Readonly<{
       resolveMachineCustody: async () => Object.freeze({
         machineHome: options.configuration.machineHome,
       }),
+      resolveReadInvestment: () => Object.freeze({ model: options.configuration.model, reasoning: options.configuration.reasoning }),
       resolveInitialization: async () => Object.freeze({
         machineHome: options.configuration.machineHome,
         installationId: options.configuration.installationId,
@@ -309,30 +304,158 @@ export function createFoundationRuntimeFacadeForTesting(options: Readonly<{
 
 export const foundationRuntime = createFoundationRuntimeFacade();
 
+// Explanations of observed values only. Eligibility remains the Runtime's supplied set.
+const HUMAN_STANDING = {
+  framing: "Preparing the proposed scope of this change.",
+  "awaiting-admission": "Review and approve the proposed scope before development begins.",
+  active: "Work is governed by the approved scope; the proposed result remains separate from canonical.",
+  "boundary-paused": "The governing context needs a decision before work can resume.",
+  "awaiting-readmission": "Review and approve the resolved scope before work resumes.",
+  "decision-ready": "The evaluated result is ready for your publication decision.",
+  closed: "This Delivery has ended; check its result and any remaining recovery below.",
+} as const;
+
+const HUMAN_CANDIDATE = {
+  absent: "No proposed result has been retained yet.",
+  "ready-for-work": "Saved proposed result is ready for development.",
+  "in-progress": "Development is in progress; retained revisions preserve prior work.",
+  "needs-correction": "Saved proposed result needs correction before it can proceed.",
+  "paused-for-boundary": "Saved proposed result is paused while the governing scope is resolved.",
+  "sealed-under-evaluation": "An exact proposed result is fixed for checks and independent review.",
+  "ready-for-decision": "The exact evaluated result awaits your decision; it is not published yet.",
+  "terminal-recovery": "A terminal operation needs reconciliation; completion is not established here.",
+  accepted: "The accepted result was applied to canonical repository state.",
+  abandoned: "This Delivery ended without publishing its proposed result.",
+} as const;
+
+const HUMAN_COURSES = {
+  "delivery.prepare": "Describe new work and prepare its proposed scope.",
+  "delivery.admit": "Approve the exact proposed scope to start or resume work. Director authorization required.",
+  "delivery.continue": "Develop or correct the saved proposed result with fresh direction.",
+  "delivery.integrate": "Combine the proposed result with the current canonical parent for assessment.",
+  "delivery.evaluate": "Check and independently review the exact integrated result.",
+  "delivery.revise": "Propose changed requirements or permissions to resolve the frozen Condition.",
+  "delivery.reaffirm": "Propose the same mandate under refreshed context to resolve the frozen Condition.",
+  "delivery.accept": "Apply the exact evaluated result if its parent still matches. Director authorization required.",
+  "delivery.no-ship": "End this Delivery without publishing its proposed result. Director authorization required.",
+  "delivery.recover": "Reconcile the retained interruption before starting new work; do not redispatch it.",
+} as const;
+
+function humanInboxLines(inbox: FoundationDeliveryInbox): string[] {
+  const lines = ["", "Deliveries (one governed change per row):"];
+  for (const row of inbox.rows) {
+    if (row.status === "unavailable") {
+      lines.push(`  ${row.deliveryId ?? "<unresolved>"} | unavailable | ${row.diagnostic.code}: ${row.diagnostic.message}`);
+    } else {
+      lines.push(
+        `  ${row.deliveryId} | ${row.label}`,
+        `    ${row.standing} | proposed result: ${row.candidateCondition} | attention: ${row.attentionOwner}${row.recoveryRequired ? " | recovery required" : ""}`,
+      );
+    }
+  }
+  if (inbox.rows.length === 0) lines.push("  No Deliveries in this page. Use lifecycle help prepare to describe new work.");
+  if (inbox.nextAfterDeliveryId !== null) {
+    lines.push(`More Deliveries remain; next afterDeliveryId: ${inbox.nextAfterDeliveryId}`);
+  }
+  lines.push("Use status with a listed Delivery identity to review its saved work and available actions.");
+  return lines;
+}
+
 export function renderFoundationRuntimeHuman(value: FoundationRuntimeOperationResult): string {
   const repository = value.observation.repository;
   const delivery = value.observation.delivery;
+  if (value.value !== null && "kind" in value.value && value.value.kind === "diff") {
+    const diff = value.value.view;
+    const lines = [
+      `${value.operation}: ${value.status}`,
+      `Changes: ${diff.subject === "decision" ? "sealed result for decision" : "retained working result"} | ${diff.currentness}`,
+      `target: ${value.targetId ?? "<unresolved>"} | delivery: ${value.deliveryId ?? "<none>"}`,
+      `Candidate: ${diff.candidate === null ? "<none>" : `${diff.candidate.id}@${diff.candidate.revision}`}`,
+      ...(diff.seal === null ? [] : [`Seal: ${diff.seal.id}@${diff.seal.revision}`]),
+      `Base: ${diff.baseCommit ?? "<unavailable>"} -> tree: ${diff.tree ?? "<unavailable>"}`,
+      `Read generation: ${diff.generation.digest}`,
+    ];
+    if (diff.currentness === "potentially-advancing") {
+      lines.push("Development is active. These retained bytes may be followed by a newer Candidate; read again before deciding.");
+    }
+    if (diff.currentness === "unavailable" || diff.content === null) {
+      lines.push(`Diff unavailable: ${diff.unavailableReason ?? "Runtime supplied no diff content."}`);
+      lines.push("Inspect this Delivery's current status and retained subjects before requesting the diff again.");
+    } else {
+      lines.push(`Displayed diff: ${diff.byteLength} bytes${diff.truncated ? " | INCOMPLETE — bounded excerpt" : ""}`);
+      lines.push("", diff.content.length === 0 ? "No textual differences in this exact diff." : diff.content);
+      if (diff.truncated) lines.push("End of bounded excerpt. Omitted content must not be treated as reviewed.",
+        "maximumBytes can be raised up to 16777216; use exact source inspection for larger results.");
+    }
+    lines.push("Exact diff and displayed-content digests are available with --format json.");
+    for (const diagnostic of value.diagnostics) lines.push(`${diagnostic.severity}: ${diagnostic.code} · ${diagnostic.message}`);
+    return `${lines.join("\n")}\n`;
+  }
   const lines = [
     `${value.operation}: ${value.status}`,
+    value.status === "recovery-required"
+      ? "Attention: an interrupted operation needs reconciliation. Its completion is not established."
+      : value.status === "refused"
+      ? "Attention: the requested operation was refused. Review the observations and reason below."
+      : "The command completed. The observations below establish the work's actual state.",
     `target: ${value.targetId ?? "<unresolved>"}`,
     `delivery: ${value.deliveryId ?? "<none>"}`,
-    `repository: ${repository.initialized ? repository.valid ? "valid" : "invalid" : "uninitialized"}`,
+    `repository: ${repository.initialized ? repository.valid ? "valid" : "validity not established" : "uninitialized"}`,
     `canonical-head: ${repository.headCommit ?? "<none>"}`,
   ];
   if (delivery !== null) {
     lines.push(
-      `standing: ${delivery.standing}`,
-      `candidate: ${delivery.candidateCondition}`,
+      "",
+      `Situation: ${HUMAN_STANDING[delivery.standing]}`,
+      `Proposed result: ${HUMAN_CANDIDATE[delivery.candidateCondition]}`,
+      `standing: ${delivery.standing} | candidate: ${delivery.candidateCondition}`,
+    );
+    for (const [label, reference] of [
+      ["approved scope (Work Boundary)", delivery.subjects.activeBoundary],
+      ["proposed scope", delivery.subjects.proposedBoundary],
+      ["saved result (Candidate)", delivery.subjects.candidate],
+      ["checks and review (Evidence)", delivery.subjects.evidence],
+    ] as const) {
+      if (reference !== null) lines.push(`${label}: ${reference.id}@${reference.revision} ${reference.digest}`);
+    }
+    lines.push(
       `journal-events: ${delivery.journal.eventCount}`,
       `control-store: ${delivery.storeDisposition.stage}`,
       `eligible: ${delivery.eligibleOperations.join(", ") || "<none>"}`,
       `recovery: ${delivery.recovery?.resumesAt ?? "<none>"}`,
     );
+    if (value.changes.candidate.changed) {
+      const { before, after } = value.changes.candidate;
+      lines.push(`Saved result reference changed: ${before === null ? "<none>" : `${before.id}@${before.revision}`} -> ${after === null ? "<none>" : `${after.id}@${after.revision}`}. Review its condition above.`);
+    }
+    if (value.changes.repository.changed) {
+      lines.push(`Observed repository change: ${value.changes.repository.beforeCommit ?? "<none>"} -> ${value.changes.repository.afterCommit ?? "<none>"}`);
+    }
+    lines.push("", "Available actions (Runtime rechecks each request):");
+    for (const operation of delivery.eligibleOperations) {
+      lines.push(`  ${operation.slice("delivery.".length).padEnd(10)} ${HUMAN_COURSES[operation]}`);
+    }
+    if (delivery.eligibleOperations.length === 0) lines.push("  No mutation is currently eligible. Inspect status and diagnostics for the observed state.");
+    lines.push("Use lifecycle help COMMAND for the required input and exact invocation.");
+    lines.push('For the current read generation, inspect with input {"kind":"delivery-view"}.');
   }
   if (value.value !== null && "format" in value.value) {
     lines.push(`export: ${value.value.byteLength} bytes @ ${value.value.digest}`);
   } else if (value.value !== null && "kind" in value.value) {
     lines.push(`inspection: ${value.value.kind}`);
+    if (value.value.kind === "delivery-view") {
+      lines.push(`reviewed-generation: ${value.value.view.generation.digest}`);
+    }
+    if (value.value.kind === "inbox") lines.push(...humanInboxLines(value.value.view));
+    if (value.value.kind === "watch") {
+      lines.push(value.value.changed
+        ? "Watch: new observation (initial snapshot or changed generation)."
+        : "Watch: no generation change observed during this wait.");
+      lines.push(`Watch generation: ${value.value.generation}`);
+      if (value.value.inbox !== null) lines.push(...humanInboxLines(value.value.inbox));
+      lines.push("To wait again, use this watch generation as afterGeneration. A watch return does not complete work.");
+    }
+    lines.push("Exact inspection content is available with --format json.");
   }
   for (const diagnostic of value.diagnostics) {
     lines.push(`${diagnostic.severity}: ${diagnostic.code} · ${diagnostic.message}`);

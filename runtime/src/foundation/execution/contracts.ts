@@ -126,7 +126,7 @@ export type FoundationExecutionImageReferenceV1 = Readonly<{
 }>;
 
 export type FoundationExecutionInputSetReferenceV1 = Readonly<{
-  profileId: "lifecycle.execution-input-set.v1";
+  profileId: "lifecycle.execution-input-set.v2";
   digest: Sha256;
 }>;
 

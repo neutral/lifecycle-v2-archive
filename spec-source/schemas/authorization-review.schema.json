@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:authorization-review:v1",
+  "title": "Lifecycle Authorization Review v1",
+  "description": "Deterministic reviewable semantic core compiled before Director authentication; operation-instance and authentication mechanics are deliberately absent.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "targetId",
+    "storeId",
+    "processId",
+    "operation",
+    "decision",
+    "consequence",
+    "semanticMarkdown",
+    "semanticDigest",
+    "journalHead",
+    "reducerFactsDigest",
+    "repository",
+    "selectedControl",
+    "coordinates",
+    "authority",
+    "candidateDisposition",
+    "authorizationReviewDigest"
+  ],
+  "properties": {
+    "schema": { "const": "lifecycle.authorization-review.v1" },
+    "targetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+    "storeId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+    "processId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+    "operation": { "enum": ["delivery.admit", "delivery.accept", "delivery.no-ship"] },
+    "decision": { "enum": ["admit", "readmit", "accept", "no-ship"] },
+    "consequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+    "semanticMarkdown": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
+      "pattern": "^(?![\\s\\S]*\\r)(?![\\s\\S]*\\u0000)(?=[\\s\\S]*\\S)[\\s\\S]*\\n$"
+    },
+    "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "journalHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "digest"],
+      "properties": {
+        "sequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "reducerFactsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repositorySnapshotDigest",
+        "canonicalCommit",
+        "canonicalTree",
+        "productStateDigest",
+        "atlasStateDigest",
+        "atlasResolutionDigest",
+        "atlasNormalizedModelDigest",
+        "atlasResourceBindingsDigest",
+        "repositoryContractDigest",
+        "knowledgeSetDigest",
+        "checkBindingSetDigest"
+      ],
+      "properties": {
+        "repositorySnapshotDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "canonicalCommit": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+        "canonicalTree": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "atlasResolutionDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "atlasNormalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "atlasResourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "repositoryContractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "checkBindingSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "selectedControl": {
+      "type": "array",
+      "maxItems": 4100,
+      "items": { "$ref": "#/$defs/controlBinding" }
+    },
+    "coordinates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qualification", "repository", "provider", "authoritySubject", "transactionRules"],
+      "properties": {
+        "qualification": { "const": "lifecycle.foundation.1.0.0-rc.17" },
+        "repository": { "const": "lifecycle.repository.v22" },
+        "provider": { "const": "lifecycle.provider-adapter.v7" },
+        "authoritySubject": { "const": "lifecycle.director-decision-subject.v4" },
+        "transactionRules": { "const": "lifecycle.delivery-transaction-rules.v1" }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principalId", "keyId", "algorithm"],
+      "properties": {
+        "principalId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "keyId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "algorithm": { "const": "ed25519" }
+      }
+    },
+    "candidateDisposition": { "enum": ["not-applicable", "no-candidate", "abandon"] },
+    "authorizationReviewDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "delivery.admit" } }, "required": ["operation"] },
+      "then": { "properties": { "decision": { "enum": ["admit", "readmit"] }, "candidateDisposition": { "const": "not-applicable" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "delivery.accept" } }, "required": ["operation"] },
+      "then": { "properties": { "decision": { "const": "accept" }, "candidateDisposition": { "const": "not-applicable" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "delivery.no-ship" } }, "required": ["operation"] },
+      "then": { "properties": { "decision": { "const": "no-ship" }, "candidateDisposition": { "enum": ["no-candidate", "abandon"] } } }
+    }
+  ],
+  "$defs": {
+    "controlTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "enum": ["work-boundary", "check-receipt", "material-condition", "candidate-revision", "candidate-seal", "evidence-packet"] },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "controlBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation", "target"],
+      "properties": {
+        "relation": { "enum": ["selects-boundary", "selects-baseline-receipt", "continues-from-boundary", "resolves", "selects-candidate", "selects-seal", "selects-evidence"] },
+        "target": { "$ref": "#/$defs/controlTarget" }
+      }
+    }
+  }
+}

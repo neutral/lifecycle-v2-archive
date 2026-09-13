@@ -8,7 +8,7 @@
   "properties": {
     "schema": { "const": "lifecycle.fixture-manifest.v1" },
     "specificationId": { "const": "lifecycle" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "fixtures": {
       "type": "array",
       "minItems": 1,
@@ -31,20 +31,20 @@
       "additionalProperties": false,
       "required": ["id", "path", "profile", "complete", "valid", "diagnostics", "allowedDiagnostics", "subjectDigest", "description"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
+        "profile": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "complete": { "type": "boolean" },
         "valid": { "type": "boolean" },
         "diagnostics": { "$ref": "#/$defs/diagnosticList" },
         "allowedDiagnostics": { "$ref": "#/$defs/diagnosticList" },
         "subjectDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
             { "type": "null" }
           ]
         },
-        "description": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+        "description": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" }
       },
       "allOf": [
         {

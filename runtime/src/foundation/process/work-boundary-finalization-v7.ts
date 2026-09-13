@@ -14,23 +14,28 @@ import type {
 } from "../control/types.js";
 import {
   isWorkBoundarySemanticRefusal,
+  missingWorkBoundaryRequiredCheckPhase,
   retainWorkBoundary,
+  changedWorkBoundaryMandateFields,
+  resolveWorkBoundaryResolutionSnapshotV1,
+  workBoundaryRepositoryBasisFromSnapshot,
   type WorkBoundaryCheckBindingFact,
   type WorkBoundaryCompilerFact,
+  type WorkBoundaryDisciplineRegistryFact,
   type WorkBoundaryExternalSourceFact,
   type WorkBoundaryKnowledgeFact,
   type WorkBoundaryReference,
   type WorkBoundaryRepositoryBasis,
 } from "../control/work-boundary.js";
 import { FoundationError } from "../error.js";
-import type { FoundationCheckCellRuntimeV1 } from "../check/execution-cell-v1.js";
+import type { FoundationCheckCellOperatorV1 } from "../check/execution-cell-v1.js";
 import type { FoundationKnowledgeSet } from "../knowledge/types.js";
 import type { FoundationCompiledProjection } from "../projection/types.js";
 import type {
   FoundationCheckBinding,
   FoundationLoadedRepositorySnapshot,
 } from "../repository/types.js";
-import { pathWithin } from "../repository/product-state.js";
+import { isDisciplineMaintenancePath, pathWithin } from "../repository/product-state.js";
 import {
   canonicalJson,
   digestCanonical,
@@ -54,30 +59,17 @@ import {
 const MAXIMUM_JOURNAL_EVENTS = 100_000;
 const MAXIMUM_BASELINE_CHECKS = 4_096;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/u;
-const COMPARED_MANDATE_FIELDS = Object.freeze([
-  "knowledge",
-  "externalSources",
-  "capabilityProfile",
-  "mandate/objective",
-  "mandate/direction",
-  "mandate/effects",
-  "mandate/risks",
-  "mandate/obligations",
-  "mandate/artifacts",
-  "mandate/checks",
-  "mandate/acceptancePropositions",
-] as const);
 
 const WORK_BOUNDARY_COMPILER: WorkBoundaryCompilerFact = Object.freeze({
-  profileId: "lifecycle.work-boundary-compiler.foundation-v1",
+  profileId: "lifecycle.work-boundary-compiler.foundation-v3",
   profileDigest: digestCanonical(Object.freeze({
-    id: "lifecycle.work-boundary-compiler.foundation-v1",
-    input: "agent-work-product-payload-v1",
-    output: "lifecycle.work-boundary-payload.v4",
+    id: "lifecycle.work-boundary-compiler.foundation-v3",
+    input: "agent-work-product-payload-v4",
+    output: "lifecycle.work-boundary-payload.v6",
   })),
-  implementationId: "lifecycle-runtime-work-boundary-compiler-v1",
+  implementationId: "lifecycle-runtime-work-boundary-compiler-v2",
   implementationDigest: digestCanonical(Object.freeze({
-    id: "lifecycle-runtime-work-boundary-compiler-v1",
+    id: "lifecycle-runtime-work-boundary-compiler-v2",
     runtimeProtocol: FOUNDATION_RUNTIME_PROTOCOL,
   })),
 });
@@ -105,7 +97,7 @@ type BoundaryRetainer = typeof retainWorkBoundary;
 
 export type FoundationWorkBoundaryFinalizationV7Options = Readonly<{
   machineHome: string;
-  checkCellRuntime?: FoundationCheckCellRuntimeV1;
+  checkCellOperator?: FoundationCheckCellOperatorV1;
   now?: () => string;
   retainBoundary?: BoundaryRetainer;
   checkOperation?: FoundationOperateCheckV7Options;
@@ -307,7 +299,7 @@ function validateResolutionContext(
     fail("role", "Boundary resolution requires reconnaissance without a Candidate Seal");
   }
 
-  const brief = exactRetainedRevision(input.store, input.brief, "founder-brief", "Founder Brief");
+  const brief = exactRetainedRevision(input.store, input.brief, "director-brief", "Director Brief");
   const attempt = exactRetainedRevision(input.store, input.attempt, "agent-attempt", "Agent Attempt");
   const boundary = exactRetainedRevision(input.store, input.boundary, "work-boundary", "Active Work Boundary");
   const attemptedCandidate = exactRetainedRevision(
@@ -410,7 +402,7 @@ function validateInitialContext(
       "Initial Work Boundary finalization requires reconnaissance without Boundary, Candidate, or Seal input",
     );
   }
-  const brief = exactRetainedRevision(input.store, input.brief, "founder-brief", "Initial Founder Brief");
+  const brief = exactRetainedRevision(input.store, input.brief, "director-brief", "Initial Director Brief");
   const attempt = exactRetainedRevision(input.store, input.attempt, "agent-attempt", "Initial Agent Attempt");
   const receipt = exactRetainedRevision(
     input.store,
@@ -484,7 +476,7 @@ function validateInitialContext(
     assertRelationship(receipt, "observes-work-product", workProduct, "Initial Execution Receipt");
   }
   const events = activityEvents(input.store, input.activityId);
-  assertActivitySubject(input.store, events, "founder-brief-submitted", brief);
+  assertActivitySubject(input.store, events, "director-brief-submitted", brief);
   assertActivitySubject(input.store, events, "agent-attempt-prepared", attempt);
   assertActivitySubject(input.store, events, "execution-receipt-recorded", receipt);
   if (workProduct !== null) {
@@ -500,6 +492,7 @@ function exactBasis(
 ): Readonly<{
   repository: WorkBoundaryRepositoryBasis;
   knowledge: readonly WorkBoundaryKnowledgeFact[];
+  disciplineRegistry: WorkBoundaryDisciplineRegistryFact;
   externalSources: readonly WorkBoundaryExternalSourceFact[];
 }> {
   const { snapshot, knowledge, projection } = input;
@@ -555,6 +548,19 @@ function exactBasis(
     sourceDigest: record.sourceDigest,
     semanticDigest: record.semanticDigest,
   })));
+  const disciplineRegistry: WorkBoundaryDisciplineRegistryFact = Object.freeze({
+    digest: knowledge.disciplineRegistry.digest,
+    adoptions: Object.freeze(knowledge.disciplineRegistry.adoptions.map((entry) => Object.freeze({
+      id: entry.id,
+      revision: entry.revision,
+      sourceDigest: entry.sourceDigest,
+      semanticDigest: entry.semanticDigest,
+    }))),
+    workTypes: Object.freeze(knowledge.disciplineRegistry.workTypes.map((entry) => Object.freeze({
+      id: entry.id,
+      disciplineIds: Object.freeze([...entry.disciplineIds]),
+    }))),
+  });
   const externalSources = Object.freeze(projection.manifest.sources
     .filter(({ semantic }) => semantic.class === "source")
     .map((source) => Object.freeze({
@@ -565,7 +571,7 @@ function exactBasis(
       digest: source.digest,
       citationDigest: source.semantic.subjectDigest,
     })));
-  return Object.freeze({ repository, knowledge: knowledgeFacts, externalSources });
+  return Object.freeze({ repository, knowledge: knowledgeFacts, disciplineRegistry, externalSources });
 }
 
 function selectedCheckBindingFacts(
@@ -609,6 +615,12 @@ function assertAtlasReadOnlyWorkProduct(
   for (const value of array(boundary.artifacts, "Reconnaissance Work Product Boundary Artifacts")) {
     const artifact = object(value, "Reconnaissance Work Product Boundary Artifact");
     const path = string(artifact.path, "Boundary Artifact path");
+    if (isDisciplineMaintenancePath(contract, path) || pathWithin(contract.knowledge.roots.discipline, path)) {
+      throw new FoundationError(
+        "lifecycle.discipline.candidate-mutation",
+        "A Work Boundary cannot select adopted Discipline content or its Registry as an Artifact",
+      );
+    }
     if (path === contract.atlas.root || path.startsWith(`${contract.atlas.root}/`)) {
       throw new FoundationError(
         "lifecycle.atlas.candidate-mutation",
@@ -628,6 +640,13 @@ function assertAtlasReadOnlyWorkProduct(
     const localTarget = kind === "local-read" || kind === "local-write"
       ? posix.normalize(target.replaceAll("\\", "/"))
       : null;
+    const localSelectsDiscipline = localTarget !== null && (
+      localTarget === "." || localTarget === ".." || localTarget.startsWith("../") ||
+      (!posix.isAbsolute(localTarget) && (
+        isDisciplineMaintenancePath(contract, localTarget) ||
+        pathWithin(contract.knowledge.roots.discipline, localTarget)
+      ))
+    );
     const localSelectsAtlas = localTarget !== null && (
       localTarget === "." ||
       localTarget === ".." ||
@@ -646,6 +665,12 @@ function assertAtlasReadOnlyWorkProduct(
         "A Work Boundary cannot direct an effect at the separately maintained Atlas root",
       );
     }
+    if (localSelectsDiscipline || (localTarget === null && isDisciplineMaintenancePath(contract, target))) {
+      throw new FoundationError(
+        "lifecycle.discipline.candidate-mutation",
+        "A Work Boundary cannot direct an effect at adopted Discipline content or its Registry",
+      );
+    }
   }
 }
 
@@ -655,10 +680,16 @@ function preflightBaselineSelections(
 ): void {
   const semantics = object(workProduct.payload.roleSemantics, "Reconnaissance Work Product role semantics");
   const boundary = object(semantics.workBoundary, "Reconnaissance Work Product Boundary semantics");
+  const checks = array(boundary.checks, "Reconnaissance Work Product Boundary Checks")
+    .map((value) => object(value, "Reconnaissance Work Product Boundary Check"));
+  const missingPhase = missingWorkBoundaryRequiredCheckPhase(checks.map((check) => ({
+    baselineRequired: boolean(check.baselineRequired, "Boundary Check baseline requirement"),
+    finalRequired: boolean(check.finalRequired, "Boundary Check final requirement"),
+  })));
+  if (missingPhase !== null) fail("baseline-check", `Boundary semantics propose no required ${missingPhase} Check`);
   const selectionIds = new Set<string>();
   let count = 0;
-  for (const value of array(boundary.checks, "Reconnaissance Work Product Boundary Checks")) {
-    const check = object(value, "Reconnaissance Work Product Boundary Check");
+  for (const check of checks) {
     if (!boolean(check.baselineRequired, "Boundary Check baseline requirement")) continue;
     count += 1;
     const selectionId = string(check.id, "Boundary baseline Check identity");
@@ -686,13 +717,21 @@ function preflightBaselineSelections(
       );
     }
   }
-  if (count < 1) fail("baseline-check", "Boundary semantics propose no required baseline Check");
   if (count > MAXIMUM_BASELINE_CHECKS) {
     fail("baseline-check", `Boundary semantics exceed the ${MAXIMUM_BASELINE_CHECKS}-Check baseline bound`);
   }
 }
 
-function boundaryReference<Kind extends "founder-brief" | "agent-work-product" | "execution-receipt" | "work-boundary" | "material-condition">(
+function isPreRetentionBoundarySemanticRefusal(error: unknown): boolean {
+  return isWorkBoundarySemanticRefusal(error) || error instanceof FoundationError && [
+    "lifecycle.work-boundary-finalization-v7.baseline-check",
+    "lifecycle.work-boundary-finalization-v7.check-binding",
+    "lifecycle.atlas.candidate-mutation",
+    "lifecycle.discipline.candidate-mutation",
+  ].includes(error.code);
+}
+
+function boundaryReference<Kind extends "director-brief" | "agent-work-product" | "execution-receipt" | "work-boundary" | "material-condition">(
   kind: Kind,
   revision: ControlRecordRevision,
 ): WorkBoundaryReference<Kind> {
@@ -700,29 +739,6 @@ function boundaryReference<Kind extends "founder-brief" | "agent-work-product" |
   return Object.freeze({ kind, id: revision.recordId, revision: revision.revision, digest: revision.digest });
 }
 
-function comparedMandateValue(
-  payload: ControlJsonObject,
-  field: typeof COMPARED_MANDATE_FIELDS[number],
-): ControlJsonValue {
-  if (!field.startsWith("mandate/")) {
-    const selected = payload[field];
-    if (selected === undefined) fail("boundary-reuse", `Work Boundary omits compared field ${field}`);
-    return selected;
-  }
-  const selected = object(payload.mandate, "Work Boundary mandate")[field.slice("mandate/".length)];
-  if (selected === undefined) fail("boundary-reuse", `Work Boundary omits compared field ${field}`);
-  return selected;
-}
-
-function exactChangedMandateFields(
-  prior: ControlRecordRevision,
-  next: ControlRecordRevision,
-): readonly string[] {
-  return Object.freeze(COMPARED_MANDATE_FIELDS
-    .filter((field) => canonicalJson(comparedMandateValue(prior.payload, field)) !==
-      canonicalJson(comparedMandateValue(next.payload, field)))
-    .map((field) => `/${field}`));
-}
 
 function exactBoundaryBasis(input: Readonly<{
   boundary: ControlRecordRevision;
@@ -759,7 +775,7 @@ function exactInitialBoundaryReuse(input: Readonly<{
   contract: FoundationLoadedRepositorySnapshot["contract"];
 }>): void {
   if (
-    input.boundary.payload.schema !== "lifecycle.work-boundary-payload.v4" ||
+    input.boundary.payload.schema !== "lifecycle.work-boundary-payload.v6" ||
     input.boundary.payload.targetId !== input.store.identity.targetId ||
     input.boundary.revision !== 1 || input.boundary.payload.proposalKind !== "initial" ||
     input.boundary.payload.resolution !== null || input.boundary.relationships.length !== 2
@@ -798,7 +814,7 @@ function exactBoundaryReuse(input: Readonly<{
   contract: FoundationLoadedRepositorySnapshot["contract"];
 }>): void {
   if (
-    input.boundary.payload.schema !== "lifecycle.work-boundary-payload.v4" ||
+    input.boundary.payload.schema !== "lifecycle.work-boundary-payload.v6" ||
     input.boundary.payload.targetId !== input.predecessor.payload.targetId ||
     input.boundary.recordId !== input.predecessor.recordId ||
     input.boundary.revision !== input.predecessor.revision + 1 ||
@@ -813,7 +829,7 @@ function exactBoundaryReuse(input: Readonly<{
     fail("boundary-reuse", "Retained successor Boundary has the wrong resolution kind");
   }
   const changed = array(resolution.changedMandateFields, "Retained successor Boundary change set");
-  const exactChanged = exactChangedMandateFields(input.predecessor, input.boundary);
+  const exactChanged = changedWorkBoundaryMandateFields(input.predecessor, input.boundary.payload);
   if (
     canonicalJson(changed) !== canonicalJson(exactChanged) ||
     (input.operation === "delivery.revise") !== (exactChanged.length > 0)
@@ -833,9 +849,15 @@ function baselineSelections(
   bindings: Readonly<Record<string, FoundationCheckBinding>>,
 ): readonly BaselineSelection[] {
   const mandate = object(boundary.payload.mandate, "Work Boundary mandate");
+  const checks = array(mandate.checks, "Work Boundary Checks")
+    .map((value) => object(value, "Work Boundary Check"));
+  const missingPhase = missingWorkBoundaryRequiredCheckPhase(checks.map((check) => ({
+    baselineRequired: boolean(check.baselineRequired, "Work Boundary baseline requirement"),
+    finalRequired: boolean(check.finalRequired, "Work Boundary final requirement"),
+  })));
+  if (missingPhase !== null) fail("baseline-check", `Work Boundary has no required ${missingPhase} Check`);
   const selected: BaselineSelection[] = [];
-  for (const value of array(mandate.checks, "Work Boundary Checks")) {
-    const check = object(value, "Work Boundary Check");
+  for (const check of checks) {
     if (!boolean(check.baselineRequired, "Work Boundary baseline requirement")) continue;
     const selectedBindings = array(check.bindings, "Work Boundary Check Bindings");
     if (selectedBindings.length !== 1) {
@@ -854,7 +876,6 @@ function baselineSelections(
       binding,
     }));
   }
-  if (selected.length < 1) fail("baseline-check", "Work Boundary has no required baseline Check");
   if (selected.length > MAXIMUM_BASELINE_CHECKS) {
     fail("baseline-check", `Work Boundary exceeds the ${MAXIMUM_BASELINE_CHECKS}-Check bound`);
   }
@@ -930,24 +951,33 @@ async function finalizeFoundationWorkBoundaryV7(
   }
   const workProduct = selected.workProduct;
   const exact = exactBasis(context.store, context.attempt, basis);
-  const executionProfileId = basis.snapshot.contract.defaults.executionProjectionProfileId;
+  const proposal = object(object(workProduct.payload.roleSemantics, "Reconnaissance role semantics").workBoundary,
+    "Proposed Work Boundary context policy");
+  const executionProfileId = string(proposal.projectionProfile, "Proposed execution Projection profile");
   if (executionProfileId !== "execution-standard-v1" && executionProfileId !== "execution-large-v1") {
-    fail("projection-profile", "Boundary finalization selected an unsupported execution Projection profile");
+    return Object.freeze({ outcome: "failed" });
   }
   const executionProfile = basis.snapshot.contract.projectionProfiles[executionProfileId];
-  if (executionProfile === undefined) fail("projection-profile", "Selected execution Projection profile is unavailable");
+  if (executionProfile === undefined || executionProfile.id !== executionProfileId) {
+    return Object.freeze({ outcome: "failed" });
+  }
   const capability = object(context.attempt.payload.capability, "Reconnaissance Agent Attempt Capability");
   const capabilityId = string(capability.profileId, "Reconnaissance Agent Attempt Capability identity");
-  const capabilityProfile = basis.snapshot.contract.capabilityProfiles[capabilityId];
-  if (capabilityProfile === undefined || capabilityProfile.digest !== capability.profileDigest) {
-    fail("capability", "Reconnaissance Agent Attempt Capability differs from the exact repository contract");
+  const integrationResolution = selected.activeBoundary !== null &&
+    object(selected.activeBoundary.payload.basis, "Admitted Work Boundary basis").repositorySnapshotDigest !== basis.snapshot.snapshot.digest;
+  if (integrationResolution) {
+    if (selected.activeBoundary === null) fail("capability", "Integration resolution requires an admitted Capability");
+    const admitted = object(selected.activeBoundary.payload.capabilityProfile, "Admitted Capability Profile");
+    if (admitted.id !== capabilityId || admitted.digest !== capability.profileDigest) {
+      fail("capability", "Resolution Attempt must retain the exact admitted Capability grant");
+    }
   }
-  assertAtlasReadOnlyWorkProduct(workProduct, basis.snapshot.contract);
-  const checkBindings = selectedCheckBindingFacts(workProduct, basis.snapshot.contract.checkBindings);
-  // Complete baseline cardinality and compatibility are semantic preconditions
-  // of every Boundary retention. A malformed proposal cannot strand an initial
-  // or successor Boundary at a later Check coordinate.
-  preflightBaselineSelections(workProduct, basis.snapshot.contract.checkBindings);
+  const proposedCapabilityId = integrationResolution ? basis.snapshot.contract.defaults.capabilityProfileId : capabilityId;
+  const capabilityProfile = basis.snapshot.contract.capabilityProfiles[proposedCapabilityId];
+  if (capabilityProfile === undefined || capabilityProfile.id !== proposedCapabilityId ||
+    !integrationResolution && capabilityProfile.digest !== capability.profileDigest) {
+    fail("capability", "Proposed Work Boundary Capability differs from its selected repository contract");
+  }
   const now = options.now ?? (() => new Date().toISOString());
   const events = activityEvents(context.store, context.activityId);
   const retainedBoundary = oneActivitySubject(
@@ -959,15 +989,21 @@ async function finalizeFoundationWorkBoundaryV7(
   let boundary = retainedBoundary;
   if (boundary === null) {
     try {
+      // Frozen proposal defects cannot become recoverable physical obligations.
+      // Preserve the Work Product and Receipt, then complete this Activity as failed.
+      assertAtlasReadOnlyWorkProduct(workProduct, basis.snapshot.contract);
+      const checkBindings = selectedCheckBindingFacts(workProduct, basis.snapshot.contract.checkBindings);
+      preflightBaselineSelections(workProduct, basis.snapshot.contract.checkBindings);
       boundary = (options.retainBoundary ?? retainWorkBoundary)({
         store: context.store,
         activityId: context.activityId,
         operation: selected.operation,
-        founderBrief: boundaryReference("founder-brief", context.brief),
+        directorBrief: boundaryReference("director-brief", context.brief),
         workProduct: boundaryReference("agent-work-product", workProduct),
         executionReceipt: boundaryReference("execution-receipt", context.receipt),
         repository: exact.repository,
         knowledge: exact.knowledge,
+        disciplineRegistry: exact.disciplineRegistry,
         externalSources: exact.externalSources,
         capabilityProfile: { id: capabilityProfile.id, digest: capabilityProfile.digest },
         projectionProfile: {
@@ -992,7 +1028,10 @@ async function finalizeFoundationWorkBoundaryV7(
         runtimeId: selected.runtimeId,
       }).revision;
     } catch (error) {
-      if (isWorkBoundarySemanticRefusal(error)) return Object.freeze({ outcome: "failed" });
+      if (isPreRetentionBoundarySemanticRefusal(error) && !activityEvents(context.store, context.activityId)
+        .some(({ eventKind }) => eventKind === "work-boundary-finalized")) {
+        return Object.freeze({ outcome: "failed" });
+      }
       throw error;
     }
   }
@@ -1031,7 +1070,7 @@ async function finalizeFoundationWorkBoundaryV7(
       binding: selection.binding,
       runtimeId: selected.runtimeId,
       support: checkSupport,
-      cellRuntime: options.checkCellRuntime,
+      cellOperator: options.checkCellOperator,
     }, options.checkOperation);
   for (const selection of selections) {
     const retained = retainedBySelection.get(selection.selectionId);
@@ -1108,6 +1147,13 @@ export async function finalizeFoundationWorkBoundaryResolutionV7(
   options: FoundationWorkBoundaryFinalizationV7Options,
 ): Promise<FoundationAgentRoleControlResultV7> {
   const validated = validateResolutionContext(context);
+  const selectedSnapshot = resolveWorkBoundaryResolutionSnapshotV1({
+    store: context.store, boundary: context.boundary, materialCondition: validated.condition,
+  });
+  if (canonicalJson(workBoundaryRepositoryBasisFromSnapshot(basis.snapshot.snapshot)) !==
+    canonicalJson(workBoundaryRepositoryBasisFromSnapshot(selectedSnapshot))) {
+    fail("basis-substitution", "Boundary resolution must compile the exact context selected by its Material Condition");
+  }
   return finalizeFoundationWorkBoundaryV7(context, basis, options, {
     operation: validated.operation,
     workProduct: validated.workProduct,

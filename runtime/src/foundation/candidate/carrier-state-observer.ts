@@ -15,7 +15,7 @@ import type {
   CandidateRevisionState,
 } from "../control/candidate-revision.js";
 import { FoundationError } from "../error.js";
-import { loadKnowledgeSet } from "../knowledge/knowledge-set.js";
+import { loadKnowledgeSet, validateKnowledgeSet } from "../knowledge/knowledge-set.js";
 import type { FoundationKnowledgeSet } from "../knowledge/types.js";
 import { buildAtlasState } from "../repository/atlas-state.js";
 import {
@@ -32,6 +32,7 @@ import {
 } from "../repository/git.js";
 import {
   buildProductState,
+  isDisciplineMaintenancePath,
   pathWithin,
 } from "../repository/product-state.js";
 import type {
@@ -48,6 +49,7 @@ import {
   type Sha256,
 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
+import { normalizedPath } from "../validation/value.js";
 import { parseStrictJson } from "../validation/strict-json.js";
 import { materializeCandidateRevisionCarrier } from "./carrier-materialization.js";
 import { parseCandidateRevisionCarrierManifest } from "./carrier-manifest.js";
@@ -80,7 +82,7 @@ const CARRIER_STATE_OBSERVER_PROFILE = Object.freeze({
   algorithms: Object.freeze([
     "fresh-private-carrier-materialization",
     "fresh-independent-carrier-closure-reopen",
-    "exact-admitted-base-object-import",
+    "exact-application-base-object-import",
     "base-contract-product-atlas-and-knowledge-reproduction",
     "immutable-candidate-repository-contract-reproduction",
     "immutable-candidate-tree-and-path-observation",
@@ -98,10 +100,13 @@ export const FOUNDATION_CANDIDATE_REVISION_CARRIER_STATE_OBSERVER_V1 =
   });
 
 /**
- * Immutable admitted facts required to interpret one Carrier tree. The
+ * Immutable application-base facts required to interpret one Carrier tree. The
  * observer independently reopens the exact base commit and reproduces every
  * supplied digest before using this context. No field is an expected
- * Candidate-state value.
+ * Candidate-state value. Governing Work Boundary context is retained separately;
+ * after integration this physical base is P, and the observed contribution is P→I.
+ * The existing `AdmittedContext` name denotes this physical base context, not
+ * a replacement for the Work Boundary's separately retained governing basis.
  */
 export type CandidateRevisionCarrierAdmittedContext = Readonly<{
   repository: string;
@@ -120,7 +125,7 @@ export type CandidateRevisionCarrierPredecessor = Readonly<{
 export type CandidateRevisionCarrierStateObservation = Readonly<{
   /** SHA-256 of the exact canonical manifest bytes reopened for this replay. */
   manifestFileDigest: Sha256;
-  /** Complete state derived from Carrier and exact admitted context only. */
+  /** Complete state derived from the Carrier and its exact application-base context. */
   state: CandidateRevisionState;
   /** Exact path inventory reproduced from the independently verified Carrier closure. */
   treeEntries: readonly FoundationGitTreeEntry[];
@@ -129,11 +134,11 @@ export type CandidateRevisionCarrierStateObservation = Readonly<{
 }>;
 
 export type CandidateRevisionCarrierEvidenceMaterial = Readonly<{
-  /** Exact admitted-base inventory used to reproduce the Candidate difference. */
+  /** Exact application-base inventory used to reproduce the Candidate difference. */
   baseTreeEntries: readonly FoundationGitTreeEntry[];
   /** Complete valid Knowledge compiled from the independently verified Carrier. */
   knowledge: FoundationKnowledgeSet;
-  /** Exact bounded binary difference from the admitted base to the Carrier tree. */
+  /** Exact bounded binary difference from the application base to the Carrier tree. */
   diff: Readonly<{ digest: Sha256; bytes: Uint8Array }>;
   /** SHA-256 content facts for the exact requested regular-file paths that exist. */
   contentDigests: readonly Readonly<{ path: string; digest: Sha256 }>[];
@@ -162,6 +167,67 @@ class CandidateCarrierStateInvalidError extends FoundationError {
   constructor(message: string, observedFacts?: unknown) {
     super(FOUNDATION_CANDIDATE_CARRIER_STATE_INVALID, message, { observedFacts });
   }
+}
+
+/** Conclusive Candidate-rule refusal after the exact tree and base were reopened. */
+export type FoundationCandidateOutputRejectionV1 = Readonly<{
+  schema: "lifecycle.candidate-output-rejection.v1";
+  manifestFileDigest: Sha256;
+  candidateTree: string;
+  applicationBaseCommit: string;
+  explanation: string;
+  validationResultDigest: Sha256 | null;
+  knowledgeDiagnostic: Readonly<{ code: string; locator: string | null }> | null;
+  violationDigest: Sha256;
+  digest: Sha256;
+}>;
+
+const candidateOutputRejections = new WeakMap<object, FoundationCandidateOutputRejectionV1>();
+
+/** A diagnostic with the same code is not an owner-issued observation. */
+export function candidateOutputRejectionV1(error: unknown): FoundationCandidateOutputRejectionV1 | null {
+  return error !== null && typeof error === "object" ? candidateOutputRejections.get(error) ?? null : null;
+}
+
+export function parseCandidateOutputRejectionV1(value: unknown): FoundationCandidateOutputRejectionV1 {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) invalid("Candidate output rejection must be one exact retained value");
+  const exact = value as Record<string, unknown>;
+  if (canonicalJson(Object.keys(exact).sort()) !== canonicalJson([
+    "applicationBaseCommit", "candidateTree", "digest", "explanation", "knowledgeDiagnostic", "manifestFileDigest", "schema", "validationResultDigest", "violationDigest",
+  ]) || exact.schema !== "lifecycle.candidate-output-rejection.v1" ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(String(exact.candidateTree)) ||
+      !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(String(exact.applicationBaseCommit))) {
+    invalid("Candidate output rejection does not bind exact Carrier and application subjects");
+  }
+  if (typeof exact.explanation !== "string" || exact.explanation.length === 0 || Buffer.byteLength(exact.explanation, "utf8") > 16_384) {
+    invalid("Candidate rejection explanation must be one bounded owner-authored value");
+  }
+  let knowledgeDiagnostic: FoundationCandidateOutputRejectionV1["knowledgeDiagnostic"] = null;
+  if (exact.knowledgeDiagnostic !== null) {
+    const diagnostic = exact.knowledgeDiagnostic as Record<string, unknown>;
+    if (diagnostic === null || typeof diagnostic !== "object" || Array.isArray(diagnostic) ||
+        canonicalJson(Object.keys(diagnostic).sort()) !== canonicalJson(["code", "locator"]) ||
+        typeof diagnostic.code !== "string" || diagnostic.code.length === 0 || diagnostic.code.length > 256 ||
+        (diagnostic.locator !== null && (typeof diagnostic.locator !== "string" || Buffer.byteLength(diagnostic.locator, "utf8") > 4096))) {
+      invalid("Candidate rejection diagnostic must be one bounded Knowledge location");
+    }
+    if (diagnostic.locator !== null) {
+      try { normalizedPath(diagnostic.locator, "Candidate rejection Knowledge location"); }
+      catch { invalid("Candidate rejection Knowledge location must remain repository-relative"); }
+    }
+    knowledgeDiagnostic = Object.freeze({ code: diagnostic.code, locator: diagnostic.locator as string | null });
+  }
+  const subject = Object.freeze({
+    schema: "lifecycle.candidate-output-rejection.v1" as const,
+    manifestFileDigest: exactDigest(String(exact.manifestFileDigest), "Rejected Carrier manifest"),
+    candidateTree: String(exact.candidateTree), applicationBaseCommit: String(exact.applicationBaseCommit),
+    explanation: exact.explanation, knowledgeDiagnostic,
+    validationResultDigest: exact.validationResultDigest === null ? null : exactDigest(String(exact.validationResultDigest), "Candidate validation result"),
+    violationDigest: exactDigest(String(exact.violationDigest), "Candidate rejection facts"),
+  });
+  const digest = digestCanonical(subject);
+  if (exact.digest !== digest) invalid("Candidate output rejection digest changed");
+  return Object.freeze({ ...subject, digest });
 }
 
 class CandidateCarrierStateRepositoryOperationError {
@@ -249,7 +315,7 @@ function decodeContract(bytes: Buffer): FoundationRepositoryContract {
   try {
     source = STRICT_UTF8.decode(bytes);
   } catch {
-    invalid("Admitted Repository Contract is not exact UTF-8");
+    invalid("Application-base Repository Contract is not exact UTF-8");
   }
   try {
     return parseRepositoryContract(parseStrictJson(source, {
@@ -262,7 +328,7 @@ function decodeContract(bytes: Buffer): FoundationRepositoryContract {
     }));
   } catch (error) {
     if (error instanceof FoundationError) {
-      invalid("Admitted Repository Contract bytes are invalid", {
+      invalid("Application-base Repository Contract bytes are invalid", {
         failureCode: error.code,
       });
     }
@@ -385,15 +451,15 @@ function knowledgeEpoch(input: Readonly<{
 async function exactBaseRepository(
   context: CandidateRevisionCarrierAdmittedContext,
 ): Promise<string> {
-  exactDigest(context.productStateDigest, "Admitted Product State digest");
-  exactDigest(context.knowledgeSetDigest, "Admitted Knowledge Set digest");
+  exactDigest(context.productStateDigest, "Application-base Product State digest");
+  exactDigest(context.knowledgeSetDigest, "Application-base Knowledge Set digest");
   if (context.epoch.ref !== context.contract.canonicalBranch) {
-    invalid("Admitted repository ref differs from its exact Repository Contract");
+    invalid("Application-base repository ref differs from its exact Repository Contract");
   }
   const repository = await canonicalRepository(context.repository);
   const objectFormat = await resolveGitObjectFormat(repository);
   if (objectFormat !== context.epoch.objectFormat) {
-    invalid("Admitted Git object format is unavailable from the selected repository");
+    invalid("Application-base Git object format is unavailable from the selected repository");
   }
   const resolvedCommit = (await git(repository, [
     "rev-parse",
@@ -411,7 +477,7 @@ async function exactBaseRepository(
     resolvedCommit !== context.epoch.commit ||
     resolvedTree !== context.epoch.tree
   ) {
-    invalid("Admitted base commit and tree do not reopen exactly");
+    invalid("Application-base commit and tree do not reopen exactly");
   }
   return repository;
 }
@@ -447,7 +513,7 @@ async function importExactBase(input: Readonly<{
     `${resolvedCommit}^{tree}`,
   ])).stdout.trim();
   if (resolvedCommit !== input.epoch.commit || resolvedTree !== input.epoch.tree) {
-    invalid("Imported admitted base does not reproduce its exact commit and tree");
+    invalid("Imported application base does not reproduce its exact commit and tree");
   }
 }
 
@@ -473,7 +539,7 @@ async function reproduceAdmittedContext(input: Readonly<{
     contractEntry.type !== "blob" ||
     contractEntry.mode !== "100644"
   ) {
-    invalid("Admitted base lacks one exact Repository Contract blob");
+    invalid("Application base lacks one exact Repository Contract blob");
   }
   const contract = decodeContract(await objectBlobBytes(
     input.repository,
@@ -481,15 +547,15 @@ async function reproduceAdmittedContext(input: Readonly<{
     MAXIMUM_CONTRACT_BYTES,
   ));
   if (canonicalJson(contract) !== canonicalJson(input.context.contract)) {
-    invalid("Admitted Repository Contract does not reproduce its exact base bytes");
+    invalid("Application-base Repository Contract does not reproduce its exact base bytes");
   }
   const productState = buildProductState(contract, baseEntries);
   if (productState.digest !== input.context.productStateDigest) {
-    invalid("Admitted Product State does not reproduce from the exact base");
+    invalid("Application-base Product State does not reproduce from the exact base");
   }
   const atlasState = buildAtlasState(contract, baseEntries);
   if (canonicalJson(atlasState) !== canonicalJson(input.context.atlasState)) {
-    invalid("Admitted Atlas State does not reproduce from the exact base");
+    invalid("Application-base Atlas State does not reproduce from the exact base");
   }
   const atlas = await resolveAtlas({
     repository: input.repository,
@@ -504,7 +570,7 @@ async function reproduceAdmittedContext(input: Readonly<{
       canonicalJson(input.context.atlas.validationResult) ||
     canonicalJson(atlas.model) !== canonicalJson(input.context.atlas.model)
   ) {
-    invalid("Admitted Atlas Resolution does not reproduce from the exact base");
+    invalid("Application-base Atlas Resolution does not reproduce from the exact base");
   }
   const knowledge = await loadKnowledgeSet(knowledgeEpoch({
     repository: input.repository,
@@ -518,7 +584,7 @@ async function reproduceAdmittedContext(input: Readonly<{
     atlas,
   }));
   if (knowledge.manifest.digest !== input.context.knowledgeSetDigest) {
-    invalid("Admitted Knowledge Set does not reproduce from the exact base");
+    invalid("Application-base Knowledge Set does not reproduce from the exact base");
   }
   return Object.freeze({ contract, baseEntries, atlasState, atlas });
 }
@@ -546,19 +612,19 @@ async function reproduceCandidateState(input: Readonly<{
     admittedContractEntry.type !== "blob" ||
     admittedContractEntry.mode !== "100644"
   ) {
-    invalid("Admitted base lacks one exact Repository Contract blob");
+    invalid("Application base lacks one exact Repository Contract blob");
   }
   const candidateContractEntry = input.candidateEntries.find(
     ({ path }) => path === FOUNDATION_REPOSITORY_CONTRACT_PATH,
   );
   if (candidateContractEntry === undefined) {
-    invalid("Candidate Carrier omits or changes the type of the admitted Repository Contract");
+    invalid("Candidate Carrier omits or changes the type of the application-base Repository Contract");
   }
   if (candidateContractEntry.type !== admittedContractEntry.type) {
-    invalid("Candidate Carrier changes the admitted Repository Contract object type");
+    invalid("Candidate Carrier changes the application-base Repository Contract object type");
   }
   if (candidateContractEntry.mode !== admittedContractEntry.mode) {
-    invalid("Candidate Carrier changes the admitted Repository Contract mode");
+    invalid("Candidate Carrier changes the application-base Repository Contract mode");
   }
   const [admittedContractBytes, candidateContractBytes] = await Promise.all([
     objectBlobBytes(
@@ -576,11 +642,14 @@ async function reproduceCandidateState(input: Readonly<{
     candidateContractEntry.objectId !== admittedContractEntry.objectId ||
     !candidateContractBytes.equals(admittedContractBytes)
   ) {
-    invalid("Candidate Carrier changes the admitted Repository Contract bytes");
+    invalid("Candidate Carrier changes the application-base Repository Contract bytes");
   }
   const deltas = treeDeltas(input.baseEntries, input.candidateEntries);
   if (deltas.some(({ path }) => pathWithin(path, input.contract.atlas.root))) {
-    invalid("Candidate Carrier changes the admitted read-only Atlas State");
+    invalid("Candidate Carrier changes the application base's read-only Atlas State");
+  }
+  if (deltas.some(({ path }) => isDisciplineMaintenancePath(input.contract, path))) {
+    invalid("Candidate Carrier changes the application base's read-only Discipline registry or guidance");
   }
   let candidateAtlasState: FoundationAtlasState;
   try {
@@ -589,7 +658,7 @@ async function reproduceCandidateState(input: Readonly<{
     deterministicCandidateContentFailure(error, "Candidate Atlas State is invalid");
   }
   if (canonicalJson(candidateAtlasState) !== canonicalJson(input.atlasState)) {
-    invalid("Candidate Carrier does not reproduce the exact admitted Atlas State");
+    invalid("Candidate Carrier does not reproduce the exact application-base Atlas State");
   }
   const subjects = await changedSubjects(input.repository, deltas);
   const pathInventoryDigest = digestCanonical(input.candidateEntries.map((entry) =>
@@ -608,7 +677,7 @@ async function reproduceCandidateState(input: Readonly<{
   const artifactSetDigest = digestCanonical(productState.entries);
   let knowledge: Awaited<ReturnType<typeof loadKnowledgeSet>>;
   try {
-    knowledge = await loadKnowledgeSet(knowledgeEpoch({
+    const observedKnowledge = await validateKnowledgeSet(knowledgeEpoch({
       repository: input.repository,
       contract: input.contract,
       baseCommit: input.context.epoch.commit,
@@ -619,6 +688,20 @@ async function reproduceCandidateState(input: Readonly<{
       atlasState: input.atlasState,
       atlas: input.atlas,
     }));
+    if (!observedKnowledge.validation.complete) {
+      throw new FoundationError(FOUNDATION_CANDIDATE_CARRIER_STATE_OBSERVATION_INCOMPLETE,
+        "Candidate Knowledge validation did not complete", {
+          observedFacts: { validationResultDigest: observedKnowledge.validation.digest },
+        });
+    }
+    if (observedKnowledge.knowledgeSet === null || !observedKnowledge.validation.valid) {
+      const diagnostic = observedKnowledge.validation.diagnostics.find((item) => item.severity === "error");
+      invalid("Candidate Knowledge Set is invalid", {
+        validationResultDigest: observedKnowledge.validation.digest,
+        knowledgeDiagnostic: diagnostic === undefined ? null : { code: diagnostic.code, locator: diagnostic.location.locator },
+      });
+    }
+    knowledge = observedKnowledge.knowledgeSet;
   } catch (error) {
     if (
       error instanceof FoundationError &&
@@ -715,8 +798,8 @@ function requestedContentDigestPaths(
 /**
  * Reopen one immutable Carrier through two fresh physical views: a verified
  * filesystem materialization and a separately verified Git object repository.
- * The latter imports only the exact admitted base commit, reproduces all
- * admitted context, and derives the complete Candidate Revision state. The
+ * The latter imports the exact application-base commit, reproduces that
+ * base context, and derives the complete Candidate Revision state. The
  * disposable views are removed before returning and never become continuity.
  */
 async function withCandidateRevisionCarrierStateRepositoryPrivate<T>(
@@ -800,17 +883,41 @@ async function withCandidateRevisionCarrierStateRepositoryPrivate<T>(
           if (canonicalJson(candidateEntries) !== canonicalJson(closureEntries)) {
             invalid("Reopened Carrier tree does not reproduce its verified closure inventory");
           }
-          const material = await reproduceCandidateState({
-            repository,
-            context: input.admitted,
-            contract: admitted.contract,
-            baseEntries: admitted.baseEntries,
-            atlasState: admitted.atlasState,
-            atlas: admitted.atlas,
-            candidateTree: closure.rootTree,
-            candidateEntries,
-            predecessor: input.predecessor,
-          });
+          let material: Awaited<ReturnType<typeof reproduceCandidateState>>;
+          try {
+            material = await reproduceCandidateState({
+              repository,
+              context: input.admitted,
+              contract: admitted.contract,
+              baseEntries: admitted.baseEntries,
+              atlasState: admitted.atlasState,
+              atlas: admitted.atlas,
+              candidateTree: closure.rootTree,
+              candidateEntries,
+              predecessor: input.predecessor,
+            });
+          } catch (error) {
+            if (error instanceof CandidateCarrierStateInvalidError) {
+              // Complete Carrier closure and application-base reproduction precede this
+              // boundary. Only the Candidate's own conclusive rule failures qualify.
+              const subject = Object.freeze({
+                schema: "lifecycle.candidate-output-rejection.v1" as const,
+                manifestFileDigest: sha256Bytes(opened.manifestBytes),
+                candidateTree: closure.rootTree,
+                applicationBaseCommit: input.admitted.epoch.commit,
+                explanation: error.message,
+                validationResultDigest: error.observedFacts !== null && typeof error.observedFacts === "object" &&
+                  "validationResultDigest" in error.observedFacts
+                  ? (error.observedFacts as { validationResultDigest: Sha256 }).validationResultDigest : null,
+                knowledgeDiagnostic: error.observedFacts !== null && typeof error.observedFacts === "object" &&
+                  "knowledgeDiagnostic" in error.observedFacts
+                  ? (error.observedFacts as { knowledgeDiagnostic: FoundationCandidateOutputRejectionV1["knowledgeDiagnostic"] }).knowledgeDiagnostic : null,
+                violationDigest: digestCanonical({ message: error.message, facts: error.observedFacts ?? null }),
+              });
+              candidateOutputRejections.set(error, parseCandidateOutputRejectionV1({ ...subject, digest: digestCanonical(subject) }));
+            }
+            throw error;
+          }
           const entries = new Map(candidateEntries.map((entry) => [entry.path, entry]));
           const digestCache = new Map<string, Sha256>();
           const contentDigests: Array<Readonly<{ path: string; digest: Sha256 }>> = [];

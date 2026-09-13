@@ -26,6 +26,7 @@ const DIGEST = sha256Bytes("control-policy-test");
 
 function subjects(input: Partial<DeliveryCurrentSubjects> = {}): DeliveryCurrentSubjects {
   return Object.freeze({
+    integrationAssessment: null,
     proposedBoundary: null,
     activeBoundary: null,
     candidate: null,
@@ -52,6 +53,8 @@ function state(input: Readonly<{
     candidateCondition: input.candidateCondition ?? "absent",
     activities: Object.freeze(input.activities ?? []),
     subjects: input.subjects ?? subjects(),
+    delegation: Object.freeze({ admission: null, current: null,
+      charged: Object.freeze({ operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 }) }),
     journal: Object.freeze({ eventCount: 0, headDigest: null }),
   });
 }
@@ -69,14 +72,16 @@ function activity(input: Partial<DeliveryActivity> = {}): DeliveryActivity {
 
 test("one closed Control-family registry owns the complete Delivery record lifecycle", () => {
   assert.deepEqual(DELIVERY_CONTROL_RECORD_KINDS, [
-    "founder-brief",
+    "director-brief",
+    "work-delegation",
     "agent-attempt",
     "agent-work-product",
     "execution-receipt",
     "candidate-revision",
+    "integration-assessment",
     "work-boundary",
     "material-condition",
-    "founder-decision",
+    "director-decision",
     "candidate-seal",
     "check-receipt",
     "evidence-packet",
@@ -89,27 +94,36 @@ test("one closed Control-family registry owns the complete Delivery record lifec
   assert.deepEqual(
     Object.fromEntries(policies.map((policy) => [policy.kind, policy.payloadSchemaId])),
     {
-      "founder-brief": "urn:lifecycle:schema:founder-brief-payload:v1",
+      "director-brief": "urn:lifecycle:schema:director-brief-payload:v2",
+      "work-delegation": "urn:lifecycle:schema:work-delegation-payload:v2",
       "agent-attempt": "urn:lifecycle:schema:agent-attempt-payload:v3",
-      "agent-work-product": "urn:lifecycle:schema:agent-work-product-payload:v2",
+      "agent-work-product": "urn:lifecycle:schema:agent-work-product-payload:v5",
       "execution-receipt": "urn:lifecycle:schema:execution-receipt-payload:v3",
-      "candidate-revision": "urn:lifecycle:schema:candidate-revision-payload:v2",
-      "work-boundary": "urn:lifecycle:schema:work-boundary-payload:v4",
-      "material-condition": "urn:lifecycle:schema:material-condition-payload:v1",
-      "founder-decision": "urn:lifecycle:schema:founder-decision-payload:v4",
+      "candidate-revision": "urn:lifecycle:schema:candidate-revision-payload:v3",
+      "integration-assessment": "urn:lifecycle:schema:integration-assessment-payload:v1",
+      "work-boundary": "urn:lifecycle:schema:work-boundary-payload:v6",
+      "material-condition": "urn:lifecycle:schema:material-condition-payload:v4",
+      "director-decision": "urn:lifecycle:schema:director-decision-payload:v5",
       "candidate-seal": "urn:lifecycle:schema:candidate-seal-payload:v2",
-      "check-receipt": "urn:lifecycle:schema:check-receipt-payload:v2",
-      "evidence-packet": "urn:lifecycle:schema:evidence-packet-payload:v1",
-      closure: "urn:lifecycle:schema:closure-payload:v4",
+      "check-receipt": "urn:lifecycle:schema:check-receipt-payload:v3",
+      "evidence-packet": "urn:lifecycle:schema:evidence-packet-payload:v2",
+      closure: "urn:lifecycle:schema:closure-payload:v6",
     },
   );
   assert(policies.every((policy) => policy.retention === "archive-with-delivery"));
   assert.equal(deliveryControlRecordPolicy("agent-work-product").editor, "assigned-agent");
   assert.equal(deliveryControlRecordPolicy("agent-work-product").editWindow, "provider-active");
   assert.equal(deliveryControlRecordPolicy("candidate-revision").revisionMode, "successive");
+  const delegation = deliveryControlRecordPolicy("work-delegation");
+  assert.equal(delegation.semanticAuthority, "director-supplied");
+  assert.equal(delegation.semanticAuthor, "director");
+  assert.equal(delegation.revisionMode, "successive");
+  assert.equal(delegation.finalizationEvent, "work-delegation-set");
+  assert.deepEqual(delegation.relationships.map(({ relation }) => relation),
+    ["uses-boundary", "uses-admission", "uses-brief", "revises"]);
   assert.deepEqual(
     deliveryControlRecordPolicy("candidate-revision").relationships.map(({ relation }) => relation),
-    ["revises", "governed-by", "result-of"],
+    ["revises", "governed-by", "result-of", "integrated-from"],
   );
   assert.deepEqual(
     deliveryControlRecordPolicy("agent-attempt").relationships.map(({ relation }) => relation),
@@ -167,6 +181,7 @@ test("one operation registry derives eligibility from orthogonal standing, activ
     "delivery.prepare",
     "delivery.admit",
     "delivery.continue",
+    "delivery.integrate",
     "delivery.evaluate",
     "delivery.revise",
     "delivery.reaffirm",
@@ -199,7 +214,9 @@ test("one operation registry derives eligibility from orthogonal standing, activ
     standing: "active",
     candidateCondition: "ready-for-work",
     subjects: activeSubjects,
-  })), ["delivery.continue", "delivery.evaluate", "delivery.no-ship"]);
+  })), ["delivery.continue", "delivery.integrate", "delivery.no-ship"]);
+  assert.deepEqual(eligibleDeliveryOperations(state({ standing: "active", candidateCondition: "ready-for-work",
+    subjects: activeSubjects }), { candidateIntegrated: true }), ["delivery.continue", "delivery.integrate", "delivery.evaluate", "delivery.no-ship"]);
   assert.deepEqual(eligibleDeliveryOperations(state({
     standing: "active",
     candidateCondition: "in-progress",
@@ -240,7 +257,7 @@ test("one operation registry derives eligibility from orthogonal standing, activ
       seal: reference("seal-one"),
       evidence: reference("evidence-one"),
     }),
-  })), ["delivery.accept", "delivery.no-ship"]);
+  })), ["delivery.integrate", "delivery.accept", "delivery.no-ship"]);
   assert.deepEqual(eligibleDeliveryOperations(state({
     standing: "closed",
     candidateCondition: "accepted",

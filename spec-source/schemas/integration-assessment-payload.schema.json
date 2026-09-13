@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:integration-assessment-payload:v1",
+  "title": "Lifecycle Integration Assessment Payload v1",
+  "description": "Runtime-owned exact integration facts about source Candidate and selected canonical parent; result state belongs only to the successor Candidate Revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "canonicalParent",
+    "mergeRule",
+    "outcome",
+    "conflicts",
+    "validation",
+    "contextualApplicability",
+    "assessedAt",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lifecycle.integration-assessment-payload.v1"
+    },
+    "profileId": {
+      "const": "lifecycle.integration-assessment.foundation-v1"
+    },
+    "canonicalParent": {
+      "$ref": "urn:lifecycle:schema:repository-snapshot:v1"
+    },
+    "mergeRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "implementationId",
+        "implementationDigest"
+      ],
+      "properties": {
+        "id": {
+          "const": "lifecycle.integration.three-way.v2"
+        },
+        "implementationId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "implementationDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      }
+    },
+    "outcome": {
+      "enum": [
+        "constructed",
+        "conflicted",
+        "invalid"
+      ]
+    },
+    "conflicts": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+          },
+          "kind": {
+            "enum": [
+              "content",
+              "add-add",
+              "modify-delete",
+              "rename",
+              "mode",
+              "type",
+              "unsupported"
+            ]
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "valid",
+        "diagnosticCodes",
+        "factsDigest"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "valid": {
+          "type": "boolean"
+        },
+        "diagnosticCodes": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+          }
+        },
+        "factsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      }
+    },
+    "contextualApplicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disposition",
+        "changes"
+      ],
+      "properties": {
+        "disposition": {
+          "enum": [
+            "unchanged",
+            "requires-readmission"
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subject",
+              "admittedDigest",
+              "parentDigest"
+            ],
+            "properties": {
+              "subject": {
+                "enum": [
+                  "repository-contract",
+                  "atlas",
+                  "discipline-registry",
+                  "knowledge-closure",
+                  "required-sources"
+                ]
+              },
+              "admittedDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              },
+              "parentDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    "assessedAt": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+    },
+    "limitations": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "constructed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "conflicts": {
+            "maxItems": 0
+          },
+          "validation": {
+            "properties": {
+              "complete": {
+                "const": true
+              },
+              "valid": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "conflicted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "conflicts": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "contextualApplicability": {
+            "properties": {
+              "disposition": {
+                "const": "unchanged"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contextualApplicability": {
+            "properties": {
+              "changes": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "contextualApplicability": {
+            "properties": {
+              "changes": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

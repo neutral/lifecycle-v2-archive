@@ -13,6 +13,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { FoundationError } from "../../src/foundation/error.js";
 import {
@@ -24,6 +25,7 @@ import {
   type DeliveryCustodyCreationStage,
 } from "../../src/foundation/control/delivery-custody.js";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
+import { openAgentActivity } from "../../src/foundation/control/director-brief.js";
 import type {
   ControlJsonObject,
   ControlRecordRevision,
@@ -134,6 +136,51 @@ test("read-only selection never creates absent registry or custody directories",
   }
 });
 
+test("custody reopens and lists physical version 3, and refuses versions 1 and 2 without rewriting them", async () => {
+  const home = await mkdtemp(join(tmpdir(), "lifecycle-delivery-custody-version-"));
+  const selection = { machineHome: home, targetId: "target.version", deliveryId: "delivery.version" };
+  try {
+    const created = await create(home, selection.targetId, selection.deliveryId);
+    const database = created.store.paths.database;
+    const identity = created.identity;
+    const events = created.store.listEvents();
+    created.store.close();
+
+    const observed = new DatabaseSync(database, { readOnly: true });
+    try {
+      assert.equal(observed.prepare("PRAGMA application_id").get()?.application_id, 0x4c435253);
+      assert.equal(observed.prepare("PRAGMA user_version").get()?.user_version, 3);
+    } finally { observed.close(); }
+
+    for (const open of [openDeliveryControlRecordStore, openDeliveryControlRecordStoreReadOnly]) {
+      const reopened = await open(selection);
+      assert(reopened !== null);
+      try {
+        assert.equal(reopened.disposition, "active");
+        assert.deepEqual(reopened.identity, identity);
+        assert.deepEqual(reopened.store.listEvents(), events);
+      } finally { reopened.store.close(); }
+    }
+    assert.deepEqual((await listDeliveryControlRecordStores(selection)).deliveries, [{ identity, disposition: "active" }]);
+
+    // Only the retired physical discriminator changes; no predecessor Store
+    // schema or compatibility implementation is supplied by this invalid case.
+    for (const predecessorVersion of [1, 2]) {
+      const substituted = new DatabaseSync(database);
+      try { substituted.exec(`PRAGMA user_version = ${predecessorVersion}`); }
+      finally { substituted.close(); }
+      const refusedBytes = await readFile(database);
+      for (const open of [openDeliveryControlRecordStore, openDeliveryControlRecordStoreReadOnly]) {
+        await assert.rejects(open(selection), custodyCode("metadata"));
+      }
+      await assert.rejects(listDeliveryControlRecordStores(selection), custodyCode("metadata"));
+      assert.deepEqual(await readFile(database), refusedBytes);
+    }
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 async function payload(kind: string): Promise<ControlJsonObject> {
   const bytes = await readFile(new URL(
     `../../../../spec-source/examples/${kind}-payload-structural-valid/subject.json`,
@@ -171,24 +218,16 @@ function appendRevision(
 
 async function closeEarlyNoShip(store: ControlRecordStore): Promise<void> {
   const prepareActivity = "activity.prepare";
-  const brief = appendRevision(store, {
-    recordId: "brief.prepare",
-    recordKind: "founder-brief",
-    revision: 1,
-    producer: { kind: "runtime", id: RUNTIME_ACTOR },
-    semanticAuthor: { kind: "founder", id: "founder.demo" },
-    semanticAuthority: "founder-supplied",
-    createdAt: "2026-08-29T12:00:01.000Z",
-    semanticMarkdown: "# Founder Brief\n\nAttempt one bounded preparation.\n",
-    payload: await payload("founder-brief"),
-  }, "event.brief.prepare", "founder-brief-submitted", prepareActivity);
-  store.append({ event: {
-    eventId: "event.activity.prepare",
-    eventKind: "activity-started",
-    occurredAt: "2026-08-29T12:00:02.000Z",
-    actor: { kind: "runtime", id: RUNTIME_ACTOR },
-    payload: { activityId: prepareActivity, operation: "delivery.prepare" },
-  } });
+  const { revision: brief } = openAgentActivity({
+    store,
+    activityId: prepareActivity,
+    operation: "delivery.prepare",
+    directorId: "director.demo",
+    runtimeId: RUNTIME_ACTOR,
+    submittedAt: "2026-08-29T12:00:01.000Z",
+    startedAt: "2026-08-29T12:00:02.000Z",
+    semanticMarkdown: "# Director Brief\n\nAttempt one bounded preparation.\n",
+  });
   const attempt = appendRevision(store, {
     recordId: "attempt.prepare",
     recordKind: "agent-attempt",
@@ -267,15 +306,15 @@ async function closeEarlyNoShip(store: ControlRecordStore): Promise<void> {
   } });
   const decision = appendRevision(store, {
     recordId: "decision.no-ship",
-    recordKind: "founder-decision",
+    recordKind: "director-decision",
     revision: 1,
     producer: { kind: "runtime", id: RUNTIME_ACTOR },
-    semanticAuthor: { kind: "founder", id: "founder.demo" },
-    semanticAuthority: "founder-authenticated",
+    semanticAuthor: { kind: "director", id: "director.demo" },
+    semanticAuthority: "director-authenticated",
     createdAt: "2026-08-29T12:00:10.000Z",
-    semanticMarkdown: "# Founder Decision\n\nDo not ship this Delivery.\n",
-    payload: await payload("founder-decision"),
-  }, "event.decision.no-ship", "founder-decision-authenticated", noShipActivity);
+    semanticMarkdown: "# Director Decision\n\nDo not ship this Delivery.\n",
+    payload: await payload("director-decision"),
+  }, "event.decision.no-ship", "director-decision-authenticated", noShipActivity);
   const transactionEffect = `sha256:${"1".repeat(64)}` as const;
   const transactionFacts = Object.freeze({
     schema: "lifecycle.terminal-repository-effect-observation.v1",
@@ -594,4 +633,29 @@ test("custody refuses mode, owner, symlink, unsupported, duplicate, wrong-identi
   } finally {
     await Promise.all(homes.map((home) => rm(home, { recursive: true, force: true })));
   }
+});
+
+
+test("a refused first opening discards only its provably empty unpublished Store", async () => {
+  const home = await mkdtemp(join(tmpdir(), "lifecycle-unpublished-prepare-"));
+  const targetId = "target.unpublished-preparation";
+  const deliveryId = "delivery.unpublished-preparation";
+  const layout = roots(home, targetId, deliveryId);
+  const refused = new Error("exact retained basis is unavailable before first opening");
+  try {
+    await assert.rejects(createDeliveryControlRecordStore({
+      machineHome: home, targetId, deliveryId, createdAt: CREATED_AT, runtimeActorId: RUNTIME_ACTOR,
+      initializeBeforePublication: async (store) => {
+        assert.equal(store.state().activities.length, 0);
+        assert.equal(store.hasRetainedOperationSupport(), false);
+        assert.equal((await readdir(layout.activeTarget)).length, 0);
+        throw refused;
+      },
+    }), (error) => error === refused);
+    assert.deepEqual(await readdir(layout.stagingTarget), []);
+    assert.deepEqual(await readdir(layout.activeTarget), []);
+    assert.equal(await openDeliveryControlRecordStoreReadOnly({ machineHome: home, targetId, deliveryId }), null);
+    const retry = await create(home, targetId, deliveryId);
+    retry.store.close();
+  } finally { await rm(home, { recursive: true, force: true }); }
 });

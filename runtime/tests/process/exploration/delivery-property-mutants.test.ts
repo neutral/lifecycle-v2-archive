@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ExplorationClause, ExplorationFinding } from "./bounded-explorer.js";
+import { exploreScenario, type ExplorationClause, type ExplorationFinding } from "./bounded-explorer.js";
 import {
   deliveryInvariants,
   type DeliveryObservation,
   type DeliveryOracleModel,
 } from "./delivery-oracle.js";
 import { deliveryProperties } from "./delivery-properties.js";
+import { workDelegationFindings, workDelegationOracle } from "./delivery-work-delegation-oracle.js";
 import {
   buildCandidatePresentNoShipScenario,
   buildInitialAdmissionScenario,
+  buildIntegrationScenario,
+  buildDeliveryContinuationScenarios,
   buildNoCandidateNoShipScenario,
   buildPreparationRecoveryScenario,
 } from "./delivery-reducer-scenarios.js";
@@ -36,6 +39,7 @@ function subjects(
   changes: Partial<DeliveryObservation["subjects"]> = {},
 ): DeliveryObservation["subjects"] {
   return Object.freeze({
+    integrationAssessment: null,
     proposedBoundary: null,
     activeBoundary: null,
     candidate: null,
@@ -77,6 +81,7 @@ function profileModel(
       recovery: null,
       activeActivityCount: 0,
       subjects: Object.freeze({
+        integrationAssessment: false,
         proposedBoundary: false,
         activeBoundary: false,
         candidate: false,
@@ -389,6 +394,101 @@ type RouteMutant = Readonly<{
 
 const routeMutants: readonly RouteMutant[] = Object.freeze([
   Object.freeze({
+    name: "resource permission retains Stop, exact subject, and lifetime charges",
+    property: deliveryProperties.workDelegation,
+    kill: () => {
+      const model = { ...workDelegationOracle.initialModel, phase: "stopped" };
+      const exact = { current: { reference: selected, stopped: true },
+        charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } };
+      assert.deepEqual(workDelegationFindings(model, exact, selected), []);
+      for (const observed of [
+        { ...exact, current: { ...exact.current, stopped: false } },
+        { ...exact, current: { ...exact.current, reference: { ...selected, revision: 2 } } },
+        { ...exact, charged: { ...exact.charged, operations: 1 } },
+      ]) assert.equal(workDelegationFindings(model, observed, selected).length, 1);
+    },
+  }),
+  Object.freeze({
+    name: "retained Evidence cannot remain recover-only after its supplied completion response",
+    property: deliveryProperties.boundedContinuation,
+    kill: () => {
+      const scenario = buildDeliveryContinuationScenarios().find(({ continuation }) =>
+        continuation.course === "failed-provider-retained-candidate" && continuation.prefix === "lost-return-after-evidence")!;
+      const report = exploreScenario({ ...scenario, commands: scenario.commands.map((command) => ({ ...command,
+        apply() { /* Mutation: lose every completion response, retaining the recover-only prefix. */ },
+      })) });
+      assert.equal(report.maximumDepthReached, 1);
+      assert.equal(report.transitions.expectationMismatches, 0);
+      assert.ok(report.findings.some(({ finding }) => typeof finding === "object" &&
+        finding.id === "continuation.productive-goal-not-reached"));
+      assert.equal(report.findings.some(({ finding }) => typeof finding === "object" &&
+        finding.propertyId === deliveryProperties.nonterminalProgress.id), false);
+    },
+  }),
+  ...["no-ship-only", "missing-evidence"].map((mutation) => Object.freeze({
+    name: `a ${mutation} observation cannot satisfy productive completion`,
+    property: deliveryProperties.boundedContinuation,
+    kill: () => {
+      const scenario = buildDeliveryContinuationScenarios().find(({ continuation }) =>
+        continuation.course === "conflicted-assessment-correction" && continuation.prefix === "lost-return-after-evidence")!;
+      const report = exploreScenario({ ...scenario, observe(system) {
+        const observed = scenario.observe(system);
+        if (observed.standing !== "decision-ready") return observed;
+        return { ...observed,
+          ...(mutation === "no-ship-only" ? { eligibleOperations: ["delivery.no-ship"] }
+            : { subjects: { ...observed.subjects, evidence: null } }),
+        };
+      } });
+      assert.equal(report.transitions.expectationMismatches, 0);
+      assert.ok(report.findings.some(({ finding }) => typeof finding === "object" &&
+        finding.id === "continuation.productive-goal-not-reached"));
+      assert.equal(report.findings.some(({ finding }) => typeof finding === "object" &&
+        finding.propertyId === deliveryProperties.nonterminalProgress.id), false);
+    },
+  })),
+  Object.freeze({
+    name: "a required Condition cannot be skipped on the way to readmission",
+    property: deliveryProperties.boundedContinuation,
+    kill: () => {
+      const scenario = buildDeliveryContinuationScenarios().find(({ continuation }) =>
+        continuation.course === "builder-refusal-readmission" && continuation.prefix === "lost-return-after-required-refusal")!;
+      const report = exploreScenario({ ...scenario, commands: scenario.commands.map((command) => ({ ...command,
+        apply(system, trace) {
+          if (trace.length !== 1) command.apply(system, trace);
+        },
+      })) });
+      assert.ok(report.findings.some(({ finding }) => typeof finding === "object" &&
+        finding.id === "continuation.response-not-retained"));
+      assert.equal(report.transitions.expectationMismatches, 1);
+      assert.deepEqual(report.refusalCodes.map(({ code }) => code), ["lifecycle.delivery-reducer.order"]);
+      assert.deepEqual(report.coverage.requirements.missing.phases, ["productive-goal"]);
+    },
+  }),
+  ...["candidate-wrong-parent", "candidate-wrong-observation"].map((mutationCommand) => Object.freeze({
+    name: `integration refuses ${mutationCommand}`,
+    property: deliveryProperties.integrationOrdering,
+    kill: () => {
+      const scenario = buildIntegrationScenario();
+      assertScenarioOwns(deliveryProperties.integrationOrdering, scenario.clauses);
+      const seed = scenario.seeds[0]!;
+      const chain = seed.system.fork();
+      let model = seed.model;
+      for (const id of ["start", "assess-clean"]) {
+        const command = scenario.commands.find((item) => item.id === id)!;
+        const expected = command.expectation(model);
+        assert.equal(expected.kind, "accepted");
+        if (expected.kind !== "accepted") throw new TypeError("Integration mutation setup is not allowed");
+        command.apply(chain, [id]);
+        assert.doesNotThrow(() => scenario.observe(chain));
+        model = expected.next;
+      }
+      const substitute = scenario.commands.find((item) => item.id === mutationCommand)!;
+      assert.deepEqual(substitute.expectation(model), { kind: "refused", classes: ["lifecycle.delivery-reducer.reference"] });
+      substitute.apply(chain, ["start", "assess-clean", mutationCommand]);
+      assertCodedRefusal("lifecycle.delivery-reducer.reference", () => scenario.observe(chain));
+    },
+  })),
+  Object.freeze({
     name: "preparation refuses a recovery record for the wrong durable step",
     property: deliveryProperties.preparationRecovery,
     kill: () => {
@@ -415,7 +515,7 @@ const routeMutants: readonly RouteMutant[] = Object.freeze([
     },
   }),
   Object.freeze({
-    name: "admission refuses transaction intent before Founder authority",
+    name: "admission refuses transaction intent before Director authority",
     property: deliveryProperties.initialAdmissionOrdering,
     kill: () => {
       const scenario = buildInitialAdmissionScenario();
@@ -514,3 +614,26 @@ for (const mutant of invariantMutants) {
 for (const mutant of routeMutants) {
   test(`${mutant.property.id} mutant: ${mutant.name}`, mutant.kill);
 }
+
+test("every declared continuation prefix has its own finite completion obligation", () => {
+  const scenarios = buildDeliveryContinuationScenarios();
+  const counts = new Map<string, number>();
+  for (const scenario of scenarios) {
+    counts.set(scenario.continuation.course, (counts.get(scenario.continuation.course) ?? 0) + 1);
+    assert.equal(scenario.seeds.length, 1);
+    assert.equal(scenario.seeds[0]!.id, scenario.continuation.prefix);
+    assert.notEqual(scenario.seeds[0]!.model.phase, "productive-goal");
+    assert.deepEqual(scenario.commands.map(({ id }) => id), ["supply-next-response"]);
+    assert.deepEqual(scenario.requiredCoverage?.phases, ["productive-goal"]);
+    assert.deepEqual(scenario.bounds, { maxDepth: scenario.continuation.responseCount,
+      maxNodes: scenario.continuation.responseCount + 1, maxTransitions: scenario.continuation.responseCount });
+    assertScenarioOwns(deliveryProperties.boundedContinuation, scenario.clauses);
+  }
+  assert.deepEqual(Object.fromEntries(counts), {
+    "failed-provider-retained-candidate": 5,
+    "conflicted-assessment-correction": 5,
+    "builder-refusal-readmission": 7,
+    "reviewer-refusal-readmission": 7,
+  });
+  assert.equal(new Set(scenarios.map(({ id }) => id)).size, 24);
+});

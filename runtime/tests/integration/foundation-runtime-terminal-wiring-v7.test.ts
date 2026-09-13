@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -41,9 +42,9 @@ test("the mutation surface guards accept but still routes no-ship without resolv
     await git(target, ["commit", "-m", "Initialize target"]);
     const contract = await initializeRepository(target, {
       targetId: "runtime-terminal-wiring-target",
-      founderPrincipal: "founder:runtime-terminal-wiring",
+      directorPrincipal: "director:runtime-terminal-wiring",
       home: machineHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
       publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
       implementationRoots: [],
       stage: true,
@@ -69,7 +70,7 @@ test("the mutation surface guards accept but still routes no-ship without resolv
           operation: "delivery.accept",
           target: input.target,
           deliveryId: input.store.identity.processId,
-          authoritySecret: input.authoritySecret,
+          authorityCredential: input.authorityCredential,
           carriesSemanticMarkdown: Object.hasOwn(input, "semanticMarkdown"),
         }));
         throw new Error("accept-terminal-sentinel");
@@ -79,7 +80,7 @@ test("the mutation surface guards accept but still routes no-ship without resolv
           operation: "delivery.no-ship",
           target: input.target,
           deliveryId: input.store.identity.processId,
-          authoritySecret: input.authoritySecret,
+          authorityCredential: input.authorityCredential,
           semanticMarkdown: input.semanticMarkdown,
         }));
         input.store.close();
@@ -114,7 +115,7 @@ test("the mutation surface guards accept but still routes no-ship without resolv
       input: null,
     }) as FoundationRuntimeAcceptRequest;
     await assert.rejects(
-      mutation.execute({ request: accept, context: { authoritySecret: SECRET }, configuration }),
+      mutation.execute({ request: accept, context: { authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision") }, configuration }),
       /Delivery has no exact active Work Boundary coordinate/u,
     );
     const noShipMarkdown = "# No-ship rationale\n\nClose this Delivery without integration.\n";
@@ -124,8 +125,9 @@ test("the mutation surface guards accept but still routes no-ship without resolv
       deliveryId,
       input: { semanticMarkdown: noShipMarkdown },
     }) as FoundationRuntimeNoShipRequest;
+    const authorityCredential = receiveFoundationAuthorityCredential(SECRET, "director-decision");
     await assert.rejects(
-      mutation.execute({ request: noShip, context: { authoritySecret: SECRET }, configuration }),
+      mutation.execute({ request: noShip, context: { authorityCredential }, configuration }),
       /no-ship-terminal-sentinel/u,
     );
     assert.deepEqual(captured, [
@@ -133,7 +135,7 @@ test("the mutation surface guards accept but still routes no-ship without resolv
         operation: "delivery.no-ship",
         target: canonicalTarget,
         deliveryId,
-        authoritySecret: SECRET,
+        authorityCredential,
         semanticMarkdown: noShipMarkdown,
       },
     ]);

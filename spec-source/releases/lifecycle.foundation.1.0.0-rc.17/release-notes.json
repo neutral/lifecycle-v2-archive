@@ -1,0 +1,91 @@
+{
+  "schema": "lifecycle.release-notes.v1",
+  "releaseNotesId": "lifecycle.foundation.1.0.0-rc.17.release-notes",
+  "specificationId": "lifecycle",
+  "specificationVersion": "1.0.0-rc.17",
+  "specificationRevision": "lifecycle.foundation.1.0.0-rc.17",
+  "publicationDigest": "sha256:928eae667c58a5b5e234690c9ba3a709c4b9d68c59929e233da2ec992edeb646",
+  "previousPublication": {
+    "specificationVersion": "1.0.0-rc.16",
+    "specificationRevision": "lifecycle.foundation.1.0.0-rc.16",
+    "publicationDigest": "sha256:4eaa3bda75b1a2506d269903c43c9b231cf2f4550a58da60f48cdd13a44cc2f3"
+  },
+  "summary": "Foundation names the Director–Worker partnership explicitly and retires the former role vocabulary through a coordinated fresh-only contract cut.",
+  "changes": [
+    {
+      "id": "rc17-01-director-worker-responsibilities",
+      "classification": "breaking",
+      "summary": "Director and Worker name responsibilities at one work level, independently of whether a human or agent fills either role. The Director owns direction, decisions and the Director Brief; a Worker can gather requirements, prepare design material and draft the Brief for the Director. Assigned Workers retain their exact specialist role and counterpart without gaining Director authority.",
+      "owners": [
+        "GLOSSARY.md",
+        "SPEC.md",
+        "spec/ATTEMPTS.md",
+        "spec/ATTEMPT_VIEW.md",
+        "spec/AUTHORITY.md",
+        "spec/CONTROL.md",
+        "spec/DELIVERY.md",
+        "spec/EVOLUTION.md",
+        "spec/PROJECTION.md",
+        "spec/SECURITY.md",
+        "spec/VALIDATION.md"
+      ],
+      "schemas": [
+        "urn:lifecycle:schema:agent-work-product-payload:v5",
+        "urn:lifecycle:schema:authorization-review:v1",
+        "urn:lifecycle:schema:check-receipt-payload:v3",
+        "urn:lifecycle:schema:closure-payload:v6",
+        "urn:lifecycle:schema:common:v2",
+        "urn:lifecycle:schema:context-inspection-selector:v3",
+        "urn:lifecycle:schema:control-lifecycle-profile:v7",
+        "urn:lifecycle:schema:control-record-event:v6",
+        "urn:lifecycle:schema:control-record-revision:v2",
+        "urn:lifecycle:schema:control-record-store:v2",
+        "urn:lifecycle:schema:delivery-reduction:v5",
+        "urn:lifecycle:schema:director-brief-payload:v2",
+        "urn:lifecycle:schema:director-decision-payload:v5",
+        "urn:lifecycle:schema:execution-input-set:v2",
+        "urn:lifecycle:schema:material-condition-payload:v4",
+        "urn:lifecycle:schema:repository-contract:v22",
+        "urn:lifecycle:schema:work-delegation-payload:v2"
+      ],
+      "profiles": [
+        "foundation-delivery-control-lifecycle-v7",
+        "lifecycle.agent-input-bundle-manifest.v8",
+        "lifecycle.agent-input-bundle-tree.v8",
+        "lifecycle.agent-input-content-inventory.v8",
+        "lifecycle.agent-input-material.v8",
+        "lifecycle.agent-provider-input.standard-v8",
+        "lifecycle.director-decision-subject.v4",
+        "lifecycle.interface.foundation.v17",
+        "lifecycle.runtime.foundation.v17"
+      ],
+      "compatibilityEffect": "Repository v22, runtime/interface v17, common schema v2, Control Store v2 with physical SQLite user_version 3, revision v2, event v6, reduction v5 and lifecycle v7 form a fresh-only rc.17 cut. Director Brief and Director Decision use new record-family identities; Authorization Review uses its new named schema identity. Old family, event, authority and public input spellings are refused without aliases. Provider Adapter v7 remains selected; provider input v8 binds the changed role and direction bytes.",
+      "securityEffect": "Human and agent Directors use the same configured authenticated authority boundary. Worker labor and prepared Brief text remain proposals until the Director supplies them through the owning input route; role labels, prose and agent capability cannot create authority. Authority secrets remain outside Worker Cells, public requests, Control semantics and browser custody. Exact subject, independent Evidence, one-use authorization and canonical transaction boundaries remain required."
+    }
+  ],
+  "hardCut": {
+    "treatment": "fresh-project-only",
+    "lastAcceptedPredecessorCoordinate": "lifecycle.foundation.1.0.0-rc.16",
+    "firstAcceptedSuccessorCoordinate": null,
+    "activeAttemptTreatment": "No rc.16 or earlier target, Delivery, Attempt, Store, request, challenge or retained execution support continues under rc.17. Historical work retains its original software and custody; no migration or active-work rebinding is supplied.",
+    "historicalRecordTreatment": "Earlier release directories and operated observations remain immutable historical subjects. Their old vocabulary and exact identities are preserved as provenance and do not establish current-cut qualification.",
+    "unsupportedStateTreatment": "Read only the minimum fixed discriminator needed to refuse predecessor or mixed state before authority, Process mutation, Backend allocation or provider dispatch.",
+    "fixtureIds": [
+      "repository-v21-predecessor-invalid",
+      "repository-v22-fresh-valid",
+      "repository-v22-migration-invalid",
+      "repository-v22-mixed-state-invalid"
+    ]
+  },
+  "knownLimitations": [
+    "This Draft sidecar creates no authenticated Publication Statement, immutable release-source binding, npm/GHCR publication, operated current-image qualification or portable conformance claim.",
+    "Human and agent role eligibility does not add a provider for human Worker execution, an automatic Director scheduler, nested Delivery orchestration or any new credential custody route.",
+    "Earlier package tests, operated courses and selected images retain their original evidence subjects and do not qualify the rc.17 contract."
+  ],
+  "operatorActions": [
+    "Select a fresh repository-v22 target under the exact rc.17 publication and runtime/interface v17; preserve predecessor targets and Stores without importing their Control.",
+    "Identify the Director and Worker for each work level. Prepare the information the Director needs, supply the complete Director Brief and proceed within existing delegated authority without assuming every decision requires a human.",
+    "Build and verify current packages and exact Runtime and Execution Images before separately authorized operated qualification or publication."
+  ],
+  "digest": "sha256:2888ef61df844f82ec73c6e10d1a6f5c79f2b9dd3bd5977bf10332261767ac46"
+}

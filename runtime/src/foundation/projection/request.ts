@@ -2,13 +2,14 @@ import { FOUNDATION_SPECIFICATION_REVISION } from "../constants.js";
 import { FoundationError } from "../error.js";
 import { FOUNDATION_ATLAS_SELECTION } from "../atlas/selection.js";
 import type { FoundationKnowledgeObservation, FoundationKnowledgeSet } from "../knowledge/types.js";
-import type { FoundationLoadedRepositoryEpoch, FoundationLoadedRepositorySnapshot, FoundationProjectionProfile } from "../repository/types.js";
+import type { FoundationLoadedRepositoryEpoch, FoundationLoadedRepositorySnapshot, FoundationProjectionProfile, FoundationRepositorySnapshot } from "../repository/types.js";
 import { compiledKnowledgeManifestMatches } from "../repository/snapshot.js";
 import { canonicalJson, digestCanonical, selfDigest, sha256Bytes } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import type { FoundationValidationResult } from "../validation/result.js";
 import { validationResultDigest } from "../validation/result.js";
 import { assertFoundationSchema } from "../validation/schema-engine.js";
+import { parseOrientationObjective } from "./orientation-objective.js";
 import {
   array,
   bool,
@@ -29,6 +30,7 @@ import type {
   FoundationProjectionBasis,
   FoundationProjectionCandidateBasis,
   FoundationProjectionControlReference,
+  FoundationProjectionIntegrationBasis,
   FoundationProjectionRequest,
 } from "./types.js";
 
@@ -95,9 +97,24 @@ function controlReference<Kind extends string>(
   });
 }
 
+function integrationBasis(value: unknown): FoundationProjectionIntegrationBasis {
+  const source = object(value, "lifecycle.projection.request-invalid", "Integration basis");
+  exactKeys(source, ["assessment", "sourceCandidate", "canonicalParent"], [], "lifecycle.projection.request-invalid", "Integration basis");
+  assertFoundationSchema("urn:lifecycle:schema:repository-snapshot:v1", source.canonicalParent, "Integration parent Snapshot");
+  const snapshot = source.canonicalParent as FoundationRepositorySnapshot;
+  if (selfDigest(snapshot) !== snapshot.digest) {
+    throw new FoundationError("lifecycle.projection.basis-mismatch", "Integration parent Snapshot digest is invalid");
+  }
+  return Object.freeze({
+    assessment: controlReference(source.assessment, "integration-assessment"),
+    sourceCandidate: controlReference(source.sourceCandidate, "candidate-revision"),
+    canonicalParent: Object.freeze({ ...snapshot }),
+  });
+}
+
 function candidate(value: unknown): FoundationProjectionCandidateBasis {
   const source = object(value, "lifecycle.projection.request-invalid", "Candidate basis");
-  exactKeys(source, ["baseCommit", "revision", "stateDigest", "carrierManifestDigest", "sealedTree", "seal"], [], "lifecycle.projection.request-invalid", "Candidate basis");
+  exactKeys(source, ["baseCommit", "revision", "stateDigest", "carrierManifestDigest", "sealedTree", "seal", "integration"], [], "lifecycle.projection.request-invalid", "Candidate basis");
   return Object.freeze({
     baseCommit: gitObject(source.baseCommit, "Candidate base commit"),
     revision: controlReference(source.revision, "candidate-revision"),
@@ -105,15 +122,16 @@ function candidate(value: unknown): FoundationProjectionCandidateBasis {
     carrierManifestDigest: sha256(source.carrierManifestDigest, "Candidate Carrier manifest digest"),
     sealedTree: nullable(source.sealedTree, (entry) => gitObject(entry, "Candidate sealed tree")),
     seal: nullable(source.seal, (entry) => controlReference(entry, "candidate-seal")),
+    integration: nullable(source.integration, integrationBasis),
   });
 }
 
 export function parseProjectionRequest(value: unknown): FoundationProjectionRequest {
-  assertFoundationSchema("urn:lifecycle:schema:projection-request:v4", value, "projection-request");
+  assertFoundationSchema("urn:lifecycle:schema:projection-request:v5", value, "projection-request");
   const source = object(value, "lifecycle.projection.request-invalid", "Projection request");
   exactKeys(source, REQUEST_KEYS, [], "lifecycle.projection.request-invalid", "Projection request");
-  if (source.schema !== "lifecycle.projection-request.v4") {
-    throw new FoundationError("lifecycle.projection.request-invalid", "Projection request schema must be lifecycle.projection-request.v4");
+  if (source.schema !== "lifecycle.projection-request.v5") {
+    throw new FoundationError("lifecycle.projection.request-invalid", "Projection request schema must be lifecycle.projection-request.v5");
   }
   const requestClass = enumeration(source.class, "Projection class", ["orientation", "execution"] as const);
   const role = enumeration(source.role, "Projection role", ["reconnaissance", "builder", "reviewer"] as const);
@@ -147,7 +165,7 @@ export function parseProjectionRequest(value: unknown): FoundationProjectionRequ
   }
   const selectedProfile = profile(source.profile);
   const common = {
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     specificationRevision: opaqueId(source.specificationRevision, "Specification revision"),
     target: Object.freeze({ id: opaqueId(target.id, "Target identity"), generation: integer(target.generation, "Target generation", 1) }),
     repository: Object.freeze({
@@ -209,22 +227,23 @@ export function parseProjectionRequest(value: unknown): FoundationProjectionRequ
   let result: FoundationProjectionRequest;
   if (requestClass === "orientation") {
     exactKeys(subject, ["class", "objective", "objectiveDigest"], [], "lifecycle.projection.request-invalid", "Orientation subject");
-    if (subject.class !== "orientation" || role !== "reconnaissance" || selectedProfile.id !== "orientation-standard-v1") {
-      throw new FoundationError("lifecycle.projection.request-invalid", "Orientation requires reconnaissance and orientation-standard-v1");
+    if (subject.class !== "orientation" || role !== "reconnaissance" ||
+        !["orientation-standard-v1", "orientation-large-v1"].includes(selectedProfile.id)) {
+      throw new FoundationError("lifecycle.projection.request-invalid", "Orientation requires reconnaissance and one supported exact Orientation profile");
     }
     if (common.repository.repositorySnapshotDigest !== null || common.repository.validationDigest !== null ||
         common.repository.complete !== null || common.repository.valid !== null) {
-      throw new FoundationError("lifecycle.projection.basis-mismatch", "Orientation binds a Repository Epoch and carries no Snapshot or repository-v7 result");
+      throw new FoundationError("lifecycle.projection.basis-mismatch", "Orientation binds a Repository Epoch and carries no Snapshot or repository-v9 result");
     }
     result = Object.freeze({
       ...common,
       class: "orientation",
       role: "reconnaissance",
       subject: (() => {
-        const objective = text(subject.objective, "Founder objective", 16_384);
-        const objectiveDigest = sha256(subject.objectiveDigest, "Founder objective digest");
+        const objective = parseOrientationObjective(subject.objective);
+        const objectiveDigest = sha256(subject.objectiveDigest, "Director objective digest");
         if (sha256Bytes(Buffer.from(objective, "utf8")) !== objectiveDigest) {
-          throw new FoundationError("lifecycle.projection.request-invalid", "Founder objective digest does not bind the exact UTF-8 objective");
+          throw new FoundationError("lifecycle.projection.request-invalid", "Director objective digest does not bind the exact UTF-8 objective");
         }
         return Object.freeze({ class: "orientation" as const, objective, objectiveDigest });
       })(),
@@ -239,7 +258,7 @@ export function parseProjectionRequest(value: unknown): FoundationProjectionRequ
     if (common.repository.repositorySnapshotDigest === null || common.repository.validationDigest === null ||
         common.repository.complete !== true || common.repository.valid !== true ||
         common.knowledge.knowledgeSetDigest === null || !common.knowledge.complete || !common.knowledge.valid) {
-      throw new FoundationError("lifecycle.projection.basis-mismatch", "Execution requires a complete valid Snapshot, repository-v7 result, and Knowledge Set");
+      throw new FoundationError("lifecycle.projection.basis-mismatch", "Execution requires a complete valid Snapshot, repository-v9 result, and Knowledge Set");
     }
     const candidateBasis = nullable(subject.candidate, candidate);
     const objectIdentityLength = common.repository.objectFormat === "sha1" ? 40 : 64;
@@ -359,8 +378,8 @@ export function assertExecutionProjectionRequestBasis(options: {
     knowledge.validation.subject.id !== loaded.contract.targetId ||
     knowledge.validation.subject.revision !== knowledge.manifest.repository.commit ||
     knowledge.validation.subject.locator !== null ||
-    invalidValidation(repositoryValidation, "repository-v7", loaded.snapshot.digest) ||
-    invalidValidation(knowledge.validation, "knowledge-set-v1", knowledge.manifest.digest)
+    invalidValidation(repositoryValidation, "repository-v9", loaded.snapshot.digest) ||
+    invalidValidation(knowledge.validation, "knowledge-set-v2", knowledge.manifest.digest)
   ) {
     throw new FoundationError("lifecycle.projection.basis-mismatch", "Projection request, Repository Snapshot, and Knowledge Set do not identify one exact validated epoch", {
       observedFacts: {
@@ -449,7 +468,7 @@ export function assertOrientationProjectionRequestBasis(options: {
       knowledge.repository.atlasResolutionDigest !== loaded.atlas.resolution.digest ||
       knowledge.repository.atlasNormalizedModelDigest !== loaded.atlas.resolution.normalizedModelDigest ||
       knowledge.repository.atlasResourceBindingsDigest !== loaded.atlas.resolution.resourceBindingsDigest ||
-      knowledge.validation.profile !== "knowledge-set-v1" ||
+      knowledge.validation.profile !== "knowledge-set-v2" ||
       knowledge.validation.schema !== "lifecycle.validation-result.v1" ||
       knowledge.validation.specificationRevision !== FOUNDATION_SPECIFICATION_REVISION ||
       knowledge.validation.subject.kind !== "repository-knowledge" ||

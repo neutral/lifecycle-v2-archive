@@ -1,0 +1,32 @@
+{
+  "schema": "lifecycle.discipline-registry.v1",
+  "packs": [
+    {
+      "id": "neutral.go",
+      "version": "1.0.0",
+      "publisher": "neutral-lifecycle-disciplines",
+      "source": "https://example.invalid/lifecycle-disciplines.git",
+      "revision": "1111111111111111111111111111111111111111",
+      "manifestDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "adoptions": [
+    {
+      "id": "discipline.go.context-cancellation",
+      "revision": 1,
+      "path": "records/disciplines/neutral/go/context-cancellation.md",
+      "sourceDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "semanticDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "packId": "neutral.go"
+    }
+  ],
+  "workTypes": [
+    {
+      "id": "go-cryptography",
+      "title": "Go cryptography",
+      "description": "Go implementation work in cryptographic software.",
+      "disciplineIds": ["discipline.go.context-cancellation"]
+    }
+  ],
+  "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+}

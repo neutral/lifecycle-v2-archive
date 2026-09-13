@@ -13,9 +13,9 @@
       "additionalProperties": false,
       "required": ["recordId", "revision", "digest"],
       "properties": {
-        "recordId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "recordId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "head": {
@@ -23,11 +23,11 @@
       "additionalProperties": false,
       "required": ["sequence", "digest"],
       "properties": {
-        "sequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "sequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
-    "logicalInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "sealedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+    "logicalInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "sealedAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" }
   }
 }

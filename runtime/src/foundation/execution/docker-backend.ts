@@ -11,6 +11,8 @@ import {
   compileExecutionReclamationBinding,
   assertFoundationExecutionAllocationKey,
   foundationExecutionAllocationKeyBindingDigest,
+  foundationUnallocatedExecutionRefusalV1,
+  witnessFoundationUnallocatedExecutionRefusalV1,
   parseExecutionReclamationBinding,
   parseExecutionReclamationObligation,
   privateFoundationExecutionHandle,
@@ -161,6 +163,11 @@ export type FoundationDockerCellDiscoveryV1 = Readonly<{
   truncated: boolean;
 }>;
 
+export type FoundationDockerCellIdentityDiscoveryV1 = Readonly<{
+  cellIds: readonly string[];
+  truncated: boolean;
+}>;
+
 export type FoundationDockerOutputRetrievalV1 =
   | Readonly<{
       schema: "lifecycle.docker-output-retrieval.private.v1";
@@ -192,10 +199,20 @@ export interface FoundationDockerEngineDriverV1 {
     runnerContractId: typeof CELL_RUNNER_CONTRACT_ID;
     runnerContractDigest: Sha256;
   }>): Promise<FoundationDockerImageObservationV1>;
+  /** Complete absence of this allocation's primary and provisional resources. */
+  allocationResourcesAbsent?(input: Readonly<{
+    allocationName: string;
+    specificationDigest: Sha256;
+  }>): Promise<boolean>;
   findCells(input: Readonly<{
     labels: Readonly<Record<string, string>>;
     maximumResults: typeof MAXIMUM_DISCOVERY_RESULTS;
   }>): Promise<FoundationDockerCellDiscoveryV1>;
+  /** Fresh uniqueness discovery only; never establishes Cell configuration or state. */
+  findCellIdentities?(input: Readonly<{
+    labels: Readonly<Record<string, string>>;
+    maximumResults: typeof MAXIMUM_DISCOVERY_RESULTS;
+  }>): Promise<FoundationDockerCellIdentityDiscoveryV1>;
   inspectCell(cellId: string): Promise<FoundationDockerCellInspectionV1 | null>;
   createCell(request: FoundationDockerCellCreateRequestV1): Promise<void>;
   consumeDispatch(cellId: string): Promise<"consumed" | "already-consumed" | "ambiguous">;
@@ -212,9 +229,21 @@ export interface FoundationDockerEngineDriverV1 {
     maximumBytes: number;
     maximumEntryBytes: number;
   }>): Promise<FoundationDockerOutputRetrievalV1>;
+  /** Private credential settlement after containment, or proven unallocated absence. */
+  settleProviderCredential?(input: Readonly<{
+    specification: FoundationExecutionSpecificationV1;
+    allocationName: string;
+    cellId: string | null;
+  }>): Promise<void>;
+  /** Exact receipt cleanup after complete Reclamation or unallocated resource absence. */
+  forgetProviderCredential?(input: Readonly<{
+    specification: FoundationExecutionSpecificationV1;
+    allocationName: string;
+  }>): Promise<void>;
   removeCell(input: Readonly<{
     cellId: string;
     specificationDigest: Sha256;
+    allocationName?: string;
   }>): Promise<"removed" | "missing" | "remaining" | "integrity-refusal">;
 }
 
@@ -332,6 +361,15 @@ function parseDockerReclamationBinding(
     engineIdentityDigest: value.engineIdentityDigest,
     allocationKeyDigest: value.allocationKeyDigest,
   });
+}
+
+/** Private selection only; reclaim still validates the complete retired identity. */
+export function foundationDockerReclamationBindingMatchesEngineV1(
+  value: FoundationExecutionReclamationBindingV1["backendBinding"],
+  engineIdentityDigest: Sha256,
+): boolean {
+  if (value.schema !== "lifecycle.docker-reclamation-binding.private.v1") return false;
+  return parseDockerReclamationBinding(value).engineIdentityDigest === engineIdentityDigest;
 }
 
 function parseDockerOutputRetrieval(value: unknown): FoundationDockerOutputRetrievalV1 {
@@ -527,7 +565,7 @@ function parseSpecification(
   return parsed;
 }
 
-function assertInspectionShape(inspection: FoundationDockerCellInspectionV1): void {
+export function assertFoundationDockerCellInspectionV1(inspection: FoundationDockerCellInspectionV1): void {
   const direct = inspection.direct;
   if (inspection === null || typeof inspection !== "object" || Array.isArray(inspection) ||
       !exactKeys(inspection, [
@@ -792,6 +830,14 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
     this.#now = input.now;
   }
 
+  #assertCredentialSettlementSupport(specification: FoundationExecutionSpecificationV1): void {
+    if (specification.credentialPolicy.mode === "fixed-runner" &&
+        (this.#driver.settleProviderCredential === undefined ||
+          this.#driver.forgetProviderCredential === undefined)) {
+      fail("credential-custody", "Authenticated Docker execution requires durable private credential settlement");
+    }
+  }
+
   async #assertBoundEngine(binding: CachedBinding): Promise<void> {
     let current: FoundationDockerEngineDescriptionV1;
     try {
@@ -866,8 +912,27 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
         result.cells.length >= MAXIMUM_DISCOVERY_RESULTS) {
       fail("allocation-ambiguous", "Docker Engine allocation discovery is ambiguous", true);
     }
-    for (const inspection of result.cells) assertInspectionShape(inspection);
+    for (const inspection of result.cells) assertFoundationDockerCellInspectionV1(inspection);
     return result.cells;
+  }
+
+  async #discoverIdentities(labels: Readonly<Record<string, string>>): Promise<readonly string[]> {
+    if (this.#driver.findCellIdentities === undefined) {
+      return Object.freeze((await this.#discover(labels)).map(({ cellId }) => cellId));
+    }
+    const result = await this.#driver.findCellIdentities({ labels, maximumResults: MAXIMUM_DISCOVERY_RESULTS });
+    if (result === null || typeof result !== "object" || Array.isArray(result) ||
+        !exactKeys(result, ["cellIds", "truncated"]) || !Array.isArray(result.cellIds) ||
+        typeof result.truncated !== "boolean" || result.truncated ||
+        result.cellIds.length >= MAXIMUM_DISCOVERY_RESULTS) {
+      fail("allocation-ambiguous", "Docker Engine allocation identity discovery is ambiguous", true);
+    }
+    for (const id of result.cellIds) {
+      if (typeof id !== "string" || id.length !== 64 || !/^[a-f0-9]{64}$/u.test(id)) {
+        fail("allocation-ambiguous", "Docker Engine allocation identity discovery is malformed", true);
+      }
+    }
+    return Object.freeze([...result.cellIds]);
   }
 
   async #assertExactInspection(
@@ -875,7 +940,7 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
     binding: CachedBinding,
     expectedCellId?: string,
   ): Promise<void> {
-    assertInspectionShape(inspection);
+    assertFoundationDockerCellInspectionV1(inspection);
     const expectedLabels = labelsFor(binding.specification, binding.allocationKeyDigest);
     const expectedConfiguration = configurationFor(binding.specification, this.profile);
     if ((expectedCellId !== undefined && inspection.cellId !== expectedCellId) ||
@@ -884,17 +949,17 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
         !sameJson(inspection.configuration, expectedConfiguration)) {
       fail("allocation-substitution", "Docker Cell does not match its exact allocation binding");
     }
-    const byKey = await this.#discover({
+    const byKey = await this.#discoverIdentities({
       [LABELS.owner]: "lifecycle-runtime",
       [LABELS.allocationKeyDigest]: binding.allocationKeyDigest,
     });
-    const bySpecification = await this.#discover({
+    const bySpecification = await this.#discoverIdentities({
       [LABELS.owner]: "lifecycle-runtime",
       [LABELS.specificationDigest]: binding.specification.digest,
     });
     if (byKey.length !== 1 || bySpecification.length !== 1 ||
-        byKey[0]!.cellId !== inspection.cellId ||
-        bySpecification[0]!.cellId !== inspection.cellId) {
+        byKey[0] !== inspection.cellId ||
+        bySpecification[0] !== inspection.cellId) {
       fail("allocation-duplicate", "Docker allocation key or Specification selects another Cell");
     }
   }
@@ -941,6 +1006,7 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
   ): Promise<FoundationExecutionHandle> {
     assertFoundationExecutionAllocationKey(allocationKey);
     const specification = parseSpecification(specificationInput, this.profile);
+    this.#assertCredentialSettlementSupport(specification);
     const keyDigest = foundationExecutionAllocationKeyBindingDigest(allocationKey);
     const exactLabels = labelsFor(specification, keyDigest);
     const byKey = await this.#discover({
@@ -980,13 +1046,63 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
     if (bySpecification.length !== 0) {
       fail("allocation-duplicate", "Docker Specification already has another allocation");
     }
-    const image = await this.#driver.inspectImage({
-      imageId: specification.image.imageId,
-      imageDigest: specification.image.imageDigest,
-      runnerContractId: CELL_RUNNER_CONTRACT_ID,
-      runnerContractDigest: specification.runner.contractDigest,
-    });
-    assertImageObservation(image, specification, this.profile);
+    try {
+      const image = await this.#driver.inspectImage({
+        imageId: specification.image.imageId,
+        imageDigest: specification.image.imageDigest,
+        runnerContractId: CELL_RUNNER_CONTRACT_ID,
+        runnerContractDigest: specification.runner.contractDigest,
+      });
+      assertImageObservation(image, specification, this.profile);
+    } catch (error) {
+      // Both exact discovery queries are empty and createCell has not been called.
+      // Transport failures and arbitrary Backend errors cannot establish absence.
+      foundationUnallocatedExecutionRefusalV1(error);
+      if (error instanceof FoundationError && !error.retryable && error.repositoryChanged === false && error.operationalStateChanged === false &&
+          (error.code === "lifecycle.execution.docker-cli-driver.image-substitution" ||
+            error.code === "lifecycle.execution.docker-backend.image")) {
+        // An earlier create call may have stopped after provisional transport or
+        // provider resources but before the Cell became discoverable. Absence of
+        // those resources must be observed too; failed observation proves nothing.
+        let resourcesAbsent = false;
+        try {
+          resourcesAbsent = await this.#driver.allocationResourcesAbsent?.({
+            allocationName: allocationName(keyDigest),
+            specificationDigest: specification.digest,
+          }) === true;
+        } catch { /* Preserve the original refusal and its exact recovery obligation. */ }
+        if (!resourcesAbsent) throw error;
+        if (specification.credentialPolicy.mode === "fixed-runner") {
+          await this.#driver.settleProviderCredential!({
+            specification,
+            allocationName: allocationName(keyDigest),
+            cellId: null,
+          });
+          await this.#driver.forgetProviderCredential!({
+            specification,
+            allocationName: allocationName(keyDigest),
+          });
+        }
+        const facts = Object.freeze({
+          schema: "lifecycle.execution-unallocated-image-refusal.private.v1",
+          specificationDigest: specification.digest,
+          allocationKeyDigest: keyDigest,
+          imageDigest: specification.image.imageDigest,
+          engineIdentityDigest: this.#engine.engineIdentityDigest,
+          diagnosticCode: error.code,
+          allocation: "absent",
+          creationAttemptedInThisInvocation: false,
+          provisionalResources: "absent",
+        });
+        witnessFoundationUnallocatedExecutionRefusalV1({
+          error,
+          specification,
+          allocationKey,
+          refusalFactsDigest: digestCanonical(facts),
+        });
+      }
+      throw error;
+    }
     const configuration = configurationFor(specification, this.profile);
     await this.#driver.createCell(Object.freeze({
       schema: "lifecycle.docker-cell-create-request.private.v1" as const,
@@ -1196,6 +1312,37 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
           binding.retirementCheckpointDigest !== input.retirementCheckpointDigest)) {
       fail("reclamation-binding", "Docker Reclamation binding substituted retained Runtime facts");
     }
+    this.#assertCredentialSettlementSupport(specification);
+    if (specification.credentialPolicy.mode === "fixed-runner") {
+      // OperationHost already retained Containment. Mutable physical custody
+      // crosses another boundary here, so reobserve the exact Cell before any
+      // credential generation can be made available to a later execution.
+      const inspection = await this.#inspection(input.handle, binding);
+      if (inspection === null) {
+        const byKey = await this.#discover({
+          [LABELS.owner]: "lifecycle-runtime",
+          [LABELS.allocationKeyDigest]: binding.allocationKeyDigest,
+        });
+        const bySpecification = await this.#discover({
+          [LABELS.owner]: "lifecycle-runtime",
+          [LABELS.specificationDigest]: specification.digest,
+        });
+        if (byKey.length !== 0 || bySpecification.length !== 0) {
+          fail("allocation-substitution", "Provider credential settlement found another Cell for the retained allocation");
+        }
+      }
+      if (inspection !== null && !executionObservationEstablishesContainment(
+        observationFromInspection(inspection, binding),
+        binding.dispatchAuthorityConsumed,
+      )) {
+        fail("containment-required", "Provider credential settlement requires exact Cell Containment");
+      }
+      await this.#driver.settleProviderCredential!({
+        specification,
+        allocationName: allocationName(binding.allocationKeyDigest),
+        cellId: cellIdFromHandle(input.handle),
+      });
+    }
     return compileExecutionReclamationBinding({
       specification,
       handle: input.handle,
@@ -1215,6 +1362,7 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
     obligationInput: FoundationExecutionReclamationObligationV1,
   ): Promise<FoundationExecutionReclamationObservationV1> {
     const specification = parseSpecification(specificationInput, this.profile);
+    this.#assertCredentialSettlementSupport(specification);
     const retained = parseExecutionReclamationBinding(bindingInput, specification);
     const physical = parseDockerReclamationBinding(retained.backendBinding);
     const binding: CachedBinding = {
@@ -1255,6 +1403,7 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
           const removed = await this.#driver.removeCell({
             cellId,
             specificationDigest: binding.specification.digest,
+            allocationName: allocationName(binding.allocationKeyDigest),
           });
           if (removed === "integrity-refusal") {
             disposition = "integrity-refusal";
@@ -1297,6 +1446,7 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
           const removed = await this.#driver.removeCell({
             cellId,
             specificationDigest: binding.specification.digest,
+            allocationName: allocationName(binding.allocationKeyDigest),
           });
           if (removed === "integrity-refusal") {
             disposition = "integrity-refusal";
@@ -1327,6 +1477,12 @@ class DockerExecutionBackend implements FoundationExecutionBackend {
           throw error;
         }
       }
+    }
+    if (disposition === "reclaimed" && specification.credentialPolicy.mode === "fixed-runner") {
+      await this.#driver.forgetProviderCredential!({
+        specification,
+        allocationName: allocationName(binding.allocationKeyDigest),
+      });
     }
     const observedAt = this.#now();
     if (!exactIsoTime(observedAt)) fail("clock", "Docker Backend clock is invalid");

@@ -14,6 +14,7 @@ import {
   FOUNDATION_CANDIDATE_REVISION_CARRIER_LIMITS_V1,
   FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_MEDIA_TYPE,
   FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE,
+  FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE,
   type FoundationCandidateRevisionCarrierManifestV1,
 } from "../candidate/carrier-types.js";
 import { FoundationError } from "../error.js";
@@ -46,6 +47,12 @@ import {
   controlTimestamp,
 } from "./model.js";
 import { assertDeliveryControlRecordPayload } from "./payload-registry.js";
+import type { WorkDelegationReference } from "./work-delegation.js";
+import {
+  compileWorkDelegationStopRequest,
+  parseWorkDelegationStopRequest,
+  type WorkDelegationStopRequest,
+} from "./work-delegation-stop.js";
 import {
   CONTROL_RECORD_FILE_SCHEMA,
   CONTROL_RECORD_OPERATION_SUPPORT_SCHEMA,
@@ -83,8 +90,8 @@ const DATABASE_FILENAME = "control-record-store.sqlite";
 const FILES_DIRECTORY = "files";
 const DRAFTS_DIRECTORY = "drafts";
 const ARCHIVE_MANIFEST_FILENAME = "archive-manifest.json";
-const APPLICATION_ID = 0x4c435253;
-const USER_VERSION = 1;
+export const CONTROL_RECORD_STORE_DATABASE_APPLICATION_ID = 0x4c435253;
+export const CONTROL_RECORD_STORE_DATABASE_USER_VERSION = 3;
 const FILE_PATTERN = /^sha256-([a-f0-9]{64})$/u;
 const MAXIMUM_CONTROL_RECORDS = 10_000;
 const MAXIMUM_CONTROL_REVISIONS = 25_000;
@@ -213,7 +220,7 @@ function actorFromJson(value: string, label: string): ControlActor {
   if (
     Object.keys(parsed).length !== 2 ||
     typeof parsed.kind !== "string" ||
-    !["agent", "founder", "runtime"].includes(parsed.kind) ||
+    !["agent", "director", "runtime"].includes(parsed.kind) ||
     typeof parsed.id !== "string"
   ) {
     fail("database-shape", `${label} has an invalid actor shape`);
@@ -236,8 +243,8 @@ function paths(root: string): ControlRecordStorePaths {
 
 function schemaSql(): string {
   return `
-    PRAGMA application_id = ${APPLICATION_ID};
-    PRAGMA user_version = ${USER_VERSION};
+    PRAGMA application_id = ${CONTROL_RECORD_STORE_DATABASE_APPLICATION_ID};
+    PRAGMA user_version = ${CONTROL_RECORD_STORE_DATABASE_USER_VERSION};
 
     CREATE TABLE store_metadata (
       singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -266,8 +273,8 @@ function schemaSql(): string {
       semantic_authority TEXT NOT NULL CHECK (
         semantic_authority IN (
           'agent-proposed',
-          'founder-supplied',
-          'founder-authenticated',
+          'director-supplied',
+          'director-authenticated',
           'runtime-observed',
           'runtime-derived'
         )
@@ -394,6 +401,17 @@ function schemaSql(): string {
       FOREIGN KEY (closure_record_id, closure_revision)
         REFERENCES record_revisions(record_id, revision),
       FOREIGN KEY (head_sequence) REFERENCES journal_events(sequence)
+    ) STRICT;
+
+    CREATE TABLE work_delegation_stop_request (
+      singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+      delegation_id TEXT NOT NULL,
+      delegation_revision INTEGER NOT NULL CHECK (delegation_revision > 0),
+      delegation_digest TEXT NOT NULL,
+      request_json TEXT NOT NULL CHECK (length(CAST(request_json AS BLOB)) <= 65536),
+      request_digest TEXT NOT NULL UNIQUE,
+      FOREIGN KEY (delegation_id, delegation_revision)
+        REFERENCES record_revisions(record_id, revision)
     ) STRICT;
 
     CREATE VIEW current_record_revisions AS
@@ -578,6 +596,30 @@ function schemaSql(): string {
       WHEN EXISTS (SELECT 1 FROM store_seal WHERE singleton = 1) BEGIN
         SELECT RAISE(ABORT, 'sealed Control Record Store is immutable');
       END;
+    CREATE TRIGGER work_delegation_stop_request_immutable_update
+      BEFORE UPDATE ON work_delegation_stop_request BEGIN
+        SELECT RAISE(ABORT, 'work delegation stop request is immutable');
+      END;
+    CREATE TRIGGER work_delegation_stop_request_exact_insert
+      BEFORE INSERT ON work_delegation_stop_request BEGIN
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM store_seal)
+          THEN RAISE(ABORT, 'sealed Control Record Store is immutable') END;
+        SELECT CASE WHEN NEW.delegation_digest IS NOT (
+          SELECT revisions.digest FROM record_revisions AS revisions
+          JOIN control_records AS records ON records.record_id = revisions.record_id
+          WHERE records.record_kind = 'work-delegation' AND revisions.record_id = NEW.delegation_id
+            AND revisions.revision = NEW.delegation_revision
+        ) THEN RAISE(ABORT, 'stop request requires an exact work delegation') END;
+      END;
+    CREATE TRIGGER work_delegation_stop_request_exact_delete
+      BEFORE DELETE ON work_delegation_stop_request BEGIN
+        SELECT CASE WHEN NOT EXISTS (
+          SELECT 1 FROM journal_events WHERE event_kind = 'work-delegation-stopped'
+            AND subject_record_id = OLD.delegation_id AND subject_revision = OLD.delegation_revision
+            AND subject_digest = OLD.delegation_digest
+            AND json_extract(payload_json, '$.requestDigest') = OLD.request_digest
+        ) THEN RAISE(ABORT, 'stop request may be removed only with its exact Journal fact') END;
+      END;
     CREATE TRIGGER store_seal_exact_insert
       BEFORE INSERT ON store_seal BEGIN
         SELECT CASE WHEN EXISTS (
@@ -586,6 +628,9 @@ function schemaSql(): string {
         SELECT CASE WHEN EXISTS (
           SELECT 1 FROM operation_support WHERE state = 'live'
         ) THEN RAISE(ABORT, 'store_seal requires no live operation support') END;
+        SELECT CASE WHEN EXISTS (
+          SELECT 1 FROM work_delegation_stop_request
+        ) THEN RAISE(ABORT, 'store_seal requires no pending work delegation stop') END;
         SELECT CASE WHEN NEW.closure_digest IS NOT (
           SELECT digest FROM record_revisions
           WHERE record_id = NEW.closure_record_id AND revision = NEW.closure_revision
@@ -1010,10 +1055,25 @@ function assertAdjacentFileReferenceOwnership(
     }
     return;
   }
-  if (claimsCarrierManifestPurpose || claimsCarrierManifestMediaType) {
+  if (claimsCarrierManifestPurpose || claimsCarrierManifestMediaType || reference.purpose === FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE) {
+    const materials = revision.payload.rawMaterials;
+    const purposes = Array.isArray(materials) ? materials.flatMap((value) => {
+      if (value === null || typeof value !== "object" || Array.isArray(value) || value.availability !== "retained") return [];
+      const selected = value.reference;
+      return selected !== null && typeof selected === "object" && !Array.isArray(selected) ? [selected.purpose] : [];
+    }) : [];
+    const candidate = revision.payload.candidate;
+    if (revision.recordKind === "execution-receipt" && revision.payload.role === "builder" &&
+        candidate !== null && typeof candidate === "object" && !Array.isArray(candidate) &&
+        (candidate as ControlJsonObject).successorDisposition === "invalid" && (candidate as ControlJsonObject).successor === null &&
+        purposes.filter((purpose) => purpose === FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE).length === 1 &&
+        purposes.filter((purpose) => purpose === FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE).length === 1 &&
+        (reference.purpose === FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE
+          ? reference.mediaType === "application/json" && reference.byteLength <= 64 * 1024
+          : claimsCarrierManifestPurpose && claimsCarrierManifestMediaType)) return;
     fail(
       "candidate-carrier-reference",
-      `${revision.recordKind} cannot claim the reserved Candidate Revision Carrier manifest purpose or media type`,
+      `${revision.recordKind} cannot claim a Carrier manifest outside one exact Candidate or failed-builder repair pair`,
     );
   }
 }
@@ -2227,6 +2287,7 @@ function deterministicAppendFailure(error: unknown): boolean {
     "lifecycle.control-record-store.revision-finalization",
     "lifecycle.control-record-store.file-integrity",
     "lifecycle.control-record-store.pending-file-integrity",
+    "lifecycle.control-record-store.work-stop-integrity",
     "lifecycle.control-record-store.physical-layout",
   ] as const).some((code) => code === error.code);
 }
@@ -2367,7 +2428,8 @@ export class ControlRecordStore implements Disposable {
 
       const applicationId = (db.prepare("PRAGMA application_id").get() as Readonly<{ application_id: number }>).application_id;
       const userVersion = (db.prepare("PRAGMA user_version").get() as Readonly<{ user_version: number }>).user_version;
-      if (applicationId !== APPLICATION_ID || userVersion !== USER_VERSION) {
+      if (applicationId !== CONTROL_RECORD_STORE_DATABASE_APPLICATION_ID
+        || userVersion !== CONTROL_RECORD_STORE_DATABASE_USER_VERSION) {
         fail("version", "Control Record Store database has unsupported physical coordinates", {
           applicationId,
           userVersion,
@@ -2401,6 +2463,129 @@ export class ControlRecordStore implements Disposable {
 
   [Symbol.dispose](): void {
     this.close();
+  }
+
+  /** Operational stop custody is separate from the sole Journal writer. */
+  getWorkDelegationStopRequest(): WorkDelegationStopRequest | null {
+    const row = this.#db.prepare("SELECT * FROM work_delegation_stop_request WHERE singleton = 1").get() as SqlRow | undefined;
+    if (row === undefined) return null;
+    const request = parseWorkDelegationStopRequest(parseJsonObject(
+      expectString(row.request_json, "Work delegation stop request"), "Work delegation stop request", "event"));
+    if (request.storeId !== this.identity.storeId || request.processId !== this.identity.processId ||
+        request.delegation.id !== row.delegation_id || request.delegation.revision !== row.delegation_revision ||
+        request.delegation.digest !== row.delegation_digest || request.digest !== row.request_digest) {
+      fail("work-stop-integrity", "Stop request custody must reproduce its exact Store and delegation bindings");
+    }
+    return request;
+  }
+
+  /**
+   * Retain one monotonic request without taking the Delivery-long operation
+   * lock or appending a Journal event. The current finite operation may settle.
+   * A lost return can observe the first request again, including after folding.
+   */
+  requestWorkDelegationStop(input: Readonly<{
+    delegation: WorkDelegationReference;
+    requestedBy: string;
+    requestedAt: string;
+  }>): Readonly<{
+    request: WorkDelegationStopRequest;
+    disposition: "pending" | "stopped";
+    observation: Readonly<{
+      state: ReducedDeliveryState;
+      seal: ControlRecordStoreSeal | null;
+      head: ControlRecordEvent | null;
+    }>;
+  }> {
+    if (this.readOnly) fail("read-only", "Cannot request a stop through a read-only Store");
+    const proposed = compileWorkDelegationStopRequest({ ...input,
+      storeId: this.identity.storeId, processId: this.identity.processId });
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      // The separate stop caller cannot rely on the connection's earlier replay.
+      const history = this.#replaySemanticHistory(false);
+      const state = history.replay.finish();
+      const seal = this.getSeal();
+      const current = state.delegation.current;
+      const revision = this.getRevision(proposed.delegation.id, proposed.delegation.revision);
+      if (current === null || canonicalJson(current.reference) !== canonicalJson({
+        id: proposed.delegation.id, revision: proposed.delegation.revision, digest: proposed.delegation.digest,
+      }) || revision === null || revision.recordKind !== "work-delegation" || revision.digest !== proposed.delegation.digest ||
+          revision.semanticAuthor.kind !== "director" || revision.semanticAuthor.id !== proposed.requestedBy) {
+        fail("work-stop-subject", "Stop requires the current exact delegation and its supplying Director");
+      }
+      let result: Readonly<{ request: WorkDelegationStopRequest; disposition: "pending" | "stopped" }>;
+      if (current.stopped) {
+        const row = this.#db.prepare(`
+          SELECT * FROM journal_events WHERE event_kind = 'work-delegation-stopped'
+            AND subject_record_id = ? AND subject_revision = ? AND subject_digest = ?
+          ORDER BY sequence DESC LIMIT 1
+        `).get(revision.recordId, revision.revision, revision.digest) as SqlRow | undefined;
+        if (row === undefined) fail("work-stop-integrity", "Stopped delegation must retain its exact Journal request");
+        const event = eventFromRow(this.identity, row);
+        const request = compileWorkDelegationStopRequest({ storeId: this.identity.storeId, processId: this.identity.processId,
+          delegation: proposed.delegation,
+          requestedBy: expectString(event.payload.requestedBy as SqlRow[string], "Stopped Director"),
+          requestedAt: expectString(event.payload.requestedAt as SqlRow[string], "Stopped request time") });
+        if (event.payload.requestDigest !== request.digest) fail("work-stop-integrity", "Stopped request digest differs");
+        result = Object.freeze({ request, disposition: "stopped" });
+      } else {
+        if (state.standing === "closed" || seal !== null || state.activities.some(activity =>
+          activity.stage !== "completed" && (activity.operation === "delivery.accept" || activity.operation === "delivery.no-ship"))) {
+          fail("work-stop-terminal", "Terminal work must finish through its exact decision or recovery route");
+        }
+        const pending = this.getWorkDelegationStopRequest();
+        if (pending !== null) {
+          if (canonicalJson(pending.delegation) !== canonicalJson(proposed.delegation) || pending.requestedBy !== proposed.requestedBy) {
+            fail("work-stop-integrity", "Pending stop must still concern the same current delegation");
+          }
+          result = Object.freeze({ request: pending, disposition: "pending" });
+        } else {
+          if (Date.parse(proposed.requestedAt) < Date.parse(revision.createdAt)) {
+            fail("work-stop-time", "A stop request cannot precede the delegation it stops");
+          }
+          this.#db.prepare(`
+            INSERT INTO work_delegation_stop_request
+              (singleton, delegation_id, delegation_revision, delegation_digest, request_json, request_digest)
+              VALUES (1, ?, ?, ?, ?, ?)
+          `).run(revision.recordId, revision.revision, revision.digest, canonicalJson(proposed), proposed.digest);
+          result = Object.freeze({ request: proposed, disposition: "pending" });
+        }
+      }
+      const head = state.journal.eventCount === 0 ? null
+        : this.listEvents(state.journal.eventCount - 1, 1)[0] ?? null;
+      if (state.journal.eventCount === 0 ? state.journal.headDigest !== null
+        : head === null || head.sequence !== state.journal.eventCount || head.digest !== state.journal.headDigest) {
+        fail("work-stop-integrity", "Stop observation must bind the exact committed Journal head");
+      }
+      // Capture all mutable facts in this same transaction. Later projection
+      // must not mix this replay with a newer seal or writer observation.
+      const committed = Object.freeze({ ...result, observation: Object.freeze({ state, seal, head }) });
+      this.#db.exec("COMMIT");
+      this.#replay = history.replay;
+      return committed;
+    } catch (error) {
+      try { this.#db.exec("ROLLBACK"); } catch { /* original error owns the refusal */ }
+      throw error;
+    }
+  }
+
+  #assertWorkDelegationStopBoundary(event: ControlRecordEvent): WorkDelegationStopRequest | null {
+    const pending = this.getWorkDelegationStopRequest();
+    if (event.eventKind === "work-delegation-stopped") {
+      if (pending === null || event.subject === null || event.subject.recordId !== pending.delegation.id ||
+          event.subject.revision !== pending.delegation.revision || event.subject.digest !== pending.delegation.digest ||
+          canonicalJson(event.payload) !== canonicalJson({ requestDigest: pending.digest,
+            requestedAt: pending.requestedAt, requestedBy: pending.requestedBy })) {
+        fail("work-stop-integrity", "Settling a stop requires its exact retained request in the same transaction");
+      }
+      return pending;
+    }
+    if (pending !== null && (event.eventKind === "activity-started" ||
+        event.eventKind === "work-delegation-set" || event.eventKind === "closure-recorded")) {
+      fail("work-stop-pending", "The retained stop must settle before another Activity, delegation or Closure");
+    }
+    return null;
   }
 
   append(input: ControlRecordStoreAppend): ControlRecordStoreAppendResult {
@@ -2742,6 +2927,7 @@ export class ControlRecordStore implements Disposable {
             );
           }
         }
+        const settledStop = this.#assertWorkDelegationStopBoundary(event);
         candidateReplay.append(event);
         this.#db.prepare(`
           INSERT INTO journal_events (
@@ -2762,6 +2948,9 @@ export class ControlRecordStore implements Disposable {
           event.predecessorDigest,
           event.digest,
         );
+        if (settledStop !== null) {
+          this.#db.prepare("DELETE FROM work_delegation_stop_request WHERE singleton = 1 AND request_digest = ?").run(settledStop.digest);
+        }
         if (compiledRevision !== null && finalizationEventCount(this.#db, compiledRevision) !== 1) {
           fail(
             "revision-finalization",
@@ -2792,6 +2981,23 @@ export class ControlRecordStore implements Disposable {
         predecessorTime = event.occurredAt;
       }
 
+      // A standing direction is supplied with its grant. Intermediate Journal
+      // prefixes can be reduced, but the Store must not commit an orphan Brief
+      // that another invocation could later adopt as new resource permission.
+      for (const result of results) {
+        if (result.event.eventKind !== "director-brief-submitted" ||
+            !Object.hasOwn(result.event.payload, "delegationId")) continue;
+        const brief = result.revision;
+        const grant = results.find(item => item.event.eventKind === "work-delegation-set" &&
+          item.revision !== null && item.revision.recordId === result.event.payload.delegationId &&
+          item.revision.revision === result.event.payload.delegationRevision)?.revision;
+        if (brief === null || grant === undefined || grant === null ||
+            !grant.relationships.some(link => link.relation === "uses-brief" && link.target.kind === "director-brief" &&
+              link.target.id === brief.recordId && link.target.revision === brief.revision && link.target.digest === brief.digest)) {
+          fail("work-delegation-brief-batch", "Standing Director direction must finalize with its exact selecting Work Delegation in one atomic batch");
+        }
+      }
+
       return Object.freeze({
         appends: Object.freeze(results),
         replay: candidateReplay,
@@ -2813,6 +3019,13 @@ export class ControlRecordStore implements Disposable {
       WHERE activity_id = ?
     `).get(selectedActivityId) as SqlRow | undefined;
     return row === undefined ? null : operationSupportFromRow(this.identity, row);
+  }
+
+  /** Observe any support history, or exact live Activity support, without exposing its mechanics to custody. */
+  hasRetainedOperationSupport(activityId?: string): boolean {
+    return activityId === undefined
+      ? this.#db.prepare("SELECT 1 FROM operation_support LIMIT 1").get() !== undefined
+      : this.#getRetainedOperationSupport(activityId)?.state === "live";
   }
 
   /** Read the exact live recovery support for one Delivery activity. */
@@ -3830,6 +4043,22 @@ export class ControlRecordStore implements Disposable {
 
     const semanticHistory = this.#replaySemanticHistory(false);
     const { count, headDigest } = semanticHistory;
+    const stopRequest = this.getWorkDelegationStopRequest();
+    if (stopRequest !== null) {
+      const state = semanticHistory.replay.finish();
+      const current = state.delegation.current;
+      const grant = this.getRevision(stopRequest.delegation.id, stopRequest.delegation.revision);
+      if (current === null || current.stopped || state.standing === "closed" || grant === null ||
+          canonicalJson(current.reference) !== canonicalJson({ id: stopRequest.delegation.id,
+            revision: stopRequest.delegation.revision, digest: stopRequest.delegation.digest }) ||
+          grant.recordKind !== "work-delegation" || grant.digest !== stopRequest.delegation.digest ||
+          grant.semanticAuthor.kind !== "director" || grant.semanticAuthor.id !== stopRequest.requestedBy ||
+          Date.parse(stopRequest.requestedAt) < Date.parse(grant.createdAt) ||
+          state.activities.some(activity => activity.stage !== "completed" &&
+            (activity.operation === "delivery.accept" || activity.operation === "delivery.no-ship"))) {
+        fail("work-stop-integrity", "Pending stop must bind its current unsettled delegation and supplying Director");
+      }
+    }
 
     const revisionCount = expectInteger(
       (this.#db.prepare("SELECT COUNT(*) AS count FROM record_revisions").get() as SqlRow).count,
@@ -4031,6 +4260,7 @@ export class ControlRecordStore implements Disposable {
     }
     const seal = this.getSeal();
     if (seal !== null) {
+      if (stopRequest !== null) fail("seal-work-stop", "A sealed Control Record Store cannot retain a pending stop");
       if (pending !== null) {
         fail("seal-pending-files", "A sealed Control Record Store cannot retain pending file custody");
       }
@@ -4182,6 +4412,9 @@ export class ControlRecordStore implements Disposable {
     sealedAt: string;
   }>): Promise<ControlRecordStoreSeal> {
     if (this.readOnly) fail("read-only", "Cannot seal a read-only Control Record Store");
+    if (this.getWorkDelegationStopRequest() !== null) {
+      fail("seal-work-stop", "Control Record Store cannot seal while a work delegation stop is pending");
+    }
     if (pendingFileBatch(this.#db, this.identity) !== null) {
       fail("seal-pending-files", "Control Record Store cannot seal while file custody is pending");
     }

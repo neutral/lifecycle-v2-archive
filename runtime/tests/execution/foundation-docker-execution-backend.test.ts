@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { FoundationError } from "../../src/foundation/error.js";
 import {
+  foundationUnallocatedExecutionRefusalV1,
   compileExecutionReclamationBinding,
   compileExecutionReclamationObligation,
   createFoundationExecutionAllocationKey,
@@ -23,6 +24,7 @@ import {
   type FoundationDockerCellCreateRequestV1,
   type FoundationDockerCellDirectObservationV1,
   type FoundationDockerCellDiscoveryV1,
+  type FoundationDockerCellIdentityDiscoveryV1,
   type FoundationDockerCellInspectionV1,
   type FoundationDockerEngineDescriptionV1,
   type FoundationDockerEngineDriverV1,
@@ -45,7 +47,7 @@ import {
 type DockerFixture = ExecutionContractFixture;
 const DOCKER_ENGINE_IDENTITY_DIGEST = digest("docker-engine-identity");
 
-function dockerFixture(salt: string): DockerFixture {
+function dockerFixture(salt: string, authenticated = false): DockerFixture {
   const base = executionContractFixture(`docker-${salt}`);
   const { digest: _profileDigest, ...baseProfile } = base.profile;
   const profileSubject = {
@@ -53,6 +55,10 @@ function dockerFixture(salt: string): DockerFixture {
     profileId: "lifecycle.execution-backend-profile.docker-local.v1",
     backendKind: "docker-local",
     usage: "production",
+    credentialPolicy: {
+      ...baseProfile.credentialPolicy,
+      injectionModes: authenticated ? ["none", "fixed-runner"] : ["none"],
+    },
     implementation: {
       id: "runtime.execution-backend.docker-local",
       version: "1.0.0",
@@ -85,6 +91,10 @@ function dockerFixture(salt: string): DockerFixture {
   const { digest: _specificationDigest, ...baseSpecification } = base.specification;
   const specificationSubject = {
     ...baseSpecification,
+    ...(authenticated ? { credentialPolicy: {
+      mode: "fixed-runner", bindings: [{ id: "provider-control", policyDigest: digest("credential-policy") }],
+      agentAccess: false, outputDisclosure: false,
+    } } : {}),
     backendProfile: {
       profileId: profile.profileId,
       profileDigest: profile.digest,
@@ -527,6 +537,86 @@ test("Docker Backend creates one exact hardened Cell and reconciles lost allocat
   );
 });
 
+test("Docker observation validates one physical Cell and freshly checks both uniqueness domains", async () => {
+  class IdentityDriver extends FakeDockerEngineDriver {
+    inspections = 0;
+    fullDiscoveries = 0;
+    readonly identityQueries: Readonly<Record<string, string>>[] = [];
+    overrideResult: { value: unknown } | null = null;
+    identityHook: ((labels: Readonly<Record<string, string>>) => void) | null = null;
+    override async inspectCell(cellId: string) {
+      this.inspections += 1;
+      return await super.inspectCell(cellId);
+    }
+    override async findCells(input: Parameters<FakeDockerEngineDriver["findCells"]>[0]) {
+      this.fullDiscoveries += 1;
+      return await super.findCells(input);
+    }
+    async findCellIdentities(input: Parameters<FakeDockerEngineDriver["findCells"]>[0]): Promise<FoundationDockerCellIdentityDiscoveryV1> {
+      this.identityQueries.push(input.labels);
+      this.identityHook?.(input.labels);
+      if (this.overrideResult !== null) return this.overrideResult.value as FoundationDockerCellIdentityDiscoveryV1;
+      const ids = [...this.cells.values()].filter((cell) => Object.entries(input.labels)
+        .every(([key, value]) => cell.request.labels[key] === value)).map(({ cellId }) => cellId);
+      return { cellIds: ids.slice(0, input.maximumResults), truncated: ids.length > input.maximumResults };
+    }
+  }
+  const fixture = dockerFixture("identity-only-observation");
+  const driver = new IdentityDriver(fixture.profile);
+  const backend = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver });
+  const handle = await backend.allocate(fixture.specification, createFoundationExecutionAllocationKey());
+  driver.inspections = 0;
+  driver.fullDiscoveries = 0;
+  driver.identityQueries.length = 0;
+  const first = await backend.observe(handle);
+  const second = await backend.observe(handle);
+  assert.equal(first.processState, "not-started");
+  assert(second.observationSequence > first.observationSequence);
+  assert.equal(driver.inspections, 2, "Every observation makes its own complete physical inspection");
+  assert.equal(driver.fullDiscoveries, 0, "Uniqueness does not repeat that physical inspection");
+  assert.equal(driver.identityQueries.length, 4, "Both selector domains are observed every time");
+  for (const pair of [driver.identityQueries.slice(0, 2), driver.identityQueries.slice(2, 4)]) {
+    assert.deepEqual(pair.map((labels) => Object.keys(labels).sort()), [
+      ["io.lifecycle.execution-cell.v1.allocation-key-digest", "io.lifecycle.execution-cell.v1.owner"],
+      ["io.lifecycle.execution-cell.v1.owner", "io.lifecycle.execution-cell.v1.specification-digest"],
+    ]);
+  }
+  const cell = [...driver.cells.values()][0]!;
+  const cellId = cell.cellId;
+  for (const value of [null, {}, { cellIds: [cellId], truncated: false, extra: true },
+    { cellIds: [cellId], truncated: true }, { cellIds: [cellId, cellId], truncated: false },
+    { cellIds: [cellId + "\n"], truncated: false }, { cellIds: Array(1), truncated: false },
+    { cellIds: ["not-a-cell"], truncated: false }]) {
+    driver.overrideResult = { value };
+    await assert.rejects(backend.observe(handle), (error: unknown) => error instanceof FoundationError &&
+      error.code === "lifecycle.execution.docker-backend.allocation-ambiguous");
+  }
+  for (const cellIds of [[], ["f".repeat(64)]]) {
+    driver.overrideResult = { value: { cellIds, truncated: false } };
+    await assert.rejects(backend.observe(handle), (error: unknown) => error instanceof FoundationError &&
+      error.code === "lifecycle.execution.docker-backend.allocation-duplicate");
+  }
+  driver.overrideResult = null;
+  driver.identityHook = (labels) => {
+    if (Object.hasOwn(labels, "io.lifecycle.execution-cell.v1.specification-digest")) {
+      driver.cells.set("f".repeat(64), { ...cell, cellId: "f".repeat(64) });
+    }
+  };
+  await assert.rejects(backend.observe(handle), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.execution.docker-backend.allocation-ambiguous");
+  driver.identityHook = null;
+  driver.cells.delete("f".repeat(64));
+  const originalRequest = cell.request;
+  cell.request = { ...originalRequest, labels: { ...originalRequest.labels, unexpected: "substitution" } };
+  await assert.rejects(backend.observe(handle), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.execution.docker-backend.allocation-substitution");
+  cell.request = originalRequest;
+  const restored = await backend.observe(handle);
+  assert.equal(restored.processState, "not-started");
+  assert.equal(driver.createCount, 1);
+  assert.equal(driver.startCount, 0);
+});
+
 test("Docker Backend refuses mutable image substitution and incompatible Engine identity", async () => {
   const fixture = dockerFixture("identity");
   const driver = new FakeDockerEngineDriver(fixture.profile);
@@ -548,6 +638,91 @@ test("Docker Backend refuses mutable image substitution and incompatible Engine 
     (error: unknown) => error instanceof FoundationError &&
       error.code === "lifecycle.execution.docker-backend.engine",
   );
+});
+
+test("image refusal permits no-effect settlement only with exact complete allocation absence", async () => {
+  const fixture = dockerFixture("unallocated-image-refusal");
+  class ObservedDriver extends FakeDockerEngineDriver {
+    absence: boolean | Error = true;
+    imageFailure: Error | null = null;
+    override async inspectImage(input: Parameters<FakeDockerEngineDriver["inspectImage"]>[0]) {
+      if (this.imageFailure !== null) throw this.imageFailure;
+      return await super.inspectImage(input);
+    }
+    async allocationResourcesAbsent(input: Readonly<{ allocationName: string; specificationDigest: Sha256 }>) {
+      assert.equal(input.specificationDigest, fixture.specification.digest);
+      assert(input.allocationName.startsWith("lifecycle-"));
+      if (this.absence instanceof Error) throw this.absence;
+      return this.absence;
+    }
+  }
+  const rejected = async (backend: FoundationExecutionBackend, key: FoundationExecutionAllocationKey): Promise<unknown> => {
+    let failure: unknown;
+    await assert.rejects(backend.allocate(fixture.specification, key), (error: unknown) => {
+      failure = error;
+      return true;
+    });
+    return failure;
+  };
+  for (const variation of ["absent", "residue", "unavailable", "retryable", "state-changing", "unknown-repository", "unknown-operation", "unknown"] as const) {
+    const driver = new ObservedDriver(fixture.profile);
+    driver.imageDigestOverride = digest("substituted-immutable-image");
+    if (variation === "residue") driver.absence = false;
+    if (variation === "unavailable") driver.absence = new Error("temporary observation loss");
+    if (variation === "retryable" || variation === "state-changing") {
+      driver.imageFailure = new FoundationError("lifecycle.execution.docker-cli-driver.image-substitution", "image refusal", {
+        retryable: variation === "retryable", operationalStateChanged: variation === "state-changing",
+      });
+    }
+    if (variation === "unknown-repository" || variation === "unknown-operation") {
+      driver.imageFailure = Object.assign(new FoundationError("lifecycle.execution.docker-cli-driver.image-substitution", "unobserved effect"),
+        variation === "unknown-repository" ? { repositoryChanged: null } : { operationalStateChanged: null });
+    }
+    if (variation === "unknown") driver.imageFailure = new Error("unknown image observation failure");
+    const backend = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver });
+    const key = createFoundationExecutionAllocationKey();
+    const failure = await rejected(backend, key);
+    const witness = foundationUnallocatedExecutionRefusalV1(failure);
+    if (variation === "absent") {
+      assert(witness !== null);
+      assert.equal(witness.specificationDigest, fixture.specification.digest);
+      assert.equal(witness.allocationKeyDigest, foundationExecutionAllocationKeyBindingDigest(key));
+      assert.equal(witness.diagnosticCode, "lifecycle.execution.docker-backend.image");
+      assert.equal(foundationUnallocatedExecutionRefusalV1(failure), null, "A witnessed refusal is consumed once");
+      assert.equal(foundationUnallocatedExecutionRefusalV1(new FoundationError(witness.diagnosticCode, "same code")), null);
+    } else {
+      assert.equal(witness, null, variation);
+    }
+    assert.equal(driver.createCount, 0, variation);
+    assert.equal(driver.startCount, 0, variation);
+    if (variation === "unavailable") {
+      driver.absence = true;
+      const restored = foundationUnallocatedExecutionRefusalV1(await rejected(backend, key));
+      assert(restored !== null, "Restored exact absence observation permits the promised no-effect conclusion");
+      assert.equal(restored.allocationKeyDigest, foundationExecutionAllocationKeyBindingDigest(key));
+      assert.equal(driver.createCount, 0);
+    }
+  }
+  const unobserved = new FakeDockerEngineDriver(fixture.profile);
+  unobserved.imageDigestOverride = digest("invalid-image-without-resource-observer");
+  const backend = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver: unobserved });
+  assert.equal(foundationUnallocatedExecutionRefusalV1(await rejected(backend, createFoundationExecutionAllocationKey())), null,
+    "Cell discovery alone cannot exclude provisional allocation resources");
+  class PostCreateFailureDriver extends ObservedDriver {
+    override async createCell(request: FoundationDockerCellCreateRequestV1) {
+      await super.createCell(request);
+      throw new FoundationError("lifecycle.execution.docker-cli-driver.image-substitution", "same code after a Cell effect");
+    }
+  }
+  const allocated = new PostCreateFailureDriver(fixture.profile);
+  const allocatedBackend = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver: allocated });
+  const allocatedKey = createFoundationExecutionAllocationKey();
+  assert.equal(foundationUnallocatedExecutionRefusalV1(await rejected(allocatedBackend, allocatedKey)), null,
+    "The same diagnostic after creation cannot acquire a pre-creation absence witness");
+  assert.equal(allocated.cells.size, 1);
+  const retainedHandle = await allocatedBackend.allocate(fixture.specification, allocatedKey);
+  assert.equal(await allocatedBackend.allocate(fixture.specification, allocatedKey), retainedHandle);
+  assert.equal(allocated.createCount, 1, "Recovery retains the original Cell after its successful allocation return was lost");
 });
 
 test("Docker dispatch marker is one-time across uncertain start and allocation cannot adopt it", async () => {
@@ -1477,4 +1652,91 @@ test("Docker Reclamation binds Retirement, proves absence, and refuses ambiguous
   );
   assert.equal(refusal.disposition, "integrity-refusal");
   assert.equal(ambiguousDriver.removeCount, 0);
+});
+
+test("authenticated Docker retirement settles only the contained exact execution and resumes after custody restoration", async () => {
+  const fixture = dockerFixture("credential-retirement", true);
+  class CredentialDriver extends FakeDockerEngineDriver {
+    unavailable = true;
+    readonly settlements: Parameters<NonNullable<FoundationDockerEngineDriverV1["settleProviderCredential"]>>[0][] = [];
+    readonly forgotten: Parameters<NonNullable<FoundationDockerEngineDriverV1["forgetProviderCredential"]>>[0][] = [];
+    async settleProviderCredential(input: Parameters<NonNullable<FoundationDockerEngineDriverV1["settleProviderCredential"]>>[0]) {
+      this.settlements.push(input);
+      if (this.unavailable) throw new Error("exact private custody temporarily unavailable");
+    }
+    async forgetProviderCredential(input: Parameters<NonNullable<FoundationDockerEngineDriverV1["forgetProviderCredential"]>>[0]) {
+      this.forgotten.push(input);
+    }
+  }
+  const driver = new CredentialDriver(fixture.profile);
+  driver.terminalOnStart = false;
+  const bindings = new Map<FoundationExecutionHandle, FoundationDockerExecutionBindingV1>();
+  const reopen = () => createFoundationDockerExecutionBackend({ profile: fixture.profile, driver,
+    resolveBinding: bindingResolver(bindings), now: () => "2026-09-01T01:00:00.000Z" });
+  const backend = await reopen();
+  const key = createFoundationExecutionAllocationKey();
+  const handle = await backend.allocate(fixture.specification, key);
+  bindings.set(handle, executionBinding({ fixture, allocationKey: key,
+    dispatchAuthorityConsumed: true, retirementCheckpointDigest: null }));
+  await backend.dispatch(handle);
+  const request = { fixture, handle, retirementCheckpointDigest: digest("credential-retirement"),
+    dispatchAuthorityConsumed: true };
+  await assert.rejects(reclamationHandoff({ ...request, backend }), /requires exact Cell Containment/u);
+  assert.equal(driver.settlements.length, 0, "A running writer cannot settle a credential generation");
+  await backend.cancel(handle);
+  await assert.rejects(reclamationHandoff({ ...request, backend }), /temporarily unavailable/u);
+  assert.equal(driver.removeCount, 0, "Unsettled credential custody has no Reclamation handoff");
+  driver.unavailable = false;
+  const restarted = await reopen();
+  const retired = await reclamationHandoff({ ...request, backend: restarted });
+  assert.deepEqual(driver.settlements, [0, 1].map(() => ({ specification: fixture.specification,
+    allocationName: driver.lastCreate!.allocationName, cellId: handle.slice("execution-handle-v1:".length) })));
+  assert.equal(driver.startCount, 1, "Restored custody completes the same execution without redispatch");
+  assert.equal(driver.createCount, 1);
+  driver.removal = "remaining";
+  assert.equal((await restarted.reclaim(fixture.specification, retired.binding, retired.obligation)).disposition, "remaining");
+  assert.equal(driver.forgotten.length, 0, "Residual physical credentials retain their exact settlement receipt");
+  driver.removal = "removed";
+  assert.equal((await restarted.reclaim(fixture.specification, retired.binding, retired.obligation)).disposition, "reclaimed");
+  assert.deepEqual(driver.forgotten, [{ specification: fixture.specification,
+    allocationName: driver.lastCreate!.allocationName }]);
+});
+
+test("authenticated Docker allocation requires credential settlement and releases unused custody only after complete absence", async () => {
+  const fixture = dockerFixture("credential-no-effect", true);
+  const missing = new FakeDockerEngineDriver(fixture.profile);
+  const unsupported = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver: missing });
+  await assert.rejects(unsupported.allocate(fixture.specification, createFoundationExecutionAllocationKey()), /requires durable private credential settlement/u);
+  assert.equal(missing.createCount, 0);
+  class CredentialDriver extends FakeDockerEngineDriver {
+    absent = false;
+    readonly transitions: string[] = [];
+    async allocationResourcesAbsent() { return this.absent; }
+    async settleProviderCredential(input: Parameters<NonNullable<FoundationDockerEngineDriverV1["settleProviderCredential"]>>[0]) {
+      assert.equal(input.cellId, null);
+      assert.equal(input.specification.digest, fixture.specification.digest);
+      this.transitions.push(`settle:${input.allocationName}`);
+    }
+    async forgetProviderCredential(input: Parameters<NonNullable<FoundationDockerEngineDriverV1["forgetProviderCredential"]>>[0]) {
+      this.transitions.push(`forget:${input.allocationName}`);
+    }
+  }
+  const driver = new CredentialDriver(fixture.profile);
+  driver.imageDigestOverride = digest("unavailable-credential-image");
+  const backend = await createFoundationDockerExecutionBackend({ profile: fixture.profile, driver });
+  const key = createFoundationExecutionAllocationKey();
+  const refuse = async () => {
+    let caught: unknown;
+    await assert.rejects(backend.allocate(fixture.specification, key), error => { caught = error; return true; });
+    return foundationUnallocatedExecutionRefusalV1(caught);
+  };
+  assert.equal(await refuse(), null);
+  assert.deepEqual(driver.transitions, [], "Provisional resources prevent releasing an exact claim");
+  driver.absent = true;
+  const witness = await refuse();
+  assert.equal(witness?.specificationDigest, fixture.specification.digest);
+  const name = `lifecycle-execution-${foundationExecutionAllocationKeyBindingDigest(key).slice("sha256:".length)}`;
+  assert.deepEqual(driver.transitions, [`settle:${name}`, `forget:${name}`]);
+  assert.equal(driver.createCount, 0);
+  assert.equal(driver.startCount, 0);
 });

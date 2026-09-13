@@ -1,10 +1,10 @@
 {
-  "schema": "lifecycle.agent-work-product-payload.v2",
-  "profileId": "lifecycle.agent-work-product-body.builder.v2",
+  "schema": "lifecycle.agent-work-product-payload.v5",
+  "profileId": "lifecycle.agent-work-product-body.builder.v4",
   "role": "builder",
   "disposition": "blocked",
   "summary": {
-    "text": "The active mandate now requires a Founder-owned tradeoff.",
+    "text": "The active mandate now requires a Director-owned tradeoff.",
     "fragmentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
   },
   "uncertainty": {
@@ -20,12 +20,12 @@
     "proposal": "material-condition",
     "conditions": [
       {
-        "id": "condition.founder-tradeoff",
-        "conditionClass": "founder-tradeoff",
+        "id": "condition.director-tradeoff",
+        "conditionClass": "director-tradeoff",
         "statement": "The admitted tradeoff no longer selects one honest implementation route.",
         "falsifiedMandateIds": [],
         "knowledgeIds": ["check.demo"],
-        "founderJudgmentRequired": true,
+        "directorJudgmentRequired": true,
         "fragmentDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
       }
     ],
@@ -35,13 +35,13 @@
   "parseResultDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
   "fixedBindingSubjectDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
   "body": {
-    "profileId": "lifecycle.agent-work-product-body.builder.v2",
+    "profileId": "lifecycle.agent-work-product-body.builder.v4",
     "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
     "fragments": [
       {
-        "id": "condition.founder-tradeoff",
+        "id": "condition.director-tradeoff",
         "kind": "condition",
-        "anchor": "condition-founder-tradeoff",
+        "anchor": "condition-director-tradeoff",
         "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
       }
     ]

@@ -25,12 +25,12 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.execution-observation.v1" },
-    "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
-    "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "inputSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "observationSequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-    "observedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+    "imageDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "inputSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "observationSequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+    "observedAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" },
     "allocationState": { "enum": ["absent", "allocated", "ambiguous", "unavailable"] },
     "dispatchState": { "enum": ["not-observed", "accepted", "start-observed", "terminal-observed", "ambiguous"] },
     "processState": { "enum": ["not-observed", "not-started", "running", "terminal", "ambiguous"] },
@@ -43,7 +43,7 @@
     "containmentFacts": { "$ref": "#/$defs/containmentFacts" },
     "output": { "$ref": "#/$defs/output" },
     "resourceFacts": { "$ref": "#/$defs/resourceFacts" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "allOf": [
     {
@@ -67,8 +67,8 @@
             "lifecycle.execution-backend-profile.fault-injection.v1"
           ]
         },
-        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "terminal": {
@@ -76,7 +76,7 @@
       "additionalProperties": false,
       "required": ["finishedAt", "reason", "exitCode", "signal", "runnerDisposition"],
       "properties": {
-        "finishedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+        "finishedAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" },
         "reason": { "enum": ["exited", "cancelled", "timed-out", "backend-failure", "parent-loss", "unknown"] },
         "exitCode": {
           "oneOf": [
@@ -115,7 +115,7 @@
         "manifestDigest": {
           "oneOf": [
             { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
           ]
         },
         "carrierByteLength": {
@@ -133,7 +133,7 @@
           },
           "then": {
             "properties": {
-              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
               "carrierByteLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
             }
           }

@@ -82,7 +82,10 @@ function revisionInput(input: Readonly<{
 function fixture(
   conditionClass = "scope-change",
   sourceRole: "builder" | "reviewer" = "builder",
+  successorDisposition: "promoted" | "invalid" | "unavailable" | "not-produced" = "promoted",
+  inventedSuccessorEdge = false,
 ) {
+  const promoted = sourceRole === "builder" && successorDisposition === "promoted";
   const operation = sourceRole === "builder" ? "delivery.continue" : "delivery.evaluate";
   const identity: ControlRecordStoreIdentity = Object.freeze({
     schema: CONTROL_RECORD_STORE_SCHEMA,
@@ -118,7 +121,7 @@ function fixture(
     id: "boundary-one",
     kind: "work-boundary",
     payload: Object.freeze({
-      schema: "lifecycle.work-boundary-payload.v4",
+      schema: "lifecycle.work-boundary-payload.v6",
       knowledge: Object.freeze([Object.freeze({ id: "check.demo" })]),
       mandate: Object.freeze({
         objective: Object.freeze({ id: "objective.one" }),
@@ -169,7 +172,7 @@ function fixture(
       ...(seal === null ? [] : [{ relation: "uses-seal", target: reference(seal) }]),
     ],
   }));
-  const candidate = sourceRole === "builder"
+  const candidate = promoted
     ? retain({
         ...revisionInput({
           id: "candidate-one",
@@ -205,7 +208,7 @@ function fixture(
     id: `work-product-${sourceRole}-one`,
     kind: "agent-work-product",
     payload: Object.freeze({
-      schema: "lifecycle.agent-work-product-payload.v2",
+      schema: "lifecycle.agent-work-product-payload.v5",
       role: sourceRole,
       uncertainty: Object.freeze({ level: sourceRole === "reviewer" ? "material" : "bounded" }),
       limitations: Object.freeze([Object.freeze({
@@ -219,6 +222,8 @@ function fixture(
           ? { proposal: "material-condition" }
           : {
               judgments: Object.freeze([]),
+              mandateApplicability: Object.freeze({disposition:"applicable"}),
+              baselineApplicability: Object.freeze([]),
               mandateExcess: true,
               missingObligationIds: Object.freeze([]),
             }),
@@ -228,7 +233,7 @@ function fixture(
           statement: "The requested outcome exceeds the admitted scope.",
           falsifiedMandateIds: Object.freeze(["objective.one"]),
           knowledgeIds: Object.freeze(["check.demo"]),
-          founderJudgmentRequired: true,
+          directorJudgmentRequired: true,
           fragmentDigest,
         })]),
       }),
@@ -249,20 +254,24 @@ function fixture(
     payload: Object.freeze({
       schema: "lifecycle.execution-receipt-payload.v3",
       activityId: ACTIVITY,
+      role: sourceRole,
       workspace: Object.freeze({
         compilerDisposition: "retained",
       }),
       workProduct: Object.freeze({ disposition: "submitted" }),
-      candidate: sourceRole === "builder"
-        ? Object.freeze({ successorDisposition: "promoted", successor: Object.freeze({}) })
-        : Object.freeze({ successorDisposition: null, successor: null }),
+      candidate: Object.freeze({
+        input: Object.freeze({ revision: reference(priorCandidate), carrierManifestDigest: (priorCandidate.payload.carrierManifest as ControlJsonObject).digest! }),
+        successorDisposition: sourceRole === "builder" ? successorDisposition : null,
+        successor: promoted ? Object.freeze({ revision: reference(candidate), carrierManifestDigest: (candidate.payload.carrierManifest as ControlJsonObject).digest! }) : null,
+        contentDisposition: promoted ? "changed" : null,
+      }),
       containment: Object.freeze({ classification: "contained" }),
       retirement: Object.freeze({ classification: "retired" }),
     }),
     relationships: [
       { relation: "observes-attempt", target: reference(attempt) },
       { relation: "observes-work-product", target: reference(workProduct) },
-      ...(sourceRole === "builder"
+      ...(promoted || inventedSuccessorEdge
         ? [{ relation: "observes-candidate", target: reference(candidate) }]
         : []),
     ],
@@ -275,7 +284,7 @@ function fixture(
     subject: subject(workProduct),
     payload: { activityId: ACTIVITY },
   });
-  if (sourceRole === "builder") {
+  if (promoted) {
     event({
       eventId: "event-candidate",
       eventKind: "candidate-revision-observed",
@@ -308,6 +317,7 @@ function fixture(
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: Object.freeze({ id: boundary.recordId, revision: 1, digest: boundary.digest }),
       candidate: Object.freeze({
@@ -322,6 +332,7 @@ function fixture(
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: events.length, headDigest: events.at(-1)!.digest }),
     eligibleOperations: Object.freeze([]),
   });
@@ -348,7 +359,7 @@ function fixture(
       return Object.freeze({ revision, event: event(input.event) });
     },
   } as unknown as ControlRecordStore;
-  return { store, appendCalls: () => appendCalls } as const;
+  return { store, event, retain, receipt, attempt, priorCandidate, candidate, appendCalls: () => appendCalls } as const;
 }
 
 test("Material Condition compiler freezes exact builder facts under one installed rule", () => {
@@ -423,8 +434,33 @@ test("Material Condition compiler freezes exact reviewer facts without inventing
   assert.match(retained.revision.semanticMarkdown, /Source proposal .* \(agent-proposed\)/u);
 });
 
+test("A valid builder Work Product freezes its exact input Candidate when output produces no successor", () => {
+  for (const disposition of ["invalid", "unavailable", "not-produced"] as const) {
+    const value = fixture("scope-change", "builder", disposition);
+    const retained = retainMaterialCondition({ store: value.store, activityId: ACTIVITY,
+      runtime: { implementationId: "runtime.material-condition-compiler", implementationDigest: digest("material-condition-compiler") },
+      frozenAt: FROZEN, runtimeId: RUNTIME });
+    assert.equal(value.appendCalls(), 1);
+    assert.deepEqual(retained.revision.relationships.find((edge) => edge.relation === "freezes")?.target, reference(value.priorCandidate));
+    assert.equal(value.store.listEvents().some((event) => event.eventKind === "candidate-revision-observed"), false);
+    assert.equal(retained.event.eventKind, "material-condition-frozen");
+  }
+  const invented = fixture("scope-change", "builder", "invalid", true);
+  assert.throws(() => retainMaterialCondition({ store: invented.store, activityId: ACTIVITY,
+    runtime: { implementationId: "runtime.material-condition-compiler", implementationDigest: digest("material-condition-compiler") },
+    frozenAt: FROZEN, runtimeId: RUNTIME }), { code: "lifecycle.control-execution-receipt.candidate" });
+  assert.equal(invented.appendCalls(), 0);
+  const phantom = fixture("scope-change", "builder", "invalid");
+  phantom.event({ eventId: "event-phantom-candidate", eventKind: "candidate-revision-observed", occurredAt: FROZEN,
+    actor: { kind: "runtime", id: RUNTIME }, subject: subject(phantom.priorCandidate), payload: { activityId: ACTIVITY } });
+  assert.throws(() => retainMaterialCondition({ store: phantom.store, activityId: ACTIVITY,
+    runtime: { implementationId: "runtime.material-condition-compiler", implementationDigest: digest("material-condition-compiler") },
+    frozenAt: FROZEN, runtimeId: RUNTIME }), { code: "lifecycle.control-material-condition.journal" });
+  assert.equal(phantom.appendCalls(), 0);
+});
+
 test("Material Condition compiler refuses classes outside the shared closed vocabulary", () => {
-  assert.equal(MATERIAL_CONDITION_CLASSES.includes("founder-tradeoff"), true);
+  assert.equal(MATERIAL_CONDITION_CLASSES.includes("director-tradeoff"), true);
   assert.equal(
     (MATERIAL_CONDITION_CLASSES as readonly string[]).includes("incompatible-product-state-drift"),
     false,

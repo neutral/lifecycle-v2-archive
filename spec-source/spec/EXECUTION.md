@@ -4,7 +4,7 @@
 
 ## Purpose
 
-This document owns the Foundation rc.10 execution mechanism beneath Agent
+This document owns the Foundation rc.17 execution mechanism beneath Agent
 Attempts and Checks. It defines how the Lifecycle Runtime places one exact
 operation into one disposable Execution Cell without making that Cell a public
 workflow, a second Process, or a source of product meaning.
@@ -29,42 +29,59 @@ owns the sole Process and its public operations. [Security](SECURITY.md) owns
 the security model and qualification surface. [Control](CONTROL.md) owns
 retained logical records, Journal events, operation support, and archive.
 
+## Independent Delivery Repository
+
+Each Delivery has one continuing independent private Git repository and branch
+under runtime custody. It has separate writable Git administration, refs, index,
+configuration, and working state. It is not a linked target worktree, optional
+strategy, or newly initialized target. Control and immutable Carriers remain the
+continuity owners; a support branch or HEAD cannot select current Candidate.
+
+An Attempt or Check Cell remains disposable. Its exact inputs bind the active
+Boundary's retained history, current Candidate Carrier, and application-parent
+history required by its role. A Cell may construct its own bounded tool-facing
+Git view without receiving canonical target administration, Control, or authority
+credentials. Recovery retains exact histories and selections; it cannot use live
+HEAD as replacement input. The repository owner validates consumed metadata
+without requiring recursive history scans or banning otherwise supported
+immutable-object hardlinks.
+
 ## Requirement Language
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 and **MAY** are normative only when they appear in uppercase. Their meanings
 follow BCP 14.
 
-## Foundation rc.10 Hard Cut
+## Foundation rc.17 Hard Cut
 
-Foundation rc.10 selects exactly:
+Foundation rc.17 selects exactly:
 
-- qualification revision `lifecycle.foundation.1.0.0-rc.10`;
-- repository contract `lifecycle.repository.v15`;
-- runtime protocol `lifecycle.runtime.foundation.v10`;
-- interface protocol `lifecycle.interface.foundation.v10`; and
-- provider adapter `lifecycle.provider-adapter.v6`.
+- qualification revision `lifecycle.foundation.1.0.0-rc.17`;
+- repository contract `lifecycle.repository.v22`;
+- runtime protocol `lifecycle.runtime.foundation.v17`;
+- interface protocol `lifecycle.interface.foundation.v17`; and
+- provider adapter `lifecycle.provider-adapter.v7`.
 
 The selected Agent provider boundary is the exact
-`codex-exec-standard-v6` Descriptor with Codex compatibility
-`>=0.151.0 <0.152.0`. The current production Agent Execution Image binds the
-exact Codex tool version `0.151.0`. An Image carrying Codex 0.150.x is
-unsupported before allocation or dispatch.
+`codex-exec-standard-v7` Descriptor with Codex compatibility
+`>=0.153.4 <0.154.0`. The current selected Agent Execution Image binds the
+exact Codex tool version `0.153.4`. An Image outside that range, including
+Codex `0.151.0`, is unsupported before allocation or dispatch.
 
 Any repository or retained support object selecting an unsupported coordinate
 is invalid input. It has no migration, recovery, compatibility, or mixed-
-carrier meaning in rc.10.
+carrier meaning in rc.17.
 
-This hard cut does not add a Control record family, Journal event, Delivery
-state, or public operation. Foundation keeps twelve Control record families,
-twenty-two Journal event types, and the nine Delivery operations owned by
+The Execution Cell mechanism owns no additional Control record family, Journal
+event, Delivery state, or public operation. Foundation has fourteen Control record families,
+twenty-five Journal event types, and the ten Delivery operations owned by
 [Delivery](DELIVERY.md). Delivery remains the only Process.
 
 ## Ownership Rule
 
 Execution objects are private Runtime mechanism. They cannot establish:
 
-- Product, Work Boundary, Candidate, Work Product, Check, Evidence, or Founder
+- Product, Work Boundary, Candidate, Work Product, Check, Evidence, or Director
   meaning;
 - Process standing, operation eligibility, or authority;
 - canonical repository motion;
@@ -75,6 +92,16 @@ The Runtime compiles execution objects from already validated logical
 subjects, invokes the selected Backend, independently validates every returned
 fact, and retains only the stable facts required by the owning Attempt or Check
 Receipt and exact recovery.
+
+The execution mechanism accepts the exact selected execution request, not
+arbitrary Engine instructions from an operation owner. It MUST keep the Engine
+driver, generic allocation and dispatch primitives, and credential custody
+inside their owning execution boundary. A caller receives only the constrained
+operations and observations required for its exact Attempt, Check, or retained
+recovery obligation. The mechanism verifies the Specification and its subject,
+capability, Image, and Input Set bindings before granting physical execution.
+These are [software capability boundaries](SECURITY.md#consequential-capability-ownership);
+co-residence in one Runtime process does not establish physical isolation.
 
 The execution host is Journal-blind. It may propose and reconcile one exact
 private checkpoint replacement, but only the already-selected Activity owner
@@ -149,19 +176,46 @@ no-digest-member value.
 ### Execution Input Set
 
 An **Execution Input Set** is the exact immutable logical input to one
-Specification. Its profile is `lifecycle.execution-input-set.v1`. It binds the
+Specification. Its profile is `lifecycle.execution-input-set.v2`. It binds the
 complete ordered content inventory and every exact logical subject required by
 the operation.
 
 For a builder, reviewer, or final Check, the Input Set binds the exact Candidate
 Revision, Candidate Revision Carrier manifest, and Carrier artifact needed to
-materialize the selected Candidate. Reconnaissance has no Candidate. An
-executed baseline Check instead binds `phase: baseline`, the exact Work Boundary
+materialize the selected Candidate. Initial preparation reconnaissance has no
+Candidate input. Boundary-resolution reconnaissance binds the exact frozen
+Candidate Revision, Carrier manifest, Carrier artifact and Delivery Git context
+selected by its exact Attempt relationships. Its Candidate material is
+read-only: it grants no Candidate write capability or Candidate Output export.
+The Agent owner MUST reject Candidate inputs for `delivery.prepare`, require
+them for `delivery.revise` and `delivery.reaffirm`, and bind them to the exact
+`uses-candidate` relationship. A reconnaissance Input Set contains either none
+of these Candidate subjects or the complete exact selection; a partial or
+substituted selection is invalid. An executed baseline Check instead binds
+`phase: baseline`, the exact Work Boundary
 proof subject, one product-base subject naming that Boundary's exact commit and
 tree, and one deterministic bounded Git object-closure manifest and artifact
 sufficient to materialize that tree. Product-base closure bytes are ordinary
 immutable operation input. They are not a Candidate Revision, Candidate
 Revision Carrier, Candidate continuity, or a source of Candidate truth.
+
+Builder, reviewer and boundary-resolution Input Sets bind one `delivery-git-context`
+subject: exact canonical manifest bytes plus a complete immutable Git pack,
+carried as `operation-input` entries. The context selects the same Candidate
+reference and Carrier root tree, one deterministic branch for the exact
+Target/Store/Delivery identity, and the exact derived work tip with complete
+commit/tree/blob history inventory. The runner verifies both entries before
+constructing its disposable independent Git repository. Provider-authored
+commits, branches, configuration, hooks, and remotes are never imported as
+retained Delivery history. Successive Attempt Cells receive the same selected
+Delivery branch and runtime-derived history through newly frozen inputs; a
+Cell's mutable Git administration remains disposable.
+
+The selected runner permits at most 256 MiB (268,435,456 bytes) for the
+serialized private Git context manifest and additionally enforces the selected
+Cell storage limit. The ordinary small-JSON reader limit MUST NOT replace this
+manifest-specific bound. Immutable-input item and aggregate limits continue to
+apply to the manifest and pack.
 
 A Check Specification and its Input Set both bind the same exact `baseline` or
 `final` phase, Check Definition, Binding, and proof subject. A baseline
@@ -169,6 +223,16 @@ postcondition authorized as `not-run` creates no Specification, Input Set,
 Backend allocation, or Cell. The Input Set also binds the exact Projection,
 Role Brief or Check input, tool and runner inventory, and every applicable
 policy digest.
+
+For Provider Adapter v7, the provider input also selects exactly one compact
+immutable semantic authoring basis under [local draft assistance](ATTEMPTS.md#local-draft-assistance).
+The fixed `semantic-basis.json` member is an `application/json`, regular,
+bounded `operation-input` bound to the role subject. Its bytes are included in
+the Execution Input Set inventory; its self-digest is additionally bound by the
+upstream provider input v8 material. Runtime regenerates this basis before
+dispatch, and independently uses its selected compiler inputs after Containment.
+The local draft executable may inspect that read-only member, but no other
+operation-input member becomes provider-visible through this allowance.
 
 Every Input Set MUST bind exactly one runner subject whose digest equals
 `runnerContractDigest`. An Agent owner MUST bind one or more separate policy
@@ -196,13 +260,24 @@ Candidate, Evidence, or Control truth.
 
 The primitive Candidate materializer realizes the exact Carrier root tree as
 ordinary regular and executable files beneath one pinned empty root. It does
-not synthesize a commit or create a `.git` directory. When an owning Attempt or
-Check requires Git history or Git CLI behavior, its Input Set MUST bind that
+not synthesize a commit or create a `.git` directory.
+
+For an executed Check, the runner MUST expose an isolated Git tree and index
+from the already-bound phase-specific object closure: the exact product-base
+tree for baseline proof or sealed Candidate tree for final proof. Private Git
+administration remains separate from the materialized product. This view
+supports operations over that tree and index; it supplies no commit ancestry
+or resolved `HEAD` and MUST NOT manufacture either to satisfy a Check. The
+runner owns its Git environment and verifies the unchanged view under the
+[Proof Environment](EVIDENCE.md#proof-environment) contract.
+
+When an owning operation requires Git history, its Input Set MUST bind that
 immutable repository context separately. The Cell runner MAY compose a
-disposable Git view from the exact admitted history input and Candidate tree,
-but a derived repository, index, commit, branch, or cache is mechanism only. It
-cannot become Candidate identity, lineage, continuity, output subject, or
-Receipt truth.
+disposable Git view from the exact selected history input and Candidate tree,
+but a derived repository, index, commit, branch, or cache is mechanism only.
+Runtime work commits follow exact retained Candidate revisions and explicit
+integration parents; their Git ancestry cannot replace the authoritative
+Candidate Control lineage, Carrier, output subject, or Receipt truth.
 
 Materialization verification MUST enumerate physical entries incrementally and
 MUST refuse once the enumeration exceeds a bound derived from the complete
@@ -221,9 +296,9 @@ mutable tag, local image name, latest label, or successful pull cannot replace
 that identity.
 
 For the current Foundation Agent path, the tool inventory identifies Codex
-`0.151.0` and the Runtime verifies that version against the exact
-`codex-exec-standard-v6` range `>=0.151.0 <0.152.0`. Range satisfaction alone
-does not select an Image. A different 0.151.x tool requires its own immutable
+`0.153.4` and the Runtime verifies that version against the exact
+`codex-exec-standard-v7` range `>=0.153.4 <0.154.0`. Range satisfaction alone
+does not select an Image. A different 0.153.x tool requires its own immutable
 Image identity, executable digest, inventory digest, and operated evidence
 before it can replace the current selection.
 
@@ -394,6 +469,31 @@ Every method binds the exact installed Backend, Profile, Specification, and
 allocation identity. Returned values are untrusted observations until the
 Runtime validates their exact shape and bindings.
 
+### Retained execution selection
+
+Before allocation, the Runtime retains the complete resolved effective selection
+needed to reconstruct this execution: the Backend Profile, Provider Descriptor,
+exact policy bodies and their digests, and immutable Image resource description.
+The description binds the Image identity and digest, immutable reference,
+configuration digest, platform, non-root user, runner, and provider identity.
+These are operation inputs, not defaults to be resolved again during recovery.
+An installation can select a new Image for future work while an open Attempt
+still needs its original Image, Backend, and exact custody to finish. Reopening
+that Attempt resolves resources against the retained selection; it does not
+create a new execution contract.
+
+Observation, cancellation, retrieval, Containment, and Retirement MUST reopen
+this selection. A later installed default cannot replace any of its members.
+
+This retained support contains no Engine endpoint, credential, authentication
+path, executable path, or mutable installation locator. Execution retains
+custody of those resources and validates them against the selected identities
+when reopening. Unavailable exact resources are an availability failure: the
+same physical obligation remains pending until its owner can observe or retire
+it. Their absence never authorizes another Image, Provider, Cell, or dispatch.
+Unsupported Runtime definition coordinates still refuse under the hard-cut
+contract; retained selection is not a compatibility reader.
+
 ### Deterministic allocation
 
 Before `allocate`, the Runtime durably retains one unpredictable private
@@ -470,7 +570,11 @@ Evidence fact, Process state, or terminal decision.
 
 ## Containment, Retirement, and Reclamation
 
-The three terminal concepts are intentionally distinct.
+After useful execution ends, three different questions remain: can anything
+still act, can this allocation ever be used again, and have its residual bytes
+been removed? The first two determine whether an Attempt or Check can complete.
+The last is physical maintenance over already inert material. The following
+contracts give each question its own owner and completion fact.
 
 **Execution Containment** proves synchronously that the Cell can no longer
 execute, mutate output, use injected credentials, reach an allowed provider
@@ -499,6 +603,12 @@ reports `reclaimed`, `remaining`, or `integrity-refusal`. A failed deletion
 leaves inert, non-dispatchable material and a visible operational obligation;
 it does not reopen the Delivery Activity or prevent truthful Closure.
 
+Several selected Checks MAY share the same exact proof subject. Each Check
+allocation retains its own Execution Specification, Retirement, and Reclamation
+obligation. Terminal reconciliation MUST match each Receipt's exact Retirement
+and owner to one distinct retained obligation; equality of proof subjects
+MUST NOT collapse those allocations or discharge one with another's Retirement.
+
 Current Reclamation state does not enter the Journal, a Control record, a
 Receipt, an Attempt View, Delivery standing, eligible operations, or an
 authority subject. Closure may bind the immutable fact that Retirement handed
@@ -509,8 +619,47 @@ ceiling on outstanding non-reclaimed obligations and MUST refuse a new
 allocation with an ordinary Runtime-availability diagnostic when that ceiling
 is reached. It retries exact obligations with bounded backoff and refuses
 unsafe identity substitution. Configurable age, byte, capacity, or operator
-policy is outside rc.10. The Runtime MUST NOT claim secure erasure merely from
+policy is outside rc.17. The Runtime MUST NOT claim secure erasure merely from
 filesystem unlink or container removal.
+
+### Private provider credential continuity
+
+The selected fixed-runner profile supports one serialized execution stream per
+installed provider credential home. Before creating any Cell resource, the
+Backend MUST retain one exclusive claim binding the exact Execution
+Specification, Engine, and deterministic allocation. The claim and its private
+original credential snapshot survive controller loss. Another execution MUST
+wait for settlement; it cannot borrow the snapshot or replace the claim.
+This serialization governs credential use, not Delivery development or canonical
+repository access.
+
+The runner receives that snapshot through the private provider channel. Provider
+credential refreshes remain in an exact Cell-private provider-state volume
+outside Agent tool access, logical Input, Output, Control, and public inspection.
+Containment revokes the Cell's ability to use the credential; it does not require
+destroying the refreshed bytes before their disposition can be established.
+
+Before Runtime records Retirement, the Backend MUST settle that claim after
+independently establishing Containment. Updated credentials replace the original
+installed generation through a durable compare-and-swap transaction. A retained
+settlement identifies the exact claim; retrying it MUST NOT overwrite a later
+generation. Changed installed credentials while a claim remains active are an
+exact-custody refusal, not permission to overwrite either generation.
+
+Temporary failure to observe or open exact custody remains retryable recovery.
+Conclusive loss of final credential bytes after Containment MUST invalidate the
+old installed generation for future execution and settle the completed claim.
+An independently provisioned different private credential generation can then
+permit new work. Credential loss does not manufacture Output or justify
+redispatch, and it need not prevent truthful Retirement of contained work.
+Complete absence of an unallocated Cell and every provisional resource permits
+an unused claim to settle without credential replacement.
+
+Physical Reclamation removes the exact inert provider-state volume and its
+private settlement receipt. Complete unallocated resource absence permits the
+same bounded receipt cleanup without creating a Reclamation obligation. These
+installation-private facts are not another Process, Control family, or source
+of Director authority.
 
 ## Candidate Boundary
 
@@ -574,7 +723,7 @@ Attempt before dispatch:
 - Agent product-network access remains exactly the separately selected
   Capability Profile value; and
 - the Cell has no Docker daemon socket, Runtime custody mount, canonical target
-  mount, Founder authority material, or credential for another operation.
+  mount, Director authority material, or credential for another operation.
 
 If the local engine cannot enforce the claimed separation, the profile is
 unsupported. Lifecycle does not silently widen Agent network access so a
@@ -604,7 +753,7 @@ conformance claim about Docker isolation.
 
 Remote runners, hosted execution, Compose topology, image publication,
 registry trust, installer behavior, release signing, and distribution packaging
-are outside this rc.10 execution contract. Their later addition cannot change
+are outside this rc.17 execution contract. Their owning contracts cannot change
 Candidate, Attempt, Check, Evidence, Delivery, or authority meaning.
 
 ## Recovery
@@ -646,7 +795,7 @@ it cannot expose backend mechanics as an alternate route.
 
 The Delivery reducer remains the sole user-visible workflow. The CLI and TUI
 continue to present `prepare`, `admit` (including the readmission variant),
-`continue`, `evaluate`, `revise`, `reaffirm`, `accept`, `no-ship`, and exact
+`continue`, `integrate`, `evaluate`, `revise`, `reaffirm`, `accept`, `no-ship`, and exact
 `delivery.recover` eligibility; they do not present an execution lifecycle
 alongside it. The
 public protocol and clients expose Delivery and its exact Attempt, Check,

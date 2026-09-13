@@ -1,0 +1,63 @@
+{
+  "schema": "lifecycle.authorization-review.v1",
+  "targetId": "target-1",
+  "storeId": "store-1",
+  "processId": "delivery-1",
+  "operation": "delivery.admit",
+  "decision": "admit",
+  "consequence": "Establish the selected Work Boundary as the active mandate for this Delivery.",
+  "semanticMarkdown": "# Admission\n",
+  "semanticDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "journalHead": {
+    "sequence": 8,
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "reducerFactsDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "repository": {
+    "repositorySnapshotDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "canonicalCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "canonicalTree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "productStateDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "atlasStateDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "atlasResolutionDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "atlasNormalizedModelDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "atlasResourceBindingsDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "repositoryContractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "knowledgeSetDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "checkBindingSetDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "selectedControl": [
+    {
+      "relation": "selects-baseline-receipt",
+      "target": {
+        "kind": "check-receipt",
+        "id": "receipt-1",
+        "revision": 1,
+        "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "relation": "selects-boundary",
+      "target": {
+        "kind": "work-boundary",
+        "id": "boundary-1",
+        "revision": 1,
+        "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    }
+  ],
+  "coordinates": {
+    "qualification": "lifecycle.foundation.1.0.0-rc.17",
+    "repository": "lifecycle.repository.v22",
+    "provider": "lifecycle.provider-adapter.v7",
+    "authoritySubject": "lifecycle.director-decision-subject.v4",
+    "transactionRules": "lifecycle.delivery-transaction-rules.v1"
+  },
+  "authority": {
+    "principalId": "director",
+    "keyId": "director-key-1",
+    "algorithm": "ed25519"
+  },
+  "candidateDisposition": "not-applicable",
+  "authorizationReviewDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+}

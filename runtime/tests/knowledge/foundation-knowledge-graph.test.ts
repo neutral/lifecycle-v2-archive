@@ -43,7 +43,7 @@ function record(options: {
     bodyNormalized: "",
     headings: [],
     frontMatter: {
-      schema: "lifecycle.knowledge-record.v1",
+      schema: "lifecycle.knowledge-record.v2",
       kind,
       id: options.id,
       title: options.id,
@@ -51,7 +51,7 @@ function record(options: {
       revision: 1,
       supersedes: null,
       summary: options.id,
-      owners: ["founder"],
+      owners: ["director"],
       sources: [],
       relationships: (options.relationships ?? []).map((edge) => ({
         ...edge,
@@ -108,7 +108,7 @@ test("optional relationships retain historical or missing targets without becomi
   const edges = buildRelationshipEdges({ records, revisionsByIdentity: revisions, currentByIdentity: current, collector });
   const graph = validateRelationshipGraph({ edges, currentByIdentity: current, collector });
   const result = collector.result({
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     subjectKind: "test",
     subjectId: "optional-relationships",
     stages: ["relationships"],
@@ -139,7 +139,7 @@ test("required historical targets, duplicate edge identities, and iterative grap
   const collector = new DiagnosticCollector();
   const edges = buildRelationshipEdges({ records, revisionsByIdentity: revisions, currentByIdentity: current, collector });
   const graph = validateRelationshipGraph({ edges, currentByIdentity: current, collector });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "required", stages: ["relationships"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "required", stages: ["relationships"] });
   assert.equal(result.valid, false);
   assert(result.diagnostics.some((entry) => entry.code === "lifecycle.relationship.target-missing"));
   assert(result.diagnostics.some((entry) => entry.code === "lifecycle.relationship.duplicate"));
@@ -196,7 +196,7 @@ test("Behavior facts and explicit Assurance or Blueprint declarations surface ex
   const current = new Map(records.map((entry) => [entry.frontMatter.id, entry]));
   const collector = new DiagnosticCollector();
   const conflicts = detectKnowledgeConflicts({ currentRecords: records, currentByIdentity: current, collector });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "conflicts", stages: ["conflicts"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "conflicts", stages: ["conflicts"] });
   assert.equal(result.valid, false);
   assert.equal(result.diagnostics.filter((entry) => entry.code === "lifecycle.knowledge.authority-conflict").length, 2);
   assert.equal(conflicts.length, 2);
@@ -245,7 +245,7 @@ test("unilateral, missing-fact, and wrong-kind conflict declarations remain dist
   const current = new Map(records.map((entry) => [entry.frontMatter.id, entry]));
   const collector = new DiagnosticCollector();
   const conflicts = detectKnowledgeConflicts({ currentRecords: records, currentByIdentity: current, collector });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "malformed-conflicts", stages: ["conflicts"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "malformed-conflicts", stages: ["conflicts"] });
   assert.equal(conflicts.length, 0);
   assert(result.diagnostics.some((entry) => entry.code === "lifecycle.knowledge.conflict-unilateral"));
   assert(result.diagnostics.some((entry) => entry.code === "lifecycle.knowledge.conflict-fact"));
@@ -305,7 +305,7 @@ test("Check Binding compatibility rejects partial subject sets and a parser that
     currentByIdentity: new Map([[check.frontMatter.id, check]]),
     collector,
   });
-  const result = collector.result({ profile: "knowledge-set-v1", subjectKind: "test", subjectId: "binding-mismatch", stages: ["bindings"] });
+  const result = collector.result({ profile: "knowledge-set-v2", subjectKind: "test", subjectId: "binding-mismatch", stages: ["bindings"] });
   const diagnostic = result.diagnostics.find((entry) => entry.code === "lifecycle.check.binding-incompatible");
   assert.deepEqual(diagnostic?.facts.failures, ["result-states", "subject-selectors"]);
   assert.equal(resolved.length, 0);
@@ -313,7 +313,7 @@ test("Check Binding compatibility rejects partial subject sets and a parser that
 
 test("Description discovery uses only underscore records and Product State exclusions do not waive coverage", () => {
   const contract = {
-    knowledge: { roots: { behavior: "records/behavior", assurance: "records/assurance", blueprint: "records/blueprint", check: "records/checks" } },
+    knowledge: { roots: { behavior: "records/behavior", assurance: "records/assurance", blueprint: "records/blueprint", check: "records/checks", discipline: "records/disciplines", disciplineRegistry: "records/disciplines/registry.json" } },
     atlas: { root: "atlas" },
     evidence: { controlRoot: "records/control/delivery" },
     productState: {

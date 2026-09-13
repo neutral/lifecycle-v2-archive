@@ -6,6 +6,8 @@ import { FoundationError } from "../../src/foundation/error.js";
 import type { FoundationKnowledgeSet, FoundationKnowledgeSetResult } from "../../src/foundation/knowledge/types.js";
 import {
   compileFoundationDeliveryQueryBasis,
+  compileFoundationDeliveryQueryBasisForBoundaryReference,
+  type FoundationDeliveryQueryBoundaryReference,
   type FoundationDeliveryQueryBasisOwners,
   type FoundationDeliveryQueryRepositoryBasis,
 } from "../../src/foundation/read-model/delivery-query-basis.js";
@@ -73,9 +75,9 @@ function retainedBasis(
   overrides: Partial<FoundationDeliveryQueryRepositoryBasis> = {},
 ): FoundationDeliveryQueryRepositoryBasis {
   return Object.freeze({
-    specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-    repositoryContract: "lifecycle.repository.v15",
-    providerAdapter: "lifecycle.provider-adapter.v6",
+    specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+    repositoryContract: "lifecycle.repository.v22",
+    providerAdapter: "lifecycle.provider-adapter.v7",
     productBaseCommit: COMMIT,
     productBaseTree: TREE,
     ...REPOSITORY_DIGESTS,
@@ -89,7 +91,7 @@ function boundary(
   overrides: Partial<ControlRecordRevision> = {},
 ): ControlRecordRevision {
   return Object.freeze({
-    schema: "lifecycle.control-record-revision.v1",
+    schema: "lifecycle.control-record-revision.v2",
     processId: PROCESS,
     recordId: "work-boundary-current",
     recordKind: "work-boundary",
@@ -100,8 +102,8 @@ function boundary(
     createdAt: "2026-09-03T12:00:00.000Z",
     semanticMarkdown: "# Work Boundary\n",
     payload: Object.freeze({
-      schema: "lifecycle.work-boundary-payload.v4",
-      profileId: "lifecycle.work-boundary.foundation-v1",
+      schema: "lifecycle.work-boundary-payload.v6",
+      profileId: "lifecycle.work-boundary.foundation-v3",
       targetId: TARGET,
       basis: basis as ControlJsonObject,
     }),
@@ -287,8 +289,21 @@ function store(
         activeBoundary: reference(active),
       }),
     }),
-    getRevision: () => options.retained === undefined ? selected ?? active : options.retained,
+    getRevision: (id: string, revision: number) => options.retained === undefined
+      ? [selected, active].find((value) => value?.recordId === id && value.revision === revision) ?? null
+      : options.retained,
   } as unknown as ControlRecordStore;
+}
+
+function boundaryReference(
+  selected: ControlRecordRevision,
+): FoundationDeliveryQueryBoundaryReference {
+  return Object.freeze({
+    kind: "work-boundary",
+    id: selected.recordId,
+    revision: selected.revision,
+    digest: selected.digest,
+  });
 }
 
 async function rejectsCode(action: () => Promise<unknown>, suffix: string): Promise<void> {
@@ -306,7 +321,7 @@ test("query basis selects the proposed Work Boundary before the active boundary 
   });
   const calls = { load: 0, knowledge: 0, bind: 0 };
   const result = await compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(selected.boundary, { active }),
     owners: owners(selected, calls),
   });
@@ -321,7 +336,7 @@ test("query basis falls back to the active Work Boundary when no proposal is pen
   const selected = fixture();
   const calls = { load: 0, knowledge: 0, bind: 0 };
   const result = await compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(null, { active: selected.boundary }),
     owners: owners(selected, calls),
   });
@@ -330,21 +345,122 @@ test("query basis falls back to the active Work Boundary when no proposal is pen
   assert.deepEqual(calls, { load: 1, knowledge: 1, bind: 1 });
 });
 
+test("exact-reference query basis can select either current Boundary while proposed and active coexist", async () => {
+  const proposed = fixture();
+  const activeRevision = boundary(retainedBasis(), {
+    recordId: "work-boundary-active",
+    revision: 1,
+    digest: valueDigest("active-boundary"),
+  });
+  const active = fixture({ boundary: activeRevision });
+  const selectedStore = store(proposed.boundary, { active: active.boundary });
+
+  const proposedCalls = { load: 0, knowledge: 0, bind: 0 };
+  const proposedResult = await compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: selectedStore,
+    boundary: boundaryReference(proposed.boundary),
+    owners: owners(proposed, proposedCalls),
+  });
+  assert.equal(proposedResult.boundaryRole, "proposed");
+  assert.equal(proposedResult.boundary, proposed.boundary);
+  assert.deepEqual(proposedCalls, { load: 1, knowledge: 1, bind: 1 });
+
+  const activeCalls = { load: 0, knowledge: 0, bind: 0 };
+  const activeResult = await compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: selectedStore,
+    boundary: boundaryReference(active.boundary),
+    owners: owners(active, activeCalls),
+  });
+  assert.equal(activeResult.boundaryRole, "active");
+  assert.equal(activeResult.boundary, active.boundary);
+  assert.deepEqual(activeCalls, { load: 1, knowledge: 1, bind: 1 });
+});
+
+test("exact-reference query basis refuses non-current, malformed, ambiguous, or substituted Boundaries", async () => {
+  const selected = fixture();
+  const reference = boundaryReference(selected.boundary);
+  const calls = { load: 0, knowledge: 0, bind: 0 };
+  const selectedOwners = owners(selected, calls);
+  const currentStore = store(selected.boundary);
+  const alteredReferences = [
+    Object.freeze({ ...reference, kind: "candidate-revision" }),
+    Object.freeze({ ...reference, id: "work-boundary-other" }),
+    Object.freeze({ ...reference, revision: reference.revision + 1 }),
+    Object.freeze({ ...reference, digest: valueDigest("other-boundary") }),
+  ];
+  for (const altered of alteredReferences) {
+    await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+      machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+      store: currentStore,
+      boundary: altered as FoundationDeliveryQueryBoundaryReference,
+      owners: selectedOwners,
+    }), "boundary-substituted");
+  }
+
+  const retainedButNoncurrent = boundary(retainedBasis(), {
+    recordId: "work-boundary-retained",
+    revision: 1,
+    digest: valueDigest("retained-boundary"),
+  });
+  await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: store(selected.boundary, { retained: retainedButNoncurrent }),
+    boundary: boundaryReference(retainedButNoncurrent),
+    owners: selectedOwners,
+  }), "boundary-substituted");
+
+  await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: store(selected.boundary, { active: selected.boundary }),
+    boundary: reference,
+    owners: selectedOwners,
+  }), "boundary-substituted");
+
+  const wrongProcess = boundary(retainedBasis(), { processId: "another-process" });
+  await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: store(wrongProcess),
+    boundary: boundaryReference(wrongProcess),
+    owners: selectedOwners,
+  }), "boundary-substituted");
+
+  const wrongKind = boundary(retainedBasis(), { recordKind: "candidate-revision" });
+  await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: store(wrongKind),
+    boundary: Object.freeze({ ...boundaryReference(wrongKind), kind: "work-boundary" }),
+    owners: selectedOwners,
+  }), "boundary-substituted");
+
+  const wrongTarget = boundary(retainedBasis(), {
+    payload: Object.freeze({ ...selected.boundary.payload, targetId: "another-target" }),
+  });
+  await rejectsCode(() => compileFoundationDeliveryQueryBasisForBoundaryReference({
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
+    store: store(wrongTarget),
+    boundary: boundaryReference(wrongTarget),
+    owners: selectedOwners,
+  }), "boundary-substituted");
+  assert.deepEqual(calls, { load: 0, knowledge: 0, bind: 0 });
+});
+
 test("query basis refuses an absent or substituted current Work Boundary before physical loading", async () => {
   const selected = fixture();
   const calls = { load: 0, knowledge: 0, bind: 0 };
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(null),
     owners: owners(selected, calls),
   }), "boundary-absent");
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(selected.boundary, { retained: null }),
     owners: owners(selected, calls),
   }), "boundary-substituted");
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(selected.boundary, {
       retained: boundary(retainedBasis(), { digest: valueDigest("substituted-boundary") }),
     }),
@@ -357,7 +473,7 @@ test("query basis refuses an absent or substituted current Work Boundary before 
     }),
   });
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(wrongTarget),
     owners: owners(selected, calls),
   }), "boundary-substituted");
@@ -378,7 +494,7 @@ test("query basis parses the retained repository basis as one closed current-coo
     const selected = fixture({ basis });
     const calls = { load: 0, knowledge: 0, bind: 0 };
     await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-      target: TARGET_PATH,
+      machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
       store: store(selected.boundary),
       owners: owners(selected, calls),
     }), "basis-invalid");
@@ -403,7 +519,7 @@ test("query basis compares every retained repository identity and digest", async
     const selected = fixture({ basis: retainedBasis({ [field]: value }) });
     const calls = { load: 0, knowledge: 0, bind: 0 };
     await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-      target: TARGET_PATH,
+      machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
       store: store(selected.boundary),
       owners: owners(selected, calls),
     }), code);
@@ -419,7 +535,7 @@ test("query basis refuses invalid reproduced Knowledge before snapshot binding",
     digest: valueDigest("invalid-knowledge"),
   }) as FoundationValidationResult;
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(selected.boundary),
     owners: owners(selected, calls, {
       knowledgeResult: Object.freeze({
@@ -439,7 +555,7 @@ test("query basis refuses a substituted bound Repository Snapshot even when its 
   const selected = fixture({ snapshot: substituted });
   const calls = { load: 0, knowledge: 0, bind: 0 };
   await rejectsCode(() => compileFoundationDeliveryQueryBasis({
-    target: TARGET_PATH,
+    machineHome: "/private/delivery-query-basis-home", target: TARGET_PATH,
     store: store(selected.boundary),
     owners: owners(selected, calls),
   }), "snapshot-basis-mismatch");

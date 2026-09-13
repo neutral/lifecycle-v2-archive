@@ -13,6 +13,7 @@ import {
 } from "./carrier-state-observer.js";
 import type { ControlRecordRevision } from "../control/types.js";
 import type { ControlRecordStore } from "../control/store.js";
+import type { FoundationRepositorySnapshot } from "../repository/types.js";
 import {
   deriveCandidateRevisionCarrierAdmittedContext,
 } from "./carrier-observation-context.js";
@@ -39,7 +40,7 @@ export async function publishCandidateRevisionCarrierFromGitTree(input: Readonly
 
 /**
  * Create the private physical verifier injected into Candidate Control. The
- * exact admitted context remains in the closure; only stable manifest and
+ * exact application-base context remains in the closure; only stable manifest and
  * reproduced-state facts plus their observer identity cross the locator-free
  * Control seam.
  */
@@ -70,8 +71,8 @@ export function candidateRevisionCarrierVerifier(
 }
 
 /**
- * Construct the production verifier from one exact retained Work Boundary.
- * This private adapter freshly derives the admitted historical context before
+ * Construct the production verifier from governing W and exact Candidate or
+ * Integration Assessment application provenance. This private adapter derives that context before
  * closing it over the locator-free Candidate Control verifier seam.
  */
 export async function candidateRevisionCarrierVerifierFromWorkBoundary(
@@ -80,6 +81,9 @@ export async function candidateRevisionCarrierVerifierFromWorkBoundary(
     repository: string;
     store: ControlRecordStore;
     boundary: ControlRecordRevision;
+    candidate?: ControlRecordRevision;
+    integrationAssessment?: ControlRecordRevision;
+    integrationParent?: FoundationRepositorySnapshot;
     predecessor: CandidateRevisionCarrierPredecessor | null;
   }>,
 ): Promise<CandidateRevisionCarrierVerifier> {
@@ -88,6 +92,9 @@ export async function candidateRevisionCarrierVerifierFromWorkBoundary(
     repository: input.repository,
     store: input.store,
     boundary: input.boundary,
+    ...(input.candidate === undefined ? {} : { candidate: input.candidate }),
+    ...(input.integrationAssessment === undefined ? {} : { integrationAssessment: input.integrationAssessment }),
+    ...(input.integrationParent === undefined ? {} : { integrationParent: input.integrationParent }),
   });
   return candidateRevisionCarrierVerifier({
     machineHome: input.machineHome,

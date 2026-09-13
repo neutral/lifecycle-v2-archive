@@ -8,9 +8,9 @@
   "properties": {
     "schema": { "const": "lifecycle.publication-statement.v1" },
     "subject": { "$ref": "#/$defs/subject" },
-    "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "authority": { "$ref": "#/$defs/authority" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "subject": {
@@ -32,23 +32,23 @@
       ],
       "properties": {
         "schema": { "const": "lifecycle.publication-statement-subject.v1" },
-        "statementId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "statementId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "specificationId": { "const": "lifecycle" },
-        "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "sourceRevision": {
           "description": "The immutable Git object identity of the source revision containing the exact publication manifest and inventoried bytes.",
           "type": "string",
           "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
         },
-        "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "status": {
           "type": "string",
           "enum": ["draft", "candidate", "released", "superseded", "withdrawn"]
         },
         "previousStatementDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
             { "type": "null" }
           ]
         },
@@ -57,14 +57,14 @@
           "additionalProperties": false,
           "required": ["locator", "digest"],
           "properties": {
-            "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
-            "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            "locator": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
           }
         },
         "issuedAt": { "type": "string", "format": "date-time" },
         "reason": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
             { "type": "null" }
           ]
         }
@@ -79,7 +79,7 @@
           },
           "then": {
             "properties": {
-              "reason": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+              "reason": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" }
             }
           }
         }
@@ -90,8 +90,8 @@
       "additionalProperties": false,
       "required": ["principalId", "keyId", "algorithm", "signature"],
       "properties": {
-        "principalId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
-        "keyId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "principalId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId" },
+        "keyId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "algorithm": { "const": "ed25519" },
         "signature": {
           "type": "string",

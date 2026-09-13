@@ -16,6 +16,7 @@ import type {
 import { FoundationError } from "../error.js";
 import { expectedKnowledgeKind } from "../knowledge/records.js";
 import {
+  isDisciplineMaintenancePath,
   pathWithin,
   productStateRole,
 } from "../repository/product-state.js";
@@ -70,6 +71,7 @@ export const FOUNDATION_DELIVERY_CANDIDATE_SEALER_V1 = Object.freeze({
     requiredArtifactDirectoriesBindDescendants: true,
     protectedControlPathsExcluded: true,
     atlasRootReadOnly: true,
+    disciplineRootReadOnly: true,
   }),
 });
 
@@ -144,7 +146,7 @@ function retainedCurrent(
 
 function candidateState(candidate: ControlRecordRevision): ControlJsonObject {
   if (
-    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2"
+    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3"
   ) {
     fail("candidate-invalid", "Candidate sealing requires one exact reconstructible Candidate Revision");
   }
@@ -170,7 +172,7 @@ function candidateState(candidate: ControlRecordRevision): ControlJsonObject {
 
 function candidateObservation(
   candidate: ControlRecordRevision,
-): "initialization" | "builder-successor" | "readmission-rebind" {
+): "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor" {
   const observation = string(
     candidate.payload.observation,
     "Candidate Revision observation",
@@ -178,7 +180,8 @@ function candidateObservation(
   if (
     observation !== "initialization" &&
     observation !== "builder-successor" &&
-    observation !== "readmission-rebind"
+    observation !== "readmission-rebind" &&
+    observation !== "integration-successor"
   ) {
     fail("candidate-invalid", "Candidate Revision has an unknown observation kind");
   }
@@ -296,7 +299,8 @@ function sameCarrierDescriptor(
 function protectedPath(contract: FoundationRepositoryContract, path: string): boolean {
   return path === ".lifecycle" || pathWithin(path, ".lifecycle") ||
     path === "records/control" || pathWithin(path, "records/control") ||
-    path === contract.atlas.root || pathWithin(path, contract.atlas.root);
+    path === contract.atlas.root || pathWithin(path, contract.atlas.root) ||
+    isDisciplineMaintenancePath(contract, path);
 }
 
 function supportedArtifactEntry(entry: FoundationGitTreeEntry | undefined): boolean {
@@ -350,6 +354,12 @@ function assertRole(
   contract: FoundationRepositoryContract,
   artifact: Artifact,
 ): void {
+  if (isDisciplineMaintenancePath(contract, artifact.path)) {
+    throw new FoundationError(
+      "lifecycle.discipline.candidate-mutation",
+      `Work Boundary artifact ${artifact.id} targets the read-only Discipline root`,
+    );
+  }
   const knowledge = expectedKnowledgeKind(artifact.path, contract);
   if (knowledge !== null && artifact.role !== knowledge) {
     fail("artifact-role", `Knowledge artifact ${artifact.id} must use role ${knowledge}`);
@@ -462,6 +472,7 @@ export async function sealDeliveryCandidate(
     repository: input.targetRepository,
     store: input.store,
     boundary,
+    candidate,
   });
   if (
     string(candidate.payload.candidateBaseCommit, "Candidate immutable base commit") !==
@@ -469,12 +480,12 @@ export async function sealDeliveryCandidate(
   ) {
     fail(
       "candidate-base",
-      "Current Candidate Revision does not bind the Work Boundary product base",
+      "Current Candidate Revision does not bind its exact application base",
     );
   }
   if (
     input.contract.targetId !== input.store.identity.targetId ||
-    canonicalJson(input.contract) !== canonicalJson(admitted.contract)
+    canonicalJson(input.contract) !== canonicalJson(admitted.governing.contract)
   ) {
     fail(
       "contract",

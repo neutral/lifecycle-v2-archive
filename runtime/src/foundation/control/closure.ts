@@ -9,6 +9,7 @@ import {
   type Sha256,
 } from "../validation/canonical.js";
 import { assertDeliveryControlRecordPolicy } from "./kind-registry.js";
+import { resolveCandidateIntegrationProvenanceV1 } from "./integration-assessment.js";
 import {
   compileControlRecordRevision,
   controlIdentifier,
@@ -160,7 +161,7 @@ function preIntentRefusalEventCount(store: ControlRecordStore): number {
     }
     exactObjectKeys(
       event.payload,
-      ["activityId", "diagnosticCode", "refusalFactsDigest"],
+      ["activityId", "diagnosticCode", "refusalFactsDigest", "resolution"],
       "Pre-intent refusal payload",
     );
     const activityValue = event.payload.activityId;
@@ -175,7 +176,10 @@ function preIntentRefusalEventCount(store: ControlRecordStore): number {
       fail("journal", "Pre-intent refusal repeats one Agent Activity");
     }
     activities.add(activityId);
-    count += 1;
+    if (event.payload.resolution !== "none" && event.payload.resolution !== "projection-condition-required") {
+      fail("journal", "Pre-intent refusal lacks an exact execution-allocation disposition");
+    }
+    if (event.payload.resolution === "none") count += 1;
   }
   return count;
 }
@@ -238,28 +242,28 @@ function transactionFacts(store: ControlRecordStore, exactActivityId: string): T
   }
 
   const events = allEvents(store).filter((event) => event.payload.activityId === exactActivityId);
-  const decisions = events.filter(({ eventKind }) => eventKind === "founder-decision-authenticated");
+  const decisions = events.filter(({ eventKind }) => eventKind === "director-decision-authenticated");
   const intents = events.filter(({ eventKind }) => eventKind === "transaction-effect-intended");
   const observations = events.filter(({ eventKind }) => eventKind === "transaction-effect-observed");
   const closures = events.filter(({ eventKind }) => eventKind === "closure-recorded");
   if (decisions.length !== 1 || intents.length !== 1 || observations.length < 1 || closures.length !== 0) {
     fail("journal", "Terminal transaction history is incomplete, repeated, or already closed");
   }
-  const decision = exactRetainedSubject(store, decisions[0]!, "founder-decision");
+  const decision = exactRetainedSubject(store, decisions[0]!, "director-decision");
   if (!exactEventSubject(intents[0]!, decision)) {
-    fail("journal", "Transaction intent does not bind the exact Founder Decision");
+    fail("journal", "Transaction intent does not bind the exact Director Decision");
   }
   const effectDigest = digest(intents[0]!.payload.effectDigest, "Transaction effect digest");
   const decisionKind = decision.payload.decision;
   if (decisionKind !== "accept" && decisionKind !== "no-ship") {
-    fail("authority", "Founder Decision is not one terminal decision kind");
+    fail("authority", "Director Decision is not one terminal decision kind");
   }
   const disposition = activity.operation === "delivery.accept" ? "accepted" : "no-ship";
   if (
     (disposition === "accepted" && decisionKind !== "accept") ||
     (disposition === "no-ship" && decisionKind !== "no-ship")
   ) {
-    fail("authority", "Founder Decision does not authorize the terminal activity disposition");
+    fail("authority", "Director Decision does not authorize the terminal activity disposition");
   }
   let observationFactsSchema: TerminalFinalObservationFactsSchema | null = null;
   let observationFactsDigest: Sha256 | null = null;
@@ -364,15 +368,18 @@ function reclamationHandoffPayload(value: ClosureReclamationHandoff): ControlJso
 function canonicalResult(
   value: ClosureCanonicalResult,
   candidate: ControlRecordRevision,
-  boundary: ControlRecordRevision,
+  store: ControlRecordStore,
 ): ControlJsonObject {
   if (
-    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2"
+    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3"
   ) {
     fail("candidate", "Accepted Closure requires one exact reconstructible Candidate Revision");
   }
   const state = object(candidate.payload.state, "Accepted Candidate state");
-  const basis = object(boundary.payload.basis, "Accepted Work Boundary basis");
+  const integration = resolveCandidateIntegrationProvenanceV1({ store, candidate });
+  if (integration === null) {
+    fail("canonical-result", "Accepted Closure requires exact Candidate integration provenance");
+  }
   const result = Object.freeze({
     parentCommit: gitObject(value.parentCommit, "Accepted canonical parent commit"),
     parentTree: gitObject(value.parentTree, "Accepted canonical parent tree"),
@@ -388,12 +395,12 @@ function canonicalResult(
       "Accepted Candidate base commit",
     ) ||
     result.parentCommit !== gitObject(
-      basis.productBaseCommit,
-      "Accepted Work Boundary product-base commit",
+      integration.canonicalParent.commit,
+      "Accepted integration parent commit",
     ) ||
     result.parentTree !== gitObject(
-      basis.productBaseTree,
-      "Accepted Work Boundary product-base tree",
+      integration.canonicalParent.tree,
+      "Accepted integration parent tree",
     ) ||
     result.tree !== state.tree || result.candidateDigest !== state.candidateDigest ||
     result.productStateDigest !== state.productStateDigest ||
@@ -451,7 +458,7 @@ function semanticMarkdown(input: Readonly<{
     "# Closure",
     "",
     `- Disposition: ${input.disposition}`,
-    `- Founder Decision: ${input.decision.recordId} revision ${input.decision.revision}`,
+    `- Director Decision: ${input.decision.recordId} revision ${input.decision.revision}`,
     `- Work Boundary: ${input.boundary === null ? "none" : `${input.boundary.recordId} revision ${input.boundary.revision}`}`,
     `- Candidate: ${input.candidate === null ? "not created" : `${input.candidate.recordId} revision ${input.candidate.revision}`}`,
     `- Transaction observed: ${input.transactionObservedAt}`,
@@ -467,7 +474,7 @@ function semanticMarkdown(input: Readonly<{
   } else {
     lines.push("- Canonical product integration: none");
   }
-  lines.push("", "The related Founder Decision retains the authenticated terminal rationale.", "");
+  lines.push("", "The related Director Decision retains the authenticated terminal rationale.", "");
   return lines.join("\n");
 }
 
@@ -534,10 +541,10 @@ export function compileClosureAppend(
       !sameReference(current.seal, seal === null ? null : reference(seal)) ||
       !sameReference(current.evidence, evidence === null ? null : reference(evidence))
     ) {
-      fail("current-subject", "Acceptance subjects changed after the exact authenticated Founder Decision");
+      fail("current-subject", "Acceptance subjects changed after the exact authenticated Director Decision");
     }
   } else if (seal !== null || evidence !== null) {
-    fail("authority", "No-ship Founder Decision cannot select a Candidate Seal or Evidence Packet");
+    fail("authority", "No-ship Director Decision cannot select a Candidate Seal or Evidence Packet");
   }
 
   let acceptedResult: ControlJsonObject | null = null;
@@ -546,7 +553,7 @@ export function compileClosureAppend(
     if (boundary === null || candidate === null || input.canonicalResult === null) {
       fail("canonical-result", "Acceptance requires the exact observed canonical result");
     }
-    acceptedResult = canonicalResult(input.canonicalResult, candidate, boundary);
+    acceptedResult = canonicalResult(input.canonicalResult, candidate, input.store);
     if (
       transaction.canonicalResultDigest === null ||
       transaction.canonicalResultDigest !== digestCanonical(acceptedResult)
@@ -575,22 +582,22 @@ export function compileClosureAppend(
   ) {
     fail(
       "terminal-facts",
-      "Closure requires exactly one Reclamation obligation per terminal execution and pre-intent refusal",
+      "Closure requires exactly one Reclamation obligation per terminal execution and allocated pre-intent refusal",
     );
   }
   const runtime = Object.freeze({
-    qualification: "lifecycle.foundation.1.0.0-rc.10",
-    repository: "lifecycle.repository.v15",
-    runtimeProtocol: "lifecycle.runtime.foundation.v10",
-    interfaceProtocol: "lifecycle.interface.foundation.v10",
-    provider: "lifecycle.provider-adapter.v6",
+    qualification: "lifecycle.foundation.1.0.0-rc.17",
+    repository: "lifecycle.repository.v22",
+    runtimeProtocol: "lifecycle.runtime.foundation.v17",
+    interfaceProtocol: "lifecycle.interface.foundation.v17",
+    provider: "lifecycle.provider-adapter.v7",
     implementationId: controlIdentifier(input.runtime.implementationId, "Closure implementation identity"),
     implementationDigest: digest(input.runtime.implementationDigest, "Closure implementation digest"),
     ruleSetId: controlIdentifier(input.runtime.ruleSetId, "Closure rule-set identity"),
     ruleSetDigest: digest(input.runtime.ruleSetDigest, "Closure rule-set digest"),
   });
   const payload: ControlJsonObject = Object.freeze({
-    schema: "lifecycle.closure-payload.v4",
+    schema: "lifecycle.closure-payload.v6",
     profileId: "lifecycle.delivery-closure.foundation-v1",
     disposition: transaction.disposition,
     transaction: Object.freeze({

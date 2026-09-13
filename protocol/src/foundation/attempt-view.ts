@@ -29,7 +29,7 @@ function attemptViewReference<Kind extends FoundationControlRecordKind>(kind: Ki
 }
 
 const FoundationAttemptViewAgentAttemptReferenceSchema = attemptViewReference("agent-attempt");
-const FoundationAttemptViewBriefReferenceSchema = attemptViewReference("founder-brief");
+const FoundationAttemptViewBriefReferenceSchema = attemptViewReference("director-brief");
 const FoundationAttemptViewWorkProductReferenceSchema = attemptViewReference("agent-work-product");
 const FoundationAttemptViewReceiptReferenceSchema = attemptViewReference("execution-receipt");
 const FoundationAttemptViewCandidateReferenceSchema = attemptViewReference("candidate-revision");
@@ -66,7 +66,7 @@ const FoundationAttemptViewExecutionImageSchema = z.object({
 }).strict();
 
 const FoundationAttemptViewExecutionInputSetSchema = z.object({
-  profileId: z.literal("lifecycle.execution-input-set.v1"),
+  profileId: z.literal("lifecycle.execution-input-set.v2"),
   digest: FoundationSha256Schema,
 }).strict();
 

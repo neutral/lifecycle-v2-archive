@@ -1,7 +1,7 @@
 {
   "schema": "lifecycle.fixture-manifest.v1",
   "specificationId": "lifecycle",
-  "specificationRevision": "lifecycle.foundation.1.0.0-rc.10",
+  "specificationRevision": "lifecycle.foundation.1.0.0-rc.17",
   "fixtures": [
     {
       "id": "agent-attempt-payload-structural-valid",
@@ -11,19 +11,43 @@
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:d265197146f2914511e9fdb688e2edafdef5d327546303bed9b30011207cd4be",
-      "description": "One funded Agent Attempt binds exactly one fresh Founder Brief and one bounded provider invocation."
+      "subjectDigest": "sha256:51252419876c3c4af0900b5fdaf46fba820d2e9b05a1a1b24bc2eb039a8a5083",
+      "description": "One funded Agent Attempt binds one exact Director Brief and one bounded provider invocation."
     },
     {
       "id": "agent-work-product-payload-structural-valid",
       "path": "agent-work-product-payload-structural-valid",
-      "profile": "agent-work-product-payload-structural-fixture-v2",
+      "profile": "agent-work-product-payload-structural-fixture-v5",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:cb638ac8f5f527f071daa151d461014b7a8a4591daf269f025ca8a566db4dc83",
-      "description": "One Agent Work Product retains body-only semantic Markdown without protocol mechanics."
+      "subjectDigest": "sha256:bf198b0fda6ed5df0b2581235042570ce7faf2a4912c7ffc6caf7344939238bb",
+      "description": "One Agent Work Product payload carries normalized Agent semantics and Runtime-owned body bindings; structural validity does not establish the submitted bytes or exact Attempt provenance."
+    },
+    {
+      "id": "agent-work-product-validation-basis-private-locator-invalid",
+      "path": "agent-work-product-validation-basis-private-locator-invalid",
+      "profile": "agent-work-product-validation-basis-structural-fixture-v1",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:e3bb49add11924de3b912e9ac20483740c3508ae0aab7645b427ff0d8856f830",
+      "description": "A compact semantic basis refuses an extra physical locator even when all permitted fields are present."
+    },
+    {
+      "id": "agent-work-product-validation-basis-structural-valid",
+      "path": "agent-work-product-validation-basis-structural-valid",
+      "profile": "agent-work-product-validation-basis-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:6b57dcb5b9d7d6d1963472981b69b657a5bcb262c343ea54123b5bbbcd4ae39c",
+      "description": "A compact immutable basis carries only exact installed authoring coordinates and bounded citation/proposition facts; structural validity does not authenticate source or establish a current Attempt."
     },
     {
       "id": "atlas-resolution-partial-model-invalid",
@@ -35,7 +59,7 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:54069e3df9855da1b955153971d33fe91af8d44edffc01729206f41d7bf56d42",
+      "subjectDigest": "sha256:4c0fe1f5beb4dee529dcc9f276429cdb5b2df08e9c3d7395fa783eb7022069ca",
       "description": "An incomplete invalid Atlas processing outcome cannot carry a partial normalized-model digest."
     },
     {
@@ -48,7 +72,7 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:bf03c0033e1f585bc87ef620e9367152ff5ea9e63131ac0469a522d74de0c938",
+      "subjectDigest": "sha256:43fd867eabbc2ecc2d001fc8a6cd2aacc009cbb3e02deeb8e4867d0dc666aacf",
       "description": "An Atlas Resolution cannot substitute another processor version while retaining Foundation's selected Atlas coordinates."
     },
     {
@@ -61,7 +85,7 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:0c2cd1d85979021930723af2e2b0263a0956a0188827ceadb0fa49b2801c24ac",
+      "subjectDigest": "sha256:85dd84ddd559eb2fe16bed8a39972c91f696f3abc2126b86680bc3fa38b681e1",
       "description": "An Atlas Resolution cannot repeat the same complete Resource binding; Resource-id uniqueness across otherwise distinct bindings remains a semantic requirement."
     },
     {
@@ -74,7 +98,7 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:98187eb6ca35eb3c6e82d166da4f072a43fc2dade5efdca522866c9622ebf641",
+      "subjectDigest": "sha256:c9fe87f1b29c2c87e727102602b209e676ecacf8c9878dc01094c9af10114457",
       "description": "A missing Atlas Resource binding cannot retain mode, object-identity, or byte-digest facts as if it had resolved."
     },
     {
@@ -85,7 +109,7 @@
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:fc213faf757b43b9e8ec8a0a86748098f71c64f768b1ee10ebbfd55beeb4973a",
+      "subjectDigest": "sha256:885a6092d8f8353ace8116172c3a9d45488bf27deace132cc9a67864a5c0beb5",
       "description": "One complete valid Atlas Resolution binds the exact supported selection, raw State, processor, Resource inputs, external result, and normalized model."
     },
     {
@@ -98,19 +122,43 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:26f4564c13ec902e28eb08be461e7abe8b1af1892fcfce110704334f6cd604d6",
+      "subjectDigest": "sha256:a276e8d13f15944aa2926958a1980196e8d07cb78c9d209e567a09b45889359d",
       "description": "An unsupported Atlas release is refused even when the authored format integer matches Foundation's selected format."
     },
     {
-      "id": "candidate-revision-payload-structural-valid",
-      "path": "candidate-revision-payload-structural-valid",
-      "profile": "candidate-revision-payload-structural-fixture-v2",
+      "id": "authorization-review-structural-valid",
+      "path": "authorization-review-structural-valid",
+      "profile": "authorization-review-structural-fixture-v1",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:f24a1c104b47babf64d467dd5bea0fc65c3cda9a9698ad2032f7c9edb948cdb7",
-      "description": "A Candidate Revision records one exact runtime-observed reversible product state."
+      "subjectDigest": "sha256:853f3a9c7bf38a45cfd873a6cfec6ff9f52d38f23689314decdede3cc96190e5",
+      "description": "A Authorization Review exposes the exact deterministic semantic and historical decision basis while excluding signature and operation-instance mechanics."
+    },
+    {
+      "id": "builder-repair-output-media-invalid",
+      "path": "builder-repair-output-media-invalid",
+      "profile": "builder-repair-output-structural-fixture-v1",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:5d890aff53b5853e00c440ee06cc6a66c378297347bf48a11d4c015e008e2d0b",
+      "description": "Repair Carrier reference cannot change its exact reserved media type."
+    },
+    {
+      "id": "builder-repair-output-structural-valid",
+      "path": "builder-repair-output-structural-valid",
+      "profile": "builder-repair-output-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:0be3ff5ee80c1fdfde90f92a73ad152c9affe066c987c64feed6a8aa3eff32d0",
+      "description": "One closed Runtime repair descriptor binds exact rejected Product Carrier and original builder subjects."
     },
     {
       "id": "candidate-revision-carrier-manifest-structural-valid",
@@ -126,14 +174,14 @@
     {
       "id": "candidate-revision-carrier-media-type-invalid",
       "path": "candidate-revision-carrier-media-type-invalid",
-      "profile": "candidate-revision-payload-structural-fixture-v2",
+      "profile": "candidate-revision-payload-structural-fixture-v3",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:377dd3b58490906ccbd3ad1575beb3b50a06da0da46d04240296585dad873e8a",
+      "subjectDigest": "sha256:bd0f20946a5188b7ab1d455a6b65a6677371bca00b0ccd3ebecbf97fa4e007a3",
       "description": "A Candidate Revision refuses a Carrier manifest reference with a generic rather than exact Lifecycle media type."
     },
     {
@@ -163,6 +211,17 @@
       "description": "A Candidate Revision Carrier refuses an object inventory entry without an exact Git object identity."
     },
     {
+      "id": "candidate-revision-payload-structural-valid",
+      "path": "candidate-revision-payload-structural-valid",
+      "profile": "candidate-revision-payload-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:8f83753d3e3b67ec1fb9ce6550b40eb0a4798c4f4459a826b7fddafa6ad73689",
+      "description": "A Candidate Revision records one exact runtime-observed reversible product state."
+    },
+    {
       "id": "candidate-seal-payload-structural-valid",
       "path": "candidate-seal-payload-structural-valid",
       "profile": "candidate-seal-payload-structural-fixture-v2",
@@ -182,87 +241,269 @@
       "diagnostics": [],
       "allowedDiagnostics": [],
       "subjectDigest": "sha256:b1c938c274b338143c6d46d958c425c0445a8ba911d150300a32a1c07538c2ef",
-      "description": "A Capability Profile grants bounded Candidate, temporary-write, subprocess, network, credential, and external-effect authority without backend mechanics."
+      "description": "A Capability Profile defines bounded Candidate, temporary-write, subprocess, network, credential, and external-effect limits; an exact Attempt selects and materializes its permitted grant."
     },
     {
       "id": "check-receipt-payload-structural-valid",
       "path": "check-receipt-payload-structural-valid",
-      "profile": "check-receipt-payload-structural-fixture-v2",
+      "profile": "check-receipt-payload-structural-fixture-v3",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:a4bdc22c6a4a28c5377b2b04f07cd2343cce512be68e9d7dad5c3afae6652589",
+      "subjectDigest": "sha256:ecddf56bec79c69406e6e25cef3524888a2df75e5144b24ec12f6440e80ae4b0",
       "description": "A passed baseline precondition Check Receipt binds its allocated Execution Cell, retrieved output, Containment, and Retirement facts to one exact Check subject."
     },
     {
       "id": "closure-payload-structural-valid",
       "path": "closure-payload-structural-valid",
-      "profile": "closure-payload-structural-fixture-v4",
+      "profile": "closure-payload-structural-fixture-v6",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:44ed4197c1ef84e96fbe627ad33fdd984ccd8433f684c8b83211c1560a8bac93",
+      "subjectDigest": "sha256:f50cdb5d81e36d25eeb5d436660b05929d58ef292e93acd6718478647d002ea6",
       "description": "A no-ship Closure payload proves non-integration, terminal Execution containment and retirement, and a truthful reclamation handoff."
     },
     {
-      "id": "control-lifecycle-profile-structural-valid",
-      "path": "control-lifecycle-profile-structural-valid",
-      "profile": "control-lifecycle-profile-structural-fixture-v4",
+      "id": "context-inspection-atlas-overview-structural-valid",
+      "path": "context-inspection-atlas-overview-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:1860a348090722d50f19e09a3ef556f9fb633eb9d4a554352153892f977fd6ed",
-      "description": "The closed Delivery registry selects one independent payload schema for each of twelve Control record families."
+      "subjectDigest": "sha256:6ca56cdbe938805999336c84ad26569c6b9a8d4a7735dcae05228d48c98b34e2",
+      "description": "An Atlas overview selector independently bounds Map, Point, and Resource pages against one exact historical Context basis."
     },
     {
-      "id": "control-record-event-admission-observation-structural-valid",
-      "path": "control-record-event-admission-observation-structural-valid",
-      "profile": "control-record-event-structural-fixture-v2",
+      "id": "context-inspection-atlas-point-structural-valid",
+      "path": "context-inspection-atlas-point-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:2e151be38d54b38e38015e45233eace66610c99915abfdb34afab30f1a2f2ffa",
-      "description": "A transaction observation carries one closed Admission fact object and its canonical fact digest."
+      "subjectDigest": "sha256:3c8976957458ca3ae860c55d414eb3543138977fd1fc3bc3abf0b85134e1b18d",
+      "description": "An Atlas Point selector binds one Runtime-issued Point cursor and separately bounded record and relation continuations."
     },
     {
-      "id": "control-record-event-observation-facts-omitted-invalid",
-      "path": "control-record-event-observation-facts-omitted-invalid",
-      "profile": "control-record-event-structural-fixture-v2",
+      "id": "context-inspection-atlas-resource-structural-valid",
+      "path": "context-inspection-atlas-resource-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:2cb61de55e5939e4f698e9b787d1b79c8988748713f2934f0a4724208c5174e6",
+      "description": "An Atlas Resource selector resolves one exact registered Resource identity under one historical Context basis."
+    },
+    {
+      "id": "context-inspection-authorization-review-structural-valid",
+      "path": "context-inspection-authorization-review-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:21d273d47bc8905a06321cb004f58bbd47781de68917b1cb97f484c112b6b316",
+      "description": "An Authorization Review selector binds one eligible authority operation, exact read generation, and operation-owned semantic input without carrying authority material."
+    },
+    {
+      "id": "context-inspection-code-file-structural-valid",
+      "path": "context-inspection-code-file-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:6e3a65815c8994fb0d2d6d0c0438867b56f6abcdb7fbf87b0322557e29882e47",
+      "description": "A Code file selector binds one basis-issued file cursor and a caller-tightenable raw-difference byte ceiling."
+    },
+    {
+      "id": "context-inspection-code-index-structural-valid",
+      "path": "context-inspection-code-index-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:e73c8e8ea07661e302f32a046ed0c4a2cee6ef1e49dc034da50bf95e510daf33",
+      "description": "A Code index selector pages one current Candidate or sealed-decision changed-path subject under an exact generation."
+    },
+    {
+      "id": "context-inspection-knowledge-index-structural-valid",
+      "path": "context-inspection-knowledge-index-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:583607e4516cb283adeaa79a5171b13f68b715013e1e4fdab13dd5b04ebc0fe0",
+      "description": "A Knowledge index selector pages exact record identities under one proposed-or-active historical Context basis."
+    },
+    {
+      "id": "context-inspection-knowledge-record-structural-valid",
+      "path": "context-inspection-knowledge-record-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:f1b9c0d17b11967e2c5e913c5a5a5eb9c0ad166dd30ee4a4e408c6959ea6d835",
+      "description": "A Knowledge record selector names one exact runtime-issued Knowledge reference under its historical Context basis."
+    },
+    {
+      "id": "context-inspection-limit-overflow-invalid",
+      "path": "context-inspection-limit-overflow-invalid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:b555b0e1a42a7a2dd4c3ae3313c9d921152cdf5998a654aebd648d4173c66076",
+      "subjectDigest": "sha256:4303878f3aade6560e88cc88906530f7af6f2a16d15f05a5f4f7952686cc2323",
+      "description": "A context inspection selector cannot enlarge the selected 200-row page ceiling."
+    },
+    {
+      "id": "context-inspection-source-structural-valid",
+      "path": "context-inspection-source-structural-valid",
+      "profile": "context-inspection-selector-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:a4d121c0bc030512acb03e30cb86ed2bf7f5850b1c1f19c6e44385283908a311",
+      "description": "A Source selector ranges exact Runtime-issued textual bytes under matching generation, basis, owner, content, and byte identities."
+    },
+    {
+      "id": "control-lifecycle-profile-structural-valid",
+      "path": "control-lifecycle-profile-structural-valid",
+      "profile": "control-lifecycle-profile-structural-fixture-v7",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:3bf3145de1c3ab8103f43dc1b09a8fd094df600eeefda4ef69929e736c20c463",
+      "description": "The closed Delivery registry selects one independent payload schema for each of thirteen Control record families."
+    },
+    {
+      "id": "control-record-event-admission-observation-structural-valid",
+      "path": "control-record-event-admission-observation-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:b1aff22f3960dc8c57d3a4c3f5a413e8b8912641ac8105b3c2742f01201ea1d4",
+      "description": "A transaction observation carries one closed Admission fact object and its canonical fact digest."
+    },
+    {
+      "id": "control-record-event-delegation-set-structural-valid",
+      "path": "control-record-event-delegation-set-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:2ff946367ce4d6af4bf09dd1366a0730883314ddde649735375b1c66e01d39ee",
+      "description": "One event structurally retains the exact Work Delegation revision without opening productive work."
+    },
+    {
+      "id": "control-record-event-delegation-stopped-structural-valid",
+      "path": "control-record-event-delegation-stopped-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:4692a237e478d29365dd7eab1b2b6a06cb1c44750ea210d3399f5ca435be813c",
+      "description": "One event structurally folds an exact pending Work Delegation stop request after reserved work settles."
+    },
+    {
+      "id": "control-record-event-mixed-brief-scope-invalid",
+      "path": "control-record-event-mixed-brief-scope-invalid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:fd3c34985722d9c156e3c44e61340688652559b6cb0ce41dd5d5d0e8c6bef9c0",
+      "description": "A Director Brief submission event cannot mix Activity scope with standing delegation scope."
+    },
+    {
+      "id": "control-record-event-null-reservation-invalid",
+      "path": "control-record-event-null-reservation-invalid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:80fe7cb1440a93f4e7d60fb75ee5381b709f75d7dd8696fb4a5be38ba41bfdb9",
+      "description": "An ordinary Activity opening omits its optional reservation; explicit null does not select a reservation contract."
+    },
+    {
+      "id": "control-record-event-observation-facts-omitted-invalid",
+      "path": "control-record-event-observation-facts-omitted-invalid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:bc2d2819829d2007be5d1fc81816df3488f2b476c42267e0dc6de33026747185",
       "description": "A transaction observation cannot omit its operation-specific direct observation facts."
     },
     {
       "id": "control-record-event-record-fact-invalid",
       "path": "control-record-event-record-fact-invalid",
-      "profile": "control-record-event-structural-fixture-v2",
+      "profile": "control-record-event-structural-fixture-v6",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:0626adf19f670fb5884e0f151ef69a7ce2580be7e719d64837e626a6acdc1266",
+      "subjectDigest": "sha256:f39181ca0c3f0c581e545381cce9bef8fd04842d387a4045a15ff1eec6895f6f",
       "description": "A Delivery event cannot smuggle a record-owned semantic fact into its closed payload."
     },
     {
-      "id": "control-record-event-structural-valid",
-      "path": "control-record-event-structural-valid",
-      "profile": "control-record-event-structural-fixture-v2",
+      "id": "control-record-event-reserved-opening-structural-valid",
+      "path": "control-record-event-reserved-opening-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:fdea8971e60b0725dbbc9dc534683585a065ba473d7084eb16b58e72734a357b",
+      "subjectDigest": "sha256:44cc84864b5a3ea31a04c270d83070a94e2e61bb09280bb5390da76e08c3b4cc",
+      "description": "One Activity opening structurally retains its exact delegation reservation and conservative resource charge."
+    },
+    {
+      "id": "control-record-event-standing-brief-structural-valid",
+      "path": "control-record-event-standing-brief-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:47ff58417c8b23895a617c60390e9eff9bd67465e337423b33b0b92beca61a98",
+      "description": "One Director Brief submission event structurally binds the original supplied direction to an exact delegation identity, revision and operation."
+    },
+    {
+      "id": "control-record-event-structural-valid",
+      "path": "control-record-event-structural-valid",
+      "profile": "control-record-event-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:2d3aa2b285c74590e990e3ba011f783647f1fa54a84ac36cb22ee3c9facddd31",
       "description": "A bounded Delivery event carries occurrence facts and revision references without copying record-owned state."
     },
     {
@@ -279,12 +520,12 @@
     {
       "id": "control-record-revision-structural-valid",
       "path": "control-record-revision-structural-valid",
-      "profile": "control-record-revision-structural-fixture-v1",
+      "profile": "control-record-revision-structural-fixture-v2",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:782ab1254a6b4071df3970dbd61e677b180c019dced278131b9d323e609ce8a1",
+      "subjectDigest": "sha256:aa6d39ce9ea58a420cfaa6f609147dc687e45b086a1e659d321ee7bc78f6e713",
       "description": "A generic immutable Control revision envelope whose payload is selected independently by the family registry."
     },
     {
@@ -295,7 +536,7 @@
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:a08a4c6d3dd0df7247d779572c46a2c1e5990388c683dd2eb9daac0586e26114",
+      "subjectDigest": "sha256:b864fd6ce2ca98b215b5f38e64c0af4b6bfd2003a1b2170efd3b449c0c167b8f",
       "description": "A sealed Control Record Store archive manifest binds its exact database and referenced file set."
     },
     {
@@ -312,46 +553,201 @@
     {
       "id": "control-record-store-structural-valid",
       "path": "control-record-store-structural-valid",
-      "profile": "control-record-store-structural-fixture-v1",
+      "profile": "control-record-store-structural-fixture-v2",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:a03988c38b0ebbcad1c37b09b9d986ca9cbf521f4e44adf7b1305baf35681920",
+      "subjectDigest": "sha256:dd64da27c837d1cf86b68cb4f4a1b20bd5e34b8c44faf4453382fd7e5fd73069",
       "description": "A primary per-Delivery SQLite Control Record Store identity and physical contract."
+    },
+    {
+      "id": "delivery-reduction-delegation-stopped-structural-valid",
+      "path": "delivery-reduction-delegation-stopped-structural-valid",
+      "profile": "delivery-reduction-structural-fixture-v5",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:3c1315ac3f6e4fb12a5e71f5bff429c22037aa34dca158cfb153fd4cc34d5f33",
+      "description": "A Delivery reduction structurally preserves the stopped grant and cumulative delegated charges."
+    },
+    {
+      "id": "delivery-reduction-negative-charge-invalid",
+      "path": "delivery-reduction-negative-charge-invalid",
+      "profile": "delivery-reduction-structural-fixture-v5",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:a667805f5c9350668dcf64c9b16557fa2f2bcdd80dffdd33e33a7a2af76d1040",
+      "description": "A Delivery reduction cannot carry a negative delegated resource charge."
     },
     {
       "id": "delivery-reduction-structural-valid",
       "path": "delivery-reduction-structural-valid",
-      "profile": "delivery-reduction-structural-fixture-v2",
+      "profile": "delivery-reduction-structural-fixture-v5",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:f35ac7234c84f2bdf666ca57a372123280c7f2c59bdc369ffdec355b03d76671",
+      "subjectDigest": "sha256:9853eabc5e7804467011e020aecb6a982ca6d562205f88af8aac045089b3eb83",
       "description": "A structurally valid replay-derived Delivery state with explicit standing, Candidate, recovery, subject, Journal, and Store-disposition dimensions."
+    },
+    {
+      "id": "director-brief-payload-structural-valid",
+      "path": "director-brief-payload-structural-valid",
+      "profile": "director-brief-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:977973069da5e8044247b47b7a85c3d064d2a8b7f4d0af0059603fd217e0cbb9",
+      "description": "One fresh Director Brief carries semantic input for exactly one prepare, continue, evaluate, revise, or reaffirm agent activity."
+    },
+    {
+      "id": "director-brief-standing-operation-invalid",
+      "path": "director-brief-standing-operation-invalid",
+      "profile": "director-brief-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:6c4b5a9becbfe6360168b75bdf40e22727457b50a7eac24b55011ab594cd48d7",
+      "description": "A standing Director Brief operation scope must match its supplied input profile exactly."
+    },
+    {
+      "id": "director-brief-standing-structural-valid",
+      "path": "director-brief-standing-structural-valid",
+      "profile": "director-brief-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:ac516ee19de8044595da915adb0c847a930459d19937d99f1ccff7c297c2a1cb",
+      "description": "A standing Director Brief structurally retains its original Director provenance and exact delegation operation scope."
+    },
+    {
+      "id": "director-decision-payload-structural-valid",
+      "path": "director-decision-payload-structural-valid",
+      "profile": "director-decision-payload-structural-fixture-v5",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:023b6b935a7130e9d4086a712988eacca759126bde2730bd492c765f8eaa2472",
+      "description": "A Director Decision binds one exact authenticated terminal no-ship subject."
+    },
+    {
+      "id": "director-decision-signature-noncanonical-invalid",
+      "path": "director-decision-signature-noncanonical-invalid",
+      "profile": "director-decision-payload-structural-fixture-v5",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:53bfe17fcd0ee0ed3425cf6e627c28ec6ce4e85f0dcd7be55b69047104095a3a",
+      "description": "A Director Decision rejects the predecessor padded base64 signature carrier without the Ed25519 coordinate."
+    },
+    {
+      "id": "discipline-pack-structural-valid",
+      "path": "discipline-pack-structural-valid",
+      "profile": "discipline-pack-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:b954735c1ab779ee7c991d2087ea91876e4dfdceb26ad1579a2abd08b8c69588",
+      "description": "An exact immutable Pack retains its original authoring provenance and current Knowledge v2 selection."
+    },
+    {
+      "id": "discipline-record-obligation-invalid",
+      "path": "discipline-record-obligation-invalid",
+      "profile": "knowledge-record-structural-fixture-v2",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:7514f55469d93e80bf6ad064ed97ce1f990dee5df6d10035916979fdfd25bcff",
+      "description": "A Discipline cannot substitute an obligation for advisory practice."
+    },
+    {
+      "id": "discipline-record-required-source-invalid",
+      "path": "discipline-record-required-source-invalid",
+      "profile": "knowledge-record-structural-fixture-v2",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:3236c7d9771248463ab51d520799943d232b387b50b96a2f233a3c3b09a75ae0",
+      "description": "A Discipline source cannot require source availability."
+    },
+    {
+      "id": "discipline-record-structural-valid",
+      "path": "discipline-record-structural-valid",
+      "profile": "knowledge-record-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:b35d4ee78b9b7bac84b708a0b3c50b3942b75cbba12b6dde1233366ffa2622ab",
+      "description": "A self-contained advisory Discipline has no authority-bearing dependencies."
+    },
+    {
+      "id": "discipline-registry-structural-valid",
+      "path": "discipline-registry-structural-valid",
+      "profile": "discipline-registry-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:802eb2f737e9ca469a3ab124eed9d8a54b4a2ad5b97c6b2571fa4cbbe359388c",
+      "description": "The target Registry routes named Work Types to adopted advisory Disciplines."
+    },
+    {
+      "id": "evidence-packet-baseline-postcondition-receipt-missing-invalid",
+      "path": "evidence-packet-baseline-postcondition-receipt-missing-invalid",
+      "profile": "evidence-packet-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:245da8d29ae52bc7c225ef21da18743cc472f6684e98cb10725aa202c039de72",
+      "description": "An acceptance-ready authorized-baseline non-execution ledger cannot erase its required Receipt identity."
+    },
+    {
+      "id": "evidence-packet-baseline-postcondition-structural-valid",
+      "path": "evidence-packet-baseline-postcondition-structural-valid",
+      "profile": "evidence-packet-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:b5b099f5912533ec613dac1ee1115fd3c55a2178184ce58f63aa09cc1d5fd8bf",
+      "description": "An acceptance-ready Packet retains the exact authorized baseline postcondition Receipt while excluding execution and temporal freshness; the structural carrier alone does not establish its authorization or exact provenance."
     },
     {
       "id": "evidence-packet-payload-structural-valid",
       "path": "evidence-packet-payload-structural-valid",
-      "profile": "evidence-packet-payload-structural-fixture-v1",
+      "profile": "evidence-packet-payload-structural-fixture-v2",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:0389e740ea6be5d5535ca6eda0e06d69fa21161e30351b2b9b043349298354c6",
+      "subjectDigest": "sha256:38ef0a05364b881f1bde25abcf5e710791335395a1f90e71747dd306d5c7bd77",
       "description": "An Evidence Packet payload carries bounded ledgers and acceptance readiness for one sealed Candidate."
-    },
-    {
-      "id": "execution-receipt-payload-structural-valid",
-      "path": "execution-receipt-payload-structural-valid",
-      "profile": "execution-receipt-payload-structural-fixture-v3",
-      "complete": true,
-      "valid": true,
-      "diagnostics": [],
-      "allowedDiagnostics": [],
-      "subjectDigest": "sha256:c5c98363151b3a4a5b3a68fafad6e1cf23756eb5235251e6be1efd682c263fcf",
-      "description": "An Execution Receipt retains runtime-observed provider, parser, compiler, terminal, Containment, Retirement, and reclamation facts."
     },
     {
       "id": "execution-backend-profile-structural-valid",
@@ -385,18 +781,18 @@
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:b498c779a0ea5c3efb569633cf0b226fb6e99405e220d790b3a896563bacf017",
+      "subjectDigest": "sha256:336647ffc0e40417155526f94d88789b92a75cec84fa9abd9359be5f534a4764",
       "description": "An Execution Image binds an immutable OCI manifest, platform, fixed Cell runner, and exact tool inventory."
     },
     {
       "id": "execution-input-set-structural-valid",
       "path": "execution-input-set-structural-valid",
-      "profile": "execution-input-set-structural-fixture-v1",
+      "profile": "execution-input-set-structural-fixture-v2",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:226cd97732114bc3a1ab772006bf6559eeeeb830441f96391d1a424c9046f6ae",
+      "subjectDigest": "sha256:f2472c1b523eb105293dadf71378f7658be19416cef9a022e2f55bbcf8e5e9c1",
       "description": "An Execution Input Set binds one logical Attempt owner, immutable subject inventory, and bounded path-ordered content."
     },
     {
@@ -461,6 +857,17 @@
       "description": "An Execution Output Manifest binds one declared regular-file output and its immutable content identity."
     },
     {
+      "id": "execution-receipt-payload-structural-valid",
+      "path": "execution-receipt-payload-structural-valid",
+      "profile": "execution-receipt-payload-structural-fixture-v3",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:955b960383c519ecaae5b818a52e395bd6d06897656445550bf81071ba9e071e",
+      "description": "An Execution Receipt payload separates provider, parser, compiler, Candidate-output, Containment, and Retirement facts; mutable Reclamation progress is not a Receipt fact."
+    },
+    {
       "id": "execution-specification-structural-valid",
       "path": "execution-specification-structural-valid",
       "profile": "execution-specification-structural-fixture-v1",
@@ -468,7 +875,7 @@
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:1b40e6d0ed79f51888d71eda5fc8765646e838f5d904baa201dc44936d935875",
+      "subjectDigest": "sha256:7bdee56fe3d76423c6ba11c7d34ea30276f8f5f7e8d98aeed27e9b05a045aac1",
       "description": "An Execution Specification binds one Attempt to exact backend, image, input, authority, output, and terminal policies."
     },
     {
@@ -481,165 +888,409 @@
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:fbd5139173e6633c8bafd55f8a395aaa0af20109491fcfbb4c455509e8e37d24",
+      "subjectDigest": "sha256:412480d27b8eaad124b1af3f4b3fb85860dd0e603212c24d2759c5f94317a9b7",
       "description": "An Execution Specification cannot authorize output entries beyond its exact declared output roots."
     },
     {
-      "id": "founder-brief-payload-structural-valid",
-      "path": "founder-brief-payload-structural-valid",
-      "profile": "founder-brief-payload-structural-fixture-v1",
-      "complete": true,
-      "valid": true,
-      "diagnostics": [],
-      "allowedDiagnostics": [],
-      "subjectDigest": "sha256:8bad991588ede007e8baa3251e6f6075aa6594995d1670353c014a772f8ba6f4",
-      "description": "One fresh Founder Brief carries semantic input for exactly one prepare, continue, evaluate, revise, or reaffirm agent activity."
-    },
-    {
-      "id": "founder-decision-payload-structural-valid",
-      "path": "founder-decision-payload-structural-valid",
-      "profile": "founder-decision-payload-structural-fixture-v4",
-      "complete": true,
-      "valid": true,
-      "diagnostics": [],
-      "allowedDiagnostics": [],
-      "subjectDigest": "sha256:8d1cedb0732a55cdc65456f7d48ec82e7c8124e8d51c8b622cadcadcd356e044",
-      "description": "A Founder Decision binds one exact authenticated terminal no-ship subject."
-    },
-    {
-      "id": "founder-decision-signature-noncanonical-invalid",
-      "path": "founder-decision-signature-noncanonical-invalid",
-      "profile": "founder-decision-payload-structural-fixture-v4",
+      "id": "integration-assessment-conflicted-construction-invalid",
+      "path": "integration-assessment-conflicted-construction-invalid",
+      "profile": "integration-assessment-payload-structural-fixture-v1",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:c5c7939812d759852887cb55234283c9190b729ad16758bf8aae2d5c733b3d35",
-      "description": "A Founder Decision rejects the predecessor padded base64 signature carrier without the Ed25519 coordinate."
+      "subjectDigest": "sha256:a2f8612db7c80c66269a7b5a9d3cca048a16053fa09e03e15c25f1a25e0502c1",
+      "description": "A constructed integration cannot retain unresolved conflict facts as a valid result."
     },
     {
-      "id": "material-condition-product-state-drift-invalid",
-      "path": "material-condition-product-state-drift-invalid",
-      "profile": "material-condition-payload-structural-fixture-v1",
+      "id": "integration-assessment-conflicted-structural-valid",
+      "path": "integration-assessment-conflicted-structural-valid",
+      "profile": "integration-assessment-payload-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:ab2791806d8697d1bd49c4b2827198363a023012d90504dea5e700f7925f0b63",
+      "description": "A complete conflicted assessment is retained without claiming Candidate advancement."
+    },
+    {
+      "id": "integration-assessment-structural-valid",
+      "path": "integration-assessment-structural-valid",
+      "profile": "integration-assessment-payload-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:77ce1e85db3d44f2942f0a46e6999dc922d369bdb777dfecfda742463e5c3696",
+      "description": "Constructed integration retains source-independent parent and observation facts; the successor Candidate alone owns result state."
+    },
+    {
+      "id": "material-condition-integration-agent-source-invalid",
+      "path": "material-condition-integration-agent-source-invalid",
+      "profile": "material-condition-payload-structural-fixture-v4",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:07e82e90aebbdf761f032c8d2529885ae4e33fd2db18ae2c732b461fc9fcb525",
-      "description": "The retired product-state drift class is not a Material Condition; canonical or authoritative-worktree movement is an active-Delivery branch-lease refusal."
+      "subjectDigest": "sha256:b8bbdeb8fb840455d65c356922e03af332906f78afd03f6bab774ecae2007904",
+      "description": "The integration-context-change class cannot disguise its runtime source as an Agent proposal."
+    },
+    {
+      "id": "material-condition-integration-structural-valid",
+      "path": "material-condition-integration-structural-valid",
+      "profile": "material-condition-payload-structural-fixture-v4",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:f75258894f6c672376dae0d6ecbb4eb4060a1195a06bd6c965e897d12e805012",
+      "description": "The runtime context-change Condition is sourced from an Integration Assessment without fake Agent semantic output."
     },
     {
       "id": "material-condition-payload-structural-valid",
       "path": "material-condition-payload-structural-valid",
-      "profile": "material-condition-payload-structural-fixture-v1",
+      "profile": "material-condition-payload-structural-fixture-v4",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:e08c4c4e5ab349860f7ab62430fa3dd0ad6b6c4da02ab2886d21ff757ab5ccb3",
+      "subjectDigest": "sha256:db96a8da76c9a2f2c7915b9a2584c73c838265ac7c459f48f2de4f0be2d8296b",
       "description": "A Material Condition records a bounded runtime-derived mandate conflict."
     },
     {
-      "id": "repository-v12-predecessor-invalid",
-      "path": "repository-v12-predecessor-invalid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "material-condition-product-state-drift-invalid",
+      "path": "material-condition-product-state-drift-invalid",
+      "profile": "material-condition-payload-structural-fixture-v4",
       "complete": true,
       "valid": false,
       "diagnostics": [
-        "lifecycle.repository.predecessor-unsupported"
+        "lifecycle.schema.invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:683e65fffc763f9a37846998a5befc673a7de715725fb90c2322cdb7cc37a1e1",
-      "description": "The minimum repository-v12 schema discriminator proves fresh-only predecessor refusal without carrying predecessor meaning."
+      "subjectDigest": "sha256:941d18f9fd0b46190d4ae53979f1fe159d5035213f7c57f9f782cf524f6fca98",
+      "description": "The retired product-state drift class is invalid. Canonical movement alone does not create a Material Condition; explicit integration and effect-time currentness have their own contracts."
+    },
+    {
+      "id": "material-condition-projection-closure-structural-valid",
+      "path": "material-condition-projection-closure-structural-valid",
+      "profile": "material-condition-payload-structural-fixture-v4",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:e2ac7d863a87083f6c0027035b3fb3296122e0b1f2a7f401f9edeec8c5cad8e2",
+      "description": "Complete measured mandatory closure requires mandate resolution without an invented Agent Work Product."
+    },
+    {
+      "id": "material-condition-projection-item-structural-valid",
+      "path": "material-condition-projection-item-structural-valid",
+      "profile": "material-condition-payload-structural-fixture-v4",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:03571e375a25b93df9195b786a2a03efefaf2a62912b68616df98179b017d69e",
+      "description": "One exact required Git object exceeds the selected item limit without claiming complete closure counts."
+    },
+    {
+      "id": "material-condition-projection-source-invalid",
+      "path": "material-condition-projection-source-invalid",
+      "profile": "material-condition-payload-structural-fixture-v4",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:1691348befd2d3551f03aecb3a9a1c614fa0f555c9fc3d5d74b69379088260a2",
+      "description": "A runtime Projection source cannot carry an Agent proposal discriminator or fragment provenance."
+    },
+    {
+      "id": "productive-semantic-operation-generation-missing-invalid",
+      "path": "productive-semantic-operation-generation-missing-invalid",
+      "profile": "productive-semantic-operation-structural-fixture-v1",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:3929707ee480719271d214ab69d28a944775bd3bd09f5594aed2d10046376237",
+      "description": "A productive semantic mutation cannot omit the exact read generation against which its fresh input was authored."
+    },
+    {
+      "id": "productive-semantic-operation-structural-valid",
+      "path": "productive-semantic-operation-structural-valid",
+      "profile": "productive-semantic-operation-structural-fixture-v1",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:ecb181b031ce481c2bb76f9091e8f509ff5a597891acb81b76937c9e2a9643c4",
+      "description": "A productive semantic mutation binds fresh complete Markdown and one required runtime-issued expected generation."
+    },
+    {
+      "id": "projection-request-orientation-context-valid",
+      "path": "projection-request-orientation-context-valid",
+      "profile": "projection-request-structural-fixture-v5",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:4131994fcf72f4ff484f519bab5882f4c8b89fd65c73e99c690827a26ca693bc",
+      "description": "A 36,409-byte complete derived Orientation objective preserves governing Boundary and Condition facts beyond the old generic 16 KiB field. Structural validity does not authenticate the basis or establish that the selected Projection budget fits."
+    },
+    {
+      "id": "projection-request-orientation-objective-empty-invalid",
+      "path": "projection-request-orientation-objective-empty-invalid",
+      "profile": "projection-request-structural-fixture-v5",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:47d6ad08568ad2656d97bef58a786ef23cfa26a820e6e7e3b310a5f96fde8f81",
+      "description": "An empty Orientation objective remains structurally invalid under the explicit bounded semantic carrier."
     },
     {
       "id": "provider-descriptor-structural-valid",
       "path": "provider-descriptor-structural-valid",
-      "profile": "provider-descriptor-structural-fixture-v6",
+      "profile": "provider-descriptor-structural-fixture-v7",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:b7c890605a62ae0365943c356c074f8903a72ae27e3f2272ae86ac9815794df3",
+      "subjectDigest": "sha256:40711255f2a845c6d1e97d5f66e5a71e71bb10f1d45938efe1e9dc4acc11acda",
       "description": "The Codex Provider Descriptor v6 binds provider semantics to the fixed Cell runner while leaving execution lifecycle mechanics to the Backend and Runtime."
     },
     {
-      "id": "repository-v14-abandoned-invalid",
-      "path": "repository-v14-abandoned-invalid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "repository-v12-predecessor-invalid",
+      "path": "repository-v12-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.repository.predecessor-unsupported"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:1d0f8d65af43f792827db9f9fe3a6f1ecc291c2eb689b9efdd586c85a01fd90f",
-      "description": "The minimum abandoned rc.9 repository-v14 discriminator proves that unpublished research has no standing under the rc.10 hard cut."
+      "subjectDigest": "sha256:b1f90c5032a01963c8296735bd927fc1624f440f57ab8c2adc42747197186532",
+      "description": "The minimum repository-v12 schema discriminator proves fresh-only predecessor refusal without carrying predecessor meaning."
     },
     {
-      "id": "repository-v15-environment-overflow-invalid",
-      "path": "repository-v15-environment-overflow-invalid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "repository-v14-abandoned-invalid",
+      "path": "repository-v14-abandoned-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:fdee942d370d933b1ca0a0ce150c588e1cf4e3a6d2946cf463ff5827f62d72c2",
+      "description": "The minimum abandoned rc.9 repository-v14 discriminator has no operating or compatibility standing under the current rc.15 fresh-only cut."
+    },
+    {
+      "id": "repository-v15-predecessor-invalid",
+      "path": "repository-v15-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:3f677b05a5dbfa377a7789db3cba962754955578d81c4ba55aac740e7b0b1436",
+      "description": "The minimum rc.10 repository-v15 discriminator proves fresh-only refusal without importing predecessor meaning."
+    },
+    {
+      "id": "repository-v16-predecessor-invalid",
+      "path": "repository-v16-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:c5788db029763747168ba30fc75715d5eb539b89323f5eda39af647f52ed19ec",
+      "description": "A predecessor v17 discriminator is refused before semantic interpretation."
+    },
+    {
+      "id": "repository-v18-predecessor-invalid",
+      "path": "repository-v18-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:18fe3462acef366ea8158703311bea1ada2ce44dba97c4fd49ecc4152a221565",
+      "description": "Repository contract v18 is a predecessor discriminator and cannot be opened as a fresh repository-v20 target."
+    },
+    {
+      "id": "repository-v19-predecessor-invalid",
+      "path": "repository-v19-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:d0d6456ebe94ee1d35ab563890dd95fed1c42d250cb3ec2b8db41a98f21c45fe",
+      "description": "The minimum repository-v19 discriminator remains unsupported by the rc.15 repository-v20 fresh-only cut."
+    },
+    {
+      "id": "repository-v20-predecessor-invalid",
+      "path": "repository-v20-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:24bb9bbad7bdc46c192320dde4704f51b5bd1e5170e0a9c93b05d0930fbafd7e",
+      "description": "Only the minimum repository-v20 discriminator is read to refuse unsupported predecessor state before interpretation or effects."
+    },
+    {
+      "id": "repository-v21-predecessor-invalid",
+      "path": "repository-v21-predecessor-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.predecessor-unsupported"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:bcb1a22a04eab9b9f1e2def03fb9a615ce3919bd544ef32f98853db35ccaa97c",
+      "description": "Only the minimum repository-v20 discriminator is read to refuse unsupported predecessor state before interpretation or effects."
+    },
+    {
+      "id": "repository-v22-environment-overflow-invalid",
+      "path": "repository-v22-environment-overflow-invalid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.repository.contract-invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:dda1aab348926019b296655b2e99a7f9caf50745e576b2718ede05dd727f0d72",
-      "description": "A repository-v15 Check Binding cannot request more environment-variable names than one bounded Check Receipt can record exactly."
+      "subjectDigest": "sha256:95ffd5352a395c593b99f1b2d2d43e46858d8378c0f7e06c61f5a04b7c5270c9",
+      "description": "A repository-v22 Check Binding cannot request more environment-variable names than one bounded Check Receipt can record exactly."
     },
     {
-      "id": "repository-v15-fresh-valid",
-      "path": "repository-v15-fresh-valid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "repository-v22-fresh-valid",
+      "path": "repository-v22-fresh-valid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:331c624433f342b162eab8284ac2f3e7f5ff74cd994efdaca42fbb6fe2b1abb8",
-      "description": "A complete fresh repository-v15 contract selects rc.10 semantic carriers, Provider Adapter v6, immutable Candidate Revision Carriers, Docker-local execution contracts, and the SQLite Control Record Store without predecessor state."
+      "subjectDigest": "sha256:12ac81413b38ceafec353f3d9bc4fe7379eade60eb918c95b42b8bfb77f68e77",
+      "description": "A complete fresh repository-v22 contract selects rc.17 semantic carriers, exact integration for concurrent Deliveries, isolated Git repositories, installed Disciplines, and the SQLite Control Record Store without predecessor state."
     },
     {
-      "id": "repository-v15-migration-invalid",
-      "path": "repository-v15-migration-invalid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "repository-v22-migration-invalid",
+      "path": "repository-v22-migration-invalid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.repository.contract-invalid"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:abf733f08f49f94b5af1086b23ff0ce14ed455b636b8db9fb805a78ec845de12",
-      "description": "A repository-v15 contract cannot carry predecessor migration provenance or an upgrade mode."
+      "subjectDigest": "sha256:9032b3964aad353f3f73188fa29ae14a8ab277b2d4e0a32dab87f94fc640c7cf",
+      "description": "A repository-v22 contract cannot carry predecessor migration provenance or an upgrade mode."
     },
     {
-      "id": "repository-v15-mixed-state-invalid",
-      "path": "repository-v15-mixed-state-invalid",
-      "profile": "repository-contract-fixture-v7",
+      "id": "repository-v22-mixed-state-invalid",
+      "path": "repository-v22-mixed-state-invalid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": false,
       "diagnostics": [
         "lifecycle.repository.epoch-mixed"
       ],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:e0d63fe69106cc1ca0d1ed6471703ba1706151a3a090c61841da334478812ca5",
-      "description": "A repository-v15 contract combined with a recognized predecessor Delivery Control discriminator is mixed-generation input."
+      "subjectDigest": "sha256:630b4745a69c522c6771ffc20497339881aa215a82a64a0f97a2017cc435911f",
+      "description": "A repository-v22 contract combined with a recognized predecessor Delivery Control discriminator is mixed-generation input."
     },
     {
-      "id": "work-boundary-payload-structural-valid",
-      "path": "work-boundary-payload-structural-valid",
-      "profile": "work-boundary-payload-structural-fixture-v4",
+      "id": "repository-v22-orientation-large-bounds-invalid",
+      "path": "repository-v22-orientation-large-bounds-invalid",
+      "profile": "repository-contract-fixture-v9",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.repository.contract-invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:1192eed786a33b4c1a08fe64a6463349142174c75fd4430feb2532baf9e15bd9",
+      "description": "The larger Orientation profile cannot substitute a larger mandatory-item bound under its exact registered identity, even with recomputed self-digests."
+    },
+    {
+      "id": "repository-v22-orientation-large-valid",
+      "path": "repository-v22-orientation-large-valid",
+      "profile": "repository-contract-fixture-v9",
       "complete": true,
       "valid": true,
       "diagnostics": [],
       "allowedDiagnostics": [],
-      "subjectDigest": "sha256:937e06f5027f4c0a2af15e6cda91c0046eb5ab432fd612dbed022f62b15ff726",
+      "subjectDigest": "sha256:656d5df64e77537f03bed81201071c1f42e3c5027ee7eeb1aade1db66f5ee04d",
+      "description": "The optional larger Orientation profile is explicitly registered and selected with exact bounds; the standard profile is unchanged."
+    },
+    {
+      "id": "work-boundary-payload-structural-valid",
+      "path": "work-boundary-payload-structural-valid",
+      "profile": "work-boundary-payload-structural-fixture-v6",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:049e3642c20fdfe4af45be9edeb3ebebcbc7073ad490a884b71d768c324e471c",
       "description": "A Work Boundary payload carries one complete mandate without embedded Control envelopes."
+    },
+    {
+      "id": "work-delegation-implicit-direction-invalid",
+      "path": "work-delegation-implicit-direction-invalid",
+      "profile": "work-delegation-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": false,
+      "diagnostics": [
+        "lifecycle.schema.invalid"
+      ],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:f2872695d4921d9ef3e4a8b6b4f16caa9e86cb9fbcca3bd65d6505ce7f8fe01e",
+      "description": "A Work Delegation cannot permit an Agent operation without its explicit original Director Brief reference."
+    },
+    {
+      "id": "work-delegation-integrate-only-structural-valid",
+      "path": "work-delegation-integrate-only-structural-valid",
+      "profile": "work-delegation-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:30b8f58f19660bb4de4ebcbf5040ed44418cabdb8198f5f140bad3fed22b490b",
+      "description": "An integration-only Work Delegation structurally permits zero Agent Attempts and zero reserved Cell wall-time."
+    },
+    {
+      "id": "work-delegation-payload-structural-valid",
+      "path": "work-delegation-payload-structural-valid",
+      "profile": "work-delegation-payload-structural-fixture-v2",
+      "complete": true,
+      "valid": true,
+      "diagnostics": [],
+      "allowedDiagnostics": [],
+      "subjectDigest": "sha256:30b8f58f19660bb4de4ebcbf5040ed44418cabdb8198f5f140bad3fed22b490b",
+      "description": "A Work Delegation structurally binds admitted scope, original directions, exact Agent selections and finite lifetime ceilings; it does not establish authority or execution availability."
     }
   ]
 }

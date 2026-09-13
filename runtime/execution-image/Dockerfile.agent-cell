@@ -8,13 +8,13 @@ FROM ${LIFECYCLE_NODE_IMAGE} AS runner-build
 RUN test "$(node --version)" = "v24.14.0"
 
 WORKDIR /build
-COPY execution-image/runner-build/package.json execution-image/runner-build/package-lock.json ./
+COPY runtime/execution-image/runner-build/package.json runtime/execution-image/runner-build/package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 
 # The executable is compiled from its tracked TypeScript source. `--noCheck`
 # is deliberate: the repository gate type-checks the complete runtime, while
 # this isolated build needs no ambient source tree merely to erase types.
-COPY src/util/execution-cell-runner-v1.ts /build/source/src/util/execution-cell-runner-v1.ts
+COPY runtime/src/util/execution-cell-runner-v1.ts /build/source/src/util/execution-cell-runner-v1.ts
 RUN ./node_modules/.bin/tsc \
       --noCheck \
       --target ES2022 \
@@ -24,12 +24,36 @@ RUN ./node_modules/.bin/tsc \
       --outDir /build/output \
       /build/source/src/util/execution-cell-runner-v1.ts
 
+# The Agent receives the same supported Runtime package as the canonical CLI.
+# This build installs no interface client, Docker client, target, or authority custody.
+FROM ${LIFECYCLE_NODE_IMAGE} AS runtime-build
+
+RUN test "$(node --version)" = "v24.14.0"
+WORKDIR /source
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY protocol/package.json protocol/tsconfig.json ./protocol/
+COPY runtime/package.json runtime/tsconfig.json ./runtime/
+COPY distribution/package/package.json ./distribution/package/
+COPY third-party/atlas-reference-validator/package/package.json ./third-party/atlas-reference-validator/package/
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY spec-source ./spec-source
+COPY protocol ./protocol
+COPY runtime ./runtime
+COPY third-party/atlas-reference-validator/PROVENANCE.json ./third-party/atlas-reference-validator/PROVENANCE.json
+COPY third-party/atlas-reference-validator/LICENSE ./third-party/atlas-reference-validator/LICENSE
+COPY third-party/atlas-reference-validator/package ./third-party/atlas-reference-validator/package
+RUN node runtime/scripts/generate-foundation-schemas.mjs \
+ && node node_modules/typescript/bin/tsc -p protocol/tsconfig.json \
+ && node node_modules/typescript/bin/tsc -p runtime/tsconfig.json \
+ && mkdir /release \
+ && npm pack --workspace @neutral/lifecycle-runtime --pack-destination /release
+
 FROM ${LIFECYCLE_NODE_IMAGE} AS codex-source
 
 RUN test "$(node --version)" = "v24.14.0"
 
 WORKDIR /build/codex
-COPY execution-image/package.json execution-image/package-lock.json ./
+COPY runtime/execution-image/package.json runtime/execution-image/package-lock.json ./
 RUN npm ci --ignore-scripts --omit=dev --no-audit --no-fund \
  && case "$(dpkg --print-architecture)" in \
       amd64) platform="x64"; triple="x86_64-unknown-linux-musl" ;; \
@@ -53,16 +77,16 @@ ARG LIFECYCLE_BUBBLEWRAP_VERSION
 ARG LIFECYCLE_CA_CERTIFICATES_VERSION
 ARG LIFECYCLE_GIT_VERSION
 
-LABEL org.opencontainers.image.source="https://github.com/neutral/lifecycle" \
+LABEL org.opencontainers.image.source="https://github.com/neutral/lifecycle-v2-archive" \
       org.opencontainers.image.revision=${LIFECYCLE_SOURCE_REVISION} \
       org.opencontainers.image.version="1.0.0" \
-      io.lifecycle.execution-image.v1.qualification-revision="lifecycle.foundation.1.0.0-rc.10" \
+      io.lifecycle.execution-image.v1.qualification-revision="lifecycle.foundation.1.0.0-rc.17" \
       io.lifecycle.execution-image.v1.image-id=${LIFECYCLE_IMAGE_ID} \
       io.lifecycle.execution-image.v1.runner-contract-id="lifecycle.execution-cell-runner.v1" \
       io.lifecycle.execution-image.v1.runner-contract-digest=${LIFECYCLE_RUNNER_CONTRACT_DIGEST} \
       io.lifecycle.execution-image.v1.runner-implementation-digest=${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST} \
       io.lifecycle.execution-image.v1.tool-inventory-digest=${LIFECYCLE_TOOL_INVENTORY_DIGEST} \
-      io.lifecycle.execution-image.v1.codex-version="0.151.0" \
+      io.lifecycle.execution-image.v1.codex-version="0.153.4" \
       io.lifecycle.execution-image.v1.codex-executable-identity=${LIFECYCLE_CODEX_EXECUTABLE_IDENTITY} \
       io.lifecycle.execution-image.v1.adapter-implementation-digest=${LIFECYCLE_RUNNER_IMPLEMENTATION_DIGEST}
 
@@ -87,19 +111,29 @@ RUN test "$(node --version)" = "v24.14.0" \
  && useradd --uid 65532 --gid 65532 --home-dir /nonexistent --shell /usr/sbin/nologin lifecycle
 
 COPY --from=codex-source /opt/lifecycle-vendor/ /opt/lifecycle/
+COPY --from=runtime-build /release/neutral-lifecycle-runtime-1.0.0.tgz /opt/lifecycle/runtime-package.tgz
+COPY runtime/execution-image/lifecycle-draft-launcher.sh /opt/lifecycle/bin/lifecycle
 COPY --from=runner-build /build/output/src/util/execution-cell-runner-v1.js /opt/lifecycle/bin/execution-cell-runner
-COPY execution-image/runner-contract.private.json /opt/lifecycle/runner-contract.private.json
-COPY execution-image/verify-runner-contract.mjs /tmp/verify-runner-contract.mjs
-COPY execution-image/tool-inventory.mjs /tmp/tool-inventory.mjs
-COPY execution-image/package-lock.json /tmp/codex-package-lock.json
-COPY execution-image/tool-inventory.linux-amd64.json /tmp/tool-inventory.linux-amd64.json
-COPY execution-image/tool-inventory.linux-arm64.json /tmp/tool-inventory.linux-arm64.json
+COPY runtime/execution-image/runner-contract.private.json /opt/lifecycle/runner-contract.private.json
+COPY runtime/execution-image/verify-runner-contract.mjs /tmp/verify-runner-contract.mjs
+COPY runtime/execution-image/tool-inventory.mjs /tmp/tool-inventory.mjs
+COPY runtime/execution-image/package-lock.json /tmp/codex-package-lock.json
+COPY runtime/execution-image/tool-inventory.linux-amd64.json /tmp/tool-inventory.linux-amd64.json
+COPY runtime/execution-image/tool-inventory.linux-arm64.json /tmp/tool-inventory.linux-arm64.json
 
-RUN ln -s ../bin/codex /opt/lifecycle/codex-path/codex-linux-sandbox \
+RUN mkdir /opt/lifecycle-runtime \
+ && tar -xzf /opt/lifecycle/runtime-package.tgz -C /opt/lifecycle-runtime \
+ && test -f /opt/lifecycle-runtime/package/dist/src/foundation/draft/cli.js \
+ && test ! -e /opt/lifecycle-runtime/package/tests \
+ && find /opt/lifecycle-runtime -type d -exec chmod 0555 {} + \
+ && find /opt/lifecycle-runtime -type f -exec chmod 0444 {} + \
+ && ln -s /opt/lifecycle/bin/lifecycle /usr/local/bin/lifecycle \
+ && ln -s ../bin/codex /opt/lifecycle/codex-path/codex-linux-sandbox \
  && find /opt/lifecycle -type d -exec chmod 0555 {} + \
  && find /opt/lifecycle -type f -exec chmod 0444 {} + \
  && chmod 0555 \
       /opt/lifecycle/bin/codex \
+      /opt/lifecycle/bin/lifecycle \
       /opt/lifecycle/bin/codex-code-mode-host \
       /opt/lifecycle/bin/execution-cell-runner \
       /opt/lifecycle/codex-path/rg \
@@ -132,8 +166,9 @@ RUN ln -s ../bin/codex /opt/lifecycle/codex-path/codex-linux-sandbox \
       /tmp/tool-inventory.linux-arm64.json \
       /tmp/tool-inventory.mjs \
       /tmp/verify-runner-contract.mjs \
- && mkdir -p /lifecycle/input /lifecycle/output \
- && chown lifecycle:lifecycle /lifecycle/output
+ && mkdir -p /lifecycle/input /lifecycle/output /tmp/lifecycle-provider-state \
+ && chown lifecycle:lifecycle /lifecycle/output /tmp/lifecycle-provider-state \
+ && chmod 700 /tmp/lifecycle-provider-state
 
 USER 65532:65532
 ENTRYPOINT ["/opt/lifecycle/bin/execution-cell-runner"]

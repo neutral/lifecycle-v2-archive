@@ -27,11 +27,18 @@ import type {
   ControlRecordRevision,
 } from "../control/types.js";
 import { FoundationError } from "../error.js";
+import { FOUNDATION_DOCKER_CHECK_ENVIRONMENT_LIMITATION } from "./environment-requirements.js";
+import {
+  readWorkDelegationExecution,
+  workDelegationCheckSelectionMatches,
+  workDelegationCheckSlot,
+} from "../control/work-delegation-execution.js";
 import type {
   FoundationExecutionBackend,
 } from "../execution/backend.js";
 import {
   parseFoundationExecutionSpecification,
+  type FoundationExecutionBackendProfileReferenceV1,
   type FoundationExecutionBackendProfileV1,
   type FoundationExecutionImageReferenceV1,
   type FoundationExecutionSpecificationV1,
@@ -144,10 +151,9 @@ type FoundationCheckCellOperationCommonInputV1 = Readonly<{
     specification: FoundationExecutionSpecificationV1,
     inputSet: FoundationExecutionInputSetV1,
   ): FoundationExecutionOperationCheckpointPersistenceV1;
-  runtime: FoundationCheckCellRuntimeV1;
 }>;
 
-export type FoundationCheckCellOperationInputV1 = FoundationCheckCellOperationCommonInputV1 & (
+export type FoundationCheckCellOperationRequestV1 = FoundationCheckCellOperationCommonInputV1 & (
   | Readonly<{
       phase: "baseline";
       candidate: null;
@@ -163,6 +169,16 @@ export type FoundationCheckCellOperationInputV1 = FoundationCheckCellOperationCo
       productBase: null;
     }>
 );
+
+export type FoundationCheckCellOperationInputV1 = FoundationCheckCellOperationRequestV1 & Readonly<{
+  runtime: FoundationCheckCellRuntimeV1;
+}>;
+
+/** A Check owner requests exact work without receiving Backend capability. */
+export type FoundationCheckCellOperatorV1 = Readonly<{
+  operate(input: FoundationCheckCellOperationRequestV1): Promise<FoundationCheckCellOperationResultV1>;
+  clock: Readonly<{ now(): string }>;
+}>;
 
 export type FoundationCheckCellOperationResultV1 = Readonly<{
   observation: CheckReceiptObservation;
@@ -346,8 +362,8 @@ async function compileBaselineInput(
   entries: readonly InputBytes[];
 }>> {
   if (input.proofSubject.recordKind !== "work-boundary" ||
-      input.proofSubject.payload.schema !== "lifecycle.work-boundary-payload.v4") {
-    fail("product-base", "Baseline Check requires one exact Work Boundary v4 proof subject");
+      input.proofSubject.payload.schema !== "lifecycle.work-boundary-payload.v6") {
+    fail("product-base", "Baseline Check requires one exact Work Boundary with the selected v6 payload");
   }
   const retainedBoundary = input.store.getRevision(
     input.proofSubject.recordId,
@@ -595,8 +611,8 @@ async function compileInput(input: FoundationCheckCellOperationInputV1): Promise
 }>> {
   if (input.phase === "baseline") return await compileBaselineInput(input);
   if (input.candidate.recordKind !== "candidate-revision" ||
-      input.candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
-    fail("candidate", "Final Check requires one exact Candidate Revision v2");
+      input.candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
+    fail("candidate", "Final Check requires one exact Candidate Revision v3");
   }
   if (input.proofSubject.recordKind !== "candidate-seal" ||
       input.proofSubject.payload.schema !== "lifecycle.candidate-seal-payload.v2") {
@@ -795,6 +811,41 @@ async function compileInput(input: FoundationCheckCellOperationInputV1): Promise
   return Object.freeze({ inputSet, entries });
 }
 
+/**
+ * Pure resource projection from already selected Binding/Profile/Image facts.
+ * Both pre-opening reservation and the actual Specification use this owner.
+ * This does not establish installation availability or authorize allocation.
+ */
+export function compileFoundationCheckCellResourceSelectionV1(input: Readonly<{
+  binding: FoundationCheckBinding;
+  profile: FoundationExecutionBackendProfileV1;
+  image: FoundationCheckCellImageV1;
+}>): Readonly<{
+  backendProfile: FoundationExecutionBackendProfileReferenceV1;
+  image: FoundationExecutionImageReferenceV1;
+  limits: FoundationExecutionSpecificationV1["limits"];
+}> {
+  const profile = input.profile;
+  const limits = Object.freeze({
+    wallTimeMilliseconds: Math.min(input.binding.timeoutMs + 30_000, profile.limits.maximumWallTimeMilliseconds),
+    processes: Math.min(32, profile.limits.maximumProcesses),
+    storageBytes: Math.min(MAXIMUM_CHECK_CELL_STORAGE_BYTES, profile.limits.maximumStorageBytes),
+    outputEntries: Math.min(3, profile.limits.maximumOutputEntries),
+    outputBytes: Math.min(32 * 1024 * 1024, profile.limits.maximumOutputBytes),
+    outputEntryBytes: Math.min(16 * 1024 * 1024, profile.limits.maximumOutputEntryBytes),
+    events: Math.min(128, profile.limits.maximumEvents),
+  });
+  return Object.freeze({
+    backendProfile: Object.freeze({
+      profileId: profile.profileId,
+      profileDigest: profile.digest,
+      implementationDigest: profile.implementation.implementationDigest,
+    }),
+    image: Object.freeze({ imageId: input.image.imageId, imageDigest: input.image.imageDigest }),
+    limits,
+  });
+}
+
 function compileSpecification(
   input: FoundationCheckCellOperationInputV1,
   inputSet: FoundationExecutionInputSetV1,
@@ -810,15 +861,8 @@ function compileSpecification(
     input.runtime.backend.profile.digest !== profile.digest ||
     !(installedDockerProfile || deterministicTestProfile)
   ) fail("backend", "Check requires the selected Docker or deterministic test Backend Profile");
-  const limits = Object.freeze({
-    wallTimeMilliseconds: Math.min(input.binding.timeoutMs + 30_000, profile.limits.maximumWallTimeMilliseconds),
-    processes: Math.min(32, profile.limits.maximumProcesses),
-    storageBytes: Math.min(MAXIMUM_CHECK_CELL_STORAGE_BYTES, profile.limits.maximumStorageBytes),
-    outputEntries: Math.min(3, profile.limits.maximumOutputEntries),
-    outputBytes: Math.min(32 * 1024 * 1024, profile.limits.maximumOutputBytes),
-    outputEntryBytes: Math.min(16 * 1024 * 1024, profile.limits.maximumOutputEntryBytes),
-    events: Math.min(128, profile.limits.maximumEvents),
-  });
+  const resources = compileFoundationCheckCellResourceSelectionV1({ binding: input.binding, profile, image: input.runtime.image });
+  const limits = resources.limits;
   const outputContractSubject = Object.freeze({
     manifestProfile: "lifecycle.execution-output-manifest.v1" as const,
     declaredOutputRoots: Object.freeze([
@@ -851,17 +895,10 @@ function compileSpecification(
       phase: input.phase,
       ownerSubjectDigest: input.proofSubject.digest,
     }),
-    backendProfile: Object.freeze({
-      profileId: profile.profileId,
-      profileDigest: profile.digest,
-      implementationDigest: profile.implementation.implementationDigest,
-    }),
-    image: Object.freeze({
-      imageId: input.runtime.image.imageId,
-      imageDigest: input.runtime.image.imageDigest,
-    }),
+    backendProfile: resources.backendProfile,
+    image: resources.image,
     inputSet: Object.freeze({
-      profileId: "lifecycle.execution-input-set.v1" as const,
+      profileId: "lifecycle.execution-input-set.v2" as const,
       digest: inputSet.digest,
     }),
     operation: Object.freeze({
@@ -1146,7 +1183,7 @@ async function observationFromValidOutput(input: Readonly<{
         "descendant-containment",
         "protected-environment",
       ]),
-      founderManaged: Object.freeze([]),
+      directorManaged: Object.freeze([]),
     }),
     disposition,
     resultFacts: proof.resultFacts,
@@ -1223,7 +1260,7 @@ function unavailableObservation(input: Readonly<{
         "descendant-containment",
         "protected-environment",
       ]),
-      founderManaged: Object.freeze([]),
+      directorManaged: Object.freeze([]),
     }),
     disposition: "operational-error",
     resultFacts: Object.freeze([
@@ -1279,7 +1316,7 @@ export function unsupportedCheckCellObservation(
     environment: Object.freeze({
       identityDigest: factsDigest,
       runtimeEnforced: Object.freeze([]),
-      founderManaged: Object.freeze([...requestedConditions]),
+      directorManaged: Object.freeze([...requestedConditions]),
     }),
     disposition: "unsupported",
     resultFacts: Object.freeze([Object.freeze({ name: "environment-requirements-supported", value: false })]),
@@ -1293,7 +1330,7 @@ export function unsupportedCheckCellObservation(
     retirement: Object.freeze({ classification: "not-required" as const, factsDigest: null }),
     runner: Object.freeze({ id: FOUNDATION_CHECK_CELL_RUNNER_V1.id, digest: runnerContractDigest }),
     parser: Object.freeze({ id: FOUNDATION_CHECK_CELL_RUNNER_V1.parserId, digest: FOUNDATION_CHECK_CELL_RUNNER_V1.parserDigest }),
-    limitations: Object.freeze(["The first Docker Check profile does not interpret free-text environment requirements."]),
+    limitations: Object.freeze([FOUNDATION_DOCKER_CHECK_ENVIRONMENT_LIMITATION]),
   });
 }
 
@@ -1313,134 +1350,152 @@ export async function operateFoundationCheckCellV1(
   }
   const compiled = await compileInput(input);
   const specification = compileSpecification(input, compiled.inputSet);
+  const execution = readWorkDelegationExecution({ store: input.store, activityId: input.activityId });
+  const reservedSlot = workDelegationCheckSlot(execution, input.selectionId, input.phase);
+  const assertReservedSelection = () => {
+    if (reservedSlot !== null && !workDelegationCheckSelectionMatches(reservedSlot, { request: input, resources: specification })) {
+      fail("work-delegation-binding", "Check execution differs from its exact retained Activity resource reservation");
+    }
+  };
+  // Recheck historical resources on every invocation, including recovery, before
+  // selecting or changing checkpoint custody. Current allowance is not charged again.
+  assertReservedSelection();
   const checkpoints = input.persistence(specification, compiled.inputSet);
-  input.runtime.bindingRegistry.register({
+  const releaseBinding = input.runtime.bindingRegistry.register({
     specification,
     engineIdentityDigest: input.runtime.engineIdentityDigest,
     persistence: checkpoints,
   });
-  const host = new FoundationExecutionOperationHostV1({
-    backend: input.runtime.backend,
-    checkpoints,
-    clock: input.runtime.clock,
-    outputStore: input.runtime.outputStore,
-    validateOwnerOutput: async ({ specification: selected, output }) => {
-      if (selected.digest !== specification.digest) {
-        fail("proof", "Check output validator received another Execution Specification");
-      }
-      try {
-        await parseCheckCellOutput(output);
-        return Object.freeze({ disposition: "valid" as const });
-      } catch (error) {
-        if (error instanceof FoundationError &&
-            error.code === "lifecycle.check-cell-v1.proof") {
-          return Object.freeze({ disposition: "invalid" as const });
+  try {
+    const host = new FoundationExecutionOperationHostV1({
+      backend: input.runtime.backend,
+      checkpoints,
+      clock: input.runtime.clock,
+      outputStore: input.runtime.outputStore,
+      validateOwnerOutput: async ({ specification: selected, output }) => {
+        if (selected.digest !== specification.digest) {
+          fail("proof", "Check output validator received another Execution Specification");
         }
-        throw error;
-      }
-    },
-  });
-  let validatedOutput: FoundationValidatedExecutionOutputV1 | null = null;
-  const pollMilliseconds = input.runtime.pollMilliseconds ?? 100;
-  if (!Number.isSafeInteger(pollMilliseconds) || pollMilliseconds < 0 || pollMilliseconds > 60_000) {
-    fail("poll-bound", "Check Cell polling interval is outside its fixed bound");
-  }
-  const effectivePollMilliseconds = Math.max(1, pollMilliseconds);
-  const activeStepBound = Math.min(
-    MAXIMUM_CELL_STEPS - 1_024,
-    Math.ceil(specification.limits.wallTimeMilliseconds / effectivePollMilliseconds) + 16,
-  );
-  const totalStepBound = activeStepBound + 1_024;
-  let openedAtMilliseconds: number | null = null;
-  for (let step = 0; step < totalStepBound; step += 1) {
-    const before = await host.read(specification);
-    if (before !== null && openedAtMilliseconds === null) {
-      openedAtMilliseconds = Date.parse(before.checkpoint.openedAt);
-      if (!Number.isFinite(openedAtMilliseconds)) {
-        fail("clock", "Retained Check Cell opening time is invalid");
-      }
-    }
-    if (before !== null && before.checkpoint.handle === null) {
-      // This check is intentionally adjacent to the only host step that may
-      // allocate. It grants no reservation and retains no policy state.
-      input.runtime.reclamation.assertAllocationAvailable();
-    }
-    let deadlineReached = step >= activeStepBound;
-    if (!deadlineReached && openedAtMilliseconds !== null) {
-      const sampled = input.runtime.clock.now();
-      const sampledMilliseconds = Date.parse(sampled);
-      if (!Number.isFinite(sampledMilliseconds) || new Date(sampledMilliseconds).toISOString() !== sampled) {
-        fail("clock", "Check Cell recovery clock is invalid");
-      }
-      deadlineReached = sampledMilliseconds - openedAtMilliseconds >=
-        specification.limits.wallTimeMilliseconds;
-    }
-    const advanced = await host.advance({
-      specification,
-      runnerDigest: input.runtime.image.runnerContractDigest,
-      requestContainment: deadlineReached,
+        try {
+          await parseCheckCellOutput(output);
+          return Object.freeze({ disposition: "valid" as const });
+        } catch (error) {
+          if (error instanceof FoundationError &&
+              error.code === "lifecycle.check-cell-v1.proof") {
+            return Object.freeze({ disposition: "invalid" as const });
+          }
+          throw error;
+        }
+      },
     });
-    const checkpoint = advanced.retained.checkpoint;
-    if (advanced.validatedOutput !== null) validatedOutput = advanced.validatedOutput;
-    if (checkpoint.output !== null) break;
-    if (pollMilliseconds !== 0) {
-      await delay(pollMilliseconds);
+    let validatedOutput: FoundationValidatedExecutionOutputV1 | null = null;
+    const pollMilliseconds = input.runtime.pollMilliseconds ?? 100;
+    if (!Number.isSafeInteger(pollMilliseconds) || pollMilliseconds < 0 || pollMilliseconds > 60_000) {
+      fail("poll-bound", "Check Cell polling interval is outside its fixed bound");
     }
-  }
-  let current = await host.read(specification);
-  if (current === null || current.checkpoint.output === null || current.checkpoint.containment === null ||
-      current.checkpoint.observation === null || current.checkpoint.handle === null) {
-    fail("recovery-bound", "Check Cell did not reach final contained output within its bounded recovery loop");
-  }
-  if (current.checkpoint.output.validation === "valid" && validatedOutput === null) {
-    validatedOutput = (await host.advance({
-      specification,
-      runnerDigest: input.runtime.image.runnerContractDigest,
-    })).validatedOutput;
-  }
-  current = await host.retire(specification);
-  const checkpoint = current.checkpoint;
-  if (checkpoint.retirement === null || checkpoint.handle === null || checkpoint.containment === null ||
-      checkpoint.output === null || checkpoint.observation === null) {
-    fail("retirement", "Check Cell did not retain exact Retirement facts");
-  }
-  input.runtime.reclamation.accept({
-    owner: Object.freeze({
-      storeId: input.store.identity.storeId,
-      processId: input.store.identity.processId,
-      activityId: input.activityId,
-      kind: "check",
-      subjectDigest: input.proofSubject.digest,
-    }),
-    specification,
-    handle: checkpoint.handle,
-    reclamationBinding: checkpoint.retirement.reclamationBinding,
-    obligation: checkpoint.retirement.reclamationObligation,
-    retirementDigest: checkpoint.retirement.digest,
-    dispatchAuthorityConsumed: checkpoint.retirement.dispatchAuthorityConsumed,
-  });
-  if (validatedOutput === null && checkpoint.output.validation === "valid") {
-    fail("output", "Validated Check output could not be reopened after Retirement");
-  }
-  const observation = validatedOutput === null
-    ? unavailableObservation({
-        operation: input,
+    const effectivePollMilliseconds = Math.max(1, pollMilliseconds);
+    const activeStepBound = Math.min(
+      MAXIMUM_CELL_STEPS - 1_024,
+      Math.ceil(specification.limits.wallTimeMilliseconds / effectivePollMilliseconds) + 16,
+    );
+    const totalStepBound = activeStepBound + 1_024;
+    let openedAtMilliseconds: number | null = null;
+    for (let step = 0; step < totalStepBound; step += 1) {
+      const before = await host.read(specification);
+      if (before !== null && openedAtMilliseconds === null) {
+        openedAtMilliseconds = Date.parse(before.checkpoint.openedAt);
+        if (!Number.isFinite(openedAtMilliseconds)) {
+          fail("clock", "Retained Check Cell opening time is invalid");
+        }
+      }
+      if (before !== null && before.checkpoint.handle === null) {
+        // This check is intentionally adjacent to the only host step that may
+        // allocate. It grants no reservation and retains no policy state.
+        assertReservedSelection();
+        input.runtime.reclamation.assertAllocationAvailable();
+      }
+      let deadlineReached = step >= activeStepBound;
+      if (!deadlineReached && openedAtMilliseconds !== null) {
+        const sampled = input.runtime.clock.now();
+        const sampledMilliseconds = Date.parse(sampled);
+        if (!Number.isFinite(sampledMilliseconds) || new Date(sampledMilliseconds).toISOString() !== sampled) {
+          fail("clock", "Check Cell recovery clock is invalid");
+        }
+        deadlineReached = sampledMilliseconds - openedAtMilliseconds >=
+          specification.limits.wallTimeMilliseconds;
+      }
+      const advanced = await host.advance({
         specification,
-        inputSet: compiled.inputSet,
-        validation: checkpoint.output.validation as "invalid" | "unavailable" | "not-applicable",
-        containmentDigest: checkpoint.containment.digest,
-        retirementDigest: checkpoint.retirement.digest,
-        observationDigest: checkpoint.observation.digest,
-        manifestDigest: checkpoint.output.manifestDigest,
-      })
-    : await observationFromValidOutput({
-        operation: input,
-        specification,
-        inputSet: compiled.inputSet,
-        output: validatedOutput,
-        containmentDigest: checkpoint.containment.digest,
-        retirementDigest: checkpoint.retirement.digest,
-        observationDigest: checkpoint.observation.digest,
+        runnerDigest: input.runtime.image.runnerContractDigest,
+        requestContainment: deadlineReached,
       });
-  return Object.freeze({ observation, specification, inputSet: compiled.inputSet });
+      const checkpoint = advanced.retained.checkpoint;
+      if (advanced.validatedOutput !== null) validatedOutput = advanced.validatedOutput;
+      if (checkpoint.output !== null) break;
+      if (pollMilliseconds !== 0) {
+        await delay(pollMilliseconds);
+      }
+    }
+    let current = await host.read(specification);
+    if (current === null || current.checkpoint.output === null || current.checkpoint.containment === null ||
+        current.checkpoint.observation === null || current.checkpoint.handle === null) {
+      fail("recovery-bound", "Check Cell did not reach final contained output within its bounded recovery loop");
+    }
+    if (current.checkpoint.output.validation === "valid" && validatedOutput === null) {
+      validatedOutput = (await host.advance({
+        specification,
+        runnerDigest: input.runtime.image.runnerContractDigest,
+      })).validatedOutput;
+    }
+    current = await host.retire(specification);
+    const checkpoint = current.checkpoint;
+    if (checkpoint.retirement === null || checkpoint.handle === null || checkpoint.containment === null ||
+        checkpoint.output === null || checkpoint.observation === null) {
+      fail("retirement", "Check Cell did not retain exact Retirement facts");
+    }
+    input.runtime.reclamation.accept({
+      owner: Object.freeze({
+        storeId: input.store.identity.storeId,
+        processId: input.store.identity.processId,
+        activityId: input.activityId,
+        kind: "check",
+        subjectDigest: input.proofSubject.digest,
+      }),
+      specification,
+      handle: checkpoint.handle,
+      reclamationBinding: checkpoint.retirement.reclamationBinding,
+      obligation: checkpoint.retirement.reclamationObligation,
+      retirementDigest: checkpoint.retirement.digest,
+      dispatchAuthorityConsumed: checkpoint.retirement.dispatchAuthorityConsumed,
+    });
+    if (validatedOutput === null && checkpoint.output.validation === "valid") {
+      fail("output", "Validated Check output could not be reopened after Retirement");
+    }
+    const observation = validatedOutput === null
+      ? unavailableObservation({
+          operation: input,
+          specification,
+          inputSet: compiled.inputSet,
+          validation: checkpoint.output.validation as "invalid" | "unavailable" | "not-applicable",
+          containmentDigest: checkpoint.containment.digest,
+          retirementDigest: checkpoint.retirement.digest,
+          observationDigest: checkpoint.observation.digest,
+          manifestDigest: checkpoint.output.manifestDigest,
+        })
+      : await observationFromValidOutput({
+          operation: input,
+          specification,
+          inputSet: compiled.inputSet,
+          output: validatedOutput,
+          containmentDigest: checkpoint.containment.digest,
+          retirementDigest: checkpoint.retirement.digest,
+          observationDigest: checkpoint.observation.digest,
+        });
+    return Object.freeze({ observation, specification, inputSet: compiled.inputSet });
+  } finally {
+    // The Activity may reuse its child slot for another Check after this
+    // invocation returns. Recovery registers its retained exact checkpoint anew;
+    // completed Reclamation handoffs retain their independent immutable facts.
+    releaseBinding();
+  }
 }

@@ -22,6 +22,35 @@ import { openControlRecordStore, type ControlRecordStore } from "../../src/found
 import { CONTROL_RECORD_STORE_SCHEMA } from "../../src/foundation/control/types.js";
 import { selfDigest, sha256Bytes } from "../../src/foundation/validation/canonical.js";
 
+test("Delivery labels select the initial Director Brief profile independently of later direction ordering", () => {
+  const initial = { payload: { inputProfile: "delivery.prepare" }, semanticMarkdown: "# Objective\n\nMake nil error classification safe.\n" };
+  const direction = { payload: { inputProfile: "delivery.continue" }, semanticMarkdown: "# Direction\n\nCorrect the current implementation.\n" };
+  for (const revisions of [[initial, direction], [direction, initial]]) {
+    const store = { identity: { processId: "delivery-label" }, listCurrentRevisions: () => revisions } as unknown as ControlRecordStore;
+    assert.equal(deliveryLabel(store), "Make nil error classification safe.");
+  }
+  const noInitialBrief = { identity: { processId: "delivery-label" }, listCurrentRevisions: () => [direction] } as unknown as ControlRecordStore;
+  assert.equal(deliveryLabel(noInitialBrief), "Delivery delivery-label", "a later direction cannot substitute for absent initial intent");
+});
+
+test("Delivery labels prefer an authored opening title without adopting later section headings", () => {
+  const cases = [
+    ["# Preserve failure classification across joined errors\n\nDevelop the smallest change to the error classifier.\n", "Preserve failure classification across joined errors"],
+    ["\n# Preserve Go error identity\n\nKeep wrapped errors inspectable.\n", "Preserve Go error identity"],
+    ["# Objective\n\nKeep nil error classification safe.\n\n## Implementation\n\nUpdate the classifier.\n", "Keep nil error classification safe."],
+    ["Keep nil error classification safe.\n\n# Implementation details\n", "Keep nil error classification safe."],
+    ["# Director Brief\n\n## Scope\n\nKeep nil error classification safe.\n", "Keep nil error classification safe."],
+    ["# Objective\n\n## Implementation\n", "Delivery delivery-label"],
+    [`# ${"A".repeat(200)}\n\nKeep the complete Brief available.\n`, "A".repeat(160)],
+  ] as const;
+  for (const [semanticMarkdown, expected] of cases) {
+    const brief = { payload: { inputProfile: "delivery.prepare" }, semanticMarkdown };
+    const store = { identity: { processId: "delivery-label" }, listCurrentRevisions: () => [brief] } as unknown as ControlRecordStore;
+    assert.equal(deliveryLabel(store), expected, semanticMarkdown);
+    assert.equal(brief.semanticMarkdown, semanticMarkdown, "a navigation label cannot rewrite the retained Brief");
+  }
+});
+
 test("derives bounded public inspection and Markdown export from one exact Store", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "lifecycle-control-inspection-"));
   try {
@@ -49,17 +78,18 @@ test("derives bounded public inspection and Markdown export from one exact Store
     });
     const briefInput = Object.freeze({
       recordId: "brief-inspection",
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision: 1,
       producer: Object.freeze({ kind: "runtime" as const, id: "foundation-runtime" }),
-      semanticAuthor: Object.freeze({ kind: "founder" as const, id: "founder-inspection" }),
-      semanticAuthority: "founder-supplied" as const,
+      semanticAuthor: Object.freeze({ kind: "director" as const, id: "director-inspection" }),
+      semanticAuthority: "director-supplied" as const,
       createdAt: "2026-08-29T08:00:01.000Z",
       semanticMarkdown: "# Objective\n\nInspect one exact Delivery.\n",
       payload: Object.freeze({
-        schema: "lifecycle.founder-brief-payload.v1",
+        schema: "lifecycle.director-brief-payload.v2",
+        scope: { kind: "activity", activityId: "activity-inspection" },
         inputProfile: "delivery.prepare",
-        templateProfileId: "founder-brief.prepare-v1",
+        templateProfileId: "director-brief.prepare-v1",
         semanticMarkdownDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
         submission: Object.freeze({
           rawDigest: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
@@ -72,8 +102,8 @@ test("derives bounded public inspection and Markdown export from one exact Store
     store.append({
       revision: briefInput,
       event: {
-        eventId: "event-founder-brief-inspection",
-        eventKind: "founder-brief-submitted",
+        eventId: "event-director-brief-inspection",
+        eventKind: "director-brief-submitted",
         occurredAt: briefInput.createdAt,
         actor: { kind: "runtime", id: "foundation-runtime" },
         subject: { recordId: brief.recordId, revision: brief.revision, digest: brief.digest },
@@ -84,7 +114,7 @@ test("derives bounded public inspection and Markdown export from one exact Store
     const physical = Object.freeze({ disposition: "active" as const, archiveManifestDigest: null });
     assert.equal(deliveryLabel(store), "Inspect one exact Delivery.");
     const state = publicDeliveryState(store, physical);
-    assert.equal(state.schema, "lifecycle.delivery-reduction.v2");
+    assert.equal(state.schema, "lifecycle.delivery-reduction.v5");
     assert.equal(state.storeId, identity.storeId);
     assert.equal(state.journal.eventCount, 2);
     assert.deepEqual(state.eligibleOperations, ["delivery.prepare"]);
@@ -117,7 +147,7 @@ test("derives bounded public inspection and Markdown export from one exact Store
     const record = inspectDeliveryControl(store, physical, {
       kind: "record",
       reference: {
-        kind: "founder-brief",
+        kind: "director-brief",
         id: brief.recordId,
         revision: brief.revision,
         digest: brief.digest,
@@ -131,7 +161,7 @@ test("derives bounded public inspection and Markdown export from one exact Store
       selection: {
         kind: "record",
         reference: {
-          kind: "founder-brief",
+          kind: "director-brief",
           id: brief.recordId,
           revision: brief.revision,
           digest: brief.digest,
@@ -192,6 +222,7 @@ test("public and Inbox read models expose an archived no-ship Candidate as aband
     candidateCondition: "abandoned" as const,
     activities: Object.freeze([]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: null,
       candidate,
@@ -200,6 +231,7 @@ test("public and Inbox read models expose an archived no-ship Candidate as aband
       evidence: null,
       closure,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: 1, headDigest: journalDigest }),
     eligibleOperations: Object.freeze([]),
   });
@@ -221,6 +253,7 @@ test("public and Inbox read models expose an archived no-ship Candidate as aband
     }),
     state: () => state,
     getSeal: () => seal,
+    getWorkDelegationStopRequest: () => null,
     getRevision: () => null,
     listCurrentRevisions: () => Object.freeze([]),
     listEvents: () => Object.freeze([]),
@@ -294,11 +327,11 @@ test("Control family and revision pages stay byte-bounded around large semantic 
   const largeRevision = (recordId: string, revision: number, marker: string) =>
     compileControlRecordRevision(identity.processId, {
       recordId,
-      recordKind: "founder-brief",
+      recordKind: "director-brief",
       revision,
       producer: { kind: "runtime", id: "foundation-runtime" },
-      semanticAuthor: { kind: "founder", id: "founder-inspection" },
-      semanticAuthority: "founder-supplied",
+      semanticAuthor: { kind: "director", id: "director-inspection" },
+      semanticAuthority: "director-supplied",
       createdAt: `2026-08-29T08:00:0${revision}.000Z`,
       semanticMarkdown: marker.repeat(900 * 1024),
       payload: { padding: marker.repeat(700 * 1024) },
@@ -345,7 +378,7 @@ test("Control family and revision pages stay byte-bounded around large semantic 
 
   const familyFirst = inspectDeliveryControl(fakeStore, physical, {
     kind: "family",
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     afterRecordId: null,
     limit: 200,
   }, context);
@@ -354,7 +387,7 @@ test("Control family and revision pages stay byte-bounded around large semantic 
   assert.equal(familyFirst.nextAfterRecordId, first.recordId);
   const familySecond = inspectDeliveryControl(fakeStore, physical, {
     kind: "family",
-    recordKind: "founder-brief",
+    recordKind: "director-brief",
     afterRecordId: familyFirst.nextAfterRecordId,
     limit: 200,
   }, context);

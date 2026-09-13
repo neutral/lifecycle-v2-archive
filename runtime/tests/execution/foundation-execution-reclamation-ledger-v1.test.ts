@@ -32,6 +32,7 @@ import {
   digest,
   executionContractFixture,
 } from "../support/execution-contract-fixture.js";
+import { FOUNDATION_RECLAMATION_LAYOUT1_SQL } from "../support/reclamation-ledger-physical-layout1.js";
 
 class TestClock implements FoundationExecutionReclamationLedgerClockV1 {
   #milliseconds: number;
@@ -89,11 +90,13 @@ function handoff(
     retirementCheckpointDigest?: ReturnType<typeof digest>;
     dispatchAuthorityConsumed?: boolean;
     activityId?: string;
+    runnerArgumentsSalt?: string;
+    check?: Readonly<{ selectionId: string; phase: "baseline" | "final"; subjectDigest: ReturnType<typeof digest> }>;
   }> = {},
 ): FoundationExecutionReclamationHandoffInputV1 {
   const fixture = executionContractFixture(salt);
   const { digest: _fixtureDigest, ...fixtureSubject } = fixture.specification;
-  const specificationSubject = input.activityId === undefined
+  const selectedSubject = input.activityId === undefined
     ? fixtureSubject
     : Object.freeze({
         ...fixtureSubject,
@@ -102,6 +105,39 @@ function handoff(
           activityId: input.activityId,
         }),
       });
+  const outputContract = input.check === undefined ? selectedSubject.outputContract : (() => {
+    const { digest: _digest, ...subject } = selectedSubject.outputContract;
+    const checkOutput = { ...subject, declaredOutputRoots: subject.declaredOutputRoots.map((entry) => ({
+      ...entry, purpose: "check-proof" as const,
+    })) };
+    return { ...checkOutput, digest: selfDigest(checkOutput) };
+  })();
+  const specificationSubject = input.check === undefined ? {
+    ...selectedSubject,
+    runner: input.runnerArgumentsSalt === undefined ? selectedSubject.runner : {
+      ...selectedSubject.runner, argumentsDigest: digest(input.runnerArgumentsSalt),
+    },
+  } : Object.freeze({
+    ...selectedSubject,
+    outputContract,
+    owner: Object.freeze({
+      kind: "check" as const,
+      activityId: selectedSubject.owner.activityId,
+      selectionId: input.check.selectionId,
+      phase: input.check.phase,
+      ownerSubjectDigest: input.check.subjectDigest,
+    }),
+    operation: Object.freeze({
+      kind: "check" as const,
+      phase: input.check.phase,
+      selectionId: input.check.selectionId,
+      definitionDigest: digest(`definition-${salt}`),
+      bindingDigest: digest(`binding-${salt}`),
+      runnerImplementationDigest: digest("check-runner"),
+      parserImplementationDigest: digest("check-parser"),
+    }),
+    runner: Object.freeze({ ...selectedSubject.runner, operationId: "check.execute" }),
+  });
   const specification = parseFoundationExecutionSpecification({
     value: Object.freeze({
       ...specificationSubject,
@@ -111,7 +147,6 @@ function handoff(
     image: fixture.image,
     inputSet: fixture.inputSet,
   });
-  assert.equal(specification.owner.kind, "agent-attempt");
   const selectedHandle = handle(handleValue);
   const dispatchAuthorityConsumed = input.dispatchAuthorityConsumed ?? true;
   const retirementCheckpointDigest = input.retirementCheckpointDigest ??
@@ -128,8 +163,9 @@ function handoff(
       storeId: input.storeId ?? `store.${salt}`,
       processId: input.processId ?? `delivery.${salt}`,
       activityId: specification.owner.activityId,
-      kind: "agent-attempt" as const,
-      subjectDigest: specification.owner.attempt.digest,
+      kind: specification.owner.kind,
+      subjectDigest: specification.owner.kind === "agent-attempt"
+        ? specification.owner.attempt.digest : specification.owner.ownerSubjectDigest,
     }),
     specification,
     handle: selectedHandle,
@@ -217,6 +253,151 @@ async function openLedger(input: Readonly<{
     create: input.create,
     clock: input.clock,
     createClaimToken: input.tokens,
+  });
+}
+
+const ledgerTables = ["ledger_metadata", "handoffs", "standings"] as const;
+type RetainedSqlRow = Record<string, string | number | null>;
+
+function retainedDatabaseRows(database: string) {
+  const db = new DatabaseSync(database);
+  try {
+    return ledgerTables.map((table) => ({
+      table,
+      rows: db.prepare(`SELECT * FROM ${table} ORDER BY 1`).all() as RetainedSqlRow[],
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+/** Seed the frozen original Foundation layout with independently retained rows. */
+async function restoreOriginalPhysicalLayout(database: string): Promise<void> {
+  const tables = retainedDatabaseRows(database);
+  await rm(database);
+  await writeFile(database, "", { mode: 0o600 });
+  const db = new DatabaseSync(database);
+  try {
+    db.exec(FOUNDATION_RECLAMATION_LAYOUT1_SQL);
+    for (const { table, rows } of tables) {
+      for (const row of rows) {
+        db.prepare(`INSERT INTO ${table} (${Object.keys(row).join(",")}) VALUES (${Object.keys(row).map(() => "?").join(",")})`)
+          .run(...Object.values(row));
+      }
+    }
+  } finally {
+    db.close();
+  }
+}
+
+for (const phase of ["baseline", "final"] as const) {
+  test(`${phase} Checks sharing one proof subject retain distinct allocations through reopen and terminal reconciliation`, async (t) => {
+    const selectedRoot = await root(t);
+    const clock = new TestClock();
+    const tokens = claimTokens();
+    const owner = {
+      storeId: `store.checks-${phase}`,
+      processId: `delivery.checks-${phase}`,
+      activityId: `activity.checks-${phase}`,
+    };
+    const inputs = ["atlas", "regression"].map((selectionId, index) => handoff(
+      `${phase}-${selectionId}`, 200 + index, {
+        ...owner,
+        check: { selectionId, phase, subjectDigest: digest(`proof-${phase}`) },
+      },
+    ));
+    let ledger = await openLedger({ root: selectedRoot, clock, tokens, create: true });
+    const accepted = inputs.map((input) => ledger.accept(input));
+    assert.deepEqual(accepted[0]!.owner, accepted[1]!.owner);
+    assert.notEqual(accepted[0]!.specification.digest, accepted[1]!.specification.digest);
+    assert.notEqual(accepted[0]!.retirementDigest, accepted[1]!.retirementDigest);
+    ledger.close();
+    ledger = await openLedger({ root: selectedRoot, clock, tokens, create: false });
+    assert.deepEqual(inputs.map((input) => ledger.accept(input)), accepted);
+    const subjects = inputs.map(terminalSubject);
+    const selected = { ...owner, subjects, preIntentRefusals: [] };
+    const verification = ledger.verifyTerminalSubjects(selected);
+    assert.equal(verification.executionCount, 2);
+    assert.equal(verification.obligationCount, 2);
+    assert.throws(() => ledger.verifyTerminalSubjects({
+      ...selected,
+      subjects: [subjects[0]!, { ...subjects[1]!, retirementFactsDigest: subjects[0]!.retirementFactsDigest }],
+    }), code("terminal-subject-set"));
+    assert.throws(() => ledger.verifyTerminalSubjects({
+      ...selected,
+      subjects: [subjects[0]!, { ...subjects[1]!, owner: { ...subjects[1]!.owner, subjectDigest: digest("substituted-proof") } }],
+    }), code("terminal-subject-set"));
+    ledger.close();
+  });
+}
+
+test("the exact original Foundation index is repaired without changing retained pending, claimed, or reclaimed rows", async (t) => {
+  const selectedRoot = await root(t);
+  const clock = new TestClock();
+  const tokens = claimTokens();
+  let ledger = await openLedger({ root: selectedRoot, clock, tokens, create: true });
+  const owner = { storeId: "store.layout-repair", processId: "delivery.layout-repair", activityId: "activity.layout-repair" };
+  const check = { selectionId: "atlas", phase: "baseline" as const, subjectDigest: digest("layout-proof") };
+  const first = handoff("layout-check-one", 210, { ...owner, check });
+  ledger.accept(first);
+  ledger.accept(handoff("layout-claimed", 211));
+  ledger.accept(handoff("layout-pending", 212));
+  const reclaimed = ledger.claimNext()!;
+  ledger.completeClaim({ claim: reclaimed, observation: observation(reclaimed.handoff, clock.now(), "reclaimed") });
+  const retainedClaim = ledger.claimNext()!;
+  const before = ledger.list();
+  assert.deepEqual(before.map((entry) => entry.standing.state).sort(), ["claimed", "pending", "reclaimed"]);
+  const database = ledger.paths.database;
+  ledger.close();
+  await restoreOriginalPhysicalLayout(database);
+  const exactRows = retainedDatabaseRows(database);
+
+  ledger = await openLedger({ root: selectedRoot, clock, tokens, create: false });
+  assert.deepEqual(ledger.list(), before);
+  assert.deepEqual(retainedDatabaseRows(database), exactRows, "all SQL row values survive the index correction exactly");
+  const db = new DatabaseSync(database);
+  assert.equal(db.prepare("PRAGMA user_version").get()!.user_version, 2);
+  db.close();
+  assert.equal(ledger.completeClaim({
+    claim: retainedClaim,
+    observation: observation(retainedClaim.handoff, clock.now(), "reclaimed"),
+  }).state, "reclaimed", "an exact pre-repair claim remains usable");
+  const second = handoff("layout-check-two", 213, { ...owner, check: { ...check, selectionId: "regression" } });
+  ledger.accept(second);
+  const terminalInput = { ...owner, subjects: [terminalSubject(first, 20), terminalSubject(second, 21)], preIntentRefusals: [] };
+  const verified = ledger.verifyTerminalSubjects(terminalInput);
+  assert.equal(verified.obligationCount, 2);
+  const after = ledger.list();
+  ledger.close();
+  ledger = await openLedger({ root: selectedRoot, clock, tokens, create: false });
+  assert.deepEqual(ledger.list(), after);
+  assert.deepEqual(ledger.verifyTerminalSubjects(terminalInput), verified);
+  ledger.close();
+});
+
+for (const fault of ["schema", "row", "installation"] as const) {
+  test(`original Foundation index repair refuses ${fault} substitution before changing its layout`, async (t) => {
+    const selectedRoot = await root(t);
+    const clock = new TestClock();
+    const tokens = claimTokens();
+    const ledger = await openLedger({ root: selectedRoot, clock, tokens, create: true });
+    ledger.accept(handoff(`repair-refusal-${fault}`, 220));
+    const database = ledger.paths.database;
+    ledger.close();
+    await restoreOriginalPhysicalLayout(database);
+    const db = new DatabaseSync(database);
+    if (fault === "schema") db.exec("CREATE TABLE foreign_layout (value TEXT) STRICT");
+    if (fault === "row") db.exec("UPDATE standings SET standing_digest = 'substituted'");
+    db.close();
+    const before = retainedDatabaseRows(database);
+    await assert.rejects(openLedger({
+      root: selectedRoot, clock, tokens, create: false,
+      ...(fault === "installation" ? { installationId: "installation.other" } : {}),
+    }), code(fault === "schema" ? "database-schema" : fault === "row" ? "standing-integrity" : "metadata"));
+    const refused = new DatabaseSync(database);
+    assert.equal(refused.prepare("PRAGMA user_version").get()!.user_version, 1);
+    refused.close();
+    assert.deepEqual(retainedDatabaseRows(database), before);
   });
 }
 
@@ -346,6 +527,14 @@ test("handoff replay and uniqueness refuse owner, Handle, Specification, and Ret
     retirementDigest: input.retirementDigest,
   });
   assert.throws(() => ledger.accept(other), code("handoff-duplicate"));
+  const sameAgentOtherSpecification = handoff("substitution", 230, {
+    runnerArgumentsSalt: "distinct-specification-same-agent",
+    retirementDigest: digest("distinct-retirement-same-agent"),
+    retirementCheckpointDigest: digest("distinct-checkpoint-same-agent"),
+  });
+  assert.notEqual(sameAgentOtherSpecification.specification.digest, input.specification.digest);
+  assert.deepEqual(sameAgentOtherSpecification.owner, input.owner);
+  assert.throws(() => ledger.accept(sameAgentOtherSpecification), code("handoff-duplicate"));
   ledger.close();
 });
 
@@ -764,6 +953,39 @@ test("runNext invokes physical Reclamation after releasing the SQLite write tran
   });
   assert.equal(result?.standing.state, "reclaimed");
   ledger.close();
+});
+
+test("compatible selection skips the oldest handoff and preserves exclusive claims and retry backoff", async t => {
+  const selectedRoot = await root(t);
+  const clock = new TestClock();
+  const ledger = await openLedger({ root: selectedRoot, clock, tokens: claimTokens(), create: true });
+  const other = await openLedger({ root: selectedRoot, clock, tokens: claimTokens(), create: false });
+  try {
+    const incompatible = handoff("incompatible-oldest", 400);
+    ledger.accept(incompatible);
+    const original = ledger.list()[0];
+    clock.advance(1);
+    const compatible = handoff("compatible-later", 401);
+    ledger.accept(compatible);
+    const eligible = (retained: typeof compatible) => retained.specification.image.imageDigest === compatible.specification.image.imageDigest;
+    let effects = 0;
+    const result = await ledger.runNext({ eligible,
+      async reclaim(retained) {
+        effects += 1;
+        assert.equal(other.claimNext(5_000, eligible), null);
+        const probe = new DatabaseSync(ledger.paths.database, { timeout: 0 });
+        try { probe.exec("BEGIN IMMEDIATE; ROLLBACK;"); } finally { probe.close(); }
+        return observation(retained, clock.now(), "remaining");
+      },
+    });
+    assert.equal(result?.standing.state, "pending");
+    assert.notEqual(result?.standing.nextAttemptAt, null);
+    assert.equal(other.claimNext(5_000, eligible), null);
+    assert.deepEqual(ledger.list().find(row => row.obligationDigest === incompatible.obligation.digest), original);
+    assert.equal(effects, 1);
+    clock.advance(Date.parse(result!.standing.nextAttemptAt!) - Date.parse(clock.now()));
+    assert.equal(other.claimNext(5_000, eligible)?.handoff.obligation.digest, compatible.obligation.digest);
+  } finally { other.close(); ledger.close(); }
 });
 
 test("the fixed private outstanding ceiling refuses before allocation and reclaimed rows release backpressure", async (t) => {

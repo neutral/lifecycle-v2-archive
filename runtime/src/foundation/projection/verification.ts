@@ -1,9 +1,11 @@
 import { FoundationError } from "../error.js";
+import { knowledgeOccurrenceItemId } from "../knowledge/identity.js";
 import { canonicalJson, digestCanonical, selfDigest, sha256Bytes, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import { assertFoundationSchema } from "../validation/schema-engine.js";
 import { decodeInventoryBytes } from "./content.js";
 import { FOUNDATION_PROJECTION_REACHABLE_CATEGORIES } from "./orientation.js";
+import { parseOrientationObjective } from "./orientation-objective.js";
 import type {
   FoundationCompiledProjection,
   FoundationExecutionProjectionSubject,
@@ -19,6 +21,7 @@ const KNOWLEDGE_KIND_ORDER = new Map([
   ["blueprint", 2],
   ["description", 3],
   ["check", 4],
+  ["discipline", 5],
 ]);
 const REACHABLE_CATEGORY_ORDER = new Map(FOUNDATION_PROJECTION_REACHABLE_CATEGORIES.map((category, index) => [category, index]));
 
@@ -98,8 +101,8 @@ function inventoryIndex(inventory: readonly FoundationProjectionByteInventoryEnt
 }
 
 export function verifyCompiledProjection(compiled: FoundationCompiledProjection): void {
-  assertFoundationSchema("urn:lifecycle:schema:knowledge-projection:v4", compiled.manifest, "knowledge-projection");
-  if (compiled.manifest.schema !== "lifecycle.knowledge-projection.v4") {
+  assertFoundationSchema("urn:lifecycle:schema:knowledge-projection:v6", compiled.manifest, "knowledge-projection");
+  if (compiled.manifest.schema !== "lifecycle.knowledge-projection.v6") {
     throw new FoundationError("lifecycle.projection.content-digest", "Projection manifest schema is invalid");
   }
   if (selfDigest(compiled.manifest as unknown as Record<string, unknown>) !== compiled.manifest.digest) {
@@ -131,7 +134,23 @@ export function verifyCompiledProjection(compiled: FoundationCompiledProjection)
     throw new FoundationError("lifecycle.projection.basis-mismatch", "Execution Projection lacks or contradicts its exact Snapshot, Knowledge Set, Work Boundary, request, or execution role");
   }
   if (compiled.manifest.core.class === "execution") {
-    assertProjectionPropositionOrder(compiled.manifest.core.propositions);
+    const core = compiled.manifest.core;
+    assertProjectionPropositionOrder(core.propositions);
+    assertStrictlyOrdered(core.disciplines.workTypeIds, (id) => id, "Execution Discipline work types");
+    assertStrictlyOrdered(core.disciplines.records, (record) => record.id, "Execution Discipline records");
+    for (const record of core.disciplines.records) {
+      const admittedItemId = knowledgeOccurrenceItemId({ basis: "base", ...record });
+      const selected = compiled.manifest.mandatory.filter((item) =>
+        item.id === admittedItemId && item.sourceIdentity === record.id && item.kind === "discipline" &&
+        item.revision === record.revision && item.sourceDigest === record.sourceDigest &&
+        item.semanticDigest === record.semanticDigest && item.locator === record.path);
+      if (selected.length !== 1 || selected[0]!.authority !== "discipline-guidance") {
+        throw new FoundationError(
+          "lifecycle.projection.discipline-invalid",
+          `Selected Discipline ${record.id} is not bound to one exact admitted advisory occurrence`,
+        );
+      }
+    }
   }
   if (compiled.manifest.profile !== compiled.manifest.omission.profile ||
       compiled.manifest.profileDigest !== compiled.manifest.omission.profileDigest ||
@@ -141,6 +160,14 @@ export function verifyCompiledProjection(compiled: FoundationCompiledProjection)
         digest: compiled.manifest.profileDigest,
       }) !== compiled.manifest.profileDigest) {
     throw new FoundationError("lifecycle.projection.profile-mismatch", "Projection profile identity, self-digest, bounds, and omission manifest disagree");
+  }
+  for (const item of compiled.manifest.mandatory) {
+    if (item.kind === "discipline" && item.authority !== "discipline-guidance") {
+      throw new FoundationError(
+        "lifecycle.projection.discipline-invalid",
+        `Discipline ${item.sourceIdentity} must retain advisory guidance authority in every Projection`,
+      );
+    }
   }
   const inventory = inventoryIndex(compiled.inventory);
   const tierTwo = [
@@ -212,7 +239,9 @@ export function verifyCompiledProjection(compiled: FoundationCompiledProjection)
     `${String(REACHABLE_CATEGORY_ORDER.get(item.category) ?? 99).padStart(2, "0")}\0${item.id}\0${item.handle}`, "Projection reachable items");
   if (compiled.manifest.core.class === "orientation") {
     const core = compiled.manifest.core;
+    parseOrientationObjective(core.objective);
     assertIndexDigest(core.knowledgeIndex, "Orientation Knowledge index");
+    assertIndexDigest(core.disciplineIndex, "Orientation Discipline index");
     assertIndexDigest(core.coverageIndex, "Orientation coverage index");
     assertIndexDigest(core.bindingIndex, "Orientation Binding index");
     assertIndexDigest(core.capabilityIndex, "Orientation Capability index");
@@ -220,6 +249,7 @@ export function verifyCompiledProjection(compiled: FoundationCompiledProjection)
     assertIndexDigest(core.retrievalIndex, "Orientation retrieval index");
     if (digestCanonical({
       knowledgeIndexDigest: core.knowledgeIndex.digest,
+      disciplineIndexDigest: core.disciplineIndex.digest,
       coverageIndexDigest: core.coverageIndex.digest,
       bindingIndexDigest: core.bindingIndex.digest,
       capabilityIndexDigest: core.capabilityIndex.digest,

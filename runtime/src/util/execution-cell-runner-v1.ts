@@ -2,15 +2,18 @@
 
 import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { createReadStream } from "node:fs";
-import { connect, createServer, isIP, type Socket } from "node:net";
+import { constants as fsConstants, createReadStream } from "node:fs";
+import { connect, createServer, isIP, type Server, type Socket } from "node:net";
 import {
+  access,
   chmod,
   lstat,
   mkdir,
   mkdtemp,
   opendir,
+  open,
   readFile,
+  realpath,
   rename,
   rmdir,
   rm,
@@ -31,11 +34,13 @@ type Sha256 = `sha256:${string}`;
 const SPECIFICATION_SCHEMA = "lifecycle.execution-specification.v1";
 const OUTPUT_MANIFEST_SCHEMA = "lifecycle.execution-output-manifest.v1";
 const RUNNER_CONTRACT = "lifecycle.execution-cell-runner.v1";
-const INPUT_SET_SCHEMA = "lifecycle.execution-input-set.v1";
+const INPUT_SET_SCHEMA = "lifecycle.execution-input-set.v2";
 const INPUT_SET_PATH = ".lifecycle/input-set.json";
 const CHECK_BINDING_PATH = "check/binding.json";
 const CARRIER_MANIFEST_PATH = "candidate/carrier-manifest.json";
 const CARRIER_ARTIFACT_PATH = "candidate/carrier.pack";
+const GIT_CONTEXT_PATH = "candidate/git-context.json";
+const GIT_CONTEXT_ARTIFACT_PATH = "candidate/git-context.pack";
 const PRODUCT_BASE_SUBJECT_PATH = "product-base/subject.json";
 const PRODUCT_BASE_MANIFEST_PATH = "product-base/object-closure.json";
 const PRODUCT_BASE_ARTIFACT_PATH = "product-base/object-closure.pack";
@@ -44,21 +49,29 @@ const PROOF_PATH = "check-proof/result.json";
 const RAW_STREAMS_PATH = "raw-check-output/streams.json";
 const ROLE_BRIEF_PATH = "role-brief.md";
 const SEMANTIC_TEMPLATE_PATH = "semantic/template.md";
+const SEMANTIC_BASIS_PATH = "semantic-basis.json";
+const MAXIMUM_SEMANTIC_BASIS_BYTES = 8 * 1024 * 1024;
 // Fixed transport paths belong to the shared runner contract. Keeping them
 // here prevents a Check-only Execution Image from loading Agent owner code.
 const AGENT_SEMANTIC_OUTPUT_PATH = "agent-work-product/semantic.md";
 const AGENT_PROVIDER_RESULT_PATH = "provider-result/result.json";
+const AGENT_PROVIDER_FAILURE_PATH = "provider-result/failure.json";
 const AGENT_PROVIDER_TERMINAL_OBSERVATION_PATH = "provider-terminal/observation.json";
 const RUNNER_EXECUTABLE = "/opt/lifecycle/bin/execution-cell-runner";
 const CODEX_EXECUTABLE = "/opt/lifecycle/bin/codex";
 const PROVIDER_SUPPORT_ROOT = "/tmp/.lifecycle-provider-support";
 const PROVIDER_SUPPORT_PATH = `${PROVIDER_SUPPORT_ROOT}/support.json`;
 const PROVIDER_AUTH_PATH = `${PROVIDER_SUPPORT_ROOT}/auth.json`;
-const PROVIDER_CODEX_HOME = "/tmp/lifecycle-codex-home";
+// This is a durable private volume beneath the normal temporary hierarchy.
+// Codex then uses its immutable executable instead of private-home arg0 aliases.
+const PROVIDER_STATE_ROOT = "/tmp/lifecycle-provider-state";
+const PROVIDER_CODEX_HOME = `${PROVIDER_STATE_ROOT}/home`;
+const PROVIDER_CREDENTIAL_FRAME_MAGIC = Buffer.from("LCPCRV1\0", "binary");
 const PROVIDER_VISIBLE_INPUT_ROOT = "/tmp/lifecycle-provider-input";
 const MAXIMUM_PROVIDER_SUPPORT_BYTES = 64 * 1024;
 const MAXIMUM_PROVIDER_AUTH_BYTES = 4 * 1024 * 1024;
 const MAXIMUM_PROVIDER_EVENT_BYTES = 8 * 1024 * 1024;
+const MAXIMUM_PROVIDER_FAILURE_BYTES = 16 * 1024;
 const MAXIMUM_PROVIDER_EXECUTABLE_BYTES = 512 * 1024 * 1024;
 // A denied write to a provider-visible read-only mount is reported as EROFS
 // by the Linux sandbox rather than as a discretionary-permission failure.
@@ -81,10 +94,12 @@ const PROVIDER_CONTROL_ALLOWED_DESTINATIONS = Object.freeze([
 const MAXIMUM_PROVIDER_CONTROL_HEADER_BYTES = 8 * 1024;
 const MAXIMUM_PROVIDER_CONTROL_CONNECTIONS = 16;
 const MAXIMUM_CONTROL_BYTES = 4 * 1024 * 1024;
+const MAXIMUM_DELIVERY_GIT_CONTEXT_BYTES = 256 * 1024 * 1024;
 // Two base64 streams plus fixed JSON must remain below the 16 MiB raw-output root.
 const MAXIMUM_STREAM_BYTES = 4 * 1024 * 1024;
 const MAXIMUM_INPUT_ENTRIES = 16_384;
 const MAXIMUM_CANDIDATE_ENTRIES = 1_000_000;
+const MAXIMUM_CHECK_GIT_ENTRIES = 64;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 
 class ExecutionCellRunnerFailure extends Error {
@@ -533,7 +548,7 @@ function validateSpecification(specification: Record<string, Json>): void {
           purpose: "raw-provider-output",
           required: false,
           allowedModeClasses: Object.freeze(["regular"]),
-          maximumEntries: 1,
+          maximumEntries: 2,
         })],
         ["agent-work-product", Object.freeze({
           purpose: "agent-work-product",
@@ -617,6 +632,23 @@ function validateSpecification(specification: Record<string, Json>): void {
       terminal.reclamation !== "asynchronous-private") {
     fail("Execution Specification weakens the fixed terminal policy");
   }
+}
+
+const AGENT_CANDIDATE_SUBJECT_KINDS = [
+  "candidate-revision", "candidate-revision-carrier-manifest", "delivery-git-context",
+] as const;
+
+/** Initial reconnaissance has none; resolution may inspect one complete frozen Candidate. */
+export function foundationAgentCandidateInputPresentV1(input: Readonly<{
+  role: string;
+  subjects: readonly Record<string, Json>[];
+}>): boolean {
+  if (!["reconnaissance", "builder", "reviewer"].includes(input.role)) fail("Agent role is unsupported");
+  const counts = AGENT_CANDIDATE_SUBJECT_KINDS.map((kind) =>
+    input.subjects.filter((subject) => subject.kind === kind).length);
+  if (input.role === "reconnaissance" && counts.every((count) => count === 0)) return false;
+  if (counts.some((count) => count !== 1)) fail("Agent Input Set requires the complete exact Candidate, Carrier and Git context");
+  return true;
 }
 
 async function validateInputSet(
@@ -705,11 +737,14 @@ async function validateInputSet(
     if (selected?.length !== 1) fail(`Execution Input Set lacks one exact ${kind} subject`);
     return selected[0]!;
   };
+  const agentHasCandidate = agent && foundationAgentCandidateInputPresentV1({
+    role: text(operation.role, "Agent role"), subjects,
+  });
   if (agent) {
     const singletonKinds = [
       "projection",
       "role-subject",
-      "founder-direction",
+      "director-direction",
       "role-brief",
       "semantic-template",
       "capability-profile",
@@ -717,9 +752,7 @@ async function validateInputSet(
       "investment",
       "runner",
     ];
-    const candidateKinds = operation.role === "reconnaissance"
-      ? []
-      : ["candidate-revision", "candidate-revision-carrier-manifest"];
+    const candidateKinds = agentHasCandidate ? AGENT_CANDIDATE_SUBJECT_KINDS : [];
     const allowedKinds = new Set([...singletonKinds, ...candidateKinds, "policy"]);
     for (const kind of [...singletonKinds, ...candidateKinds]) singleton(kind);
     if ((byKind.get("policy")?.length ?? 0) < 1 ||
@@ -830,8 +863,14 @@ async function validateInputSet(
       modeClass: "regular",
       subjectKind: "semantic-template",
     });
-    const candidateRole = operation.role !== "reconnaissance";
-    if (candidateRole) {
+    exactAgentEntry({ path: SEMANTIC_BASIS_PATH, purpose: "operation-input", mediaType: "application/json", modeClass: "regular", subjectKind: "role-subject" });
+    if (entryByPath.get(SEMANTIC_BASIS_PATH)!.byteLength > MAXIMUM_SEMANTIC_BASIS_BYTES) {
+      fail("Semantic authoring basis exceeds its exact byte bound");
+    }
+    if (agentHasCandidate) {
+      for (const [path, mediaType] of [[GIT_CONTEXT_PATH, "application/json"], [GIT_CONTEXT_ARTIFACT_PATH, "application/octet-stream"]] as const) {
+        exactAgentEntry({ path, purpose: "operation-input", mediaType, modeClass: "regular", subjectKind: "delivery-git-context" });
+      }
       exactAgentEntry({
         path: CARRIER_MANIFEST_PATH,
         purpose: "operation-input",
@@ -846,7 +885,8 @@ async function validateInputSet(
         modeClass: "regular",
         subjectKind: "candidate-revision-carrier-manifest",
       });
-    } else if (entryByPath.has(CARRIER_MANIFEST_PATH) || entryByPath.has(CARRIER_ARTIFACT_PATH)) {
+    } else if ([CARRIER_MANIFEST_PATH, CARRIER_ARTIFACT_PATH, GIT_CONTEXT_PATH, GIT_CONTEXT_ARTIFACT_PATH]
+      .some((path) => entryByPath.has(path))) {
       fail("Reconnaissance Input Set contains Candidate transport members");
     }
   } else {
@@ -1018,6 +1058,46 @@ async function run(input: Readonly<{
   });
 }
 
+/** Resolve a Check selector before its sole productive process starts. */
+export async function resolveFoundationCheckExecutableV1(input: Readonly<{
+  binding: Record<string, Json>;
+  subjectRoot: string;
+}>): Promise<string> {
+  const executable = record(input.binding.executable, "Check executable");
+  exactKeys(executable, ["path", "relativeTo"], "Check executable");
+  const path = safeRelativePath(text(executable.path, "Check executable path"), "Check executable path");
+  if (executable.relativeTo !== "candidate" && executable.relativeTo !== "execution-image") {
+    fail("Check executable has an unsupported base");
+  }
+  const root = executable.relativeTo === "candidate" ? input.subjectRoot : "/";
+  const command = resolve(root, path);
+  if (!within(root, command)) fail("Check executable escaped its selected base");
+  const expectedDigest = exactDigest(input.binding.implementationDigest, "Check executable implementation digest");
+  try {
+    const before = await lstat(command);
+    if (!before.isFile() || before.isSymbolicLink() ||
+        (before.mode & 0o111) === 0 || !Number.isSafeInteger(before.size) ||
+        await realpath(command) !== command) {
+      fail("Check executable is not one canonical regular executable file");
+    }
+    await access(command, fsConstants.X_OK);
+    // The image is read-only and the subject has no Check writer yet. Observe
+    // the complete selected file and refuse any replacement during resolution.
+    const observed = await digestFile(command, before.size, "Check executable");
+    const after = await lstat(command);
+    if (after.dev !== before.dev || after.ino !== before.ino || after.mode !== before.mode ||
+        after.size !== before.size || after.mtimeMs !== before.mtimeMs ||
+        after.ctimeMs !== before.ctimeMs || await realpath(command) !== command) {
+      fail("Check executable changed while it was resolved");
+    }
+    if (observed.digest !== expectedDigest) fail("Check executable differs from its implementation digest");
+  } catch (error) {
+    if (error instanceof ExecutionCellRunnerFailure) throw error;
+    fail("Check executable is unavailable or not executable");
+  }
+  return command;
+}
+
 async function git(
   arguments_: readonly string[],
   cwd = "/",
@@ -1033,6 +1113,11 @@ async function git(
       LC_ALL: "C.UTF-8",
       PATH: "/usr/bin:/bin",
       TZ: "UTC",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_SYSTEM: "/dev/null",
+      GIT_NO_REPLACE_OBJECTS: "1",
+      GIT_NO_LAZY_FETCH: "1",
     }),
     timeoutMs: 120_000,
     maximumStdoutBytes,
@@ -1048,7 +1133,8 @@ function validateObjectInventory(
   manifest: Record<string, Json>,
   objectFormat: "sha1" | "sha256",
   maximumBytes: number,
-): readonly Readonly<{ objectId: string; objectType: "blob" | "tree"; byteLength: number }>[] {
+  history = false,
+): readonly Readonly<{ objectId: string; objectType: "blob" | "tree" | "commit"; byteLength: number }>[] {
   if (!Array.isArray(manifest.objectInventory)) fail("Check subject object inventory is invalid");
   const oid = new RegExp(objectFormat === "sha1" ? "^[a-f0-9]{40}$" : "^[a-f0-9]{64}$", "u");
   let aggregate = 0;
@@ -1059,7 +1145,7 @@ function validateObjectInventory(
     const objectId = text(entry.objectId, `Check subject object ${index} identity`);
     const objectType = entry.objectType;
     const byteLength = integer(entry.byteLength, `Check subject object ${index} length`);
-    if (!oid.test(objectId) || !(objectType === "blob" || objectType === "tree") ||
+    if (!oid.test(objectId) || !(objectType === "blob" || objectType === "tree" || history && objectType === "commit") ||
         previous !== null && previous >= objectId) {
       fail("Check subject object inventory is not exact and strictly ordered");
     }
@@ -1085,7 +1171,11 @@ async function materializeCheckSubject(
   phase: "baseline" | "final",
   proofSubjectDigest: string,
   destinationRoot?: string,
-): Promise<string> {
+): Promise<Readonly<{
+  subjectRoot: string;
+  repository: string;
+  pack: Readonly<{ byteLength: number; digest: Sha256 }>;
+}>> {
   const baseline = phase === "baseline";
   const manifestPath = baseline ? PRODUCT_BASE_MANIFEST_PATH : CARRIER_MANIFEST_PATH;
   const artifactPath = baseline ? PRODUCT_BASE_ARTIFACT_PATH : CARRIER_ARTIFACT_PATH;
@@ -1168,7 +1258,7 @@ async function materializeCheckSubject(
   await mkdir(subjectRoot, { recursive: false, mode: 0o700 });
   await mkdir(join(repository, "objects", "pack"), { recursive: true, mode: 0o700 });
   await mkdir("/tmp/lifecycle-home", { recursive: true, mode: 0o700 });
-  await git(["init", "--bare", `--object-format=${objectFormat}`, repository]);
+  await git(["init", "--bare", "--template=", `--object-format=${objectFormat}`, repository]);
   const pack = await readFile(join(inputRoot, artifactPath));
   if (pack.byteLength !== observedPack.byteLength || sha256(pack) !== observedPack.digest) {
     fail("Check subject object-closure artifact differs from its manifest");
@@ -1201,8 +1291,88 @@ async function materializeCheckSubject(
   }
   await git(["--git-dir", repository, "fsck", "--strict", "--full", "--no-reflogs", rootTree]);
   await git(["--git-dir", repository, `--work-tree=${subjectRoot}`, "read-tree", rootTree]);
-  await git(["--git-dir", repository, `--work-tree=${subjectRoot}`, "checkout-index", "--all", "--force"]);
-  return subjectRoot;
+  await git(["--git-dir", repository, `--work-tree=${subjectRoot}`, "checkout-index", "--all", "--force", "--index"]);
+  return Object.freeze({ subjectRoot, repository, pack: observedPack });
+}
+
+/** Exact immutable history input; never a source repository mount or alternate. */
+export async function materializeFoundationAgentGitContextV1(input: Readonly<{
+  inputRoot: string; repository: string; maximumBytes: number; inputSet: Record<string, Json>;
+}>): Promise<void> {
+  const context = await boundedJson(join(input.inputRoot, GIT_CONTEXT_PATH), "Delivery Git context", Math.min(MAXIMUM_DELIVERY_GIT_CONTEXT_BYTES, input.maximumBytes));
+  exactKeys(context, ["schema", "identity", "candidate", "branch", "tipCommit", "rootTree", "objectFormat", "objectInventory", "objectCount", "aggregateObjectBytes", "objectInventoryDigest", "artifact", "digest"], "Delivery Git context");
+  const identity = record(context.identity, "Delivery Git identity");
+  exactKeys(identity, ["targetId", "storeId", "processId"], "Delivery Git identity");
+  const candidate = record(context.candidate, "Delivery Git Candidate");
+  exactKeys(candidate, ["recordId", "revision", "digest"], "Delivery Git Candidate");
+  const subjects = input.inputSet.subjects;
+  if (!Array.isArray(subjects)) fail("Delivery Git context lacks exact Input Set subjects");
+  const selected = subjects.map((item) => record(item, "Input Set subject"));
+  const candidateSubjects = selected.filter(({ kind }) => kind === "candidate-revision");
+  const contextSubjects = selected.filter(({ kind }) => kind === "delivery-git-context");
+  const contextBytes = await readFile(join(input.inputRoot, GIT_CONTEXT_PATH));
+  if (candidateSubjects.length !== 1 || contextSubjects.length !== 1 ||
+      contextSubjects[0]!.digest !== sha256(contextBytes) ||
+      candidate.recordId !== candidateSubjects[0]!.id || candidate.revision !== candidateSubjects[0]!.revision || candidate.digest !== candidateSubjects[0]!.digest ||
+      context.schema !== "lifecycle.delivery-git-context.private.v1" || context.digest !== selfDigest(context) ||
+      context.branch !== `refs/heads/lifecycle/delivery/${sha256(canonical(identity)).slice(7)}` ||
+      Object.values(identity).some((id) => typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/u.test(id)) ||
+      !(context.objectFormat === "sha1" || context.objectFormat === "sha256")) fail("Delivery Git context differs from its exact Candidate and Delivery");
+  const oid = new RegExp(context.objectFormat === "sha1" ? "^[a-f0-9]{40}$" : "^[a-f0-9]{64}$", "u");
+  const tip = text(context.tipCommit, "Delivery Git tip");
+  const rootTree = text(context.rootTree, "Delivery Git tree");
+  if (!oid.test(tip) || !oid.test(rootTree)) fail("Delivery Git context requires full object identities");
+  const carrier = await boundedJson(join(input.inputRoot, CARRIER_MANIFEST_PATH), "Candidate Carrier manifest");
+  if (carrier.rootTree !== rootTree || carrier.objectFormat !== context.objectFormat) fail("Delivery Git context and exact Candidate Carrier select different trees");
+  const inventory = validateObjectInventory(context, context.objectFormat, input.maximumBytes, true);
+  if (inventory.length > MAXIMUM_CANDIDATE_ENTRIES) fail("Delivery Git history exceeds its object bound");
+  const artifact = record(context.artifact, "Delivery Git context artifact");
+  exactKeys(artifact, ["format", "digest", "byteLength"], "Delivery Git context artifact");
+  const pack = await digestFile(join(input.inputRoot, GIT_CONTEXT_ARTIFACT_PATH), input.maximumBytes, "Delivery Git context artifact");
+  if (artifact.format !== "git-pack-v2" || artifact.byteLength !== pack.byteLength || artifact.digest !== pack.digest) fail("Delivery Git history pack differs from its exact manifest");
+  // The Carrier materializer has already refused authored .git content. This
+  // exclusively created local directory belongs to the fixed runner.
+  await mkdir(join(input.repository, ".git"), { recursive: false, mode: 0o700 });
+  await git(["init", "--template=", `--object-format=${context.objectFormat}`, "-b", text(context.branch, "Delivery branch").slice("refs/heads/".length), input.repository]);
+  const installed = join(input.repository, ".git", "objects", "pack", "history.pack");
+  const bytes = await readFile(join(input.inputRoot, GIT_CONTEXT_ARTIFACT_PATH));
+  if (bytes.byteLength !== pack.byteLength || sha256(bytes) !== pack.digest) fail("Delivery Git history changed during import");
+  await writeFile(installed, bytes, { flag: "wx", mode: 0o600 });
+  await git(["-c", "pack.writeReverseIndex=false", "index-pack", "--strict", installed], input.repository);
+  const rows = (await git(["cat-file", "--batch-all-objects", "--batch-check=%(objectname) %(objecttype) %(objectsize)"], input.repository, Math.min(256 * 1024 * 1024, inventory.length * 112 + 1))).trim().split("\n");
+  const observed = rows.map((row) => {
+    const match = /^([a-f0-9]+) (commit|tree|blob) ([0-9]+)$/u.exec(row);
+    if (match === null) fail("Delivery Git history inventory is invalid");
+    return { objectId: match[1]!, objectType: match[2]!, byteLength: Number(match[3]) };
+  }).sort((left, right) => left.objectId < right.objectId ? -1 : left.objectId > right.objectId ? 1 : 0);
+  if (canonical(observed) !== canonical(inventory)) fail("Delivery Git pack contains different or additional objects");
+  await git(["fsck", "--strict", "--full", "--no-reflogs", tip], input.repository);
+  const reached = (await git(["rev-list", "--objects", "--no-object-names", tip], input.repository, inventory.length * 65 + 1)).trim().split("\n").sort();
+  if (canonical(reached) !== canonical(inventory.map(({ objectId }) => objectId)) ||
+      (await git(["rev-parse", `${tip}^{tree}`], input.repository)).trim() !== rootTree) fail("Delivery Git history does not reproduce the complete exact selected tip");
+  await git(["update-ref", text(context.branch, "Delivery branch"), tip], input.repository);
+  await git(["reset", "--hard", tip], input.repository);
+}
+
+/** Reconstruct exact frozen input; only the builder's separate permission grants allow writes. */
+export async function materializeFoundationAgentCandidateInputV1(input: Readonly<{
+  role: string; inputRoot: string; workingRoot: string; maximumBytes: number; inputSet: Record<string, Json>;
+}>): Promise<string | null> {
+  if (!Array.isArray(input.inputSet.subjects)) fail("Agent Input Set lacks exact subjects");
+  const subjects = input.inputSet.subjects.map((subject) => record(subject, "Agent Input Set subject"));
+  if (!foundationAgentCandidateInputPresentV1({ role: input.role, subjects })) return null;
+  const manifest = subjects.find(({ kind }) => kind === "candidate-revision-carrier-manifest")!;
+  const observed = await digestFile(join(input.inputRoot, CARRIER_MANIFEST_PATH),
+    Math.min(MAXIMUM_CONTROL_BYTES, input.maximumBytes), "Candidate Carrier manifest");
+  if (observed.digest !== manifest.digest) fail("Candidate Carrier differs from its exact Input Set subject");
+  const candidateRoot = join(input.workingRoot, "candidate");
+  await materializeCheckSubject(input.inputRoot, input.workingRoot, input.maximumBytes,
+    "final", "unused-for-candidate-carrier", candidateRoot);
+  await materializeFoundationAgentGitContextV1({
+    inputRoot: input.inputRoot, repository: candidateRoot, maximumBytes: input.maximumBytes,
+    inputSet: input.inputSet,
+  });
+  return candidateRoot;
 }
 
 type InventoryEntry = Readonly<{ path: string; mode: "regular" | "executable"; bytes: number; digest: Sha256 }>;
@@ -1210,6 +1380,7 @@ type InventoryEntry = Readonly<{ path: string; mode: "regular" | "executable"; b
 async function inventory(
   root: string,
   maximumBytes: number,
+  excludeOwnedGit = false,
 ): Promise<Readonly<{ entries: readonly InventoryEntry[]; digest: Sha256 }>> {
   const entries: InventoryEntry[] = [];
   let aggregateBytes = 0;
@@ -1231,6 +1402,11 @@ async function inventory(
     selected.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
     for (const name of selected) {
       const path = join(directory, name.name);
+      if (excludeOwnedGit && directory === root && name.name === ".git") {
+        const state = await lstat(path);
+        if (!state.isDirectory() || state.isSymbolicLink()) fail("Owned Cell Git metadata was replaced by a product entry");
+        continue;
+      }
       if (name.directory) { await visit(path); continue; }
       if (!name.file) fail("Candidate materialization contains a special entry");
       const state = await lstat(path);
@@ -1256,7 +1432,28 @@ async function inventory(
   return Object.freeze({ entries: Object.freeze(entries), digest: sha256(canonical(entries as unknown as Json)) });
 }
 
-function bindingEnvironment(binding: Record<string, Json>): Readonly<Record<string, string>> {
+/** Export ordinary files; only this runner's root .git is non-product support. */
+export async function exportFoundationAgentProductFilesV1(input: Readonly<{
+  repository: string; destination: string; maximumBytes: number;
+}>): Promise<Readonly<{ entries: readonly InventoryEntry[]; digest: Sha256 }>> {
+  const selected = await inventory(input.repository, input.maximumBytes, true);
+  await mkdir(input.destination, { recursive: false, mode: 0o700 });
+  for (const entry of selected.entries) {
+    const source = join(input.repository, entry.path);
+    const bytes = await readFile(source);
+    if (bytes.byteLength !== entry.bytes || sha256(bytes) !== entry.digest) fail("Candidate product changed during export");
+    const destination = join(input.destination, entry.path);
+    await mkdir(resolve(destination, ".."), { recursive: true, mode: 0o700 });
+    await writeFile(destination, bytes, { flag: "wx", mode: entry.mode === "executable" ? 0o755 : 0o644 });
+  }
+  return selected;
+}
+
+function bindingEnvironment(
+  binding: Record<string, Json>,
+  subjectRoot: string,
+  repository: string,
+): Readonly<Record<string, string>> {
   const supplied = record(binding.environment, "Check environment");
   const protectedNames = new Set(["HOME", "LANG", "LC_ALL", "PATH", "TMPDIR", "TZ"]);
   const environment: Record<string, string> = {
@@ -1266,14 +1463,80 @@ function bindingEnvironment(binding: Record<string, Json>): Readonly<Record<stri
     PATH: "/usr/local/bin:/usr/bin:/bin",
     TMPDIR: "/tmp",
     TZ: "UTC",
+    // The Check sees only the exact tree/index reconstructed in this Cell.
+    // No commit, history, canonical administration or ambient Git config is supplied.
+    GIT_DIR: repository,
+    GIT_WORK_TREE: subjectRoot,
+    GIT_INDEX_FILE: join(repository, "index"),
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_SYSTEM: "/dev/null",
+    GIT_NO_REPLACE_OBJECTS: "1",
+    GIT_NO_LAZY_FETCH: "1",
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_OPTIONAL_LOCKS: "0",
   };
   for (const [name, value] of Object.entries(supplied)) {
-    if (!/^[A-Z_][A-Z0-9_]{0,127}$/u.test(name) || protectedNames.has(name) || typeof value !== "string" || value.includes("\0")) {
+    if (!/^[A-Z_][A-Z0-9_]{0,127}$/u.test(name) || protectedNames.has(name) || name.startsWith("GIT_") || typeof value !== "string" || value.includes("\0")) {
       fail("Check Binding environment is invalid or overrides a protected name");
     }
     environment[name] = value;
   }
   return Object.freeze(environment);
+}
+
+async function checkSubjectDigest(
+  subjectRoot: string,
+  repository: string,
+  maximumBytes: number,
+  verifiedPack?: Readonly<{ byteLength: number; digest: Sha256 }>,
+): Promise<Sha256> {
+  for (const root of [subjectRoot, repository]) {
+    const state = await lstat(root);
+    if (!state.isDirectory() || state.isSymbolicLink()) fail("Check subject or private Git root was substituted");
+  }
+  const product = await inventory(subjectRoot, maximumBytes);
+  const gitEntries: Array<
+    { path: string; kind: "directory" } |
+    { path: string; kind: "file"; byteLength: number; digest: Sha256 }
+  > = [];
+  let gitBytes = 0;
+  let gitEntryCount = 0;
+  const visit = async (directory: string): Promise<void> => {
+    const state = await lstat(directory);
+    if (!state.isDirectory() || state.isSymbolicLink()) fail("Check private Git directory was substituted");
+    const opened = await opendir(directory);
+    for await (const entry of opened) {
+      if (++gitEntryCount > MAXIMUM_CHECK_GIT_ENTRIES) fail("Check private Git context exceeds its entry bound");
+      const absolute = join(directory, entry.name);
+      const path = relative(repository, absolute).split(sep).join("/");
+      const state = await lstat(absolute);
+      if (state.isDirectory() && !state.isSymbolicLink()) {
+        gitEntries.push({ path, kind: "directory" });
+        await visit(absolute);
+        continue;
+      }
+      if (!state.isFile() || state.isSymbolicLink() || state.nlink !== 1 || (state.mode & 0o111) !== 0) {
+        fail("Check private Git context contains aliased, special, or executable metadata");
+      }
+      // Before dispatch, the runner just installed and verified this exact pack.
+      // Reuse that observation once; after dispatch, hash every retained byte.
+      const observed = path === "objects/pack/carrier.pack" && verifiedPack !== undefined
+        ? verifiedPack
+        : await digestFile(absolute, maximumBytes - gitBytes, "Check private Git metadata");
+      if (state.size !== observed.byteLength) fail("Check private Git metadata changed its exact length");
+      gitBytes += observed.byteLength;
+      if (!Number.isSafeInteger(gitBytes) || gitBytes > maximumBytes) fail("Check private Git context exceeds its byte bound");
+      gitEntries.push({ path, kind: "file", byteLength: observed.byteLength, digest: observed.digest });
+    }
+  };
+  await visit(repository);
+  gitEntries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  return sha256(canonical({
+    schema: "lifecycle.check-subject-observation.private.v1",
+    productDigest: product.digest,
+    gitContextDigest: sha256(canonical(gitEntries)),
+  }));
 }
 
 async function writeOutput(input: Readonly<{
@@ -1486,29 +1749,97 @@ async function waitForAgentProviderSupport(
   });
 }
 
-async function activateAgentProviderHome(): Promise<void> {
-  const before = await lstat(PROVIDER_AUTH_PATH);
+/** Private fixed-runner copy: staging and durable custody can use different filesystems. */
+export async function activateFoundationAgentProviderHomeV1(input: Readonly<{
+  source: string;
+  stateRoot: string;
+}>): Promise<void> {
   const uid = process.getuid?.();
-  if (!before.isFile() || before.isSymbolicLink() || before.size < 2 ||
+  const root = await lstat(input.stateRoot);
+  if (!root.isDirectory() || root.isSymbolicLink() || (root.mode & 0o777) !== 0o700 ||
+      (uid !== undefined && root.uid !== uid)) fail("Provider-state volume is not privately owned");
+  const before = await lstat(input.source);
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || before.size < 2 ||
       before.size > MAXIMUM_PROVIDER_AUTH_BYTES || (before.mode & 0o077) !== 0 ||
       (uid !== undefined && before.uid !== uid)) {
     fail("Agent provider authentication is not one bounded private operation-scoped file");
   }
-  await mkdir(PROVIDER_CODEX_HOME, { recursive: false, mode: 0o700 });
-  const destination = join(PROVIDER_CODEX_HOME, "auth.json");
-  await rename(PROVIDER_AUTH_PATH, destination);
-  await chmod(destination, 0o600);
-  const after = await lstat(destination);
-  if (!after.isFile() || after.isSymbolicLink() || after.dev !== before.dev ||
-      after.ino !== before.ino || after.size !== before.size ||
-      (uid !== undefined && after.uid !== uid)) {
-    fail("Agent provider authentication changed while it was activated");
+  const source = await open(input.source, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  const bytes = Buffer.alloc(before.size);
+  try {
+    const opened = await source.stat();
+    if (opened.dev !== before.dev || opened.ino !== before.ino) fail("Provider authentication source changed");
+    let offset = 0;
+    while (offset < bytes.byteLength) {
+      const read = await source.read(bytes, offset, bytes.byteLength - offset, offset);
+      if (read.bytesRead === 0) fail("Provider authentication source ended early");
+      offset += read.bytesRead;
+    }
+    const after = await source.stat();
+    if (after.nlink !== 1 || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs) {
+      fail("Provider authentication source changed");
+    }
+    const home = join(input.stateRoot, "home");
+    await mkdir(home, { recursive: false, mode: 0o700 });
+    const temporary = join(home, ".auth.pending");
+    const destination = await open(temporary, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY, 0o600);
+    try { await destination.writeFile(bytes); await destination.sync(); }
+    finally { await destination.close(); }
+    await rename(temporary, join(home, "auth.json"));
+    const directory = await open(home, fsConstants.O_RDONLY | fsConstants.O_DIRECTORY);
+    try { await directory.sync(); } finally { await directory.close(); }
+    const parent = await open(input.stateRoot, fsConstants.O_RDONLY | fsConstants.O_DIRECTORY);
+    try { await parent.sync(); } finally { await parent.close(); }
+    await rm(input.source, { force: false });
+  } finally { bytes.fill(0); await source.close(); }
+}
+
+/** Bounded private retirement read; only exact file absence is credential loss. */
+export async function readFoundationAgentProviderCredentialV1(stateRoot: string): Promise<Uint8Array | null> {
+  const uid = process.getuid?.();
+  const root = await lstat(stateRoot);
+  if (!root.isDirectory() || root.isSymbolicLink() || (root.mode & 0o777) !== 0o700 || (uid !== undefined && root.uid !== uid)) {
+    fail("Provider-state volume is not privately owned");
   }
+  const home = join(stateRoot, "home");
+  let stat;
+  try { stat = await lstat(home); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; }
+  if (!stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o077) !== 0 ||
+      (uid !== undefined && stat.uid !== uid)) fail("Provider credential home is not private");
+  const path = join(home, "auth.json");
+  let before;
+  try { before = await lstat(path); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; }
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || before.size < 2 ||
+      before.size > MAXIMUM_PROVIDER_AUTH_BYTES || (before.mode & 0o077) !== 0 ||
+      (uid !== undefined && before.uid !== uid)) fail("Provider credential is not one bounded private file");
+  const source = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  const bytes = Buffer.alloc(before.size);
+  try {
+    const opened = await source.stat();
+    if (opened.dev !== before.dev || opened.ino !== before.ino) fail("Provider credential changed during retirement read");
+    let offset = 0;
+    while (offset < bytes.byteLength) {
+      const read = await source.read(bytes, offset, bytes.byteLength - offset, offset);
+      if (read.bytesRead === 0) fail("Provider credential ended before its exact length");
+      offset += read.bytesRead;
+    }
+    const after = await source.stat();
+    const retained = await lstat(path);
+    if (after.nlink !== 1 || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs ||
+        retained.dev !== before.dev || retained.ino !== before.ino) fail("Provider credential changed during retirement read");
+    return Uint8Array.from(bytes);
+  } finally { bytes.fill(0); await source.close(); }
+}
+
+async function activateAgentProviderHome(): Promise<void> {
+  await activateFoundationAgentProviderHomeV1({ source: PROVIDER_AUTH_PATH, stateRoot: PROVIDER_STATE_ROOT });
   await rm(PROVIDER_SUPPORT_PATH, { force: false });
   await rmdir(PROVIDER_SUPPORT_ROOT);
 }
 
-function agentPermissionOverrides(input: Readonly<{
+export function foundationAgentPermissionOverridesV1(input: Readonly<{
   transportInputRoot: string;
   providerInputRoot: string;
   workingRoot: string;
@@ -1520,11 +1851,14 @@ function agentPermissionOverrides(input: Readonly<{
     [":minimal", "read"],
     ["/opt/lifecycle/bin", "read"],
     ["/opt/lifecycle/codex-path", "read"],
+    ["/opt/lifecycle-runtime", "read"],
     [input.transportInputRoot, "deny"],
     [input.providerInputRoot, "read"],
     [input.workingRoot, "write"],
     [input.semanticRoot, "write"],
-    [PROVIDER_CODEX_HOME, "deny"],
+    // One ancestor mask denies every private descendant. A second nested mask
+    // cannot be materialized beneath the first read-only sandbox mount.
+    [PROVIDER_STATE_ROOT, "deny"],
     [PROVIDER_SUPPORT_ROOT, "deny"],
   ]);
   if (input.candidateRoot !== null) {
@@ -1721,13 +2055,16 @@ export async function materializeFoundationAgentProviderVisibleInputV1(input: Re
   const selected = inputSet.entries.map((value, index) => {
     const entry = record(value, `Execution Input Set entry ${index}`);
     const purpose = text(entry.purpose, `Execution Input Set entry ${index} purpose`);
-    if (purpose !== "role-brief" && purpose !== "projection") return null;
+    if (purpose !== "role-brief" && purpose !== "projection" && purpose !== "operation-input") return null;
     const path = safeRelativePath(
       text(entry.path, `Execution Input Set entry ${index} path`),
       `Execution Input Set entry ${index} path`,
     );
+    if (purpose === "operation-input" && path !== SEMANTIC_BASIS_PATH) return null;
     if ((purpose === "role-brief" && path !== ROLE_BRIEF_PATH) ||
         (purpose === "projection" && !path.startsWith("sources/")) ||
+        (purpose === "operation-input" && (entry.mediaType !== "application/json" ||
+          integer(entry.byteLength, "Semantic authoring basis length") > MAXIMUM_SEMANTIC_BASIS_BYTES)) ||
         entry.modeClass !== "regular") {
       fail("Execution Input Set contains an invalid provider-visible entry");
     }
@@ -1742,8 +2079,9 @@ export async function materializeFoundationAgentProviderVisibleInputV1(input: Re
     digest: Sha256;
   }> => value !== null);
   if (selected.filter(({ path }) => path === ROLE_BRIEF_PATH).length !== 1 ||
+      selected.filter(({ path }) => path === SEMANTIC_BASIS_PATH).length !== 1 ||
       new Set(selected.map(({ path }) => path)).size !== selected.length) {
-    fail("Execution Input Set lacks one exact provider-visible Role Brief");
+    fail("Execution Input Set lacks one exact provider-visible Role Brief and semantic basis");
   }
   selected.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   await mkdir(destinationRoot, { recursive: false, mode: 0o700 });
@@ -1813,7 +2151,7 @@ function agentPrompt(input: Readonly<{
     `The curated provider-visible input is read-only at ${input.providerInputRoot}.`,
     input.candidateRoot === null
       ? "This role has no Candidate materialization."
-      : `The exact Candidate materialization is at ${input.candidateRoot}.`,
+      : `The exact Candidate is an independent Git repository at ${input.candidateRoot}. Its stable Delivery work branch and scoped history support ordinary Git work; local Git commits remain disposable tool state.`,
     `Write the governed semantic Work Product only to ${input.semanticPath}.`,
     "Reread the governed semantic file against its supplied template before returning; the runtime validates the exact final file after Cell containment.",
     "Do not treat final prose or provider events as the Work Product. Do not attempt network access.",
@@ -1842,6 +2180,121 @@ function providerSessionId(stdout: Uint8Array): string | null {
     }
   }
   return selected;
+}
+
+/** Select failure observations, never conversation, tool output, or reasoning. */
+export function foundationAgentProviderFailureDiagnosticV1(input: Readonly<{
+  stdout: Uint8Array;
+  stderr: Uint8Array;
+  stdoutTruncated: boolean;
+  stderrTruncated: boolean;
+  credentialValues: readonly string[] | null;
+}>): Uint8Array {
+  let truncated = input.stdoutTruncated || input.stderrTruncated;
+  const entries: Array<Record<string, Json>> = [];
+  const sanitize = (value: string): string => {
+    if (input.credentialValues === null) return "[failure detail withheld: credential redaction unavailable]";
+    let result = Buffer.from(value, "utf8").toString("utf8");
+    for (const secret of input.credentialValues) {
+      if (secret.length === 0) continue;
+      const normalizedSecret = Buffer.from(secret, "utf8").toString("utf8");
+      for (const variant of new Set([normalizedSecret, encodeURIComponent(normalizedSecret)])) {
+        result = result.split(variant).join("[redacted credential]");
+      }
+    }
+    result = result
+      .replace(/\b(?:Bearer|Basic)\s+[^\s,;]+/giu, "[redacted authorization]")
+      .replace(/\b(?:sk-[A-Za-z0-9_-]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?)/gu, "[redacted credential]")
+      .replace(/\b(?:access[_ -]?token|refresh[_ -]?token|id[_ -]?token|api[_ -]?key|authorization|password|secret)\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/giu, "[redacted credential field]")
+      .replace(/https?:\/\/[^\s<>"']+/giu, (url) => {
+        try { const parsed = new URL(url); return `${parsed.protocol}//${parsed.hostname}/[redacted URL path]`; }
+        catch { return "[redacted URL]"; }
+      })
+      .replace(/(?:[A-Za-z]:[\\/]|\/(?!\/))[A-Za-z0-9_~.][^\s<>"']*/gu, "[redacted path]")
+      .replace(/[A-Za-z0-9_+\/-]{48,}={0,2}/gu, "[redacted opaque value]")
+      .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/gu, " ")
+      .trim();
+    if (Buffer.byteLength(result, "utf8") > 2048) {
+      let bounded = "";
+      let length = 0;
+      for (const character of result) {
+        length += Buffer.byteLength(character, "utf8");
+        if (length > 2048) break;
+        bounded += character;
+      }
+      result = bounded;
+      truncated = true;
+    }
+    return result.length === 0 ? "[provider reported an empty failure detail]" : result;
+  };
+  const add = (stream: string, eventType: string, message: string): void => {
+    if (entries.length === 8) { truncated = true; entries.shift(); }
+    entries.push({ stream, eventType, message: sanitize(message) });
+  };
+  for (const line of Buffer.from(input.stdout).toString("utf8").split(/\r?\n/u)) {
+    if (Buffer.byteLength(line, "utf8") > 256 * 1024) { truncated = true; continue; }
+    let value: unknown;
+    try { value = JSON.parse(line); } catch { continue; }
+    if (value === null || typeof value !== "object" || Array.isArray(value)) continue;
+    const event = value as Record<string, unknown>;
+    if (event.type === "error" && typeof event.message === "string") {
+      add("stdout-json", "error", event.message);
+    } else if (event.type === "turn.failed" && event.error !== null &&
+        typeof event.error === "object" && !Array.isArray(event.error) &&
+        typeof (event.error as Record<string, unknown>).message === "string") {
+      add("stdout-json", "turn.failed", (event.error as Record<string, unknown>).message as string);
+    }
+  }
+  if (entries.length === 0) {
+    // The CLI can fail before its JSON event loop. Rust puts a panic's cause
+    // immediately after its location header; retain that one line with the
+    // header, never the following backtrace or arbitrary stderr chatter.
+    const lines = Buffer.from(input.stderr).toString("utf8").split(/\r?\n/u);
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]!.trim();
+      const panicHeader = /\bthread\s+['"][^'"\r\n]+['"](?:\s+\([0-9]+\))?\s+panicked at\s+[^\r\n]+:[0-9]+:[0-9]+:$/u.test(line);
+      if (/^(?:error|fatal)(?:\s*:|\s*\[|\s+)/iu.test(line) ||
+          panicHeader && /^thread\s/u.test(line)) {
+        const cause = panicHeader ? lines[index + 1]?.trim() : undefined;
+        if (cause !== undefined && cause.length > 0 &&
+            !/^(?:stack backtrace:|note:|[0-9]+:)/u.test(cause)) {
+          add("stderr", "error-line", `${line}\n${cause}`);
+          index += 1;
+        } else {
+          add("stderr", "error-line", line);
+        }
+      }
+    }
+  }
+  const subject = (): Record<string, Json> => ({
+    schema: "lifecycle.agent-provider-failure-diagnostic.private.v1",
+    source: "provider-reported",
+    observation: "untrusted-operational-material",
+    entries,
+    truncated,
+  });
+  while (Buffer.byteLength(`${canonical(subject())}\n`, "utf8") > MAXIMUM_PROVIDER_FAILURE_BYTES) {
+    entries.shift();
+    truncated = true;
+  }
+  return Uint8Array.from(Buffer.from(`${canonical(subject())}\n`, "utf8"));
+}
+
+async function providerCredentialRedactions(): Promise<readonly string[] | null> {
+  try {
+    const auth = await boundedJson(join(PROVIDER_CODEX_HOME, "auth.json"),
+      "Private provider authentication", MAXIMUM_PROVIDER_AUTH_BYTES);
+    const values: string[] = [];
+    const visit = (value: Json): void => {
+      if (typeof value === "string" && value.length > 0) values.push(value);
+      else if (value !== null && typeof value === "object") {
+        for (const child of Object.values(value)) visit(child);
+      }
+      if (values.length > 256) fail("Private provider redaction inventory exceeds its bound");
+    };
+    visit(auth);
+    return Object.freeze([...new Set(values)].sort((a, b) => b.length - a.length));
+  } catch { return null; }
 }
 
 function isPublicProviderAddress(address: string): boolean {
@@ -1931,11 +2384,16 @@ export function createFoundationProviderControlTunnelBudgetV1(
   });
 }
 
-async function runProviderControlProxy(input: Readonly<{
+type FoundationProviderControlProxyInputV1 = Readonly<{
   specificationDigest: Sha256;
   providerPolicyDigest: Sha256;
   wallTimeMilliseconds: number;
-}>): Promise<void> {
+}>;
+
+/** The channel can quiesce while its exact process remains available for containment. */
+export function createFoundationProviderControlProxyV1(
+  input: FoundationProviderControlProxyInputV1,
+): Server {
   const allowed = new Set<string>(PROVIDER_CONTROL_ALLOWED_DESTINATIONS);
   const sockets = new Set<Socket>();
   const budget = createFoundationProviderControlTunnelBudgetV1();
@@ -1968,7 +2426,8 @@ async function runProviderControlProxy(input: Readonly<{
       if (lines[0] === `POST ${retirePath} HTTP/1.1`) {
         budget.retire();
         client.end("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
-        server.close();
+        // Keep the rejecting listener and its network membership until the
+        // Runtime contains this exact proxy. The Cell still has output to pack.
         for (const socket of sockets) {
           if (socket !== client) closeSocket(socket);
         }
@@ -2019,10 +2478,17 @@ async function runProviderControlProxy(input: Readonly<{
     };
     client.on("data", onData);
   });
-  server.on("error", () => {
+  const closeTunnels = (): void => {
     budget.retire();
     for (const socket of sockets) closeSocket(socket);
-  });
+  };
+  server.on("error", closeTunnels);
+  server.on("close", closeTunnels);
+  return server;
+}
+
+async function runProviderControlProxy(input: FoundationProviderControlProxyInputV1): Promise<void> {
+  const server = createFoundationProviderControlProxyV1(input);
   await new Promise<void>((resolveListen, rejectListen) => {
     server.once("error", rejectListen);
     server.listen(PROVIDER_CONTROL_PORT, "0.0.0.0", resolveListen);
@@ -2040,10 +2506,9 @@ async function runProviderControlProxy(input: Readonly<{
     digest: selfDigest(readySubject),
   })}\n`, { flag: "wx", mode: 0o600 });
   await new Promise<void>((resolveClosed) => server.once("close", resolveClosed));
-  for (const socket of sockets) closeSocket(socket);
 }
 
-async function retireProviderControlProxy(input: Readonly<{
+async function quiesceProviderControlChannel(input: Readonly<{
   specificationDigest: Sha256;
   providerPolicyDigest: Sha256;
 }>): Promise<void> {
@@ -2076,7 +2541,7 @@ async function retireProviderControlProxy(input: Readonly<{
       if (response.toString("ascii").startsWith("HTTP/1.1 204 ")) resolveRetired();
       else rejectRetired(new Error("response"));
     });
-  }).catch(() => fail("Provider-control proxy did not prove terminal retirement"));
+  }).catch(() => fail("Provider-control channel did not acknowledge quiescence"));
 }
 
 type AgentProviderTerminalFacts = Readonly<{
@@ -2293,6 +2758,7 @@ async function writeAgentOutput(input: Readonly<{
   facts: AgentProviderTerminalFacts;
   semanticPath: string;
   candidateRoot: string | null;
+  failureDiagnostic: Uint8Array | null;
 }>): Promise<void> {
   const operation = record(input.specification.operation, "Agent operation");
   const terminalSubject = agentTerminalSubject(input);
@@ -2340,6 +2806,22 @@ async function writeAgentOutput(input: Readonly<{
       digest: sha256(terminal.bytes),
     },
   ];
+  if (input.failureDiagnostic !== null) {
+    if (input.failureDiagnostic.byteLength > MAXIMUM_PROVIDER_FAILURE_BYTES) {
+      fail("Provider failure diagnostic exceeds its fixed bound");
+    }
+    await writeFile(join(input.outputRoot, AGENT_PROVIDER_FAILURE_PATH),
+      input.failureDiagnostic, { flag: "wx", mode: 0o600 });
+    manifestEntries.push({
+      path: AGENT_PROVIDER_FAILURE_PATH,
+      entryKind: "file",
+      purpose: "raw-provider-output",
+      mediaType: "application/json",
+      modeClass: "regular",
+      byteLength: input.failureDiagnostic.byteLength,
+      digest: sha256(input.failureDiagnostic),
+    });
+  }
   if (await pathExists(input.semanticPath)) {
     const semantic = await digestFile(input.semanticPath, maximumEntryBytes, "Agent semantic Work Product");
     manifestEntries.push({
@@ -2354,7 +2836,7 @@ async function writeAgentOutput(input: Readonly<{
   }
   if (operation.role === "builder") {
     if (input.candidateRoot === null) fail("Builder output lacks its complete Candidate successor");
-    const candidate = await inventory(input.candidateRoot, maximumOutputBytes);
+    const candidate = await exportFoundationAgentProductFilesV1({ repository: input.candidateRoot, destination: join(input.outputRoot, "candidate-output"), maximumBytes: maximumOutputBytes });
     for (const entry of candidate.entries) {
       manifestEntries.push({
         path: `candidate-output/${entry.path}`,
@@ -2411,7 +2893,7 @@ async function runAgentCell(input: Readonly<{
     signal: null,
     sessionId: null,
   });
-  let proxyRetired = false;
+  let providerChannelQuiesced = false;
   try {
     const inputSet = await validateInputSet(input.inputRoot, input.specification);
     const providerInputRoot = await materializeFoundationAgentProviderVisibleInputV1({
@@ -2446,22 +2928,12 @@ async function runAgentCell(input: Readonly<{
       finishedAt: new Date().toISOString(),
     });
     await activateAgentProviderHome();
+    const initialCredentialValues = await providerCredentialRedactions();
     await mkdir("/tmp/lifecycle-agent-parent-home", { recursive: false, mode: 0o700 });
     await mkdir("/tmp/lifecycle-agent-home", { recursive: false, mode: 0o700 });
-    let candidateRoot: string | null = null;
-    if (role !== "reconnaissance") {
-      candidateRoot = role === "builder"
-        ? join(input.outputRoot, "candidate-output")
-        : join(input.workingRoot, "candidate");
-      await materializeCheckSubject(
-        input.inputRoot,
-        input.workingRoot,
-        storageLimit,
-        "final",
-        "unused-for-candidate-carrier",
-        candidateRoot,
-      );
-    }
+    const candidateRoot = await materializeFoundationAgentCandidateInputV1({
+      role, inputRoot: input.inputRoot, workingRoot: input.workingRoot, maximumBytes: storageLimit, inputSet,
+    });
     const semanticRoot = join(input.outputRoot, "agent-work-product");
     const semanticPath = join(input.outputRoot, AGENT_SEMANTIC_OUTPUT_PATH);
     await mkdir(semanticRoot, { recursive: false, mode: 0o700 });
@@ -2476,7 +2948,7 @@ async function runAgentCell(input: Readonly<{
       "Agent role brief",
     );
     const cwd = candidateRoot ?? input.workingRoot;
-    const permissionOverrides = agentPermissionOverrides({
+    const permissionOverrides = foundationAgentPermissionOverridesV1({
       transportInputRoot: input.inputRoot,
       providerInputRoot,
       workingRoot: input.workingRoot,
@@ -2547,12 +3019,19 @@ async function runAgentCell(input: Readonly<{
       preparedAt,
       provider: result,
     });
-    await rm(PROVIDER_CODEX_HOME, { recursive: true, force: true });
-    await retireProviderControlProxy({
+    const finalCredentialValues = await providerCredentialRedactions();
+    const failureDiagnostic = facts.outcome === "natural-return" ? null :
+      foundationAgentProviderFailureDiagnosticV1({
+        ...result,
+        credentialValues: initialCredentialValues === null || finalCredentialValues === null
+          ? null : [...initialCredentialValues, ...finalCredentialValues],
+      });
+    // The provider home stays in its private volume until credential settlement and Reclamation.
+    await quiesceProviderControlChannel({
       specificationDigest: support.specificationDigest,
       providerPolicyDigest,
     });
-    proxyRetired = true;
+    providerChannelQuiesced = true;
     await writeAgentOutput({
       outputRoot: input.outputRoot,
       specification: input.specification,
@@ -2560,25 +3039,26 @@ async function runAgentCell(input: Readonly<{
       facts,
       semanticPath,
       candidateRoot,
+      failureDiagnostic,
     });
   } catch {
-    if (!proxyRetired) {
+    if (!providerChannelQuiesced) {
       try {
-        await retireProviderControlProxy({
+        await quiesceProviderControlChannel({
           specificationDigest: exactDigest(
             input.specification.digest,
             "Execution Specification digest",
           ),
           providerPolicyDigest,
         });
-        proxyRetired = true;
+        providerChannelQuiesced = true;
       } catch {
         // Backend containment remains the authoritative fallback when the
-        // fixed proxy cannot acknowledge its own retirement.
+        // fixed proxy cannot acknowledge channel quiescence.
       }
     }
-    try { await rm(PROVIDER_CODEX_HOME, { recursive: true, force: true }); }
-    catch { /* Cell containment removes remaining private support. */ }
+    // Even failed/force-contained Attempts retain the last provider-written auth.
+    // Backend retirement, not runner output, settles that exact private state.
     const finishedAt = new Date().toISOString();
     await writeFoundationAgentRunnerTerminalOutputV1({
       outputRoot: input.outputRoot,
@@ -2591,6 +3071,19 @@ async function runAgentCell(input: Readonly<{
 
 async function main(): Promise<void> {
   const arguments_ = process.argv.slice(2);
+  if (arguments_.length === 1 && arguments_[0] === "provider-credential-read") {
+    const bytes = await readFoundationAgentProviderCredentialV1(PROVIDER_STATE_ROOT);
+    const header = Buffer.alloc(PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength + 4);
+    PROVIDER_CREDENTIAL_FRAME_MAGIC.copy(header);
+    header.writeUInt32BE(bytes?.byteLength ?? 0, PROVIDER_CREDENTIAL_FRAME_MAGIC.byteLength);
+    try {
+      await new Promise<void>((resolveWrite, rejectWrite) => process.stdout.write(header,
+        (error) => error ? rejectWrite(error) : resolveWrite()));
+      if (bytes !== null) await new Promise<void>((resolveWrite, rejectWrite) => process.stdout.write(bytes,
+        (error) => error ? rejectWrite(error) : resolveWrite()));
+    } finally { bytes?.fill(0); header.fill(0); }
+    return;
+  }
   if (arguments_.length === 1 && arguments_[0] === "provider-support-receive") {
     await receiveAgentProviderSupport();
     return;
@@ -2648,14 +3141,14 @@ async function main(): Promise<void> {
     const phase = operation.phase;
     if (!(phase === "baseline" || phase === "final")) fail("Check operation phase is invalid");
     const owner = record(specification.owner, "Execution Specification owner");
-    const subjectRoot = await materializeCheckSubject(
+    const { subjectRoot, repository, pack } = await materializeCheckSubject(
       inputRoot,
       workingRoot,
       storageLimit,
       phase,
       text(owner.ownerSubjectDigest, "Check proof-subject digest"),
     );
-    const before = await inventory(subjectRoot, storageLimit);
+    const beforeDigest = await checkSubjectDigest(subjectRoot, repository, storageLimit, pack);
     const binding = await boundedJson(join(inputRoot, CHECK_BINDING_PATH), "Check Binding");
     if (binding.digest !== operation.bindingDigest || binding.kind !== "command" || binding.mutation !== "forbidden") {
       fail("Check Binding differs from the Execution Specification");
@@ -2664,15 +3157,7 @@ async function main(): Promise<void> {
         integer(limits.wallTimeMilliseconds, "Execution wall-time limit")) {
       fail("Check Binding timeout exceeds the Execution Specification wall time");
     }
-    const executable = record(binding.executable, "Check executable");
-    const executablePath = safeRelativePath(text(executable.path, "Check executable path"), "Check executable path");
-    const command = executable.relativeTo === "candidate"
-      ? resolve(subjectRoot, executablePath)
-      : executablePath;
-    if (executable.relativeTo === "candidate" && !within(subjectRoot, command)) fail("Check executable escaped its proof subject");
-    if (executable.relativeTo !== "candidate" && executable.relativeTo !== "execution-image") {
-      fail("Check executable has an unsupported base");
-    }
+    const command = await resolveFoundationCheckExecutableV1({ binding, subjectRoot });
     const cwdValue = text(binding.cwd, "Check cwd");
     const cwd = cwdValue === "."
       ? subjectRoot
@@ -2686,12 +3171,12 @@ async function main(): Promise<void> {
       executable: command,
       arguments: args as string[],
       cwd,
-      environment: bindingEnvironment(binding),
+      environment: bindingEnvironment(binding, subjectRoot, repository),
       timeoutMs: integer(binding.timeoutMs, "Check timeout"),
       maximumStdoutBytes: MAXIMUM_STREAM_BYTES,
       maximumStderrBytes: MAXIMUM_STREAM_BYTES,
     });
-    const after = await inventory(subjectRoot, storageLimit);
+    const afterDigest = await checkSubjectDigest(subjectRoot, repository, storageLimit);
     const parser = record(binding.resultParser, "Check result parser");
     exactKeys(parser, ["id", "stateModel", "states"], "Check result parser");
     if (parser.id !== "exit-code-v1") fail("First Check Cell supports only exit-code-v1");
@@ -2710,9 +3195,9 @@ async function main(): Promise<void> {
       stderrTruncated: result.stderrTruncated,
       parserId: parser.id,
       parserDisposition,
-      subjectBeforeDigest: before.digest,
-      subjectAfterDigest: after.digest,
-      subjectIntegrity: before.digest === after.digest ? "unchanged" : "changed",
+      subjectBeforeDigest: beforeDigest,
+      subjectAfterDigest: afterDigest,
+      subjectIntegrity: beforeDigest === afterDigest ? "unchanged" : "changed",
       resultFacts: [{ name: "exit-code", value: result.exitCode }] as unknown as Json,
       digest: "",
     };

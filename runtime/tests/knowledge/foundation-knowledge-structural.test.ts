@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,7 +12,9 @@ import {
   parseKnowledgeDocument,
   parseMarkdownHeadings,
 } from "../../src/foundation/knowledge/front-matter.js";
-import { parseKnowledgeRecord } from "../../src/foundation/knowledge/records.js";
+import { parseKnowledgeRecord, parseKnowledgeSource } from "../../src/foundation/knowledge/records.js";
+import { buildRevisionIndexes } from "../../src/foundation/knowledge/revisions.js";
+import { DiagnosticCollector } from "../../src/foundation/validation/result.js";
 import {
   FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID,
   FOUNDATION_SCHEMA_ENGINE_IDENTITY,
@@ -48,7 +51,7 @@ const BEHAVIOR_BODY = [
 
 function behaviorFrontMatter(): Record<string, unknown> {
   return {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "behavior",
     id: "behavior.parser",
     title: "Parser behavior",
@@ -56,7 +59,7 @@ function behaviorFrontMatter(): Record<string, unknown> {
     revision: 1,
     supersedes: null,
     summary: "The parser returns one bounded result.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -97,7 +100,7 @@ let contractPromise: Promise<FoundationRepositoryContract> | null = null;
 function contract(): Promise<FoundationRepositoryContract> {
   contractPromise ??= (async () => {
     const home = await mkdtemp(`${tmpdir()}/lifecycle-knowledge-structural-`);
-    const authority = await createFoundationAuthority(home, "structural-target", SECRET);
+    const authority = await createFoundationAuthority(home, "structural-target", receiveFoundationAuthorityCredential(SECRET, "initialize"));
     return createRepositoryContract({
       targetId: "structural-target",
       canonicalBranch: "refs/heads/main",
@@ -118,6 +121,39 @@ function parseRecord(bytes: Buffer, repositoryContract: FoundationRepositoryCont
     contract: repositoryContract,
   });
 }
+
+test("local Knowledge source parsing preserves Runtime digests without manufacturing Git retention, and promotion uses the same lineage owner", async () => {
+  const policy = await contract();
+  const path = "records/behavior/parser.md";
+  const source = documentFromJson(JSON.stringify(behaviorFrontMatter()), BEHAVIOR_BODY);
+  const parsed = parseKnowledgeSource({ path, bytes: source, contract: policy });
+  const { mode: _mode, objectId: _objectId, ...retained } = parseRecord(source, policy);
+  assert.deepEqual(parsed, retained);
+  assert.equal("objectId" in parsed, false);
+  assert.equal("mode" in parsed, false);
+  const predecessor = { id: parsed.frontMatter.id, revision: 1, sourceDigest: parsed.sourceDigest, semanticDigest: parsed.semanticDigest };
+  const next = (status: string, supersedes = predecessor) => parseKnowledgeSource({
+    path: "records/behavior/parser-r2.md", contract: policy,
+    bytes: documentFromJson(JSON.stringify({ ...behaviorFrontMatter(), revision: 2, status, supersedes }), BEHAVIOR_BODY),
+  });
+  const draft = next("draft");
+  const first = new DiagnosticCollector();
+  assert.equal(buildRevisionIndexes({ records: [parsed, draft], collector: first }).currentByIdentity.get(parsed.frontMatter.id), parsed);
+  assert.deepEqual(first.diagnostics, []);
+  const twoCurrent = new DiagnosticCollector();
+  buildRevisionIndexes({ records: [parsed, next("current")], collector: twoCurrent });
+  assert(twoCurrent.diagnostics.some(({ code }) => code === "lifecycle.knowledge.current-duplicate"));
+  const prior = parseKnowledgeSource({ path, contract: policy, bytes: documentFromJson(JSON.stringify({ ...behaviorFrontMatter(), status: "superseded" }), BEHAVIOR_BODY) });
+  assert.notEqual(prior.sourceDigest, predecessor.sourceDigest);
+  const stale = new DiagnosticCollector();
+  buildRevisionIndexes({ records: [prior, next("current")], collector: stale });
+  assert(stale.diagnostics.some(({ code }) => code === "lifecycle.knowledge.supersession-invalid"));
+  const promoted = next("current", { ...predecessor, sourceDigest: prior.sourceDigest, semanticDigest: prior.semanticDigest });
+  const final = new DiagnosticCollector();
+  assert.equal(buildRevisionIndexes({ records: [prior, promoted], collector: final }).currentByIdentity.get(parsed.frontMatter.id), promoted);
+  assert.deepEqual(final.diagnostics, []);
+  assert.equal(parsed.frontMatter.status, "current", "The separate admitted occurrence remains unchanged");
+});
 
 test("Knowledge document parsing accepts CRLF while preserving source identity and rejects unsafe text encodings", () => {
   const lf = documentFromJson("{}", "# Body\n");
@@ -299,7 +335,7 @@ test("Knowledge records preserve allowed extensions, apply exact schema shape fi
 test("the generated Draft 2020-12 engine asserts formats and emits deterministic Ajv diagnostics", async () => {
   const repositoryContract = await contract();
   const schemaIds = foundationSchemaIds();
-  assert(schemaIds.includes("urn:lifecycle:schema:common:v1"));
+  assert(schemaIds.includes("urn:lifecycle:schema:common:v2"));
   assert(schemaIds.includes(FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID));
   assert.equal(new Set(schemaIds).size, schemaIds.length);
   assert.equal(FOUNDATION_SCHEMA_ENGINE_IDENTITY.version, "8.18.0");

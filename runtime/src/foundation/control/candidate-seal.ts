@@ -118,7 +118,7 @@ function exactRetainedRevision(
 
 function assertCandidateReconstructible(candidate: ControlRecordRevision): void {
   if (
-    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2" ||
+    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3" ||
     candidate.payload.state === null ||
     Array.isArray(candidate.payload.state) ||
     typeof candidate.payload.state !== "object"

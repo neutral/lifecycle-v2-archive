@@ -23,6 +23,7 @@ import {
 } from "../foundation/validation/canonical.js";
 
 const MAXIMUM_PROVIDER_RESULT_BYTES = 64 * 1024;
+const MAXIMUM_PROVIDER_FAILURE_BYTES = 16 * 1024;
 const CANONICAL_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const SIGNAL = /^SIG[A-Z0-9]+$/u;
@@ -33,6 +34,8 @@ export const FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1 = Object.freeze({
   providerTerminalObservationMediaType: "application/json" as const,
   providerResultPath: "provider-result/result.json" as const,
   providerResultMediaType: "application/json" as const,
+  providerFailureDiagnosticPath: "provider-result/failure.json" as const,
+  providerFailureDiagnosticMediaType: "application/json" as const,
   semanticWorkspacePath: "agent-work-product/semantic.md" as const,
   semanticWorkspaceMediaType: "text/markdown; charset=utf-8" as const,
 });
@@ -65,6 +68,7 @@ export type FoundationAgentExecutionCellCandidateSelectionV1 =
 export type FoundationAgentExecutionCellOwnedOutputV1 = Readonly<{
   providerTerminalObservation: FoundationValidatedExecutionOutputArtifactV1;
   providerResult: FoundationValidatedExecutionOutputArtifactV1 | null;
+  providerFailureDiagnostic: FoundationValidatedExecutionOutputArtifactV1 | null;
   semantic: FoundationAgentExecutionCellSemanticSelectionV1;
   candidate: FoundationAgentExecutionCellCandidateSelectionV1;
 }>;
@@ -207,7 +211,7 @@ export function foundationAgentExecutionCellOutputContractV1(input: Readonly<{
       purpose: "raw-provider-output" as const,
       required: false,
       allowedModeClasses: Object.freeze(["regular"] as const),
-      maximumEntries: 1,
+      maximumEntries: 2,
       maximumBytes: Math.min(outputEntryBytes, MAXIMUM_PROVIDER_RESULT_BYTES),
     }),
     Object.freeze({
@@ -270,7 +274,10 @@ export function inspectFoundationAgentExecutionCellOutputV1(input: Readonly<{
     );
   }
 
-  const providerResult = provider.length === 1 ? provider[0]! : null;
+  const providerResult = provider.find(({ path }) =>
+    path === FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerResultPath) ?? null;
+  const providerFailureDiagnostic = provider.find(({ path }) =>
+    path === FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerFailureDiagnosticPath) ?? null;
   if (providerResult !== null &&
       providerResult.path !== FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerResultPath ||
       providerResult !== null && providerResult.mediaType !==
@@ -278,7 +285,7 @@ export function inspectFoundationAgentExecutionCellOutputV1(input: Readonly<{
       providerResult !== null && providerResult.modeClass !== "regular" ||
       providerResult !== null && providerResult.candidateRepositoryPath !== null ||
       providerResult !== null && providerResult.candidateGitMode !== null ||
-      provider.length > 1) {
+      provider.length !== Number(providerResult !== null) + Number(providerFailureDiagnostic !== null)) {
     fail("provider-result", "Agent output lacks its exact normalized provider result member");
   }
 
@@ -313,6 +320,7 @@ export function inspectFoundationAgentExecutionCellOutputV1(input: Readonly<{
   return Object.freeze({
     providerTerminalObservation,
     providerResult,
+    providerFailureDiagnostic,
     semantic: semanticSelection,
     candidate: candidateSelection,
   });
@@ -499,6 +507,43 @@ export async function readFoundationAgentSemanticWorkspaceV1(input: Readonly<{
     maximumBytes: input.maximumBytes,
     label: "Semantic workspace",
   });
+}
+
+/** Bounded untrusted provider failure detail; never terminal observation or semantics. */
+export async function readFoundationAgentProviderFailureDiagnosticV1(input: Readonly<{
+  artifact: FoundationValidatedExecutionOutputArtifactV1;
+}>): Promise<Uint8Array> {
+  if (input.artifact.purpose !== "raw-provider-output" ||
+      input.artifact.path !== FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerFailureDiagnosticPath ||
+      input.artifact.mediaType !== "application/json" || input.artifact.modeClass !== "regular" ||
+      input.artifact.candidateRepositoryPath !== null || input.artifact.candidateGitMode !== null ||
+      input.artifact.byteLength > MAXIMUM_PROVIDER_FAILURE_BYTES) {
+    fail("provider-failure-diagnostic", "Selected artifact is not the bounded provider failure diagnostic");
+  }
+  const reopened = await readExactArtifact({ artifact: input.artifact,
+    maximumBytes: MAXIMUM_PROVIDER_FAILURE_BYTES, label: "Provider failure diagnostic" });
+  let value: unknown;
+  try { value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(reopened.bytes)); }
+  catch { return fail("provider-failure-diagnostic", "Provider failure diagnostic is not UTF-8 JSON"); }
+  const exactObject = (selected: unknown, keys: readonly string[]): selected is Record<string, unknown> =>
+    selected !== null && typeof selected === "object" && !Array.isArray(selected) &&
+    JSON.stringify(Object.keys(selected).sort()) === JSON.stringify([...keys].sort());
+  if (!exactObject(value, ["schema", "source", "observation", "entries", "truncated"]) ||
+      value.schema !== "lifecycle.agent-provider-failure-diagnostic.private.v1" ||
+      value.source !== "provider-reported" || value.observation !== "untrusted-operational-material" ||
+      typeof value.truncated !== "boolean" || !Array.isArray(value.entries) || value.entries.length > 8 ||
+      value.entries.some((entry) => !exactObject(entry, ["stream", "eventType", "message"]) ||
+        !((entry.stream === "stdout-json" && (entry.eventType === "error" || entry.eventType === "turn.failed")) ||
+          (entry.stream === "stderr" && entry.eventType === "error-line")) ||
+        typeof entry.message !== "string" || entry.message.length === 0 ||
+        Buffer.byteLength(entry.message, "utf8") > 2048 || /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u.test(entry.message))) {
+    fail("provider-failure-diagnostic", "Provider failure diagnostic differs from its closed bounded shape");
+  }
+  let canonical = false;
+  try { canonical = Buffer.from(reopened.bytes).equals(Buffer.from(canonicalJsonLine(value))); }
+  catch { /* Non-scalar JSON text is an invalid independent diagnostic. */ }
+  if (!canonical) fail("provider-failure-diagnostic", "Provider failure diagnostic is not canonical JSON");
+  return Uint8Array.from(reopened.bytes);
 }
 
 /** Parse the runner's canonical provider/adapter result for Receipt use. */

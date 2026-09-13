@@ -72,8 +72,59 @@ export type FoundationInstalledExecutionConfigurationV1 = Readonly<{
   image: FoundationDockerCliImageInstallationV1;
 }>;
 
+/** Process receives provenance and Store custody, never Engine or provider-auth locators. */
+export type FoundationProcessRuntimeConfigurationV7 = Readonly<
+  Pick<FoundationInstalledRuntimeConfigurationV7,
+    "machineHome" | "installationId" | "model" | "reasoning" |
+    "specificationRevision" | "publicationDigest"> & {
+    execution?: Readonly<{
+      image: FoundationDockerCliImageInstallationV1;
+    }>;
+  }
+>;
+
+export function selectFoundationProcessRuntimeConfigurationV7(
+  configuration: FoundationInstalledRuntimeConfigurationV7,
+): FoundationProcessRuntimeConfigurationV7 {
+  const image = configuration.execution?.image;
+  return Object.freeze({
+    machineHome: configuration.machineHome,
+    installationId: configuration.installationId,
+    model: configuration.model,
+    reasoning: configuration.reasoning,
+    specificationRevision: configuration.specificationRevision,
+    publicationDigest: configuration.publicationDigest,
+    ...(image === undefined ? {} : { execution: Object.freeze({
+      image: Object.freeze({
+        imageId: image.imageId,
+        imageDigest: image.imageDigest,
+        immutableReference: image.immutableReference,
+        configurationDigest: image.configurationDigest,
+        platform: Object.freeze({os:image.platform.os,architecture:image.platform.architecture,variant:image.platform.variant}),
+        nonRootUser: image.nonRootUser,
+        runnerContractId: image.runnerContractId,
+        runnerContractDigest: image.runnerContractDigest,
+        runnerImplementationDigest: image.runnerImplementationDigest,
+        toolInventoryDigest: image.toolInventoryDigest,
+        ...(image.agentProvider === undefined ? {} : {
+          agentProvider: Object.freeze({
+            codexVersion: image.agentProvider.codexVersion,
+            executableIdentity: image.agentProvider.executableIdentity,
+            adapterImplementationDigest: image.agentProvider.adapterImplementationDigest,
+          }),
+        }),
+      }),
+    }) }),
+  });
+}
+
 export type FoundationInstalledMachineCustodyV7 = Readonly<{
   machineHome: string;
+}>;
+
+export type FoundationInstalledReadInvestmentV7 = Readonly<{
+  model: string;
+  reasoning: string;
 }>;
 
 export type FoundationInstalledRepositoryInitializationV7 = Readonly<{
@@ -195,6 +246,39 @@ function providerSelection(value: string, label: string): string {
     );
   }
   return value;
+}
+
+function installedInvestment(environment: NodeJS.ProcessEnv): FoundationInstalledReadInvestmentV7 {
+  return Object.freeze({
+    model: providerSelection(
+      environmentValue(environment, FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.model),
+      "Installed provider model",
+    ),
+    reasoning: providerSelection(
+      environmentValue(environment, FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.reasoning),
+      "Installed provider reasoning",
+    ),
+  });
+}
+
+/**
+ * Observe only the configured public Investment choices, without filesystem,
+ * provider-home, installation-identity or Execution Backend access. Null means
+ * the preview is unavailable; it supplies no replacement choice and does not
+ * establish provider support or execution availability.
+ */
+export function resolveFoundationInstalledReadInvestmentV7(
+  options: ResolveFoundationInstalledRuntimeConfigurationV7Options = {},
+): FoundationInstalledReadInvestmentV7 | null {
+  try {
+    return installedInvestment(options.environment ?? process.env);
+  } catch (error) {
+    if (error instanceof FoundationError && (
+      error.code === "lifecycle.installed-configuration-v7.environment" ||
+      error.code === "lifecycle.installed-configuration-v7.provider-selection"
+    )) return null;
+    throw error;
+  }
 }
 
 function installedDigest(value: string, label: string): Sha256 {
@@ -376,14 +460,7 @@ export async function resolveFoundationInstalledRuntimeConfigurationV7(
   if (!within(machineHome, codexHome) || codexHome === machineHome) {
     fail("codex-home", "The isolated Codex home must be the exact child of the machine home");
   }
-  const model = providerSelection(
-    environmentValue(environment, FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.model),
-    "Installed provider model",
-  );
-  const reasoning = providerSelection(
-    environmentValue(environment, FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.reasoning),
-    "Installed provider reasoning",
-  );
+  const { model, reasoning } = installedInvestment(environment);
   const execution = await resolveInstalledExecutionConfiguration(environment);
   const { installationId } = await ensureFoundationInstallationIdentityV1(machineHome);
 

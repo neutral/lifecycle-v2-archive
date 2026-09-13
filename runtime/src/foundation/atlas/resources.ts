@@ -6,6 +6,7 @@ import type { FoundationAtlasState, FoundationGitTreeEntry } from "../repository
 import { digestCanonical, sha256Bytes, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import { FOUNDATION_ATLAS_RESOURCE_BINDING_LIMITS } from "./limits.js";
+import { observedAtlasMaterializationBlobFact, type FoundationAtlasMaterialization } from "./materialization.js";
 import type {
   FoundationAtlasNormalizedModel,
   FoundationAtlasResourceBinding,
@@ -66,6 +67,7 @@ export async function bindAtlasResourcesUnderPolicy(options: {
   model: FoundationAtlasNormalizedModel;
   atlasState: FoundationAtlasState;
   treeEntries: readonly FoundationGitTreeEntry[];
+  materialization?: FoundationAtlasMaterialization;
 }, host: FoundationAtlasResourceBindingHost, limits: FoundationAtlasResourceBindingLimits): Promise<Readonly<{
   bindings: readonly FoundationAtlasResourceBinding[];
   digest: ReturnType<typeof digestCanonical>;
@@ -161,24 +163,25 @@ export async function bindAtlasResourcesUnderPolicy(options: {
     let blob = blobs.get(entry.objectId);
     if (blob === undefined) {
       try {
-        const bytes = await host.readBlob(
-          options.repository,
-          entry.objectId,
-          limits.maximumResourceBytes,
-          remainingMilliseconds(),
+        const observed = observedAtlasMaterializationBlobFact(
+          options.materialization, options.repository, options.atlasState, entry,
         );
+        const bytes = observed === null ? await host.readBlob(
+          options.repository, entry.objectId, limits.maximumResourceBytes, remainingMilliseconds(),
+        ) : null;
         remainingMilliseconds();
-        if (bytes.byteLength > limits.maximumResourceBytes) {
+        const byteLength = observed?.byteLength ?? bytes!.byteLength;
+        if (byteLength > limits.maximumResourceBytes) {
           blob = null;
         } else {
-          aggregateBytes += bytes.byteLength;
+          aggregateBytes += byteLength;
           if (aggregateBytes > limits.maximumAggregateBytes) {
             throw processingBound(
               "Atlas Resource binding exceeds the aggregate-byte bound",
               limits.maximumAggregateBytes,
             );
           }
-          blob = Object.freeze({ digest: sha256Bytes(bytes) });
+          blob = Object.freeze({ digest: observed?.digest ?? sha256Bytes(bytes!) });
         }
       } catch (error) {
         if (
@@ -237,6 +240,7 @@ export async function bindAtlasResources(options: {
   model: FoundationAtlasNormalizedModel;
   atlasState: FoundationAtlasState;
   treeEntries: readonly FoundationGitTreeEntry[];
+  materialization?: FoundationAtlasMaterialization;
 }): Promise<Readonly<{
   bindings: readonly FoundationAtlasResourceBinding[];
   digest: ReturnType<typeof digestCanonical>;

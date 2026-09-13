@@ -1,12 +1,15 @@
 {
-  "schema": "lifecycle.control-record-event.v2",
+  "schema": "lifecycle.control-record-event.v6",
   "storeId": "store.delivery.demo",
   "processId": "delivery.demo",
   "sequence": 16,
   "eventId": "event.evidence-packet",
   "eventKind": "evidence-packet-finalized",
   "occurredAt": "2026-08-29T13:00:00Z",
-  "actor": { "kind": "runtime", "id": "runtime.foundation" },
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
   "subject": {
     "recordId": "evidence.demo",
     "revision": 1,

@@ -25,14 +25,14 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.execution-receipt-payload.v3" },
-    "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "activityId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
     "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
     "providerEffect": {
       "type": "object",
       "additionalProperties": false,
       "required": ["effectDigest", "outcome"],
       "properties": {
-        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "outcome": { "enum": ["completed", "failed", "not-started"] }
       }
     },
@@ -67,16 +67,16 @@
         "signal"
       ],
       "properties": {
-        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "adapter": { "const": "lifecycle.provider-adapter.v6" },
-        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "adapter": { "const": "lifecycle.provider-adapter.v7" },
+        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "observedExecutableIdentity": { "$ref": "#/$defs/nullableDigest" },
-        "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "model": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "sessionId": {
           "oneOf": [
             { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" }
           ]
         },
         "firstTrigger": {
@@ -132,9 +132,9 @@
         "backendProfile": { "$ref": "#/$defs/backendProfileReference" },
         "image": { "$ref": "#/$defs/imageReference" },
         "inputSet": { "$ref": "#/$defs/inputSetReference" },
-        "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "observationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "specificationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "runnerDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "observationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "output": { "$ref": "#/$defs/outputBinding" }
       }
     },
@@ -163,17 +163,17 @@
       "type": "array",
       "maxItems": 32,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/adjacentFileAvailability" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/adjacentFileAvailability" }
     },
     "runtime": {
       "type": "object",
       "additionalProperties": false,
       "required": ["implementationId", "implementationDigest", "ruleSetId", "ruleSetDigest"],
       "properties": {
-        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     }
   },
@@ -184,9 +184,9 @@
         "properties": {
           "inputBindings": {
             "properties": {
-              "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+              "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+              "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+              "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
             }
           }
         }
@@ -209,13 +209,13 @@
     "nullableDigest": {
       "oneOf": [
         { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       ]
     },
     "nullableTime": {
       "oneOf": [
         { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" }
       ]
     },
     "backendProfileReference": {
@@ -229,8 +229,8 @@
             "lifecycle.execution-backend-profile.fault-injection.v1"
           ]
         },
-        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "imageReference": {
@@ -238,8 +238,8 @@
       "additionalProperties": false,
       "required": ["imageId", "imageDigest"],
       "properties": {
-        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "inputSetReference": {
@@ -247,8 +247,8 @@
       "additionalProperties": false,
       "required": ["profileId", "digest"],
       "properties": {
-        "profileId": { "const": "lifecycle.execution-input-set.v1" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileId": { "const": "lifecycle.execution-input-set.v2" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "outputBinding": {
@@ -272,8 +272,8 @@
           "then": {
             "properties": {
               "carrierByteLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-              "carrierDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+              "carrierDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+              "manifestDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
             }
           },
           "else": {
@@ -291,9 +291,9 @@
       "additionalProperties": false,
       "required": ["code", "stage", "factsDigest"],
       "properties": {
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "code": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "stage": { "enum": ["syntax", "template", "semantic", "compiler"] },
-        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "nullableSubmissionDiagnostic": {
@@ -320,7 +320,7 @@
       "properties": {
         "availability": { "const": "available" },
         "rawByteLength": { "type": "integer", "minimum": 0, "maximum": 1048576 },
-        "workspaceRawDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "workspaceRawDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "semanticMarkdownDigest": { "$ref": "#/$defs/nullableDigest" },
         "parseResultDigest": { "$ref": "#/$defs/nullableDigest" },
         "failureFactsDigest": { "$ref": "#/$defs/nullableDigest" },
@@ -351,7 +351,7 @@
         "workspaceRawDigest": { "type": "null" },
         "semanticMarkdownDigest": { "type": "null" },
         "parseResultDigest": { "type": "null" },
-        "failureFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "failureFactsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "submissionDiagnostic": { "type": "null" },
         "fixedBindingSubjectDigest": { "type": "null" },
         "parserDisposition": { "const": "not-run" },
@@ -364,9 +364,9 @@
       "required": ["kind", "id", "revision", "digest"],
       "properties": {
         "kind": { "const": "agent-work-product" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "submittedWorkProduct": {
@@ -393,7 +393,7 @@
       "required": ["revision", "carrierManifestDigest"],
       "properties": {
         "revision": { "$ref": "#/$defs/candidateRevisionReference" },
-        "carrierManifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "carrierManifestDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "candidateRevisionReference": {
@@ -402,9 +402,9 @@
       "required": ["kind", "id", "revision", "digest"],
       "properties": {
         "kind": { "const": "candidate-revision" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "noCandidate": {
@@ -476,7 +476,7 @@
       "required": ["classification", "factsDigest", "cancellationRequested", "forced", "parentLoss"],
       "properties": {
         "classification": { "const": "contained" },
-        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "cancellationRequested": { "type": "boolean" },
         "forced": { "type": "boolean" },
         "parentLoss": { "enum": ["not-observed", "contained"] }
@@ -488,7 +488,7 @@
       "required": ["classification", "factsDigest", "residualClass", "residualFactsDigest"],
       "properties": {
         "classification": { "const": "retired" },
-        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "residualClass": { "enum": ["none", "bounded-non-secret"] },
         "residualFactsDigest": { "$ref": "#/$defs/nullableDigest" }
       },
@@ -496,7 +496,7 @@
         {
           "if": { "properties": { "residualClass": { "const": "none" } }, "required": ["residualClass"] },
           "then": { "properties": { "residualFactsDigest": { "type": "null" } } },
-          "else": { "properties": { "residualFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" } } }
+          "else": { "properties": { "residualFactsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" } } }
         }
       ]
     }

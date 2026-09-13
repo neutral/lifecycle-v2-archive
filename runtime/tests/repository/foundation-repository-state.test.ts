@@ -1,9 +1,11 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { chmod, mkdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { mkdtemp } from "node:fs/promises";
 import test from "node:test";
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
 import { loadKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
 import { createFoundationAuthority } from "../../src/foundation/repository/authority.js";
 import { createRepositoryContract, writeRepositoryContract } from "../../src/foundation/repository/contract.js";
@@ -26,7 +28,7 @@ function knowledgeDocument(kind: "blueprint" | "description"): string {
   const description = kind === "description";
   const title = description ? "Application description" : "Repository state architecture";
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind,
     id: description ? "description.application" : "blueprint.repository-state",
     title,
@@ -34,7 +36,7 @@ function knowledgeDocument(kind: "blueprint" | "description"): string {
     revision: 1,
     supersedes: null,
     summary: `${title} summary.`,
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -74,7 +76,8 @@ async function target(options: { implementationRoots?: readonly string[]; includ
   await writeMinimalAtlas(root);
   await write(root, ".gitignore", "node_modules/\n.lifecycle/*\n!.lifecycle/repository.json\n");
   await write(root, "records/blueprint/repository-state.md", knowledgeDocument("blueprint"));
-  const authority = await createFoundationAuthority(home, "repository-state-target", SECRET);
+  await write(root, "records/disciplines/registry.json", `${JSON.stringify(createEmptyDisciplineRegistry(), null, 2)}\n`);
+  const authority = await createFoundationAuthority(home, "repository-state-target", receiveFoundationAuthorityCredential(SECRET, "initialize"));
   let contract = createRepositoryContract({
     targetId: "repository-state-target",
     canonicalBranch: "refs/heads/main",
@@ -131,6 +134,7 @@ test("repository snapshot reads one exact commit while reporting live authoritat
   assert.equal(roles[".lifecycle/repository.json"], "repository-contract");
   assert.equal(roles["atlas/atlas.md"], "atlas");
   assert.equal(roles["records/behavior/.gitkeep"], "knowledge");
+  assert.equal(roles["records/disciplines/registry.json"], "knowledge");
   assert.equal(roles["src/_app.desc.md"], "knowledge");
   assert.equal(roles["src/app.ts"], "governed-implementation");
   assert.equal(roles["docs/guide.md"], "declared-product");
@@ -177,6 +181,25 @@ test("repository snapshot rejects executable semantic authority and symbolic imp
   await git(symbolicImplementation, ["add", "--", "outside.ts", "src/link.ts"]);
   await git(symbolicImplementation, ["commit", "-m", "Add symbolic implementation"]);
   await assert.rejects(loadRepositoryEpoch(symbolicImplementation), /not a tracked regular blob/u);
+});
+
+test("adopted Discipline paths and Registry obey exact tracked non-executable source custody", async () => {
+  const root = await target({ implementationRoots: [] });
+  await write(root, "records/disciplines/untracked.md", "untracked guidance\n");
+  await assert.rejects(loadRepositoryEpoch(root), (error: unknown) =>
+    error instanceof Error && "code" in error && error.code === "lifecycle.repository.untracked-authority");
+  await unlink(join(root, "records/disciplines/untracked.md"));
+  const registryPath = join(root, "records/disciplines/registry.json");
+  const exact = await loadBoundRepository(root);
+  await writeFile(registryPath, "changed live Registry bytes\n", "utf8");
+  const dirty = await loadBoundRepository(root);
+  assert.equal(dirty.snapshot.digest, exact.snapshot.digest);
+  assert.deepEqual(dirty.worktree.modified, ["records/disciplines/registry.json"]);
+  await git(root, ["restore", "--", "records/disciplines/registry.json"]);
+  await chmod(registryPath, 0o755);
+  await git(root, ["add", "--", "records/disciplines/registry.json"]);
+  await git(root, ["commit", "-m", "Make Registry executable"]);
+  await assert.rejects(loadRepositoryEpoch(root), /must be non-executable/u);
 });
 
 test("repository snapshot rejects Gitlinks and folded authoritative aliases", async () => {
@@ -236,6 +259,7 @@ test("empty governed implementation roots form a reproducible repository epoch",
     "atlas",
     "atlas",
     "atlas",
+    "knowledge",
     "knowledge",
   ]);
 });

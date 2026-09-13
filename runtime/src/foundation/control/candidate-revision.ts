@@ -12,6 +12,7 @@ import {
   type Sha256,
 } from "../validation/canonical.js";
 import { compareCodePoints, sortUniqueCodePoints } from "../validation/ordering.js";
+import { foundationIntegrationValidationFactsDigestV1, parseFoundationIntegrationAssessmentPayloadV1 } from "./integration-assessment.js";
 import { assertDeliveryControlRecordPolicy } from "./kind-registry.js";
 import {
   compileControlRecordRevision,
@@ -43,6 +44,13 @@ export type CandidateRevisionReference = Readonly<{
 
 export type CandidateRevisionBoundaryReference = Readonly<{
   kind: "work-boundary";
+  id: string;
+  revision: number;
+  digest: Sha256;
+}>;
+
+export type CandidateRevisionIntegrationReference = Readonly<{
+  kind: "integration-assessment";
   id: string;
   revision: number;
   digest: Sha256;
@@ -108,7 +116,7 @@ export type CandidateRevisionCarrierVerifier = (
 export type CandidateRevisionRetentionInput = Readonly<{
   store: ControlRecordStore;
   activityId: string;
-  observation: "initialization" | "builder-successor" | "readmission-rebind";
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   candidateBaseCommit: string;
   carrierManifestBytes: Uint8Array;
   verifyCarrier: CandidateRevisionCarrierVerifier;
@@ -116,6 +124,7 @@ export type CandidateRevisionRetentionInput = Readonly<{
   boundary: CandidateRevisionBoundaryReference;
   predecessor?: CandidateRevisionReference | null;
   builderAttempt?: CandidateRevisionAttemptReference | null;
+  integrationAssessment?: CandidateRevisionIntegrationReference | null;
   observedAt: string;
   runtimeId: string;
 }>;
@@ -150,14 +159,15 @@ export type RetainedCandidateRevision = Readonly<{
 type CandidateRelationshipReference =
   | CandidateRevisionReference
   | CandidateRevisionBoundaryReference
-  | CandidateRevisionAttemptReference;
+  | CandidateRevisionAttemptReference
+  | CandidateRevisionIntegrationReference;
 
 function fail(code: string, message: string): never {
   throw new FoundationError(`lifecycle.control-candidate-revision.${code}`, message);
 }
 
 function relationship(
-  relation: "revises" | "governed-by" | "result-of",
+  relation: "revises" | "governed-by" | "result-of" | "integrated-from",
   target: CandidateRelationshipReference,
 ): ControlRecordRelationship {
   return Object.freeze({
@@ -221,7 +231,7 @@ function normalizedState(state: CandidateRevisionState): CandidateRevisionState 
 }
 
 function normalizedRetentionState(input: Readonly<{
-  observation: "initialization" | "builder-successor" | "readmission-rebind";
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   reproduced: CandidateRevisionState;
   predecessor: ControlRecordRevision | null;
 }>): CandidateRevisionState {
@@ -328,13 +338,13 @@ function boundaryBasis(
 }
 
 function assertLocallyReproducibleState(input: Readonly<{
-  observation: "initialization" | "builder-successor" | "readmission-rebind";
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   candidateBaseCommit: string;
   state: CandidateRevisionState;
   basis: CandidateBoundaryBasis;
   predecessor: ControlRecordRevision | null;
 }>): void {
-  if (input.candidateBaseCommit !== input.basis.productBaseCommit) {
+  if (input.observation === "initialization" && input.candidateBaseCommit !== input.basis.productBaseCommit) {
     fail("base", "Candidate Revision base commit does not match its exact Work Boundary");
   }
   if (input.state.productStateDigest !== input.state.artifactSetDigest) {
@@ -433,7 +443,7 @@ function candidateCarrierManifestFile(input: Readonly<{
 }
 
 function semanticMarkdown(input: Readonly<{
-  observation: "initialization" | "builder-successor" | "readmission-rebind";
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   candidateBaseCommit: string;
   carrierManifestDigest: Sha256;
   state: ControlJsonObject;
@@ -452,7 +462,7 @@ function semanticMarkdown(input: Readonly<{
 }
 
 function assertObservationRelationships(input: Readonly<{
-  observation: "initialization" | "builder-successor" | "readmission-rebind";
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   predecessor: CandidateRevisionReference | null;
   builderAttempt: CandidateRevisionAttemptReference | null;
 }>): void {
@@ -485,6 +495,11 @@ export async function prepareCandidateRevisionRetention(
   const activityId = controlIdentifier(input.activityId, "Candidate observation activity identity");
   const predecessor = input.predecessor ?? null;
   const builderAttempt = input.builderAttempt ?? null;
+  const integrationAssessment = input.integrationAssessment ?? null;
+  let integrationFactsDigest: Sha256 | null = null;
+  if ((input.observation === "integration-successor") !== (integrationAssessment !== null)) {
+    fail("integration", "Only an integration successor must bind one exact Integration Assessment");
+  }
   assertObservationRelationships({
     observation: input.observation,
     predecessor,
@@ -503,8 +518,24 @@ export async function prepareCandidateRevisionRetention(
     ) {
       fail("predecessor", "Candidate successor does not bind one exact retained predecessor");
     }
-    if (retainedPredecessor.payload.candidateBaseCommit !== input.candidateBaseCommit) {
+    if (input.observation !== "integration-successor" && retainedPredecessor.payload.candidateBaseCommit !== input.candidateBaseCommit) {
       fail("base", "Candidate succession cannot change its immutable base commit");
+    }
+  }
+
+  if (integrationAssessment !== null) {
+    const assessment = input.store.getRevision(integrationAssessment.id, integrationAssessment.revision);
+    if (assessment === null || assessment.recordKind !== "integration-assessment" || assessment.digest !== integrationAssessment.digest) {
+      fail("integration", "Candidate successor does not bind an exact retained Integration Assessment");
+    }
+    const assessmentPayload = parseFoundationIntegrationAssessmentPayloadV1(assessment.payload);
+    integrationFactsDigest = assessmentPayload.validation.factsDigest;
+    const integrates = assessment.relationships.filter(({ relation }) => relation === "integrates");
+    const governedBy = assessment.relationships.filter(({ relation }) => relation === "governed-by");
+    if (assessmentPayload.outcome !== "constructed" || assessmentPayload.canonicalParent.commit !== input.candidateBaseCommit ||
+      integrates.length !== 1 || canonicalJson(integrates[0]!.target) !== canonicalJson(predecessor) ||
+      governedBy.length !== 1 || canonicalJson(governedBy[0]!.target) !== canonicalJson(input.boundary)) {
+      fail("integration", "Candidate integration must reproduce its exact constructed Assessment, source, parent, and Boundary");
     }
   }
 
@@ -550,6 +581,9 @@ export async function prepareCandidateRevisionRetention(
     reproduced: verification.state,
     predecessor: retainedPredecessor,
   });
+  if (integrationFactsDigest !== null && integrationFactsDigest !== foundationIntegrationValidationFactsDigestV1({
+    manifestFileDigest: carrierManifest.digest, state, observer: verification.observer,
+  })) fail("integration", "Candidate integration does not reproduce its Assessment's exact constructed observation");
   if (parsedManifest.rootTree !== state.tree) {
     fail(
       "carrier-subject",
@@ -590,8 +624,8 @@ export async function prepareCandidateRevisionRetention(
   }
 
   const payload: ControlJsonObject = Object.freeze({
-    schema: "lifecycle.candidate-revision-payload.v2",
-    profileId: "lifecycle.candidate-revision.observation.v1",
+    schema: "lifecycle.candidate-revision-payload.v3",
+    profileId: "lifecycle.candidate-revision.observation.v2",
     observation: input.observation,
     candidateBaseCommit: input.candidateBaseCommit,
     carrierManifest: carrierReference,
@@ -603,6 +637,7 @@ export async function prepareCandidateRevisionRetention(
     ...(predecessor === null ? [] : [relationship("revises", predecessor)]),
     relationship("governed-by", input.boundary),
     ...(builderAttempt === null ? [] : [relationship("result-of", builderAttempt)]),
+    ...(integrationAssessment === null ? [] : [relationship("integrated-from", integrationAssessment)]),
   ]);
   const revisionInput = Object.freeze({
     recordId,

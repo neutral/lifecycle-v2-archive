@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:delivery-reduction:v2",
-  "title": "Lifecycle Delivery Reduction v2",
+  "$id": "urn:lifecycle:schema:delivery-reduction:v5",
+  "title": "Lifecycle Delivery Reduction v5",
   "description": "Ephemeral Delivery-only state derived from the complete validated event chain, exact revisions, and post-Closure store observations; private Execution Cell and Reclamation state never enters this value.",
   "type": "object",
   "additionalProperties": false,
@@ -14,17 +14,32 @@
     "activities",
     "recovery",
     "subjects",
+    "delegation",
     "journal",
     "storeDisposition",
     "eligibleOperations"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.delivery-reduction.v2" },
-    "storeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-    "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "schema": {
+      "const": "lifecycle.delivery-reduction.v5"
+    },
+    "storeId": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+    },
+    "processId": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+    },
     "standing": {
       "description": "Mandate-governance projection. Active requires a current admitted Boundary and can precede the initial Candidate observation.",
-      "enum": ["framing", "awaiting-admission", "active", "boundary-paused", "awaiting-readmission", "decision-ready", "closed"]
+      "enum": [
+        "framing",
+        "awaiting-admission",
+        "active",
+        "boundary-paused",
+        "awaiting-readmission",
+        "decision-ready",
+        "closed"
+      ]
     },
     "candidateCondition": {
       "description": "Candidate-subject projection. It is absent whenever no current Candidate exists, distinguishes eligible recoverable pre-effect in-progress work from post-preparation terminal recovery under the owning precedence rules, and retains accepted, abandoned, or absent through post-Closure Store-disposition recovery.",
@@ -48,51 +63,122 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "operation", "family", "stage"],
+        "required": [
+          "id",
+          "operation",
+          "family",
+          "stage"
+        ],
         "properties": {
-          "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-          "operation": { "$ref": "#/$defs/operation" },
-          "family": { "enum": ["agent", "transaction"] },
-          "stage": { "enum": ["started", "prepared", "effect-intended", "effect-observed", "submitted", "finalizing", "completed"] }
+          "id": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+          },
+          "operation": {
+            "$ref": "#/$defs/operation"
+          },
+          "family": {
+            "enum": [
+              "agent",
+              "transaction",
+              "integration"
+            ]
+          },
+          "stage": {
+            "enum": [
+              "started",
+              "prepared",
+              "effect-intended",
+              "effect-observed",
+              "submitted",
+              "finalizing",
+              "completed"
+            ]
+          }
         }
       }
     },
     "recovery": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/recovery" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/recovery"
+        }
       ]
     },
     "subjects": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["proposedBoundary", "activeBoundary", "candidate", "materialCondition", "seal", "evidence", "closure"],
+      "required": [
+        "proposedBoundary",
+        "activeBoundary",
+        "candidate",
+        "materialCondition",
+        "seal",
+        "evidence",
+        "closure",
+        "integrationAssessment"
+      ],
       "properties": {
-        "proposedBoundary": { "$ref": "#/$defs/nullableReference" },
-        "activeBoundary": { "$ref": "#/$defs/nullableReference" },
-        "candidate": { "$ref": "#/$defs/nullableReference" },
-        "materialCondition": { "$ref": "#/$defs/nullableReference" },
-        "seal": { "$ref": "#/$defs/nullableReference" },
-        "evidence": { "$ref": "#/$defs/nullableReference" },
-        "closure": { "$ref": "#/$defs/nullableReference" }
+        "proposedBoundary": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "activeBoundary": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "candidate": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "materialCondition": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "seal": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "evidence": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "closure": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "integrationAssessment": {
+          "$ref": "#/$defs/nullableReference"
+        }
       }
     },
     "journal": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["eventCount", "headSequence", "headDigest"],
+      "required": [
+        "eventCount",
+        "headSequence",
+        "headDigest"
+      ],
       "properties": {
-        "eventCount": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "eventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
         "headSequence": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            }
           ]
         },
         "headDigest": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           ]
         }
       }
@@ -100,19 +186,84 @@
     "storeDisposition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["stage", "integrity", "sealSubjectDigest", "archiveManifestDigest"],
+      "required": [
+        "stage",
+        "integrity",
+        "sealSubjectDigest",
+        "archiveManifestDigest"
+      ],
       "properties": {
-        "stage": { "enum": ["active", "closure-recorded", "sealed", "archived"] },
-        "integrity": { "enum": ["verified", "unverified", "invalid"] },
-        "sealSubjectDigest": { "$ref": "#/$defs/nullableDigest" },
-        "archiveManifestDigest": { "$ref": "#/$defs/nullableDigest" }
+        "stage": {
+          "enum": [
+            "active",
+            "closure-recorded",
+            "sealed",
+            "archived"
+          ]
+        },
+        "integrity": {
+          "enum": [
+            "verified",
+            "unverified",
+            "invalid"
+          ]
+        },
+        "sealSubjectDigest": {
+          "$ref": "#/$defs/nullableDigest"
+        },
+        "archiveManifestDigest": {
+          "$ref": "#/$defs/nullableDigest"
+        }
       }
     },
     "eligibleOperations": {
       "type": "array",
       "maxItems": 9,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/operation" }
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
+    },
+    "delegation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admission",
+        "current",
+        "charged"
+      ],
+      "properties": {
+        "admission": {
+          "$ref": "#/$defs/nullableReference"
+        },
+        "current": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reference",
+                "stopped"
+              ],
+              "properties": {
+                "reference": {
+                  "$ref": "#/$defs/reference"
+                },
+                "stopped": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        "charged": {
+          "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/accounting"
+        }
+      },
+      "description": "The exact applied Director Decision, latest Work Delegation reference/stopped flag and lifetime conservative delegated reservations. These are reducer facts; current applicability still binds the active Boundary/admission. Charges survive stop, replacement and readmission; no measured-use refund or pending operational stop row is implied."
     }
   },
   "$defs": {
@@ -121,6 +272,7 @@
         "delivery.prepare",
         "delivery.admit",
         "delivery.continue",
+        "delivery.integrate",
         "delivery.evaluate",
         "delivery.revise",
         "delivery.reaffirm",
@@ -132,40 +284,81 @@
     "reference": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "revision", "digest"],
+      "required": [
+        "id",
+        "revision",
+        "digest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "revision": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "nullableReference": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/reference" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/reference"
+        }
       ]
     },
     "nullableDigest": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       ]
     },
     "recovery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scope", "activityId", "kind", "resumesAt", "exactEffectDigest"],
+      "required": [
+        "scope",
+        "activityId",
+        "kind",
+        "resumesAt",
+        "exactEffectDigest"
+      ],
       "properties": {
-        "scope": { "enum": ["activity", "store-disposition"] },
-        "activityId": {
-          "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+        "scope": {
+          "enum": [
+            "activity",
+            "store-disposition"
           ]
         },
-        "kind": { "enum": ["provider", "candidate-observation", "transaction", "finalization"] },
+        "activityId": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "provider",
+            "candidate-observation",
+            "transaction",
+            "finalization"
+          ]
+        },
         "resumesAt": {
           "enum": [
+            "integration-assessed",
             "candidate-sealed",
             "agent-attempt-prepared",
             "provider-effect-intended",
@@ -178,7 +371,7 @@
             "evaluation-checks",
             "activity-finalization",
             "activity-completed",
-            "founder-decision-authenticated",
+            "director-decision-authenticated",
             "transaction-effect-intended",
             "transaction-effect-observed",
             "transaction-finalization",
@@ -186,34 +379,51 @@
             "store-archive"
           ]
         },
-        "exactEffectDigest": { "$ref": "#/$defs/nullableDigest" }
+        "exactEffectDigest": {
+          "$ref": "#/$defs/nullableDigest"
+        }
       },
       "allOf": [
         {
           "oneOf": [
             {
               "properties": {
-                "kind": { "const": "provider" },
-                "resumesAt": { "const": "provider-effect-observed" }
+                "kind": {
+                  "const": "provider"
+                },
+                "resumesAt": {
+                  "const": "provider-effect-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "candidate-observation" },
-                "resumesAt": { "const": "candidate-revision-observed" }
+                "kind": {
+                  "const": "candidate-observation"
+                },
+                "resumesAt": {
+                  "const": "candidate-revision-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "transaction" },
-                "resumesAt": { "const": "transaction-effect-observed" }
+                "kind": {
+                  "const": "transaction"
+                },
+                "resumesAt": {
+                  "const": "transaction-effect-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "finalization" },
+                "kind": {
+                  "const": "finalization"
+                },
                 "resumesAt": {
                   "enum": [
+                    "integration-assessed",
                     "candidate-sealed",
                     "agent-attempt-prepared",
                     "provider-effect-intended",
@@ -224,7 +434,7 @@
                     "evaluation-checks",
                     "activity-finalization",
                     "activity-completed",
-                    "founder-decision-authenticated",
+                    "director-decision-authenticated",
                     "transaction-effect-intended",
                     "transaction-finalization",
                     "store-seal",
@@ -239,20 +449,42 @@
           "oneOf": [
             {
               "properties": {
-                "scope": { "const": "activity" },
-                "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+                "scope": {
+                  "const": "activity"
+                },
+                "activityId": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                },
                 "resumesAt": {
-                  "not": { "enum": ["store-seal", "store-archive"] }
+                  "not": {
+                    "enum": [
+                      "store-seal",
+                      "store-archive"
+                    ]
+                  }
                 }
               }
             },
             {
               "properties": {
-                "scope": { "const": "store-disposition" },
-                "activityId": { "type": "null" },
-                "kind": { "const": "finalization" },
-                "resumesAt": { "enum": ["store-seal", "store-archive"] },
-                "exactEffectDigest": { "type": "null" }
+                "scope": {
+                  "const": "store-disposition"
+                },
+                "activityId": {
+                  "type": "null"
+                },
+                "kind": {
+                  "const": "finalization"
+                },
+                "resumesAt": {
+                  "enum": [
+                    "store-seal",
+                    "store-archive"
+                  ]
+                },
+                "exactEffectDigest": {
+                  "type": "null"
+                }
               }
             }
           ]

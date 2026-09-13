@@ -53,18 +53,16 @@ if (invocationPath !== "/run/lifecycle-invocation/invocation.json") {
 const invocation = exactInvocation(invocationPath);
 
 const [commandName, ...arguments_] = process.argv.slice(2);
-const executable = commandName === "lifecycle"
-  ? "/opt/lifecycle/bin/lifecycle"
-  : commandName === "lifecycle-tui"
-    ? "/opt/lifecycle/bin/lifecycle-tui"
-    : null;
-if (executable === null) refuse("entrypoint is not lifecycle or lifecycle-tui");
+const command = commandName === "lifecycle"
+  ? Object.freeze({ executable: "/opt/lifecycle/bin/lifecycle", prefix: Object.freeze([]) })
+  : null;
+if (command === null) refuse("entrypoint is not the selected Lifecycle CLI");
 
 let lastCounter = null;
 let missed = 0;
 let parentLost = false;
 let forceTimer = null;
-const child = spawn(executable, arguments_, {
+const child = spawn(command.executable, [...command.prefix, ...arguments_], {
   env: process.env,
   shell: false,
   stdio: "inherit",

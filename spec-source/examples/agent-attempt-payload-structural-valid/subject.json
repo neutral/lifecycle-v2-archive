@@ -33,9 +33,9 @@
     "rationale": "initial-probe"
   },
   "provider": {
-    "descriptorId": "codex-exec-standard-v6",
+    "descriptorId": "codex-exec-standard-v7",
     "descriptorDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
-    "adapter": "lifecycle.provider-adapter.v6",
+    "adapter": "lifecycle.provider-adapter.v7",
     "executableIdentityClass": "oci-image-tool",
     "installedIdentityDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
   },
@@ -50,17 +50,17 @@
       "imageDigest": "sha256:4747474747474747474747474747474747474747474747474747474747474747"
     },
     "inputSet": {
-      "profileId": "lifecycle.execution-input-set.v1",
+      "profileId": "lifecycle.execution-input-set.v2",
       "digest": "sha256:4848484848484848484848484848484848484848484848484848484848484848"
     }
   },
   "authoring": {
     "roleBriefDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "templateProfileId": "lifecycle.agent-work-product-body.reconnaissance.v2",
+    "templateProfileId": "lifecycle.agent-work-product-body.reconnaissance.v4",
     "templateDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "parserProfileId": "lifecycle.agent-work-product-parser.v2",
+    "parserProfileId": "lifecycle.agent-work-product-parser.v4",
     "parserProfileDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "compilerProfileId": "lifecycle.agent-work-product-compiler.v2",
+    "compilerProfileId": "lifecycle.agent-work-product-compiler.v4",
     "compilerProfileDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     "submissionPolicy": "explicit-or-clean-natural-completion"
   },

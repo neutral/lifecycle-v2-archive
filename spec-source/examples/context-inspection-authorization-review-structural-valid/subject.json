@@ -1,0 +1,8 @@
+{
+  "kind": "authorization-review",
+  "expectedGeneration": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "operation": "delivery.no-ship",
+  "input": {
+    "semanticMarkdown": "# No-ship\n\nThe exact Delivery must close without integration.\n"
+  }
+}

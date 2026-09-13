@@ -26,7 +26,7 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.agent-attempt-payload.v3" },
-    "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "activityId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
     "operation": {
       "enum": [
         "delivery.prepare",
@@ -37,27 +37,27 @@
       ]
     },
     "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
-    "invocationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-    "preDispatchStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "invocationId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+    "preDispatchStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "projection": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "profileId", "digest"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "profileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
-    "roleSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "roleSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "capability": {
       "type": "object",
       "additionalProperties": false,
       "required": ["profileId", "profileDigest", "effectiveGrantDigest"],
       "properties": {
-        "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "effectiveGrantDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "effectiveGrantDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "investment": {
@@ -65,10 +65,10 @@
       "additionalProperties": false,
       "required": ["id", "digest", "model", "reasoning", "wallTimeMs", "limits", "rationale"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "model": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "reasoning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "model": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "reasoning": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "wallTimeMs": {
           "type": "integer",
           "minimum": 1,
@@ -87,7 +87,7 @@
             "storageBytes": { "$ref": "#/$defs/nullablePositiveSafeInteger" }
           }
         },
-        "rationale": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+        "rationale": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
       }
     },
     "provider": {
@@ -95,11 +95,11 @@
       "additionalProperties": false,
       "required": ["descriptorId", "descriptorDigest", "adapter", "executableIdentityClass", "installedIdentityDigest"],
       "properties": {
-        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "adapter": { "const": "lifecycle.provider-adapter.v6" },
-        "executableIdentityClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "descriptorId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "descriptorDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "adapter": { "const": "lifecycle.provider-adapter.v7" },
+        "executableIdentityClass": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "installedIdentityDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "execution": {
@@ -126,13 +126,13 @@
         "submissionPolicy"
       ],
       "properties": {
-        "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "templateProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "templateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "parserProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "parserProfileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "compilerProfileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "compilerProfileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "roleBriefDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "templateProfileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "templateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "parserProfileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "parserProfileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "compilerProfileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "compilerProfileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "submissionPolicy": { "enum": ["explicit", "explicit-or-clean-natural-completion"] }
       }
     },
@@ -147,9 +147,9 @@
         "propositionSetDigest"
       ],
       "properties": {
-        "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "citationRegistryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "citationRegistryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "evidenceSetDigest": { "$ref": "#/$defs/nullableDigest" },
         "propositionSetDigest": { "$ref": "#/$defs/nullableDigest" }
       }
@@ -165,18 +165,18 @@
         "recoveryPolicyDigest"
       ],
       "properties": {
-        "cancellationPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "containmentPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "parentLossPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "retirementPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "recoveryPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "cancellationPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "containmentPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "parentLossPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "retirementPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "recoveryPolicyDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "adjacentFilePurposes": {
       "type": "array",
       "maxItems": 16,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" }
     }
   },
   "allOf": [
@@ -201,7 +201,7 @@
           "operation": { "const": "delivery.continue" },
           "input": {
             "properties": {
-              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
               "propositionSetDigest": { "type": "null" }
             }
           }
@@ -215,8 +215,8 @@
           "operation": { "const": "delivery.evaluate" },
           "input": {
             "properties": {
-              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "propositionSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+              "evidenceSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+              "propositionSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
             }
           }
         }
@@ -235,8 +235,8 @@
             "lifecycle.execution-backend-profile.fault-injection.v1"
           ]
         },
-        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "imageReference": {
@@ -244,8 +244,8 @@
       "additionalProperties": false,
       "required": ["imageId", "imageDigest"],
       "properties": {
-        "imageId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "imageId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "imageDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "inputSetReference": {
@@ -253,20 +253,20 @@
       "additionalProperties": false,
       "required": ["profileId", "digest"],
       "properties": {
-        "profileId": { "const": "lifecycle.execution-input-set.v1" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "profileId": { "const": "lifecycle.execution-input-set.v2" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "nullablePositiveSafeInteger": {
       "oneOf": [
         { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" }
       ]
     },
     "nullableDigest": {
       "oneOf": [
         { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       ]
     }
   }

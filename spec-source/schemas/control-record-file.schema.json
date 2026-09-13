@@ -8,7 +8,7 @@
   "required": ["schema", "reference", "createdAt"],
   "properties": {
     "schema": { "const": "lifecycle.control-record-file.v1" },
-    "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference" },
-    "createdAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" }
+    "reference": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/retainedFileReference" },
+    "createdAt": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime" }
   }
 }

@@ -1,9 +1,14 @@
 import type {
   FoundationCheckCellRuntimeV1,
+  FoundationCheckCellOperatorV1,
 } from "../check/execution-cell-v1.js";
-import { FoundationCheckCellInputTransportRegistryV1 } from "../check/execution-cell-v1.js";
+import {
+  FoundationCheckCellInputTransportRegistryV1,
+  operateFoundationCheckCellV1,
+} from "../check/execution-cell-v1.js";
 import type {
   FoundationInstalledRuntimeConfigurationV7,
+  FoundationProcessRuntimeConfigurationV7,
 } from "../installed-configuration-v7.js";
 import { FoundationError } from "../error.js";
 import { createFoundationDockerExecutionBackend } from "./docker-backend.js";
@@ -11,17 +16,16 @@ import { FoundationDockerExecutionBindingRegistryV1 } from "./docker-binding-reg
 import { createFoundationDockerCliEngineDriverV1 } from "./docker-cli-engine-driver-v1.js";
 import { foundationDockerExecutionBackendProfileV1 } from "./docker-profile-v1.js";
 import { createFoundationExecutionOutputStoreV1 } from "./output-store-v1.js";
+import { withFoundationInstalledReclamationMaintenanceV1 } from "./installed-reclamation-maintenance-v1.js";
 import {
   openFoundationExecutionReclamationLedgerV1,
-  type FoundationExecutionReclamationLedgerV1,
   type FoundationExecutionReclamationPreIntentRefusalV1,
   type FoundationExecutionReclamationTerminalSubjectV1,
   type FoundationExecutionReclamationTerminalVerificationV1,
 } from "./reclamation-ledger-v1.js";
 
 export type FoundationOpenedInstalledCheckRuntimeV1 = Readonly<{
-  runtime: FoundationCheckCellRuntimeV1;
-  ledger: FoundationExecutionReclamationLedgerV1;
+  operator: FoundationCheckCellOperatorV1;
   observeTerminalReclamation(input: Readonly<{
     machineHome: string;
     storeId: string;
@@ -48,6 +52,28 @@ export type FoundationOpenedInstalledReclamationObserverV1 = Readonly<{
 
 function fail(code: string, message: string): never {
   throw new FoundationError(`lifecycle.execution.installed-check-runtime-v1.${code}`, message);
+}
+
+/** Resolve the same public resource values for reservation and actual Check execution. */
+export function selectFoundationInstalledCheckResourcesV1(
+  configuration: Pick<FoundationProcessRuntimeConfigurationV7, "execution">,
+): Pick<FoundationCheckCellRuntimeV1, "profile" | "image"> {
+  const image = configuration.execution?.image;
+  if (image === undefined) fail("unconfigured", "Final Check resources require one exact installed Execution Image selection");
+  return Object.freeze({ profile: foundationDockerExecutionBackendProfileV1(),
+    image: Object.freeze({ imageId: image.imageId, imageDigest: image.imageDigest,
+      runnerContractDigest: image.runnerContractDigest, runnerImplementationDigest: image.runnerImplementationDigest,
+      toolInventoryDigest: image.toolInventoryDigest }) });
+}
+
+/** Only the exact Check operation and observation clock leave execution custody. */
+export function createFoundationCheckCellOperatorV1(
+  runtime: FoundationCheckCellRuntimeV1,
+): FoundationCheckCellOperatorV1 {
+  return Object.freeze({
+    operate: async (request) => await operateFoundationCheckCellV1({ ...request, runtime }),
+    clock: runtime.clock,
+  });
 }
 
 export async function openFoundationInstalledReclamationObserverV1(input: Readonly<{
@@ -91,7 +117,8 @@ export async function openFoundationInstalledCheckRuntimeV1(input: Readonly<{
       "Final Check execution requires one exact installed Docker Engine and Execution Image selection",
     );
   }
-  const profile = foundationDockerExecutionBackendProfileV1();
+  const resources = selectFoundationInstalledCheckResourcesV1(input.configuration);
+  const profile = resources.profile;
   const inputTransport = new FoundationCheckCellInputTransportRegistryV1();
   const bindingRegistry = new FoundationDockerExecutionBindingRegistryV1();
   const driver = await createFoundationDockerCliEngineDriverV1({
@@ -123,13 +150,7 @@ export async function openFoundationInstalledCheckRuntimeV1(input: Readonly<{
     profile,
     engineIdentityDigest: engine.engineIdentityDigest,
     bindingRegistry,
-    image: Object.freeze({
-      imageId: installed.image.imageId,
-      imageDigest: installed.image.imageDigest,
-      runnerContractDigest: installed.image.runnerContractDigest,
-      runnerImplementationDigest: installed.image.runnerImplementationDigest,
-      toolInventoryDigest: installed.image.toolInventoryDigest,
-    }),
+    image: resources.image,
     outputStore: createFoundationExecutionOutputStoreV1({
       machineHome: input.configuration.machineHome,
     }),
@@ -138,9 +159,15 @@ export async function openFoundationInstalledCheckRuntimeV1(input: Readonly<{
     clock: Object.freeze({ now: input.now }),
     pollMilliseconds: 100,
   });
+  const operator = createFoundationCheckCellOperatorV1(runtime);
+  const maintained = withFoundationInstalledReclamationMaintenanceV1({
+    ledger, backend, image: resources.image,
+    engineIdentityDigest: async () => (await driver.describe()).engineIdentityDigest,
+    agent: null,
+    operate: operator.operate,
+  });
   return Object.freeze({
-    runtime,
-    ledger,
+    operator: Object.freeze({ operate: maintained.operate, clock: operator.clock }),
     observeTerminalReclamation(observationInput) {
       if (observationInput.machineHome !== input.configuration.machineHome) {
         fail("machine-substitution", "Terminal Reclamation observer selected another machine custody root");
@@ -152,15 +179,7 @@ export async function openFoundationInstalledCheckRuntimeV1(input: Readonly<{
         preIntentRefusals: observationInput.preIntentRefusals,
       });
     },
-    async reclaimNext(): Promise<boolean> {
-      return (await ledger.runNext({
-        reclaim: async (handoff) => await backend.reclaim(
-          handoff.specification,
-          handoff.reclamationBinding,
-          handoff.obligation,
-        ),
-      })) !== null;
-    },
+    reclaimNext: maintained.reclaimNext,
     close(): void { ledger.close(); },
   });
 }

@@ -21,9 +21,9 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.validation-result.v1" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "publicationDigest": { "$ref": "#/$defs/nullableDigest" },
-    "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "profile": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "subject": { "$ref": "#/$defs/subject" },
     "complete": { "type": "boolean" },
     "valid": { "type": "boolean" },
@@ -41,7 +41,7 @@
     "implementation": { "$ref": "#/$defs/implementation" },
     "limits": { "$ref": "#/$defs/limits" },
     "observedAt": { "type": "string", "format": "date-time" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "allOf": [
     {
@@ -58,7 +58,7 @@
   "$defs": {
     "nullableDigest": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         { "type": "null" }
       ]
     },
@@ -67,19 +67,19 @@
       "additionalProperties": false,
       "required": ["kind", "id", "digest", "revision", "locator"],
       "properties": {
-        "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "kind": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "digest": { "$ref": "#/$defs/nullableDigest" },
         "revision": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
             { "type": "integer", "minimum": 1 },
             { "type": "null" }
           ]
         },
         "locator": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
             { "type": "null" }
           ]
         }
@@ -90,7 +90,7 @@
       "additionalProperties": false,
       "required": ["id", "complete", "valid", "diagnosticCount", "durationMs"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "complete": { "type": "boolean" },
         "valid": { "type": "boolean" },
         "diagnosticCount": { "type": "integer", "minimum": 0 },
@@ -114,7 +114,7 @@
       "additionalProperties": false,
       "required": ["id", "complete", "valid"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "complete": { "type": "boolean" },
         "valid": { "type": "boolean" }
       }
@@ -126,7 +126,7 @@
       "properties": {
         "locator": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
             { "type": "null" }
           ]
         },
@@ -161,7 +161,7 @@
       "additionalProperties": false,
       "required": ["kind", "id", "digest", "location"],
       "properties": {
-        "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "kind": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "id": {
           "type": "string",
           "minLength": 1,
@@ -182,7 +182,7 @@
           "pattern": "^(?:lifecycle|[a-z0-9]+(?:-[a-z0-9]+)*)\\.[A-Za-z0-9._-]+$"
         },
         "severity": { "type": "string", "enum": ["error", "warning", "information"] },
-        "stage": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "stage": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "location": { "$ref": "#/$defs/location" },
         "related": {
           "type": "array",
@@ -203,7 +203,7 @@
       "properties": {
         "code": { "$ref": "#/$defs/diagnosticProperties/properties/code" },
         "severity": { "$ref": "#/$defs/diagnosticProperties/properties/severity" },
-        "message": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "message": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
         "stage": { "$ref": "#/$defs/diagnosticProperties/properties/stage" },
         "location": { "$ref": "#/$defs/diagnosticProperties/properties/location" },
         "related": { "$ref": "#/$defs/diagnosticProperties/properties/related" },
@@ -228,16 +228,16 @@
       "additionalProperties": false,
       "required": ["id", "version", "digest", "claimedClass", "supportedProfiles", "schemaEngine", "formatAssertion", "extensions"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "claimedClass": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "claimedClass": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "supportedProfiles": {
           "type": "array",
           "minItems": 1,
           "maxItems": 128,
           "uniqueItems": true,
-          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+          "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
         },
         "schemaEngine": { "$ref": "#/$defs/schemaEngine" },
         "formatAssertion": { "type": "boolean" },
@@ -245,7 +245,7 @@
           "type": "array",
           "maxItems": 128,
           "uniqueItems": true,
-          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+          "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
         }
       }
     },
@@ -258,7 +258,7 @@
         "version": { "const": "8.18.0" },
         "dialect": { "const": "https://json-schema.org/draft/2020-12/schema" },
         "formats": { "const": "ajv-formats-full-3.0.1" },
-        "schemaSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "schemaSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "limits": {
@@ -289,9 +289,9 @@
       ],
       "properties": {
         "schema": { "const": "lifecycle.validation-result.v1" },
-        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "publicationDigest": { "$ref": "#/$defs/nullableDigest" },
-        "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "profile": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "subject": { "$ref": "#/$defs/subject" },
         "complete": { "type": "boolean" },
         "valid": { "type": "boolean" },

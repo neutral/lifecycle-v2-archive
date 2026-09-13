@@ -1,0 +1,58 @@
+{
+  "schema": "lifecycle.director-decision-payload.v5",
+  "profileId": "lifecycle.director-decision.foundation-v1",
+  "decision": "no-ship",
+  "semanticDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "subject": {
+    "schema": "lifecycle.director-decision-subject.v4",
+    "targetId": "target.demo",
+    "storeId": "store.demo",
+    "processId": "delivery.demo",
+    "activityId": "activity.demo",
+    "operation": "delivery.no-ship",
+    "decisionId": "decision.demo",
+    "decision": "no-ship",
+    "decisionSemanticDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "journalHead": {
+      "sequence": 3,
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "reducerFactsDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "repository": {
+      "repositorySnapshotDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "canonicalCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "canonicalTree": "cccccccccccccccccccccccccccccccccccccccc",
+      "productStateDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "atlasStateDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "atlasResolutionDigest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+      "atlasNormalizedModelDigest": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+      "atlasResourceBindingsDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
+      "repositoryContractDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "knowledgeSetDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "checkBindingSetDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "selectedControl": [],
+    "coordinates": {
+      "qualification": "lifecycle.foundation.1.0.0-rc.17",
+      "repository": "lifecycle.repository.v22",
+      "provider": "lifecycle.provider-adapter.v7",
+      "authoritySubject": "lifecycle.director-decision-subject.v4",
+      "transactionRules": "lifecycle.delivery-transaction-rules.v1"
+    },
+    "principalId": "director:demo",
+    "keyId": "key.demo",
+    "algorithm": "ed25519",
+    "authorizedAt": "2026-08-29T12:00:00.000Z",
+    "expiresAt": null,
+    "nonce": "nonce.demo",
+    "candidateDisposition": "no-candidate"
+  },
+  "subjectDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "authentication": {
+    "principalId": "director:demo",
+    "keyId": "key.demo",
+    "algorithm": "ed25519",
+    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "verifiedAt": "2026-08-29T12:00:01.000Z"
+  }
+}

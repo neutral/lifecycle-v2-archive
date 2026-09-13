@@ -6,6 +6,7 @@ import type { DeliveryRecoveryObligation } from "./delivery-state.js";
 
 export const DELIVERY_RECOVERY_STEPS = Object.freeze([
   "candidate-sealed",
+  "integration-assessed",
   "agent-attempt-prepared",
   "provider-effect-intended",
   "provider-effect-observed",
@@ -17,7 +18,7 @@ export const DELIVERY_RECOVERY_STEPS = Object.freeze([
   "evaluation-checks",
   "activity-finalization",
   "activity-completed",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "transaction-finalization",
@@ -71,6 +72,14 @@ function descriptor(
 }
 
 const DESCRIPTORS = Object.freeze([
+  descriptor({
+    kind: "finalization",
+    resumesAt: "integration-assessed",
+    next: { type: "event", eventKinds: ["integration-assessed"] },
+    support: "candidate-carrier",
+    lockScope: "delivery",
+    idempotence: "exact-record-finalization",
+  }),
   descriptor({
     kind: "finalization",
     resumesAt: "candidate-sealed",
@@ -183,8 +192,8 @@ const DESCRIPTORS = Object.freeze([
   }),
   descriptor({
     kind: "finalization",
-    resumesAt: "founder-decision-authenticated",
-    next: { type: "event", eventKinds: ["founder-decision-authenticated"] },
+    resumesAt: "director-decision-authenticated",
+    next: { type: "event", eventKinds: ["director-decision-authenticated"] },
     support: "authority-compiler",
     lockScope: "target",
     idempotence: "exact-record-finalization",

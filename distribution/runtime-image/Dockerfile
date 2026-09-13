@@ -1,14 +1,11 @@
 # syntax=docker/dockerfile:1
 
 ARG LIFECYCLE_NODE_IMAGE
-ARG LIFECYCLE_BUN_IMAGE
 ARG LIFECYCLE_DOCKER_CLI_IMAGE
 
-FROM ${LIFECYCLE_BUN_IMAGE} AS bun
 FROM ${LIFECYCLE_DOCKER_CLI_IMAGE} AS docker_cli
 FROM ${LIFECYCLE_NODE_IMAGE} AS build
 
-COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 COPY distribution/runtime-image/verify-tool-versions.mjs /tmp/verify-tool-versions.mjs
 RUN node /tmp/verify-tool-versions.mjs --build \
  && rm /tmp/verify-tool-versions.mjs
@@ -17,32 +14,33 @@ WORKDIR /source
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY protocol/package.json protocol/tsconfig.json ./protocol/
 COPY runtime/package.json runtime/tsconfig.json ./runtime/
-COPY clients/tui/package.json clients/tui/tsconfig.json ./clients/tui/
 COPY distribution/package/package.json ./distribution/package/
+COPY third-party/atlas-reference-validator/package/package.json ./third-party/atlas-reference-validator/package/
 RUN npm ci
 
 COPY spec-source ./spec-source
 COPY protocol ./protocol
 COPY runtime ./runtime
-COPY clients/tui ./clients/tui
+COPY third-party/atlas-reference-validator/PROVENANCE.json ./third-party/atlas-reference-validator/PROVENANCE.json
+COPY third-party/atlas-reference-validator/LICENSE ./third-party/atlas-reference-validator/LICENSE
+COPY third-party/atlas-reference-validator/package ./third-party/atlas-reference-validator/package
 RUN npm run build --workspace @neutral/lifecycle-protocol \
  && npm run build:self --workspace @neutral/lifecycle-runtime \
- && npm run build:self --workspace @neutral/lifecycle-tui \
  && mkdir -p /release \
  && npm pack --workspace @neutral/lifecycle-protocol --pack-destination /release \
  && npm pack --workspace @neutral/lifecycle-runtime --pack-destination /release \
- && npm pack --workspace @neutral/lifecycle-tui --pack-destination /release \
- && npm install --global --prefix /opt/lifecycle --ignore-scripts /release/*.tgz
+ && npm install --global --prefix /opt/lifecycle --ignore-scripts /release/*.tgz \
+ && test -x /opt/lifecycle/bin/lifecycle
 
 FROM ${LIFECYCLE_NODE_IMAGE} AS runtime
 
 ARG LIFECYCLE_SOURCE_REVISION
-ARG LIFECYCLE_QUALIFICATION_REVISION=lifecycle.foundation.1.0.0-rc.10
+ARG LIFECYCLE_QUALIFICATION_REVISION=lifecycle.foundation.1.0.0-rc.17
 ARG LIFECYCLE_UTIL_LINUX_VERSION
 ARG LIFECYCLE_GIT_VERSION
 ARG LIFECYCLE_CA_CERTIFICATES_VERSION
 
-LABEL org.opencontainers.image.source="https://github.com/neutral/lifecycle" \
+LABEL org.opencontainers.image.source="https://github.com/neutral/lifecycle-v2-archive" \
       org.opencontainers.image.revision=${LIFECYCLE_SOURCE_REVISION} \
       org.opencontainers.image.version="1.0.0" \
       io.lifecycle.runtime-image.qualification-revision=${LIFECYCLE_QUALIFICATION_REVISION} \
@@ -64,7 +62,6 @@ RUN test -n "${LIFECYCLE_UTIL_LINUX_VERSION}" \
  && test -x /usr/bin/flock \
  && test -x /usr/bin/git
 
-COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=docker_cli /usr/local/bin/docker /usr/bin/docker
 COPY distribution/runtime-image/verify-tool-versions.mjs /tmp/verify-tool-versions.mjs
 RUN node /tmp/verify-tool-versions.mjs --runtime \

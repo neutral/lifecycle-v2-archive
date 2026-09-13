@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { FoundationError } from "../error.js";
+import { assertIndependentGitRepository } from "./independent-git.js";
 import { FOUNDATION_ATLAS_SELECTION } from "../atlas/selection.js";
 import {
   FOUNDATION_DEFAULT_PROVIDER_DESCRIPTOR_ID,
@@ -78,12 +79,12 @@ const COMMAND_CHECK_BINDING_INPUT_FIELDS = Object.freeze([
   "implementationDigest",
   "limitations",
 ] as const);
-const FOUNDATION_REPOSITORY_CONTRACT_SCHEMA_ID = "urn:lifecycle:schema:repository-contract:v15";
+const FOUNDATION_REPOSITORY_CONTRACT_SCHEMA_ID = "urn:lifecycle:schema:repository-contract:v22";
 export const FOUNDATION_REPOSITORY_SCHEMA_SELECTION = foundationRepositorySchemaIds();
 export const FOUNDATION_REPOSITORY_PROFILE_SELECTION = Object.freeze([
-  "knowledge-set-v1",
-  "knowledge-structural-v1",
-  "repository-v7",
+  "knowledge-set-v2",
+  "knowledge-structural-v2",
+  "repository-v9",
 ]);
 export const FOUNDATION_REPOSITORY_EXTENSION_SELECTION = Object.freeze([] as string[]);
 export const FOUNDATION_REPOSITORY_KNOWLEDGE_LIMITS: FoundationKnowledgeLimits = Object.freeze({
@@ -110,7 +111,7 @@ export const FOUNDATION_REPOSITORY_KNOWLEDGE_LIMITS: FoundationKnowledgeLimits =
 
 const PROVIDER_ADAPTER_SUBJECT = Object.freeze({
   id: "codex-exec" as const,
-  version: "lifecycle-foundation-v6" as const,
+  version: "lifecycle-foundation-v7" as const,
   protocol: FOUNDATION_PROVIDER_PROTOCOL,
 });
 
@@ -122,7 +123,7 @@ const PROVIDER_ADAPTER = Object.freeze({
 });
 
 const PROVIDER_DESCRIPTOR_SUBJECT = Object.freeze({
-  schema: "lifecycle.provider-descriptor.v6" as const,
+  schema: "lifecycle.provider-descriptor.v7" as const,
   id: FOUNDATION_DEFAULT_PROVIDER_DESCRIPTOR_ID,
   adapter: PROVIDER_ADAPTER,
   provider: Object.freeze({
@@ -146,13 +147,13 @@ const PROVIDER_DESCRIPTOR_SUBJECT = Object.freeze({
     workspaceFormat: "governed-body-only-semantic-markdown" as const,
     workspaceFilename: "semantic.md" as const,
     bodyProfileIds: Object.freeze([
-      "lifecycle.agent-work-product-body.builder.v2",
-      "lifecycle.agent-work-product-body.reconnaissance.v2",
-      "lifecycle.agent-work-product-body.reviewer.v2",
+      "lifecycle.agent-work-product-body.builder.v4",
+      "lifecycle.agent-work-product-body.reconnaissance.v4",
+      "lifecycle.agent-work-product-body.reviewer.v4",
     ] as const),
-    parserProfileId: "lifecycle.agent-work-product-parser.v2" as const,
-    compilerProfileId: "lifecycle.agent-work-product-compiler.v2" as const,
-    workProductPayloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v2" as const,
+    parserProfileId: "lifecycle.agent-work-product-parser.v4" as const,
+    compilerProfileId: "lifecycle.agent-work-product-compiler.v4" as const,
+    workProductPayloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v5" as const,
     submissionTriggers: Object.freeze(["clean-natural-completion", "explicit"] as const),
     terminalOutputFallback: false as const,
     maximumBytes: 1024 * 1024,
@@ -454,6 +455,7 @@ export function defaultProjectionProfiles(): Readonly<Record<string, FoundationP
     { id: "orientation-standard-v1", maximumMandatoryItems: 256, maximumMandatoryBytes: 4 * 1024 * 1024, maximumItemBytes: 1 * 1024 * 1024, maximumReachableItems: 4096, maximumReachableBytes: 32 * 1024 * 1024, maximumSourceBytes: 8 * 1024 * 1024, maximumRelationshipDepth: 24 },
     { id: "execution-standard-v1", maximumMandatoryItems: 512, maximumMandatoryBytes: 8 * 1024 * 1024, maximumItemBytes: 1 * 1024 * 1024, maximumReachableItems: 4096, maximumReachableBytes: 32 * 1024 * 1024, maximumSourceBytes: 8 * 1024 * 1024, maximumRelationshipDepth: 32 },
     { id: "execution-large-v1", maximumMandatoryItems: 4096, maximumMandatoryBytes: 64 * 1024 * 1024, maximumItemBytes: 4 * 1024 * 1024, maximumReachableItems: 16_384, maximumReachableBytes: 128 * 1024 * 1024, maximumSourceBytes: 32 * 1024 * 1024, maximumRelationshipDepth: 128 },
+    { id: "orientation-large-v1", maximumMandatoryItems: 512, maximumMandatoryBytes: 8 * 1024 * 1024, maximumItemBytes: 1 * 1024 * 1024, maximumReachableItems: 4096, maximumReachableBytes: 32 * 1024 * 1024, maximumSourceBytes: 8 * 1024 * 1024, maximumRelationshipDepth: 32 },
   ].map((value) => ({ ...value, digest: selfDigest({ ...value, digest: ZERO_DIGEST }) }));
   return Object.freeze(Object.fromEntries(values.map((value) => [value.id, Object.freeze(value)])));
 }
@@ -495,7 +497,7 @@ export function createRepositoryContract(options: {
     processes: ["delivery"] as const,
     atlas: { root: "atlas", entrypoint: "atlas/atlas.md", readOnly: true, selection: FOUNDATION_ATLAS_SELECTION },
     knowledge: {
-      roots: { behavior: "records/behavior", assurance: "records/assurance", blueprint: "records/blueprint", check: "records/checks", descriptionPattern: "**/_*.desc.md" },
+      roots: { behavior: "records/behavior", assurance: "records/assurance", blueprint: "records/blueprint", check: "records/checks", discipline: "records/disciplines", disciplineRegistry: "records/disciplines/registry.json", descriptionPattern: "**/_*.desc.md" },
       owners: [...(options.owners ?? [options.authority.principalId])].sort(compareCodePoints),
       limits: FOUNDATION_REPOSITORY_KNOWLEDGE_LIMITS,
     },
@@ -503,26 +505,26 @@ export function createRepositoryContract(options: {
     selections: {
       schemas: FOUNDATION_REPOSITORY_SCHEMA_SELECTION,
       profiles: FOUNDATION_REPOSITORY_PROFILE_SELECTION,
-      controlStore: "lifecycle.control-record-store.v1",
-      controlLifecycleProfile: "foundation-delivery-control-lifecycle-v4",
-      controlRecordRevision: "lifecycle.control-record-revision.v1",
-      controlRecordEvent: "lifecycle.control-record-event.v2",
+      controlStore: "lifecycle.control-record-store.v2",
+      controlLifecycleProfile: "foundation-delivery-control-lifecycle-v7",
+      controlRecordRevision: "lifecycle.control-record-revision.v2",
+      controlRecordEvent: "lifecycle.control-record-event.v6",
       controlReferencedFile: "lifecycle.control-record-file.v1",
       controlStoreSeal: "lifecycle.control-record-store-seal.v1",
       controlStoreArchive: "lifecycle.control-record-store-archive.v1",
-      deliveryReduction: "lifecycle.delivery-reduction.v2",
+      deliveryReduction: "lifecycle.delivery-reduction.v5",
       candidateRevisionCarrierManifest: "lifecycle.candidate-revision-carrier-manifest.v1",
       executionBackendProfile: "lifecycle.execution-backend-profile.docker-local.v1",
       executionCellRunner: "lifecycle.execution-cell-runner.v1",
       executionSpecification: "lifecycle.execution-specification.v1",
-      executionInputSet: "lifecycle.execution-input-set.v1",
+      executionInputSet: "lifecycle.execution-input-set.v2",
       executionImage: "lifecycle.execution-image.v1",
       executionObservation: "lifecycle.execution-observation.v1",
       executionOutputManifest: "lifecycle.execution-output-manifest.v1",
       extensions: FOUNDATION_REPOSITORY_EXTENSION_SELECTION,
     },
     productState: {
-      roots: [".lifecycle/repository.json", "atlas", "records/behavior", "records/assurance", "records/blueprint", "records/checks", ...(options.implementationRoots ?? ["src", "lib", "app", "packages"])].sort(compareCodePoints),
+      roots: [".lifecycle/repository.json", "atlas", "records/behavior", "records/assurance", "records/blueprint", "records/checks", "records/disciplines", ...(options.implementationRoots ?? ["src", "lib", "app", "packages"])].sort(compareCodePoints),
       exclusions: [".git", ".lifecycle/runtime"],
       governedImplementationRoots: [...(options.implementationRoots ?? ["src", "lib", "app", "packages"])].sort(compareCodePoints),
       coverageExemptions: [...(options.coverageExemptions ?? [])].sort((left, right) => compareCodePoints(left.path, right.path)),
@@ -637,7 +639,7 @@ export function parseRepositoryContract(value: unknown): FoundationRepositoryCon
   const knowledge = object(source.knowledge, "lifecycle.repository.contract", "Repository Knowledge binding");
   exactKeys(knowledge, ["roots", "owners", "limits"], [], "lifecycle.repository.contract", "Repository Knowledge binding");
   const roots = object(knowledge.roots, "lifecycle.repository.contract", "Repository Knowledge roots");
-  exactKeys(roots, ["behavior", "assurance", "blueprint", "check", "descriptionPattern"], [], "lifecycle.repository.contract", "Repository Knowledge roots");
+  exactKeys(roots, ["behavior", "assurance", "blueprint", "check", "discipline", "disciplineRegistry", "descriptionPattern"], [], "lifecycle.repository.contract", "Repository Knowledge roots");
   const sourcePolicy = object(source.sourcePolicy, "lifecycle.repository.contract", "Repository source policy");
   exactKeys(sourcePolicy, ["repository", "externalLocal", "network"], [], "lifecycle.repository.contract", "Repository source policy");
   const selections = object(source.selections, "lifecycle.repository.contract", "Repository support selections");
@@ -730,6 +732,8 @@ export function parseRepositoryContract(value: unknown): FoundationRepositoryCon
         assurance: enumeration(roots.assurance, "Assurance root", ["records/assurance"] as const),
         blueprint: enumeration(roots.blueprint, "Blueprint root", ["records/blueprint"] as const),
         check: enumeration(roots.check, "Check root", ["records/checks"] as const),
+        discipline: enumeration(roots.discipline, "Discipline root", ["records/disciplines"] as const),
+        disciplineRegistry: enumeration(roots.disciplineRegistry, "Discipline registry", ["records/disciplines/registry.json"] as const),
         descriptionPattern: enumeration(roots.descriptionPattern, "Description pattern", ["**/_*.desc.md"] as const),
       },
       owners: uniqueStrings(knowledge.owners, "Knowledge owners", 1, 4096, 160).map((entry, index) => ownerId(entry, `Knowledge owner ${index}`)).sort(compareCodePoints),
@@ -743,19 +747,19 @@ export function parseRepositoryContract(value: unknown): FoundationRepositoryCon
     selections: {
       schemas: exactStringSelection(selections.schemas, "Repository schema selection", FOUNDATION_REPOSITORY_SCHEMA_SELECTION),
       profiles: exactStringSelection(selections.profiles, "Repository validation-profile selection", FOUNDATION_REPOSITORY_PROFILE_SELECTION),
-      controlStore: enumeration(selections.controlStore, "Repository Control Store", ["lifecycle.control-record-store.v1"] as const),
-      controlLifecycleProfile: enumeration(selections.controlLifecycleProfile, "Repository Control lifecycle profile", ["foundation-delivery-control-lifecycle-v4"] as const),
-      controlRecordRevision: enumeration(selections.controlRecordRevision, "Repository Control record revision", ["lifecycle.control-record-revision.v1"] as const),
-      controlRecordEvent: enumeration(selections.controlRecordEvent, "Repository Control record event", ["lifecycle.control-record-event.v2"] as const),
+      controlStore: enumeration(selections.controlStore, "Repository Control Store", ["lifecycle.control-record-store.v2"] as const),
+      controlLifecycleProfile: enumeration(selections.controlLifecycleProfile, "Repository Control lifecycle profile", ["foundation-delivery-control-lifecycle-v7"] as const),
+      controlRecordRevision: enumeration(selections.controlRecordRevision, "Repository Control record revision", ["lifecycle.control-record-revision.v2"] as const),
+      controlRecordEvent: enumeration(selections.controlRecordEvent, "Repository Control record event", ["lifecycle.control-record-event.v6"] as const),
       controlReferencedFile: enumeration(selections.controlReferencedFile, "Repository Control referenced file", ["lifecycle.control-record-file.v1"] as const),
       controlStoreSeal: enumeration(selections.controlStoreSeal, "Repository Control Store seal", ["lifecycle.control-record-store-seal.v1"] as const),
       controlStoreArchive: enumeration(selections.controlStoreArchive, "Repository Control Store archive", ["lifecycle.control-record-store-archive.v1"] as const),
-      deliveryReduction: enumeration(selections.deliveryReduction, "Repository Delivery reduction", ["lifecycle.delivery-reduction.v2"] as const),
+      deliveryReduction: enumeration(selections.deliveryReduction, "Repository Delivery reduction", ["lifecycle.delivery-reduction.v5"] as const),
       candidateRevisionCarrierManifest: enumeration(selections.candidateRevisionCarrierManifest, "Repository Candidate Revision Carrier manifest", ["lifecycle.candidate-revision-carrier-manifest.v1"] as const),
       executionBackendProfile: enumeration(selections.executionBackendProfile, "Repository Execution Backend Profile", ["lifecycle.execution-backend-profile.docker-local.v1"] as const),
       executionCellRunner: enumeration(selections.executionCellRunner, "Repository Execution Cell runner", ["lifecycle.execution-cell-runner.v1"] as const),
       executionSpecification: enumeration(selections.executionSpecification, "Repository Execution Specification", ["lifecycle.execution-specification.v1"] as const),
-      executionInputSet: enumeration(selections.executionInputSet, "Repository Execution Input Set", ["lifecycle.execution-input-set.v1"] as const),
+      executionInputSet: enumeration(selections.executionInputSet, "Repository Execution Input Set", ["lifecycle.execution-input-set.v2"] as const),
       executionImage: enumeration(selections.executionImage, "Repository Execution Image", ["lifecycle.execution-image.v1"] as const),
       executionObservation: enumeration(selections.executionObservation, "Repository Execution Observation", ["lifecycle.execution-observation.v1"] as const),
       executionOutputManifest: enumeration(selections.executionOutputManifest, "Repository Execution Output Manifest", ["lifecycle.execution-output-manifest.v1"] as const),
@@ -812,6 +816,7 @@ export async function writeRepositoryContract(repository: string, contract: Foun
 
 export async function loadRepositoryContract(path: string): Promise<{ repository: string; contract: FoundationRepositoryContract }> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   return { repository, contract: await readRepositoryContract(repository) };
 }
 
@@ -822,7 +827,7 @@ async function assertNoTrackedControl(repository: string, commit: string): Promi
   for (const path of controlPaths) {
     throw new FoundationError(
       "lifecycle.repository.epoch-mixed",
-      `Fresh repository v15 attachment refuses tracked Delivery Control at ${path}; Control Record Stores remain off HEAD in runtime custody`,
+      `Fresh repository v22 attachment refuses tracked Delivery Control at ${path}; Control Record Stores remain off HEAD in runtime custody`,
       { observedFacts: { path } },
     );
   }
@@ -830,6 +835,7 @@ async function assertNoTrackedControl(repository: string, commit: string): Promi
 
 export async function attachRepository(path: string): Promise<FoundationRepositoryAttachment> {
   const repository = await canonicalRepository(path);
+  await assertIndependentGitRepository(repository);
   const [contract, head, common] = await Promise.all([readRepositoryContract(repository), attachedHead(repository), gitCommonDirectory(repository)]);
   await assertNoTrackedControl(repository, head.commit);
   if (head.branch !== contract.canonicalBranch) throw new FoundationError("lifecycle.repository.branch-mismatch", "Attached branch does not match the repository contract", { observedFacts: { actual: head.branch, expected: contract.canonicalBranch } });

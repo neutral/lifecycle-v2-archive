@@ -52,8 +52,8 @@ export function testCandidateCarrierManifestBytes(
 }
 
 /**
- * Test-only verifier over an explicitly selected complete state. Production
- * tests that exercise physical replay use the real Carrier observer instead.
+ * Test-only verifier over an explicitly selected complete state.
+ * Tests that exercise physical replay use the real Carrier observer instead.
  */
 export function testCandidateCarrierVerifier(
   state: CandidateRevisionState,

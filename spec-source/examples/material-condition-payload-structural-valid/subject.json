@@ -1,10 +1,10 @@
 {
-  "schema": "lifecycle.material-condition-payload.v1",
-  "profileId": "lifecycle.material-condition.foundation-v1",
-  "conditionClass": "founder-tradeoff",
+  "schema": "lifecycle.material-condition-payload.v4",
+  "profileId": "lifecycle.material-condition.foundation-v3",
+  "conditionClass": "director-tradeoff",
   "source": {
     "kind": "agent-proposal",
-    "conditionId": "condition.founder-tradeoff",
+    "conditionId": "condition.director-tradeoff",
     "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
   },
   "observedFactsDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",

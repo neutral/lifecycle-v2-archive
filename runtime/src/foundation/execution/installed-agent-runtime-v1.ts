@@ -2,34 +2,35 @@ import type {
   FoundationAgentCellImageV1,
   FoundationAgentCellInstalledInputsV1,
   FoundationAgentCellRuntimeV1,
-  FoundationCompiledAgentCellInputV1,
+  FoundationAgentCellOperationRequestV1,
+  FoundationAgentCellOperationResultV1,
 } from "../attempt/execution-cell-v1.js";
+import { operateFoundationAgentCellV1 } from "../attempt/execution-cell-v1.js";
 import type {
   AgentAttemptExecutionPolicy,
   AgentAttemptInvestment,
   AgentAttemptProvider,
 } from "../control/agent-attempt.js";
-import { constants as fsConstants } from "node:fs";
-import { lstat, open } from "node:fs/promises";
-import { join } from "node:path";
 import { satisfies } from "semver";
 import { FOUNDATION_PROVIDER_PROTOCOL } from "../constants.js";
 import { FoundationError } from "../error.js";
 import type {
   FoundationInstalledRuntimeConfigurationV7,
+  FoundationProcessRuntimeConfigurationV7,
 } from "../installed-configuration-v7.js";
 import {
   FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR,
 } from "../repository/contract.js";
 import {
   canonicalJson,
-  digestCanonical,
   sha256Bytes,
   type Sha256,
 } from "../validation/canonical.js";
 import type {
   FoundationExecutionSpecificationV1,
 } from "./contracts.js";
+import { parseFoundationExecutionBackendProfile } from "./contracts.js";
+import { compileFoundationInstalledAgentExecutionPolicyV1 } from "./installed-agent-policy-v1.js";
 import { createFoundationDockerExecutionBackend } from "./docker-backend.js";
 import { FoundationDockerExecutionBindingRegistryV1 } from "./docker-binding-registry-v1.js";
 import {
@@ -37,16 +38,19 @@ import {
   type FoundationDockerAgentProviderSupportResolverV1,
   type FoundationDockerInputSetTransportResolverV1,
   type FoundationDockerInputSetTransportV1,
+  type FoundationDockerCliImageInstallationV1,
+  assertFoundationDockerCliImageInstallationV1,
 } from "./docker-cli-engine-driver-v1.js";
 import { foundationDockerExecutionBackendProfileV1 } from "./docker-profile-v1.js";
+import { openFoundationProviderCredentialCustodyV1 } from "./provider-credential-custody-v1.js";
 import type {
   FoundationExecutionInputResolverV1,
   FoundationExecutionInputSetV1,
 } from "./input-set.js";
 import { createFoundationExecutionOutputStoreV1 } from "./output-store-v1.js";
+import { withFoundationInstalledReclamationMaintenanceV1 } from "./installed-reclamation-maintenance-v1.js";
 import {
   openFoundationExecutionReclamationLedgerV1,
-  type FoundationExecutionReclamationLedgerV1,
 } from "./reclamation-ledger-v1.js";
 
 type RegisteredInput = Readonly<{
@@ -62,127 +66,7 @@ type InputSnapshot = Readonly<{
   bytes: Uint8Array;
 }>;
 
-const MAXIMUM_PROVIDER_AUTH_BYTES = 4 * 1024 * 1024;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
-const EXECUTION_POLICY_KEYS = Object.freeze([
-  "cancellationPolicyDigest",
-  "containmentPolicyDigest",
-  "parentLossPolicyDigest",
-  "retirementPolicyDigest",
-  "recoveryPolicyDigest",
-] as const);
-
-type FoundationInstalledAgentExecutionPolicyKeyV1 =
-  typeof EXECUTION_POLICY_KEYS[number];
-
-export type FoundationInstalledAgentExecutionPolicySubjectV1 = Readonly<{
-  key: FoundationInstalledAgentExecutionPolicyKeyV1;
-  id: string;
-  value: Readonly<Record<string, unknown>>;
-  digest: Sha256;
-  bytes: Uint8Array;
-}>;
-
-export type FoundationInstalledAgentExecutionPolicySelectionV1 = Readonly<{
-  executionPolicy: AgentAttemptExecutionPolicy;
-  subjects: readonly FoundationInstalledAgentExecutionPolicySubjectV1[];
-}>;
-
-const FIXED_AGENT_EXECUTION_POLICY_DEFINITIONS_V1 = Object.freeze([
-  Object.freeze({
-    key: "cancellationPolicyDigest" as const,
-    id: "lifecycle.agent-execution-policy.cancellation.v1",
-    value: Object.freeze({
-      schema: "lifecycle.agent-execution-policy.cancellation.v1",
-      request: "contain-cell",
-      redispatch: "forbidden",
-    }),
-  }),
-  Object.freeze({
-    key: "containmentPolicyDigest" as const,
-    id: "lifecycle.agent-execution-policy.containment.v1",
-    value: Object.freeze({
-      schema: "lifecycle.agent-execution-policy.containment.v1",
-      beforeObservation: "required",
-      beforeRetirement: "required",
-      agentProductNetwork: "none",
-      agentToolNetwork: false,
-      providerControlPlane: "fixed-service-channel",
-      providerControlProtocol: "http-connect-tls-443-only",
-      providerControlDestinations: Object.freeze([
-        "api.openai.com",
-        "auth.openai.com",
-        "chatgpt.com",
-      ]),
-      providerControlMaximumConnections: 16,
-      providerControlSeparation: "required",
-      credentialMode: "fixed-runner",
-      credentialBindingId: "provider-control",
-      credentialTransport: "operation-scoped-private-tmpfs",
-      agentCredentialAccess: false,
-      credentialOutputDisclosure: false,
-    }),
-  }),
-  Object.freeze({
-    key: "parentLossPolicyDigest" as const,
-    id: "lifecycle.agent-execution-policy.parent-loss.v1",
-    value: Object.freeze({
-      schema: "lifecycle.agent-execution-policy.parent-loss.v1",
-      action: "contain-and-retire",
-      replacementAllocation: "forbidden",
-    }),
-  }),
-  Object.freeze({
-    key: "retirementPolicyDigest" as const,
-    id: "lifecycle.agent-execution-policy.retirement.v1",
-    value: Object.freeze({
-      schema: "lifecycle.agent-execution-policy.retirement.v1",
-      beforeReceipt: "required",
-      dispatchAuthority: "permanently-consumed-or-revoked",
-    }),
-  }),
-  Object.freeze({
-    key: "recoveryPolicyDigest" as const,
-    id: "lifecycle.agent-execution-policy.recovery.v1",
-    value: Object.freeze({
-      schema: "lifecycle.agent-execution-policy.recovery.v1",
-      handle: "same-exact-handle",
-      redispatch: "forbidden",
-    }),
-  }),
-]);
-
-/**
- * Compile the sole installed Agent execution-policy selection and its exact
- * immutable subject bytes. This is a fixed product selection, not a caller-
- * configurable policy framework.
- */
-export function compileFoundationInstalledAgentExecutionPolicyV1():
-FoundationInstalledAgentExecutionPolicySelectionV1 {
-  const subjects = Object.freeze(FIXED_AGENT_EXECUTION_POLICY_DEFINITIONS_V1.map(
-    ({ key, id, value }) => {
-      const digest = digestCanonical(value);
-      return Object.freeze({
-        key,
-        id,
-        value,
-        digest,
-        bytes: Uint8Array.from(Buffer.from(`${canonicalJson(value)}\n`, "utf8")),
-      });
-    },
-  ));
-  const byKey = new Map(subjects.map((subject) => [subject.key, subject.digest] as const));
-  return Object.freeze({
-    executionPolicy: Object.freeze({
-      cancellationPolicyDigest: byKey.get("cancellationPolicyDigest")!,
-      containmentPolicyDigest: byKey.get("containmentPolicyDigest")!,
-      parentLossPolicyDigest: byKey.get("parentLossPolicyDigest")!,
-      retirementPolicyDigest: byKey.get("retirementPolicyDigest")!,
-      recoveryPolicyDigest: byKey.get("recoveryPolicyDigest")!,
-    }),
-    subjects,
-  });
-}
 
 function fail(code: string, message: string): never {
   throw new FoundationError(`lifecycle.execution.installed-agent-runtime-v1.${code}`, message);
@@ -192,7 +76,7 @@ function exactExecutionPolicy(
   value: AgentAttemptExecutionPolicy,
 ): AgentAttemptExecutionPolicy {
   const keys = Object.keys(value).sort();
-  const expected = [...EXECUTION_POLICY_KEYS].sort();
+  const expected = Object.keys(compileFoundationInstalledAgentExecutionPolicyV1().executionPolicy).sort();
   if (canonicalJson(keys) !== canonicalJson(expected)) {
     fail("execution-policy", "Agent execution policy is not the exact five-policy selection");
   }
@@ -216,13 +100,25 @@ export type FoundationCompiledInstalledAgentCellInputsV1 = Readonly<{
   policyDigests: readonly Sha256[];
 }>;
 
+/** Resolve public provider identity only; allocation independently verifies the Image. */
+export function selectFoundationInstalledAgentProviderV1(
+  configuration: FoundationProcessRuntimeConfigurationV7,
+): AgentAttemptProvider {
+  const provider = configuration.execution?.image.agentProvider;
+  if (provider === undefined) fail("installed-provider", "Agent resources require the selected Image's provider support");
+  const descriptor = FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR;
+  return Object.freeze({ descriptorId: descriptor.id, descriptorDigest: descriptor.digest,
+    executableIdentityClass: descriptor.provider.executableIdentityClass,
+    installedIdentityDigest: provider.executableIdentity });
+}
+
 /**
  * Compile the one production Agent selection. This is deliberately not a
- * policy framework: the exact fixed compiler above owns all five Attempt
+ * policy framework: the fixed execution-policy compiler owns all five Attempt
  * policy subjects, including the executable channel and credential boundary.
  */
 export function compileFoundationInstalledAgentCellInputsV1(input: Readonly<{
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   provider: AgentAttemptProvider;
   investment: Pick<AgentAttemptInvestment, "model" | "reasoning">;
   executionPolicy: AgentAttemptExecutionPolicy;
@@ -241,9 +137,9 @@ export function compileFoundationInstalledAgentCellInputsV1(input: Readonly<{
       !SHA256.test(imageProvider.adapterImplementationDigest) ||
       imageProvider.adapterImplementationDigest !==
         execution.image.runnerImplementationDigest ||
-      descriptor.schema !== "lifecycle.provider-descriptor.v6" ||
+      descriptor.schema !== "lifecycle.provider-descriptor.v7" ||
       adapter.protocol !== FOUNDATION_PROVIDER_PROTOCOL ||
-      adapter.protocol !== "lifecycle.provider-adapter.v6" ||
+      adapter.protocol !== "lifecycle.provider-adapter.v7" ||
       descriptor.execution.runnerRequirements.contractId !==
         "lifecycle.execution-cell-runner.v1" ||
       descriptor.execution.runnerRequirements.containmentMechanism !== "execution-backend" ||
@@ -257,15 +153,10 @@ export function compileFoundationInstalledAgentCellInputsV1(input: Readonly<{
       !satisfies(imageProvider.codexVersion, descriptor.provider.compatibleVersion)) {
     fail(
       "installed-provider",
-      "Installed Agent image does not satisfy the exact Provider Descriptor v6 and fixed runner-adapter selection",
+      "Installed Agent image does not satisfy the exact Provider Descriptor v7 and fixed runner-adapter selection",
     );
   }
-  const provider = Object.freeze({
-    descriptorId: descriptor.id,
-    descriptorDigest: descriptor.digest,
-    executableIdentityClass: descriptor.provider.executableIdentityClass,
-    installedIdentityDigest: imageProvider.executableIdentity,
-  });
+  const provider = selectFoundationInstalledAgentProviderV1(input.configuration);
   if (canonicalJson(input.provider) !== canonicalJson(provider) ||
       input.investment.model !== input.configuration.model ||
       input.investment.reasoning !== input.configuration.reasoning) {
@@ -331,12 +222,12 @@ export function compileFoundationInstalledAgentCellInputsV1(input: Readonly<{
   return Object.freeze({
     installed,
     executionPolicy,
-    policyDigests: Object.freeze(EXECUTION_POLICY_KEYS.map((key) => executionPolicy[key])),
+    policyDigests: Object.freeze(Object.values(executionPolicy)),
   });
 }
 
 /**
- * Process-private logical-to-Docker transport for Agent Input Sets. It retains
+ * Execution-owned logical-to-Docker transport for Agent Input Sets. It retains
  * only the immutable resolver supplied by the owner. No host path, Cell
  * coordinate, credential, or provider-control value crosses this seam.
  */
@@ -416,12 +307,16 @@ class FoundationInstalledAgentProviderSupportV1
 implements FoundationDockerAgentProviderSupportResolverV1 {
   readonly installation: FoundationDockerAgentProviderSupportResolverV1["installation"];
   readonly #codexHome: string;
+  readonly #now: () => string;
+  #openedCustody: ReturnType<typeof openFoundationProviderCredentialCustodyV1> | undefined;
   readonly #credentialPolicy: FoundationAgentCellInstalledInputsV1["credentialPolicy"];
 
   constructor(input: Readonly<{
     configuration: FoundationInstalledRuntimeConfigurationV7;
     installed: FoundationAgentCellInstalledInputsV1;
+    now: () => string;
   }>) {
+    this.#now = input.now;
     this.#codexHome = input.configuration.codexHome;
     this.#credentialPolicy = input.installed.credentialPolicy;
     const imageProvider = input.configuration.execution?.image.agentProvider;
@@ -443,11 +338,22 @@ implements FoundationDockerAgentProviderSupportResolverV1 {
     });
   }
 
-  async openCredential(input: Readonly<{
-    specificationDigest: Sha256;
-    credentialBinding: Readonly<{ id: string; policyDigest: Sha256 }>;
-  }>) {
-    if (!/^sha256:[a-f0-9]{64}$/u.test(input.specificationDigest) ||
+  async #custody() {
+    // Opening a read surface never provisions or reads provider authentication.
+    // The first exact driver request owns this private transition.
+    const opening = this.#openedCustody ??= openFoundationProviderCredentialCustodyV1({
+      codexHome: this.#codexHome,
+      now: this.#now,
+    });
+    try { return await opening; }
+    catch (error) {
+      if (this.#openedCustody === opening) this.#openedCustody = undefined;
+      throw error;
+    }
+  }
+
+  #assertBinding(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["openCredential"]>[0]) {
+    if (!SHA256.test(input.subject.specificationDigest) ||
         this.#credentialPolicy.mode !== "fixed-runner" ||
         this.#credentialPolicy.agentAccess !== false ||
         this.#credentialPolicy.outputDisclosure !== false ||
@@ -456,70 +362,119 @@ implements FoundationDockerAgentProviderSupportResolverV1 {
           canonicalJson(input.credentialBinding)) {
       fail("provider-credential", "Agent Cell requested another installed credential binding");
     }
-    const path = join(this.#codexHome, "auth.json");
-    let handle;
-    try {
-      const before = await lstat(path);
-      const uid = process.getuid?.();
-      if (!before.isFile() || before.isSymbolicLink() || before.size < 2 ||
-          before.size > MAXIMUM_PROVIDER_AUTH_BYTES || (before.mode & 0o077) !== 0 ||
-          (uid !== undefined && before.uid !== uid)) {
-        fail("provider-credential", "Installed provider authentication is not one private owned file");
-      }
-      handle = await open(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
-      const opened = await handle.stat();
-      if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino ||
-          opened.size !== before.size || opened.mtimeMs !== before.mtimeMs ||
-          opened.ctimeMs !== before.ctimeMs) {
-        fail("provider-credential", "Installed provider authentication changed while it was opened");
-      }
-      const bytes = await handle.readFile();
-      const after = await handle.stat();
-      if (bytes.byteLength !== opened.size || after.dev !== opened.dev || after.ino !== opened.ino ||
-          after.size !== opened.size || after.mtimeMs !== opened.mtimeMs ||
-          after.ctimeMs !== opened.ctimeMs) {
-        bytes.fill(0);
-        fail("provider-credential", "Installed provider authentication changed while it was read");
-      }
-      const snapshot = Uint8Array.from(bytes);
-      bytes.fill(0);
-      let consumed = false;
-      return Object.freeze({
-        byteLength: snapshot.byteLength,
-        async *read() {
-          if (consumed) fail("provider-credential", "Provider authentication reader was reused");
-          consumed = true;
-          const transfer = Uint8Array.from(snapshot);
-          try { yield transfer; }
-          finally {
-            transfer.fill(0);
-            snapshot.fill(0);
-          }
-        },
-      });
-    } catch (error) {
-      if (error instanceof FoundationError) throw error;
-      fail("provider-credential", "Installed provider authentication could not be opened");
-    } finally {
-      await handle?.close().catch(() => undefined);
-    }
   }
+
+  async claimCredential(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["claimCredential"]>[0]) {
+    this.#assertBinding(input);
+    await (await this.#custody()).claim(input.subject);
+  }
+
+  async hasCredentialClaim(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["hasCredentialClaim"]>[0]) {
+    this.#assertBinding(input);
+    return await (await this.#custody()).hasClaim(input.subject);
+  }
+
+  async openCredential(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["openCredential"]>[0]) {
+    this.#assertBinding(input);
+    return await (await this.#custody()).read(input.subject);
+  }
+
+  async credentialSettlement(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["credentialSettlement"]>[0]) {
+    this.#assertBinding(input);
+    return await (await this.#custody()).settlement(input.subject) !== null;
+  }
+
+  async settleCredential(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["settleCredential"]>[0]) {
+    this.#assertBinding(input);
+    await (await this.#custody()).settle(input.subject, input.outcome);
+  }
+
+  async forgetCredentialSettlement(input: Parameters<FoundationDockerAgentProviderSupportResolverV1["forgetCredentialSettlement"]>[0]) {
+    this.#assertBinding(input);
+    await (await this.#custody()).forgetSettlement(input.subject);
+  }
+
 }
 
 export type FoundationOpenedInstalledAgentRuntimeV1 = Readonly<{
-  runtime: FoundationAgentCellRuntimeV1;
   installed: FoundationAgentCellInstalledInputsV1;
-  inputTransport: FoundationAgentCellInputTransportRegistryV1;
-  registerInput(compiledInput: FoundationCompiledAgentCellInputV1): void;
-  ledger: FoundationExecutionReclamationLedgerV1;
+  operate(input: FoundationAgentCellOperationRequestV1): Promise<FoundationAgentCellOperationResultV1>;
   reclaimNext(): Promise<boolean>;
   close(): void;
 }>;
 
+export type FoundationInstalledAgentRuntimeOpenerV1 = (
+  input: Readonly<{
+    installed: FoundationAgentCellInstalledInputsV1;
+    investment: Pick<AgentAttemptInvestment, "model" | "reasoning">;
+    image: FoundationDockerCliImageInstallationV1;
+    now: () => string;
+  }>,
+) => Promise<FoundationOpenedInstalledAgentRuntimeV1>;
+
+/** Bind installation custody once; Process cannot choose an Engine or credential root. */
+export function bindFoundationInstalledAgentRuntimeV1(
+  configuration: FoundationInstalledRuntimeConfigurationV7,
+): FoundationInstalledAgentRuntimeOpenerV1 {
+  return async ({ installed, investment, image, now }) => await openFoundationInstalledAgentRuntimeV1({
+    installed,
+    now,
+    configuration: Object.freeze({
+      ...configuration,
+      ...(configuration.execution === undefined ? {} : {execution:Object.freeze({...configuration.execution,image})}),
+      model: investment.model,
+      reasoning: investment.reasoning,
+    }),
+  });
+}
+
+/** Execution composition retains the Backend, input transport, and ledger. */
+export function createFoundationAgentCellOperatorV1(input: Readonly<{
+  installed: FoundationAgentCellInstalledInputsV1;
+  runtime: FoundationAgentCellRuntimeV1;
+  inputTransport: FoundationAgentCellInputTransportRegistryV1;
+}>): Pick<FoundationOpenedInstalledAgentRuntimeV1, "installed" | "operate"> {
+  return Object.freeze({
+    installed: input.installed,
+    async operate(request: FoundationAgentCellOperationRequestV1) {
+      if (canonicalJson(request.installed) !== canonicalJson(input.installed)) {
+        fail("installed-substitution", "Agent execution request selected another installed Cell");
+      }
+      input.inputTransport.register(request.compiledInput.inputSet, request.compiledInput.resolver);
+      return await operateFoundationAgentCellV1({ ...request, runtime: input.runtime });
+    },
+  });
+}
+
+/** Compose the installed Agent Cell owner with its bounded private maintenance. */
+export function createFoundationMaintainedAgentCellOperatorV1(input: Readonly<{
+  installed: FoundationAgentCellInstalledInputsV1;
+  runtime: FoundationAgentCellRuntimeV1;
+  inputTransport: FoundationAgentCellInputTransportRegistryV1;
+  engineIdentityDigest(): Promise<Sha256>;
+}>): Pick<FoundationOpenedInstalledAgentRuntimeV1, "installed" | "operate" | "reclaimNext"> {
+  const operator = createFoundationAgentCellOperatorV1(input);
+  return Object.freeze({
+    installed: operator.installed,
+    ...withFoundationInstalledReclamationMaintenanceV1({
+      ledger: input.runtime.reclamation, backend: input.runtime.backend, image: input.installed.image,
+      engineIdentityDigest: input.engineIdentityDigest,
+      agent: {
+        credentialPolicy: input.installed.credentialPolicy,
+        networkPolicy: input.installed.networkPolicy,
+        providerDescriptorDigest: input.installed.provider.descriptorDigest,
+        adapterImplementationDigest: input.installed.adapterImplementationDigest,
+      },
+      operate: operator.operate,
+    }),
+  });
+}
+
 /**
  * Open the production Docker mechanics selected for Agent Attempts. Provider
- * authentication is reopened only by the private driver at exact Cell
- * dispatch and is never part of the logical Input Set or operation checkpoint.
+ * authentication has one durable private claim before Cell creation. Dispatch
+ * receives its retained snapshot; retirement settles refreshed authentication.
+ * Neither credential generation enters logical Input or operation checkpoints.
  */
 export async function openFoundationInstalledAgentRuntimeV1(input: Readonly<{
   configuration: FoundationInstalledRuntimeConfigurationV7;
@@ -533,8 +488,9 @@ export async function openFoundationInstalledAgentRuntimeV1(input: Readonly<{
       "Agent execution requires one exact installed Docker Engine and Execution Image selection",
     );
   }
-  const profile = foundationDockerExecutionBackendProfileV1();
-  if (canonicalJson(input.installed.profile) !== canonicalJson(profile) ||
+  const profile = parseFoundationExecutionBackendProfile(input.installed.profile);
+  assertFoundationDockerCliImageInstallationV1(installed.image);
+  if (profile.profileId !== "lifecycle.execution-backend-profile.docker-local.v1" ||
       input.installed.image.imageId !== installed.image.imageId ||
       input.installed.image.imageDigest !== installed.image.imageDigest ||
       input.installed.image.runnerContractDigest !== installed.image.runnerContractDigest ||
@@ -556,6 +512,7 @@ export async function openFoundationInstalledAgentRuntimeV1(input: Readonly<{
   const providerSupport = new FoundationInstalledAgentProviderSupportV1({
     configuration: input.configuration,
     installed: input.installed,
+    now: input.now,
   });
   const driver = await createFoundationDockerCliEngineDriverV1({
     profile,
@@ -600,22 +557,10 @@ export async function openFoundationInstalledAgentRuntimeV1(input: Readonly<{
     pollMilliseconds: 100,
   });
   return Object.freeze({
-    runtime,
-    installed: input.installed,
-    inputTransport,
-    registerInput(compiledInput): void {
-      inputTransport.register(compiledInput.inputSet, compiledInput.resolver);
-    },
-    ledger,
-    async reclaimNext(): Promise<boolean> {
-      return (await ledger.runNext({
-        reclaim: async (handoff) => await backend.reclaim(
-          handoff.specification,
-          handoff.reclamationBinding,
-          handoff.obligation,
-        ),
-      })) !== null;
-    },
+    ...createFoundationMaintainedAgentCellOperatorV1({
+      installed: input.installed, runtime, inputTransport,
+      engineIdentityDigest: async () => (await driver.describe()).engineIdentityDigest,
+    }),
     close(): void { ledger.close(); },
   });
 }

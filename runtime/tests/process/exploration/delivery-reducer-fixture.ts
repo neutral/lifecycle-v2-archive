@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { compileControlRecordEvent } from "../../../src/foundation/control/model.js";
+import { foundationIntegrationValidationFactsDigestV1 } from "../../../src/foundation/control/integration-assessment.js";
 import {
   CONTROL_RECORD_REVISION_SCHEMA,
   type ControlJsonObject,
@@ -19,6 +20,7 @@ import {
 import {
   digestCanonical,
   sha256Bytes,
+  selfDigest,
   type Sha256,
 } from "../../../src/foundation/validation/canonical.js";
 
@@ -69,7 +71,7 @@ export function attemptFacts(
   return Object.freeze({
     recordKind: "agent-attempt",
     relationships: Object.freeze([
-      relationship("uses-brief", "founder-brief", brief),
+      relationship("uses-brief", "director-brief", brief),
       ...(boundary === null ? [] : [relationship("uses-boundary", "work-boundary", boundary)]),
       ...(candidate === null
         ? []
@@ -95,13 +97,13 @@ export function boundaryFacts(
   return Object.freeze({
     recordKind: "work-boundary",
     payload: Object.freeze({
-      schema: "lifecycle.work-boundary-payload.v4",
+      schema: "lifecycle.work-boundary-payload.v6",
       mandate: Object.freeze({
         checks: Object.freeze(checks.map((check) => Object.freeze({ ...check }))),
       }),
     }),
     relationships: Object.freeze([
-      relationship("uses-brief", "founder-brief", brief),
+      relationship("uses-brief", "director-brief", brief),
       relationship("proposed-from", "agent-work-product", workProduct),
       ...(prior === null ? [] : [relationship("revises", "work-boundary", prior)]),
       ...(condition === null
@@ -132,7 +134,7 @@ export function checkFacts(
   return Object.freeze({
     recordKind: "check-receipt",
     payload: Object.freeze({
-      schema: "lifecycle.check-receipt-payload.v2",
+      schema: "lifecycle.check-receipt-payload.v3",
       selectionId,
       phase,
       modality,
@@ -143,11 +145,11 @@ export function checkFacts(
 }
 
 export function candidateRevisionV2Payload(
-  observation: "initialization" | "builder-successor" | "readmission-rebind",
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor",
 ): ControlJsonObject {
   return Object.freeze({
-    schema: "lifecycle.candidate-revision-payload.v2",
-    profileId: "lifecycle.candidate-revision.observation.v1",
+    schema: "lifecycle.candidate-revision-payload.v3",
+    profileId: "lifecycle.candidate-revision.observation.v2",
     observation,
     candidateBaseCommit: "a".repeat(40),
     carrierManifest: Object.freeze({
@@ -182,7 +184,7 @@ export function closurePayload(
   containment: "complete" | "incomplete" = "complete",
 ): ControlJsonObject {
   return Object.freeze({
-    schema: "lifecycle.closure-payload.v4",
+    schema: "lifecycle.closure-payload.v6",
     disposition,
     candidateTreatment,
     terminalExecutions: Object.freeze({
@@ -225,11 +227,13 @@ function transactionObservationFacts(
 
   if (opening?.payload.operation === "delivery.accept" && outcome === "applied") {
     return Object.freeze({
-      schema: "lifecycle.terminal-acceptance-effect-observation.v1",
+      schema: "lifecycle.terminal-acceptance-effect-observation.v2",
       ref: "refs/heads/main",
       commit: "a".repeat(40),
       tree: "b".repeat(40),
       objectFormat: "sha1",
+      observedTip: Object.freeze({ commit: "a".repeat(40), tree: "b".repeat(40) }),
+      recognition: "at-tip",
       canonicalResultDigest: sha256Bytes(`terminal-canonical-result-${sequence}`),
     });
   }
@@ -333,6 +337,14 @@ export class EventChain {
             `${eventKind} must supply facts.recordKind when it finalizes a new revision`,
           );
         }
+        let recordPayload = facts.payload ?? {};
+        if (eventKind === "director-brief-submitted" && recordPayload.scope === undefined) {
+          const activityId = payload.activityId;
+          if (typeof activityId !== "string") {
+            throw new TypeError("An Activity-scoped Director Brief fixture requires its exact Activity id");
+          }
+          recordPayload = { scope: { kind: "activity", activityId }, ...recordPayload };
+        }
         this.revisions.set(key, Object.freeze({
           schema: CONTROL_RECORD_REVISION_SCHEMA,
           processId: this.processId,
@@ -344,7 +356,7 @@ export class EventChain {
           semanticAuthority: "runtime-derived",
           createdAt: this.occurredAt,
           semanticMarkdown: "Synthetic bounded-exploration fixture.\n",
-          payload: Object.freeze(facts.payload ?? {}),
+          payload: Object.freeze(recordPayload),
           relationships: Object.freeze(facts.relationships ?? []),
           digest: selectedSubject.digest,
         }));
@@ -390,8 +402,8 @@ export function prepareSuccessful(
   const baselineReceipt = options.baselineReceipt ?? subject(`baseline-check-${suffix}`);
   const providerEffect = options.providerEffect ?? effect(`provider-${suffix}`);
 
-  chain.append("founder-brief-submitted", { activityId }, brief, {
-    recordKind: "founder-brief",
+  chain.append("director-brief-submitted", { activityId }, brief, {
+    recordKind: "director-brief",
   });
   chain.append("activity-started", { activityId, operation: "delivery.prepare" });
   chain.append("agent-attempt-prepared", { activityId }, attempt, attemptFacts(brief));
@@ -470,11 +482,11 @@ export function admitSuccessful(
 
   chain.append("activity-started", { activityId, operation: "delivery.admit" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     {
-      recordKind: "founder-decision",
+      recordKind: "director-decision",
       payload: Object.freeze({ decision: "admit" }),
       relationships: Object.freeze([
         relationship("selects-boundary", "work-boundary", prepared.boundary),
@@ -514,6 +526,50 @@ export function admitSuccessful(
     boundary: prepared.boundary,
     baselineReceipt: prepared.baselineReceipt,
   });
+}
+
+export function integrationAssessmentFacts(
+  boundary: ControlRecordEventSubject,
+  candidate: ControlRecordEventSubject,
+  outcome: "constructed" | "conflicted" | "invalid" = "constructed",
+  contextChanged = false,
+  parentCommit = "a".repeat(40),
+): RevisionFacts {
+  const constructed = candidateRevisionV2Payload("integration-successor");
+  const snapshot = {
+    targetId: "target-bounded-exploration", commit: parentCommit, tree: "b".repeat(40), objectFormat: "sha1",
+    contractDigest: effect("contract"), productStateDigest: effect("product"), knowledgeSetDigest: effect("knowledge"),
+    atlasStateDigest: effect("atlas-state"), atlasResolutionDigest: effect("atlas-resolution"),
+    atlasNormalizedModelDigest: effect("atlas-model"), atlasResourceBindingsDigest: effect("atlas-resources"),
+  };
+  return Object.freeze({ recordKind: "integration-assessment", payload: {
+    schema: "lifecycle.integration-assessment-payload.v1", profileId: "lifecycle.integration-assessment.foundation-v1",
+    canonicalParent: { ...snapshot, digest: selfDigest(snapshot) },
+    mergeRule: { id: "lifecycle.integration.three-way.v2", implementationId: "integration-test-rule", implementationDigest: effect("integration-rule") },
+    outcome, conflicts: outcome === "conflicted" ? [{ path: "src/example.ts", kind: "content" }] : [],
+    validation: { complete: outcome !== "conflicted", valid: outcome === "constructed", diagnosticCodes: [], factsDigest: outcome === "constructed"
+      ? foundationIntegrationValidationFactsDigestV1({ manifestFileDigest: (constructed.carrierManifest as ControlJsonObject).digest as Sha256,
+          state: constructed.state, observer: constructed.observer }) : effect(`integration-${outcome}`) },
+    contextualApplicability: { disposition: contextChanged ? "requires-readmission" : "unchanged",
+      changes: contextChanged ? [{ subject: "atlas", admittedDigest: effect("atlas-before"), parentDigest: effect("atlas-after") }] : [] },
+    assessedAt: DEFAULT_OCCURRED_AT, limitations: [],
+  }, relationships: [relationship("governed-by", "work-boundary", boundary), relationship("integrates", "candidate-revision", candidate)] });
+}
+
+/** Trusted integration seed; generated integration histories live in their own scenario. */
+export function integrateSuccessful(chain: EventChain, boundary: ControlRecordEventSubject, source: ControlRecordEventSubject) {
+  const activityId = `integrate-${source.recordId}-${source.revision}`;
+  const assessment = subject(`assessment-${source.recordId}-${source.revision}`);
+  const candidate = subject(source.recordId, source.revision + 1);
+  chain.append("activity-started", { activityId, operation: "delivery.integrate" });
+  chain.append("integration-assessed", { activityId }, assessment, integrationAssessmentFacts(boundary, source));
+  chain.append("candidate-revision-observed", { activityId }, candidate, {
+    recordKind: "candidate-revision", payload: candidateRevisionV2Payload("integration-successor"),
+    relationships: [relationship("governed-by", "work-boundary", boundary), relationship("revises", "candidate-revision", source),
+      relationship("integrated-from", "integration-assessment", assessment)],
+  });
+  chain.append("activity-completed", { activityId, outcome: "completed" });
+  return Object.freeze({ assessment, candidate });
 }
 
 class DeliveryReducerFixtureError extends Error {
@@ -933,6 +989,7 @@ export function normalizeReducerState(state: ReducedDeliveryState) {
       recovery: normalizeRecovery(activity.recovery),
     }))),
     subjects: Object.freeze({
+      integrationAssessment: normalizeSubject(state.subjects.integrationAssessment),
       proposedBoundary: normalizeSubject(state.subjects.proposedBoundary),
       activeBoundary: normalizeSubject(state.subjects.activeBoundary),
       candidate: normalizeSubject(state.subjects.candidate),

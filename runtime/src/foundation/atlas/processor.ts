@@ -252,7 +252,7 @@ export async function processMaterializedAtlas(entrypoint: string): Promise<Read
     result.specificationRevision !== FOUNDATION_ATLAS_SELECTION.specificationRevision ||
     result.implementation.name !== FOUNDATION_ATLAS_PROCESSOR.id ||
     result.implementation.version !== FOUNDATION_ATLAS_PROCESSOR.version ||
-    result.implementation.status !== "working"
+    result.implementation.status !== "stable"
   ) {
     throw new FoundationError("lifecycle.atlas.result-invalid", "Atlas processor result does not match the exact selected coordinates", {
       observedFacts: {

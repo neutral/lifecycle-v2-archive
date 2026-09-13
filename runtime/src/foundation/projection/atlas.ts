@@ -9,9 +9,16 @@ import { FoundationError } from "../error.js";
 import type { FoundationLoadedRepositoryEpoch } from "../repository/types.js";
 import { digestCanonical } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
+import {
+  atlasPointRecordKey,
+  atlasPointRecordValue,
+  atlasResourceIdsForSourceRoots,
+  planAtlasExecutionClosure,
+} from "./atlas-execution-closure.js";
 import { buildTierTwoItem, ProjectionByteInventoryBuilder, projectionIndexBytes } from "./content.js";
-import { atlasResourceSourceId } from "./source-context.js";
 import type { FoundationProjectionAtlasItem, FoundationProjectionSourceRoot } from "./types.js";
+
+export { atlasResourceIdsForSourceRoots };
 
 const KIND_ORDER: Readonly<Record<FoundationProjectionAtlasItem["unitKind"], number>> = Object.freeze({
   atlas: 0,
@@ -106,40 +113,6 @@ function referencedResourceIds(options: {
   return Object.freeze([...selected].sort(compareCodePoints));
 }
 
-function pointValue(point: FoundationAtlasPoint, record: FoundationAtlasPointRecord): unknown {
-  return Object.freeze({
-    id: point.id,
-    title: point.title,
-    summary: point.summary,
-    kinds: point.kinds,
-    posture: point.posture,
-    lifecycle: point.lifecycle,
-    primaryMap: point.primaryMap,
-    anchorPath: point.anchorPath,
-    record,
-    relations: point.relations,
-    incomingRelations: point.incomingRelations,
-    review: point.review,
-    extensions: point.extensions,
-  });
-}
-
-/** Resolve exact Atlas Resource identities retained by an admitted Boundary source root. */
-export function atlasResourceIdsForSourceRoots(
-  loaded: FoundationLoadedRepositoryEpoch,
-  roots: readonly FoundationProjectionSourceRoot[],
-): ReadonlySet<string> {
-  const atlasId = loaded.atlas.model.atlas.id;
-  const bySourceId = new Map(loaded.atlas.model.atlas.resources.map((resource) =>
-    [atlasResourceSourceId(atlasId, resource.id), resource.id]));
-  const selected = new Set<string>();
-  for (const root of roots) {
-    if (root.authority !== "atlas") continue;
-    const resourceId = bySourceId.get(root.sourceId);
-    if (resourceId !== undefined) selected.add(resourceId);
-  }
-  return selected;
-}
 
 /**
  * Compile Atlas semantics from authored identities and relations only.
@@ -152,6 +125,7 @@ export function compileAtlasProjection(options: {
   loaded: FoundationLoadedRepositoryEpoch;
   inventory: ProjectionByteInventoryBuilder;
   mode: "orientation" | "execution";
+  sourceRoots?: readonly FoundationProjectionSourceRoot[];
   selectedResourceIds?: ReadonlySet<string>;
   selectedCheckIds?: ReadonlySet<string>;
   selectedPublicationProfileIds?: ReadonlySet<string>;
@@ -198,8 +172,6 @@ export function compileAtlasProjection(options: {
     }
     return changed;
   };
-  const recordKey = (pointId: string, record: FoundationAtlasPointRecord): string =>
-    `${pointId}\0${record.map}\0${record.kind}\0${record.path}`;
   const selectMap = (id: string, reason: string): boolean => {
     const added = !selectedMapIds.has(id);
     selectedMapIds.add(id);
@@ -207,7 +179,7 @@ export function compileAtlasProjection(options: {
     return added;
   };
   const selectRecord = (point: FoundationAtlasPoint, record: FoundationAtlasPointRecord, reason: string): boolean => {
-    const key = recordKey(point.id, record);
+    const key = atlasPointRecordKey(point, record);
     const added = !selectedRecordKeys.has(key);
     selectedRecordKeys.add(key);
     selectedPointIds.add(point.id);
@@ -247,7 +219,7 @@ export function compileAtlasProjection(options: {
     }
     for (const point of model.points) {
       for (const record of point.records) {
-        if (selectedRecordKeys.has(recordKey(point.id, record))) {
+        if (selectedRecordKeys.has(atlasPointRecordKey(point, record))) {
           resourcesFromTargets(
             targetsForRecord(record),
             `selected-point-record:${point.id}:${record.map}:${record.kind}`,
@@ -256,44 +228,18 @@ export function compileAtlasProjection(options: {
       }
     }
   } else {
-    for (const id of options.selectedResourceIds ?? []) selectResource(id, "active-work-boundary-source-root");
-    // Execution alone performs bidirectional exact Resource closure. Selected
-    // Resources discover only Maps and Point records that cite those exact
-    // identities (or their exact registered URIs); newly discovered authored
-    // targets then participate in the next pass.
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const map of model.maps) {
-        const referenced = referencedResourceIds({ targets: targetsForMap(map), resourceIds: allResourceIds, resourceIdsByUri });
-        if (selectedMapIds.has(map.id)) {
-          for (const id of referenced) changed = selectResource(id, `selected-map:${map.id}`) || changed;
-        } else if (referenced.some((id) => selectedResourceIds.has(id))) {
-          changed = selectMap(map.id, `references-selected-resource:${referenced.filter((id) => selectedResourceIds.has(id)).join(",")}`) || changed;
-        }
-      }
-      for (const point of model.points) {
-        for (const record of point.records) {
-          const key = recordKey(point.id, record);
-          const referenced = referencedResourceIds({ targets: targetsForRecord(record), resourceIds: allResourceIds, resourceIdsByUri });
-          if (selectedRecordKeys.has(key)) {
-            for (const id of referenced) changed = selectResource(id, `selected-point-record:${point.id}:${record.map}:${record.kind}`) || changed;
-          } else if (referenced.some((id) => selectedResourceIds.has(id))) {
-            changed = selectRecord(point, record, `references-selected-resource:${referenced.filter((id) => selectedResourceIds.has(id)).join(",")}`) || changed;
-          }
-        }
-      }
-      // A selected context cannot substitute for its Point's identity-owning
-      // anchor. Add that anchor inside the fixed point so its exact authored
-      // Resource targets participate in the next closure pass.
-      for (const point of model.points) {
-        if (!selectedPointIds.has(point.id)) continue;
-        const anchor = point.records.find(({ kind }) => kind === "anchor");
-        if (anchor !== undefined) {
-          changed = selectRecord(point, anchor, "selected-point-anchor-owner") || changed;
-        }
-      }
-    }
+    const plan = planAtlasExecutionClosure({
+      loaded,
+      sourceRoots: options.sourceRoots,
+      selectedResourceIds: options.selectedResourceIds,
+    });
+    for (const id of plan.mapIds) selectedMapIds.add(id);
+    for (const id of plan.pointIds) selectedPointIds.add(id);
+    for (const key of plan.pointRecordKeys) selectedRecordKeys.add(key);
+    for (const id of plan.resourceIds) selectedResourceIds.add(id);
+    for (const [id, reasons] of plan.mapReasons) mapReasons.set(id, new Set(reasons));
+    for (const [key, reasons] of plan.pointRecordReasons) recordReasons.set(key, new Set(reasons));
+    for (const [id, reasons] of plan.resourceReasons) resourceReasons.set(id, new Set(reasons));
   }
 
   const values: FoundationProjectionAtlasItem[] = [];
@@ -328,7 +274,7 @@ export function compileAtlasProjection(options: {
   }
   for (const point of model.points) {
     for (const record of point.records) {
-      const key = recordKey(point.id, record);
+      const key = atlasPointRecordKey(point, record);
       if (!selectedRecordKeys.has(key)) continue;
       values.push(item({
         loaded,
@@ -339,7 +285,7 @@ export function compileAtlasProjection(options: {
         pointId: point.id,
         recordKind: record.kind,
         sourcePath: sourcePath(loaded.contract.atlas.root, record.path),
-        value: pointValue(point, record),
+        value: atlasPointRecordValue(point, record),
         inclusionReasons: Object.freeze([...(recordReasons.get(key) ?? [])]),
         useLimit: "Point identity, record kind, Map provenance, posture, lifecycle, and authored relation boundaries must be preserved exactly.",
       }));

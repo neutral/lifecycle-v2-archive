@@ -1,6 +1,6 @@
 {
-  "schema": "lifecycle.candidate-revision-payload.v2",
-  "profileId": "lifecycle.candidate-revision.observation.v1",
+  "schema": "lifecycle.candidate-revision-payload.v3",
+  "profileId": "lifecycle.candidate-revision.observation.v2",
   "observation": "initialization",
   "candidateBaseCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "carrierManifest": {

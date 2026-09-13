@@ -1,0 +1,31 @@
+{
+  "schema": "lifecycle.knowledge-record.v2",
+  "kind": "discipline",
+  "id": "discipline.go.context-cancellation",
+  "title": "Context and cancellation",
+  "status": "current",
+  "revision": 1,
+  "supersedes": null,
+  "summary": "An invalid Discipline attempts to make advisory provenance required.",
+  "owners": ["neutral-lifecycle-disciplines"],
+  "sources": [
+    {
+      "id": "go-context-guidance",
+      "required": true,
+      "reference": "urn:example:go-context-guidance",
+      "revision": "v1",
+      "digest": null,
+      "role": "external-standard"
+    }
+  ],
+  "relationships": [],
+  "conflicts": [],
+  "tags": ["go"],
+  "spec": {
+    "practice": "Make cancellation ownership explicit.",
+    "appliesWhen": ["Work starts goroutines."],
+    "doesNotApplyWhen": [],
+    "guidance": ["Pass context explicitly."],
+    "verification": []
+  }
+}

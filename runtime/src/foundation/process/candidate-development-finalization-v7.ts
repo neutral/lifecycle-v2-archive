@@ -1,4 +1,5 @@
 import { retainMaterialCondition } from "../control/material-condition.js";
+import { assertBuilderExecutionReceiptCandidateSubjects } from "../control/execution-receipt.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
 import type {
   ControlJsonObject,
@@ -140,6 +141,16 @@ export async function finalizeCandidateDevelopmentV7(
   if (input.operation !== "delivery.continue" || input.role !== "builder") {
     fail("operation", "Candidate development finalization accepts only one exact builder activity");
   }
+  // The Receipt distinguishes the exact input from an optional promoted successor.
+  assertBuilderExecutionReceiptCandidateSubjects({
+    receipt: input.receipt,
+    inputCandidate: input.attemptedCandidate,
+    resultCandidate: input.resultCandidate,
+  });
+  if (
+    !sameReference(relationship(input.receipt, "observes-attempt", "agent-attempt"), input.attempt) ||
+    !sameReference(relationship(input.resultCandidate, "governed-by", "work-boundary"), input.boundary)
+  ) fail("subject", "Builder finalization does not reproduce its exact observed Candidate chain");
   if (input.workProduct === null) {
     if (input.support.current().checkpoint !== null) {
       fail("checkpoint", "A builder pass without a Work Product cannot retain role recovery support");
@@ -148,9 +159,7 @@ export async function finalizeCandidateDevelopmentV7(
   }
   if (
     !sameReference(relationship(input.workProduct, "result-of", "agent-attempt"), input.attempt) ||
-    !sameReference(relationship(input.receipt, "observes-work-product", "agent-work-product"), input.workProduct) ||
-    !sameReference(relationship(input.receipt, "observes-candidate", "candidate-revision"), input.resultCandidate) ||
-    !sameReference(relationship(input.resultCandidate, "governed-by", "work-boundary"), input.boundary)
+    !sameReference(relationship(input.receipt, "observes-work-product", "agent-work-product"), input.workProduct)
   ) fail("subject", "Builder finalization does not reproduce its exact observed Candidate chain");
 
   const required = conditionRequired(input.workProduct);

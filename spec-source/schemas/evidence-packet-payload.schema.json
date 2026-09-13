@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:evidence-packet-payload:v1",
-  "title": "Lifecycle Evidence Packet Payload v1",
+  "$id": "urn:lifecycle:schema:evidence-packet-payload:v2",
+  "title": "Lifecycle Evidence Packet Payload v2",
   "description": "Bounded normalized evaluation ledgers and derived readiness for one exact sealed Candidate.",
   "type": "object",
   "additionalProperties": false,
@@ -20,111 +20,321 @@
     "diagnostics",
     "uncertainty",
     "validator",
-    "readiness"
+    "readiness",
+    "integrationApplicability"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.evidence-packet-payload.v1" },
-    "profileId": { "const": "lifecycle.evidence-packet.foundation-v1" },
-    "ruleSet": { "$ref": "#/$defs/implementation" },
-    "evaluatedAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
+    "schema": {
+      "const": "lifecycle.evidence-packet-payload.v2"
+    },
+    "profileId": {
+      "const": "lifecycle.evidence-packet.foundation-v2"
+    },
+    "ruleSet": {
+      "$ref": "#/$defs/implementation"
+    },
+    "evaluatedAt": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+    },
     "artifacts": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/artifactEntry" }
+      "items": {
+        "$ref": "#/$defs/artifactEntry"
+      }
     },
     "descriptionCoverage": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/descriptionEntry" }
+      "items": {
+        "$ref": "#/$defs/descriptionEntry"
+      }
     },
     "receiptUse": {
       "type": "array",
       "minItems": 1,
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/receiptUseEntry" }
+      "items": {
+        "$ref": "#/$defs/receiptUseEntry"
+      }
     },
     "invalidations": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/invalidationEntry" }
+      "items": {
+        "$ref": "#/$defs/invalidationEntry"
+      }
     },
     "reviewerIndependence": {
       "type": "array",
       "minItems": 1,
       "maxItems": 128,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/independenceEntry" }
+      "items": {
+        "$ref": "#/$defs/independenceEntry"
+      }
     },
     "propositionDecisions": {
       "type": "array",
       "minItems": 1,
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/propositionEntry" }
+      "items": {
+        "$ref": "#/$defs/propositionEntry"
+      }
     },
     "obligations": {
       "type": "array",
       "minItems": 1,
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/obligationEntry" }
+      "items": {
+        "$ref": "#/$defs/obligationEntry"
+      }
     },
     "diagnostics": {
       "type": "array",
       "maxItems": 1024,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/diagnostic" }
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
     },
     "uncertainty": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level", "itemIds"],
+      "required": [
+        "level",
+        "itemIds"
+      ],
       "properties": {
-        "level": { "enum": ["none", "bounded", "material", "unknown"] },
-        "itemIds": { "$ref": "#/$defs/idSet" }
+        "level": {
+          "enum": [
+            "none",
+            "bounded",
+            "material",
+            "unknown"
+          ]
+        },
+        "itemIds": {
+          "$ref": "#/$defs/idSet"
+        }
       }
     },
-    "validator": { "$ref": "#/$defs/implementation" },
-    "readiness": { "enum": ["acceptance-ready", "correctable", "revision-required", "no-ship-recommended"] }
+    "validator": {
+      "$ref": "#/$defs/implementation"
+    },
+    "readiness": {
+      "enum": [
+        "acceptance-ready",
+        "correctable",
+        "revision-required",
+        "no-ship-recommended"
+      ]
+    },
+    "integrationApplicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessment",
+        "mandate",
+        "baselines"
+      ],
+      "properties": {
+        "assessment": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "integration-assessment"
+                }
+              }
+            }
+          ]
+        },
+        "mandate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disposition",
+            "fragmentDigest"
+          ],
+          "properties": {
+            "disposition": {
+              "enum": [
+                "applicable",
+                "requires-readmission",
+                "indeterminate"
+              ]
+            },
+            "fragmentDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "baselines": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "receiptId",
+              "disposition",
+              "fragmentDigest"
+            ],
+            "properties": {
+              "receiptId": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+              },
+              "disposition": {
+                "enum": [
+                  "applicable",
+                  "insufficient",
+                  "indeterminate"
+                ]
+              },
+              "fragmentDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "allOf": [
     {
       "if": {
-        "properties": { "readiness": { "const": "acceptance-ready" } },
-        "required": ["readiness"]
+        "properties": {
+          "readiness": {
+            "const": "acceptance-ready"
+          }
+        },
+        "required": [
+          "readiness"
+        ]
       },
       "then": {
         "properties": {
           "artifacts": {
-            "items": { "properties": { "state": { "const": "satisfied" } } }
+            "items": {
+              "properties": {
+                "state": {
+                  "const": "satisfied"
+                }
+              }
+            }
           },
           "descriptionCoverage": {
-            "items": { "properties": { "state": { "enum": ["satisfied", "not-applicable"] } } }
+            "items": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "satisfied",
+                    "not-applicable"
+                  ]
+                }
+              }
+            }
           },
           "receiptUse": {
             "items": {
               "allOf": [
-                { "properties": { "use": { "enum": ["executed", "reused", "excluded"] } } },
+                {
+                  "properties": {
+                    "use": {
+                      "enum": [
+                        "executed",
+                        "reused",
+                        "excluded"
+                      ]
+                    }
+                  }
+                },
                 {
                   "if": {
-                    "properties": { "use": { "enum": ["executed", "reused"] } },
-                    "required": ["use"]
+                    "properties": {
+                      "reasonCode": {
+                        "const": "baseline-postcondition-not-run"
+                      }
+                    },
+                    "required": [
+                      "reasonCode"
+                    ]
                   },
                   "then": {
                     "properties": {
-                      "receiptId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-                      "freshness": { "const": "fresh" },
-                      "subjectEquivalence": { "enum": ["exact", "proven-equivalent"] }
+                      "phase": {
+                        "const": "baseline"
+                      },
+                      "receiptId": {
+                        "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                      },
+                      "use": {
+                        "const": "excluded"
+                      },
+                      "freshness": {
+                        "const": "not-applicable"
+                      },
+                      "subjectEquivalence": {
+                        "const": "exact"
+                      },
+                      "ageMs": {
+                        "type": "null"
+                      },
+                      "maximumAgeMs": {
+                        "type": "null"
+                      }
                     }
                   },
                   "else": {
-                    "properties": {
-                      "receiptId": { "type": "null" },
-                      "freshness": { "const": "not-applicable" }
+                    "if": {
+                      "properties": {
+                        "use": {
+                          "enum": [
+                            "executed",
+                            "reused"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "use"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "receiptId": {
+                          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                        },
+                        "freshness": {
+                          "const": "fresh"
+                        },
+                        "subjectEquivalence": {
+                          "enum": [
+                            "exact",
+                            "proven-equivalent"
+                          ]
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "receiptId": {
+                          "type": "null"
+                        },
+                        "freshness": {
+                          "const": "not-applicable"
+                        }
+                      }
                     }
                   }
                 }
@@ -132,32 +342,74 @@
             }
           },
           "invalidations": {
-            "items": { "properties": { "state": { "const": "current" } } }
+            "items": {
+              "properties": {
+                "state": {
+                  "const": "current"
+                }
+              }
+            }
           },
           "reviewerIndependence": {
             "items": {
               "properties": {
-                "providerSession": { "const": "fresh" },
-                "subjectDisposition": { "const": "exact-read-only" },
-                "state": { "const": "satisfied" }
+                "providerSession": {
+                  "enum": ["fresh", "indeterminate"]
+                },
+                "subjectDisposition": {
+                  "const": "exact-read-only"
+                },
+                "state": {
+                  "const": "satisfied"
+                }
               }
             }
           },
           "propositionDecisions": {
             "items": {
               "properties": {
-                "reviewerDisposition": { "enum": ["accepted", "not-applicable"] },
-                "uncertainty": { "enum": ["none", "bounded"] },
-                "validation": { "const": "valid" }
+                "reviewerDisposition": {
+                  "enum": [
+                    "accepted",
+                    "not-applicable"
+                  ]
+                },
+                "uncertainty": {
+                  "enum": [
+                    "none",
+                    "bounded"
+                  ]
+                },
+                "validation": {
+                  "const": "valid"
+                }
               }
             }
           },
           "obligations": {
-            "items": { "properties": { "state": { "enum": ["satisfied", "not-applicable"] } } }
+            "items": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "satisfied",
+                    "not-applicable"
+                  ]
+                }
+              }
+            }
           },
-          "diagnostics": { "maxItems": 0 },
+          "diagnostics": {
+            "maxItems": 0
+          },
           "uncertainty": {
-            "properties": { "level": { "enum": ["none", "bounded"] } }
+            "properties": {
+              "level": {
+                "enum": [
+                  "none",
+                  "bounded"
+                ]
+              }
+            }
           }
         }
       }
@@ -167,34 +419,57 @@
     "implementation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "digest"],
+      "required": [
+        "id",
+        "digest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "idSet": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+      }
     },
     "nullableDigest": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       ]
     },
     "nullableId": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        }
       ]
     },
     "nullableAge": {
       "oneOf": [
-        { "type": "null" },
-        { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
       ]
     },
     "artifactEntry": {
@@ -218,21 +493,82 @@
         "provenance"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "artifactId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "fileKind": { "enum": ["file", "directory", "symlink", "submodule", "absent"] },
-        "existence": { "enum": ["present", "absent"] },
-        "change": { "enum": ["added", "modified", "deleted", "unchanged", "not-applicable", "indeterminate"] },
-        "contentDigest": { "$ref": "#/$defs/nullableDigest" },
-        "manifestDigest": { "$ref": "#/$defs/nullableDigest" },
-        "schemaValidation": { "enum": ["valid", "invalid", "not-required", "indeterminate"] },
-        "semanticValidation": { "enum": ["valid", "invalid", "not-required", "indeterminate"] },
-        "obligationIds": { "$ref": "#/$defs/idSet" },
-        "sourceRecordIds": { "$ref": "#/$defs/idSet" },
-        "limitations": { "$ref": "#/$defs/idSet" },
-        "state": { "enum": ["satisfied", "failed", "indeterminate", "not-applicable"] },
-        "provenance": { "const": "runtime-observed" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "artifactId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "fileKind": {
+          "enum": [
+            "file",
+            "directory",
+            "symlink",
+            "submodule",
+            "absent"
+          ]
+        },
+        "existence": {
+          "enum": [
+            "present",
+            "absent"
+          ]
+        },
+        "change": {
+          "enum": [
+            "added",
+            "modified",
+            "deleted",
+            "unchanged",
+            "not-applicable",
+            "indeterminate"
+          ]
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/nullableDigest"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/nullableDigest"
+        },
+        "schemaValidation": {
+          "enum": [
+            "valid",
+            "invalid",
+            "not-required",
+            "indeterminate"
+          ]
+        },
+        "semanticValidation": {
+          "enum": [
+            "valid",
+            "invalid",
+            "not-required",
+            "indeterminate"
+          ]
+        },
+        "obligationIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "sourceRecordIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "limitations": {
+          "$ref": "#/$defs/idSet"
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "failed",
+            "indeterminate",
+            "not-applicable"
+          ]
+        },
+        "provenance": {
+          "const": "runtime-observed"
+        }
       }
     },
     "descriptionEntry": {
@@ -253,23 +589,73 @@
         "provenance"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "descriptionId": { "$ref": "#/$defs/nullableId" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "descriptionId": {
+          "$ref": "#/$defs/nullableId"
+        },
         "selector": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+            }
           ]
         },
-        "ownership": { "enum": ["exact", "missing", "ambiguous", "excluded", "indeterminate"] },
-        "implementationChange": { "enum": ["changed", "unchanged", "absent"] },
-        "descriptionChange": { "enum": ["changed", "unchanged", "absent"] },
-        "exclusionChange": { "enum": ["none", "new", "widened", "narrowed"] },
-        "obligationIds": { "$ref": "#/$defs/idSet" },
-        "sourceRecordIds": { "$ref": "#/$defs/idSet" },
-        "state": { "enum": ["satisfied", "failed", "indeterminate", "not-applicable"] },
-        "provenance": { "const": "runtime-observed" }
+        "ownership": {
+          "enum": [
+            "exact",
+            "missing",
+            "ambiguous",
+            "excluded",
+            "indeterminate"
+          ]
+        },
+        "implementationChange": {
+          "enum": [
+            "changed",
+            "unchanged",
+            "absent"
+          ]
+        },
+        "descriptionChange": {
+          "enum": [
+            "changed",
+            "unchanged",
+            "absent"
+          ]
+        },
+        "exclusionChange": {
+          "enum": [
+            "none",
+            "new",
+            "widened",
+            "narrowed"
+          ]
+        },
+        "obligationIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "sourceRecordIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "failed",
+            "indeterminate",
+            "not-applicable"
+          ]
+        },
+        "provenance": {
+          "const": "runtime-observed"
+        }
       }
     },
     "receiptUseEntry": {
@@ -289,32 +675,108 @@
         "provenance"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "checkId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "phase": { "enum": ["baseline", "final"] },
-        "receiptId": { "$ref": "#/$defs/nullableId" },
-        "use": { "enum": ["executed", "reused", "excluded", "missing"] },
-        "freshness": { "enum": ["fresh", "stale", "not-applicable", "indeterminate"] },
-        "subjectEquivalence": { "enum": ["exact", "proven-equivalent", "not-equivalent", "indeterminate"] },
-        "ageMs": { "$ref": "#/$defs/nullableAge" },
-        "maximumAgeMs": { "$ref": "#/$defs/nullableAge" },
-        "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
-        "provenance": { "const": "runtime-derived" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "checkId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "phase": {
+          "enum": [
+            "baseline",
+            "final"
+          ]
+        },
+        "receiptId": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "use": {
+          "enum": [
+            "executed",
+            "reused",
+            "excluded",
+            "missing"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "fresh",
+            "stale",
+            "not-applicable",
+            "indeterminate"
+          ]
+        },
+        "subjectEquivalence": {
+          "enum": [
+            "exact",
+            "proven-equivalent",
+            "not-equivalent",
+            "indeterminate"
+          ]
+        },
+        "ageMs": {
+          "$ref": "#/$defs/nullableAge"
+        },
+        "maximumAgeMs": {
+          "$ref": "#/$defs/nullableAge"
+        },
+        "reasonCode": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
+        },
+        "provenance": {
+          "const": "runtime-derived"
+        }
       }
     },
     "invalidationEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "subjectRecordId", "dependencyClass", "currentInputId", "causeIds", "state", "reasonCode", "provenance"],
+      "required": [
+        "id",
+        "subjectRecordId",
+        "dependencyClass",
+        "currentInputId",
+        "causeIds",
+        "state",
+        "reasonCode",
+        "provenance"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "subjectRecordId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "dependencyClass": { "enum": ["candidate", "boundary", "check-definition", "binding", "knowledge", "environment", "reviewer-subject"] },
-        "currentInputId": { "$ref": "#/$defs/nullableId" },
-        "causeIds": { "$ref": "#/$defs/idSet" },
-        "state": { "enum": ["current", "invalidated"] },
-        "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
-        "provenance": { "const": "runtime-derived" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "subjectRecordId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "dependencyClass": {
+          "enum": [
+            "candidate",
+            "boundary",
+            "check-definition",
+            "binding",
+            "knowledge",
+            "environment",
+            "reviewer-subject"
+          ]
+        },
+        "currentInputId": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "causeIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "state": {
+          "enum": [
+            "current",
+            "invalidated"
+          ]
+        },
+        "reasonCode": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
+        },
+        "provenance": {
+          "const": "runtime-derived"
+        }
       }
     },
     "independenceEntry": {
@@ -334,17 +796,51 @@
         "provenance"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "ruleId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "attemptId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "workProductId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "receiptId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "capabilityDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "projectionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "providerSession": { "enum": ["fresh", "reused", "indeterminate"] },
-        "subjectDisposition": { "enum": ["exact-read-only", "mutated", "indeterminate"] },
-        "state": { "enum": ["satisfied", "failed", "indeterminate"] },
-        "provenance": { "const": "runtime-derived" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "ruleId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "attemptId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "workProductId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "receiptId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "capabilityDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "projectionDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "providerSession": {
+          "enum": [
+            "fresh",
+            "reused",
+            "indeterminate"
+          ]
+        },
+        "subjectDisposition": {
+          "enum": [
+            "exact-read-only",
+            "mutated",
+            "indeterminate"
+          ]
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "failed",
+            "indeterminate"
+          ]
+        },
+        "provenance": {
+          "const": "runtime-derived"
+        }
       }
     },
     "propositionEntry": {
@@ -364,17 +860,53 @@
         "validation"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "propositionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "reviewerDisposition": { "enum": ["accepted", "rejected", "indeterminate", "not-applicable"] },
-        "reviewWorkProductId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "citationIds": { "$ref": "#/$defs/idSet" },
-        "inspectedSubjectIds": { "$ref": "#/$defs/idSet" },
-        "limitationIds": { "$ref": "#/$defs/idSet" },
-        "uncertainty": { "enum": ["none", "bounded", "material", "unknown"] },
-        "provenance": { "const": "agent-proposed" },
-        "validation": { "enum": ["valid", "invalid", "indeterminate"] }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "propositionId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "reviewerDisposition": {
+          "enum": [
+            "accepted",
+            "rejected",
+            "indeterminate",
+            "not-applicable"
+          ]
+        },
+        "reviewWorkProductId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "fragmentDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "citationIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "inspectedSubjectIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "limitationIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "uncertainty": {
+          "enum": [
+            "none",
+            "bounded",
+            "material",
+            "unknown"
+          ]
+        },
+        "provenance": {
+          "const": "agent-proposed"
+        },
+        "validation": {
+          "enum": [
+            "valid",
+            "invalid",
+            "indeterminate"
+          ]
+        }
       }
     },
     "obligationEntry": {
@@ -392,25 +924,61 @@
         "provenance"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "obligationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "state": { "enum": ["satisfied", "failed", "indeterminate", "missing", "not-applicable", "stale", "unsupported"] },
-        "checkIds": { "$ref": "#/$defs/idSet" },
-        "receiptIds": { "$ref": "#/$defs/idSet" },
-        "propositionDecisionIds": { "$ref": "#/$defs/idSet" },
-        "artifactLedgerIds": { "$ref": "#/$defs/idSet" },
-        "reasonCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
-        "provenance": { "const": "runtime-derived" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "obligationId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "failed",
+            "indeterminate",
+            "missing",
+            "not-applicable",
+            "stale",
+            "unsupported"
+          ]
+        },
+        "checkIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "receiptIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "propositionDecisionIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "artifactLedgerIds": {
+          "$ref": "#/$defs/idSet"
+        },
+        "reasonCode": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
+        },
+        "provenance": {
+          "const": "runtime-derived"
+        }
       }
     },
     "diagnostic": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "stage", "factsDigest"],
+      "required": [
+        "code",
+        "stage",
+        "factsDigest"
+      ],
       "properties": {
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "stage": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind" },
-        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "code": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "stage": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
+        },
+        "factsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     }
   }

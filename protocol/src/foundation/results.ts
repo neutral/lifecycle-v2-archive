@@ -29,6 +29,10 @@ import {
   FoundationRuntimeObservationSchema,
   FoundationRuntimeOperationKindSchema,
   FoundationSha256Schema,
+  FOUNDATION_WORK_DELEGATION_STOP_REASONS,
+  FoundationWorkDelegationOperationSchema,
+  FoundationWorkDelegationReferenceSchema,
+  FoundationWorkDelegationStopRequestSchema,
   canonicalFoundationJson,
   canonicalFoundationJsonLine,
   selfDigestFoundationCarrier,
@@ -44,6 +48,7 @@ import {
   type FoundationRuntimeOperationRequest,
 } from "./requests.js";
 import { FoundationAttemptViewSchema } from "./attempt-view.js";
+import { FoundationContextInspectionResultSchema, type FoundationInspectionSelection } from "./context-inspection.js";
 import {
   FoundationNonnegativeSafeIntegerSchema,
   FoundationPositiveSafeIntegerSchema,
@@ -51,7 +56,7 @@ import {
   type FoundationDeepReadonly,
 } from "./internal.js";
 
-export const FoundationInspectionResultSchema = z.discriminatedUnion("kind", [
+const FoundationControlInspectionResultSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("summary"), state: FoundationDeliveryStateSchema }).strict(),
   z.object({
     kind: z.literal("events"),
@@ -92,6 +97,11 @@ export const FoundationInspectionResultSchema = z.discriminatedUnion("kind", [
     records: z.array(FoundationControlRevisionSchema).max(200),
     nextAfterRevision: FoundationPositiveSafeIntegerSchema.nullable(),
   }).strict(),
+]);
+
+export const FoundationInspectionResultSchema = z.union([
+  FoundationControlInspectionResultSchema,
+  FoundationContextInspectionResultSchema,
 ]);
 
 export const FoundationInboxResultSchema = z.object({
@@ -135,6 +145,35 @@ export const FoundationExportResultSchema = z.object({
   }
 });
 
+export const FoundationWorkControlResultSchema = z.object({
+  kind: z.literal("work-control"), action: z.enum(["set", "run", "stop"]),
+  delegation: FoundationWorkDelegationReferenceSchema,
+  eventProjection: z.literal("journal-coordinates-only"),
+  completedOperations: FoundationNonnegativeSafeIntegerSchema,
+  lastActivity: z.object({ activityId: FoundationOpaqueIdSchema, operation: FoundationWorkDelegationOperationSchema }).strict().nullable(),
+  stop: z.object({ disposition: z.enum(["pending", "stopped"]), request: FoundationWorkDelegationStopRequestSchema }).strict().nullable(),
+  reason: z.enum([...FOUNDATION_WORK_DELEGATION_STOP_REASONS, "delegation-set", "stop-pending"]),
+}).strict().superRefine((value, context) => {
+  if (value.action !== "run" && (value.completedOperations !== 0 || value.lastActivity !== null)) {
+    context.addIssue({ code: "custom", message: "Set and stop do not report completed productive operations or an Activity" });
+  }
+  if (value.completedOperations > 0 && value.lastActivity === null) context.addIssue({ code: "custom", path: ["lastActivity"],
+    message: "A counted settled course requires its exact latest Activity" });
+  if (value.action === "set" && (value.stop !== null || value.reason !== "delegation-set")) {
+    context.addIssue({ code: "custom", message: "Set reports one saved grant without a stop result" });
+  }
+  if (value.action === "stop" && (value.stop === null ||
+      value.reason !== (value.stop.disposition === "pending" ? "stop-pending" : "delegation-stopped"))) {
+    context.addIssue({ code: "custom", message: "Stop must report its exact pending or folded request" });
+  }
+  if (value.action === "run" && (value.reason === "delegation-set" || value.reason === "stop-pending")) {
+    context.addIssue({ code: "custom", path: ["reason"], message: "Run reports its bounded continuation stopping reason" });
+  }
+  if (value.stop !== null && canonicalFoundationJson(value.stop.request.delegation) !== canonicalFoundationJson(value.delegation)) {
+    context.addIssue({ code: "custom", path: ["stop", "request", "delegation"], message: "Stop result must bind the exact course grant" });
+  }
+});
+
 export const FoundationRuntimeResultValueSchema = z.union([
   z.null(),
   FoundationInspectionResultSchema,
@@ -142,6 +181,7 @@ export const FoundationRuntimeResultValueSchema = z.union([
   FoundationInboxResultSchema,
   FoundationDiffResultSchema,
   FoundationWatchResultSchema,
+  FoundationWorkControlResultSchema,
 ]);
 
 export const FoundationRuntimeOperationResultSchema = z.object({
@@ -178,12 +218,10 @@ export const FoundationRuntimeOperationResultSchema = z.object({
   const inspectionKinds = new Set([
     "summary", "events", "dossier", "record", "attempt-view", "delivery-view",
     "families", "family", "revisions",
+    "knowledge-index", "knowledge-record", "code-index", "code-file",
+    "atlas-overview", "atlas-point", "atlas-resource", "source",
+    "authorization-review",
   ]);
-  const repositoryCoordinate = {
-    headCommit: value.observation.repository.headCommit,
-    headTree: value.observation.repository.headTree,
-    repositoryContractDigest: value.observation.repository.repositoryContractDigest,
-  };
   const bindGeneration = (
     generation: z.output<typeof FoundationDeliveryGenerationSchema>,
     path: readonly (string | number)[],
@@ -213,12 +251,8 @@ export const FoundationRuntimeOperationResultSchema = z.object({
         "Delivery generation must bind the directly observed Delivery coordinate",
       );
     }
-    requireSameCoordinate(
-      generation.repository,
-      repositoryCoordinate,
-      [...path, "repository"],
-      "Delivery generation must bind the directly observed repository coordinate",
-    );
+    // A Delivery generation binds its retained governing basis. The separately
+    // observed canonical repository can advance while that Delivery works.
   };
   const bindDeliveryView = (
     view: z.output<typeof FoundationDeliveryViewSchema>,
@@ -231,6 +265,14 @@ export const FoundationRuntimeOperationResultSchema = z.object({
       "Selected Delivery View and direct observation must bind one Delivery reduction",
     );
     bindGeneration(view.generation, [...path, "generation"]);
+  };
+  const bindInspectionSelection = (selection: FoundationInspectionSelection, path: readonly (string | number)[]) => {
+    const delivery = value.observation.delivery;
+    if (delivery === null || selection.targetId !== value.targetId || selection.storeId !== delivery.storeId ||
+        selection.processId !== delivery.processId || selection.origin.sequence > delivery.journal.eventCount ||
+        (selection.origin.sequence === delivery.journal.headSequence && selection.origin.digest !== delivery.journal.headDigest)) {
+      context.addIssue({ code: "custom", path: [...path], message: "Inspection selection must precede or equal the separately observed exact Store and Delivery" });
+    }
   };
   const bindRecordProcesses = (
     records: readonly z.output<typeof FoundationControlRevisionSchema>[],
@@ -263,12 +305,6 @@ export const FoundationRuntimeOperationResultSchema = z.object({
         [...path, "rows", index, "generation", "processId"],
         "Delivery Inbox row generation must bind its Delivery identity",
       );
-      requireSameCoordinate(
-        row.generation.repository,
-        repositoryCoordinate,
-        [...path, "rows", index, "generation", "repository"],
-        "Delivery Inbox row generation must bind the Inbox repository coordinate",
-      );
     }
   };
   requireSameCoordinate(
@@ -296,7 +332,51 @@ export const FoundationRuntimeOperationResultSchema = z.object({
       "Runtime result and direct observation must bind one Delivery identity",
     );
   }
-  if (value.operation === "delivery.inspect") {
+  if (value.operation === "delivery.work") {
+    if (value.events.length !== 0 || value.control.length !== 0) context.addIssue({ code: "custom",
+      message: "Work control projects Journal coordinates, never a partial flattened event or revision list" });
+    if (value.status === "completed" && selectedKind !== "work-control") context.addIssue({ code: "custom", path: ["value"],
+      message: "Completed work control requires its exact action result" });
+    if (selectedKind !== null && selectedKind !== "work-control") context.addIssue({ code: "custom", path: ["value"],
+      message: "Work control cannot return another result kind" });
+    const { beforeHead, afterHead, advanced } = value.changes.control;
+    requireSameCoordinate(advanced, !sameCoordinate(beforeHead, afterHead), ["changes", "control", "advanced"],
+      "Work Journal advancement comes from exact head comparison, not the deliberately empty event projection");
+    if ((afterHead?.sequence ?? 0) < (beforeHead?.sequence ?? 0) ||
+        (beforeHead !== null && afterHead?.sequence === beforeHead.sequence && !sameCoordinate(beforeHead, afterHead))) {
+      context.addIssue({ code: "custom", path: ["changes", "control"], message: "Work control must retain one nonregressing exact Journal range" });
+    }
+    const delivery = value.observation.delivery;
+    if (delivery !== null) requireSameCoordinate(
+      { sequence: afterHead?.sequence ?? null, digest: afterHead?.digest ?? null },
+      { sequence: delivery.journal.headSequence, digest: delivery.journal.headDigest },
+      ["changes", "control", "afterHead"], "Work range must end at the directly observed Journal head");
+    if (value.value !== null && "kind" in value.value && value.value.kind === "work-control") {
+      const work = value.value;
+      if (delivery === null) context.addIssue({ code: "custom", path: ["observation", "delivery"],
+        message: "A retained work result requires the directly observed Delivery" });
+      if (work.action === "set") requireSameCoordinate(work.delegation, delivery?.delegation.current?.reference ?? null,
+        ["value", "delegation"], "Saved work grant must bind the observed retained revision");
+      if (work.lastActivity !== null) {
+        const activity = delivery?.activities.find(item => item.id === work.lastActivity!.activityId);
+        requireSameCoordinate(activity === undefined ? null : { activityId: activity.id, operation: activity.operation },
+          work.lastActivity, ["value", "lastActivity"], "Work course must name one exact observed Activity and operation");
+      }
+      if (work.completedOperations > (afterHead?.sequence ?? 0) - (beforeHead?.sequence ?? 0)) {
+        context.addIssue({ code: "custom", path: ["value", "completedOperations"],
+          message: "Settled operation count cannot exceed the observed Journal advancement" });
+      }
+      if (work.stop !== null) {
+        requireSameCoordinate({ storeId: work.stop.request.storeId, processId: work.stop.request.processId,
+          delegation: work.stop.request.delegation },
+        { storeId: delivery?.storeId ?? null, processId: value.deliveryId, delegation: work.delegation },
+        ["value", "stop", "request"], "Work stop result must bind the exact observed Store and Delivery grant");
+        requireSameCoordinate(delivery?.delegation.current ?? null,
+          { reference: work.delegation, stopped: work.stop.disposition === "stopped" },
+          ["value", "stop", "disposition"], "Stop disposition must match the exact observed grant's Journal standing");
+      }
+    }
+  } else if (value.operation === "delivery.inspect") {
     if (value.status === "completed" && (selectedKind === null || !inspectionKinds.has(selectedKind))) {
       context.addIssue({
         code: "custom",
@@ -430,6 +510,34 @@ export const FoundationRuntimeOperationResultSchema = z.object({
             bindRecordProcesses(value.value.records, ["value", "records"]);
           }
           break;
+        case "knowledge-index":
+        case "knowledge-record":
+        case "atlas-overview":
+        case "atlas-point":
+        case "atlas-resource":
+        case "source":
+          bindInspectionSelection(value.value.basis.selection, ["value", "basis", "selection"]);
+          break;
+        case "code-index":
+        case "code-file":
+          if (value.value.status === "available") {
+            bindInspectionSelection(
+              value.value.basis.selection,
+              ["value", "basis", "selection"],
+            );
+          } else {
+            bindInspectionSelection(value.value.selection, ["value", "selection"]);
+          }
+          break;
+        case "authorization-review":
+          bindGeneration(value.value.generation, ["value", "generation"]);
+          requireSameCoordinate(
+            value.value.review.targetId,
+            value.targetId,
+            ["value", "review", "targetId"],
+            "Authorization Review must bind the directly observed Target",
+          );
+          break;
       }
     }
   } else if (value.operation === "delivery.export") {
@@ -521,6 +629,7 @@ export type FoundationInboxResult = z.output<typeof FoundationInboxResultSchema>
 export type FoundationDiffResult = z.output<typeof FoundationDiffResultSchema>;
 export type FoundationWatchResult = z.output<typeof FoundationWatchResultSchema>;
 export type FoundationExportResult = z.output<typeof FoundationExportResultSchema>;
+export type FoundationWorkControlResult = z.output<typeof FoundationWorkControlResultSchema>;
 export type FoundationRuntimeOperationResult = z.output<typeof FoundationRuntimeOperationResultSchema>;
 export type FoundationRuntimeOperationValue = FoundationRuntimeOperationResult["value"];
 
@@ -585,6 +694,14 @@ export function parseFoundationRuntimeOperationResultForRequest(
       "Completed preparation must return the created Delivery identity",
     );
   }
+  if (parsedRequest.operation === "delivery.work" && result.value !== null &&
+      "kind" in result.value && result.value.kind === "work-control") {
+    if (result.value.action !== parsedRequest.input.action ||
+        (parsedRequest.input.action !== "set" && canonicalFoundationJson(result.value.delegation) !== canonicalFoundationJson(parsedRequest.input.delegation))) {
+      throw new FoundationProtocolError("lifecycle.interface.request-result-selection",
+        "Work result must answer the exact requested action and grant", ["value"]);
+    }
+  }
   if (
     parsedRequest.operation === "repository.initialize" &&
     parsedRequest.input.targetId !== undefined &&
@@ -617,6 +734,18 @@ export function parseFoundationRuntimeOperationResultForRequest(
           ["value", "kind"],
         );
       }
+      const bindContextSelection = (
+        selection: unknown,
+        basis: Readonly<{ selection: unknown }>,
+        path: readonly (string | number)[],
+      ): void => {
+        if (canonicalFoundationJson(basis.selection) !== canonicalFoundationJson(selection)) {
+          selectionFailure(
+            "Context inspection returned another exact selection or provenance",
+            [...path, "selection"],
+          );
+        }
+      };
       if (
         parsedRequest.input.kind === "dossier" && inspectionValue.kind === "dossier" &&
         inspectionValue.dossier !== parsedRequest.input.dossier
@@ -662,6 +791,155 @@ export function parseFoundationRuntimeOperationResultForRequest(
           "Delivery inspection returned revisions for another Control record",
           ["value", "recordId"],
         );
+      }
+      if (
+        parsedRequest.input.kind === "knowledge-index" &&
+        inspectionValue.kind === "knowledge-index"
+      ) {
+        bindContextSelection(parsedRequest.input.context, inspectionValue.basis, ["value", "basis"]);
+        if (inspectionValue.records.length > parsedRequest.input.limit) {
+          selectionFailure("Knowledge inspection exceeded the requested page limit", ["value", "records"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "knowledge-record" &&
+        inspectionValue.kind === "knowledge-record"
+      ) {
+        bindContextSelection(parsedRequest.input.context, inspectionValue.basis, ["value", "basis"]);
+        if (
+          canonicalFoundationJson(inspectionValue.reference) !==
+          canonicalFoundationJson(parsedRequest.input.reference)
+        ) {
+          selectionFailure("Knowledge inspection returned another record", ["value", "reference"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "atlas-overview" &&
+        inspectionValue.kind === "atlas-overview"
+      ) {
+        bindContextSelection(parsedRequest.input.context, inspectionValue.basis, ["value", "basis"]);
+        if (
+          inspectionValue.maps.length > parsedRequest.input.mapLimit ||
+          inspectionValue.points.length > parsedRequest.input.pointLimit ||
+          inspectionValue.resources.length > parsedRequest.input.resourceLimit
+        ) {
+          selectionFailure("Atlas overview exceeded a requested page limit", ["value"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "atlas-point" &&
+        inspectionValue.kind === "atlas-point"
+      ) {
+        bindContextSelection(parsedRequest.input.context, inspectionValue.basis, ["value", "basis"]);
+        if (inspectionValue.point.cursor !== parsedRequest.input.pointCursor) {
+          selectionFailure("Atlas inspection returned another Point", ["value", "point", "cursor"]);
+        }
+        if (
+          inspectionValue.records.length > parsedRequest.input.recordLimit ||
+          inspectionValue.relations.length > parsedRequest.input.relationLimit
+        ) {
+          selectionFailure("Atlas Point inspection exceeded a requested page limit", ["value"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "atlas-resource" &&
+        inspectionValue.kind === "atlas-resource"
+      ) {
+        bindContextSelection(parsedRequest.input.context, inspectionValue.basis, ["value", "basis"]);
+        if (inspectionValue.registration.id !== parsedRequest.input.resourceId) {
+          selectionFailure("Atlas inspection returned another Resource", ["value", "registration", "id"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "code-index" &&
+        inspectionValue.kind === "code-index"
+      ) {
+        const selection = inspectionValue.status === "available"
+          ? inspectionValue.basis.selection
+          : inspectionValue.selection;
+        const subject = inspectionValue.status === "available"
+          ? inspectionValue.basis.subject
+          : inspectionValue.subject;
+        if (canonicalFoundationJson(selection) !== canonicalFoundationJson(parsedRequest.input.selection)) {
+          selectionFailure("Code inspection returned another exact selection or provenance", ["value"]);
+        }
+        if (subject !== parsedRequest.input.subject) {
+          selectionFailure("Code inspection returned another subject", ["value"]);
+        }
+        if (
+          inspectionValue.status === "available" &&
+          inspectionValue.files.length > parsedRequest.input.limit
+        ) {
+          selectionFailure("Code inspection exceeded the requested page limit", ["value", "files"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "code-file" &&
+        inspectionValue.kind === "code-file"
+      ) {
+        const selection = inspectionValue.status === "available"
+          ? inspectionValue.basis.selection
+          : inspectionValue.selection;
+        const subject = inspectionValue.status === "available"
+          ? inspectionValue.basis.subject
+          : inspectionValue.subject;
+        if (canonicalFoundationJson(selection) !== canonicalFoundationJson(parsedRequest.input.selection)) {
+          selectionFailure("Code inspection returned another exact selection or provenance", ["value"]);
+        }
+        if (subject !== parsedRequest.input.subject) {
+          selectionFailure("Code inspection returned another subject", ["value"]);
+        }
+        if (
+          inspectionValue.status === "available" &&
+          inspectionValue.file.cursor !== parsedRequest.input.fileCursor
+        ) {
+          selectionFailure("Code inspection returned another file", ["value", "file", "cursor"]);
+        }
+        if (
+          inspectionValue.status === "available" &&
+          inspectionValue.difference.returnedByteLength > parsedRequest.input.maximumDiffBytes
+        ) {
+          selectionFailure("Code inspection exceeded the requested difference bound", ["value", "difference"]);
+        }
+      }
+      if (parsedRequest.input.kind === "source" && inspectionValue.kind === "source") {
+        if (
+          canonicalFoundationJson(inspectionValue.reference) !==
+          canonicalFoundationJson(parsedRequest.input.reference)
+        ) {
+          selectionFailure("Source inspection returned another reference", ["value", "reference"]);
+        }
+        if (inspectionValue.startByte !== parsedRequest.input.startByte) {
+          selectionFailure("Source inspection returned another range", ["value", "startByte"]);
+        }
+        if (inspectionValue.byteLength > parsedRequest.input.maximumBytes) {
+          selectionFailure("Source inspection exceeded the requested byte bound", ["value", "byteLength"]);
+        }
+      }
+      if (
+        parsedRequest.input.kind === "authorization-review" &&
+        inspectionValue.kind === "authorization-review"
+      ) {
+        if (inspectionValue.generation.digest !== parsedRequest.input.expectedGeneration) {
+          selectionFailure("Authorization Review returned another Delivery generation", ["value", "generation"]);
+        }
+        if (inspectionValue.review.operation !== parsedRequest.input.operation) {
+          selectionFailure("Authorization Review returned another operation", ["value", "review", "operation"]);
+        }
+        if (
+          parsedRequest.input.operation === "delivery.no-ship" &&
+          parsedRequest.input.input !== null
+        ) {
+          const normalized = `${parsedRequest.input.input.semanticMarkdown
+            .replaceAll("\r\n", "\n")
+            .replace(/\n+$/u, "")}\n`;
+          if (inspectionValue.review.semanticMarkdown !== normalized) {
+            selectionFailure(
+              "Authorization Review returned another semantic input",
+              ["value", "review", "semanticMarkdown"],
+            );
+          }
+        }
       }
     } else if (parsedRequest.operation === "delivery.diff") {
       if (

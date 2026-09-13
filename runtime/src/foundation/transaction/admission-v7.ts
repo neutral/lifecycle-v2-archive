@@ -1,3 +1,4 @@
+import { authenticateDirectorDecisionOpening, type FoundationAuthorityCredential } from "../repository/authority.js";
 import { randomUUID } from "node:crypto";
 import { FOUNDATION_RUNTIME_PROTOCOL } from "../constants.js";
 import {
@@ -19,12 +20,12 @@ import {
   type CandidateRevisionState,
 } from "../control/candidate-revision.js";
 import {
-  compileFounderDecisionOpening,
-  verifyRetainedFounderDecision,
-  type FounderDecisionControlBinding,
-  type FounderDecisionRepositoryBasis,
-  type FounderDecisionSubject,
-} from "../control/founder-decision.js";
+  verifyRetainedDirectorDecision,
+  type AuthorizationReviewGate,
+  type DirectorDecisionControlBinding,
+  type DirectorDecisionRepositoryBasis,
+  type DirectorDecisionSubject,
+} from "../control/director-decision.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
 import { assertDeliveryControlRecordPayload } from "../control/payload-registry.js";
 import type { ControlRecordStore } from "../control/store.js";
@@ -35,18 +36,9 @@ import type {
   ControlRecordRevision,
 } from "../control/types.js";
 import { FoundationError } from "../error.js";
-import { validateKnowledgeSet } from "../knowledge/knowledge-set.js";
-import {
-  assertRepositoryEpochUnmoved,
-  resolveAttachedEpoch,
-} from "../repository/git.js";
-import { withTargetOperationLock } from "../repository/operation-lock.js";
-import {
-  bindHistoricalRepositorySnapshot,
-  loadRepositoryEpochAtCommit,
-} from "../repository/snapshot.js";
-import type { FoundationRepositoryContract } from "../repository/types.js";
-import { validateLoadedHistoricalRepositorySnapshot } from "../repository/validate.js";
+import { withDeliveryOperationLock } from "../control/delivery-operation-lock.js";
+import type { FoundationLoadedRepositorySnapshot, FoundationRepositoryContract } from "../repository/types.js";
+import { openFoundationDeliveryGitBasisV1 } from "../repository/delivery-git-basis.js";
 import {
   canonicalJson,
   digestCanonical,
@@ -97,13 +89,13 @@ export type FoundationAdmissionEffectPlanV7 = Readonly<{
   storeId: string;
   processId: string;
   activityId: string;
-  decision: RevisionReference<"founder-decision"> & Readonly<{ subjectDigest: Sha256 }>;
+  decision: RevisionReference<"director-decision"> & Readonly<{ subjectDigest: Sha256 }>;
   boundary: RevisionReference<"work-boundary">;
   baselineReceipts: readonly RevisionReference<"check-receipt">[];
   predecessorBoundary: RevisionReference<"work-boundary"> | null;
   materialCondition: RevisionReference<"material-condition"> | null;
   continuingCandidate: RevisionReference<"candidate-revision"> | null;
-  repository: FounderDecisionRepositoryBasis;
+  repository: DirectorDecisionRepositoryBasis;
   candidate: Readonly<{
     deliveryId: string;
     baseCommit: string;
@@ -159,7 +151,7 @@ type AdmissionCheckpointAdapter = FoundationActivityKernelCheckpointAdapterV7<
 export type FoundationAdmissionRepositoryObservationV7 = Readonly<{
   repository: string;
   contract: FoundationRepositoryContract;
-  basis: FounderDecisionRepositoryBasis;
+  basis: DirectorDecisionRepositoryBasis;
 }>;
 
 export type FoundationAdmissionV7Result = Readonly<{
@@ -180,15 +172,9 @@ export type FoundationAdmissionV7Stage =
   | "candidate-revision-observed"
   | "activity-completed";
 
-type TargetLock = <Value>(
-  target: string,
-  operation: string,
-  action: () => Promise<Value>,
-) => Promise<Value>;
-
 type AdmissionOwners = Readonly<{
   now: () => string;
-  withTargetLock: TargetLock;
+  withDeliveryLock: typeof withDeliveryOperationLock;
   observeRepository: (
     target: string,
     observedAt: string,
@@ -196,15 +182,17 @@ type AdmissionOwners = Readonly<{
   ) => Promise<FoundationAdmissionRepositoryObservationV7>;
   publishCandidateCarrier: typeof publishCandidateRevisionCarrierFromGitTree;
   carrierVerifier: typeof candidateRevisionCarrierVerifierFromWorkBoundary;
+  beforeAuthenticate: AuthorizationReviewGate;
   onStage: (stage: FoundationAdmissionV7Stage) => void | Promise<void>;
 }>;
 
 export type FoundationAdmissionV7Options = Readonly<{
   now?: () => string;
-  withTargetLock?: TargetLock;
+  withDeliveryLock?: typeof withDeliveryOperationLock;
   observeRepository?: AdmissionOwners["observeRepository"];
   publishCandidateCarrier?: AdmissionOwners["publishCandidateCarrier"];
   carrierVerifier?: AdmissionOwners["carrierVerifier"];
+  beforeAuthenticate?: AdmissionOwners["beforeAuthenticate"];
   onStage?: AdmissionOwners["onStage"];
 }>;
 
@@ -213,7 +201,7 @@ export type FoundationAdmissionV7Input = Readonly<{
   machineHome: string;
   store: ControlRecordStore;
   authorityHome: string;
-  authoritySecret: string;
+  authorityCredential: FoundationAuthorityCredential;
   runtimeId: string;
 }>;
 
@@ -368,7 +356,7 @@ function parseAdmissionPlan(value: ControlJsonObject): AdmissionPlan {
   for (const member of ["targetId", "storeId", "processId", "activityId"] as const) {
     controlIdentifier(string(value[member], `Admission ${member}`), `Admission ${member}`);
   }
-  validateRevisionReference(value.decision, "founder-decision", "Admission Decision", true);
+  validateRevisionReference(value.decision, "director-decision", "Admission Decision", true);
   validateRevisionReference(value.boundary, "work-boundary", "Admission Boundary");
   const baselineReceipts = array(value.baselineReceipts, "Admission baseline Receipts");
   if (baselineReceipts.length < 1) {
@@ -446,7 +434,7 @@ function reference<Kind extends string>(
 
 function resolveBinding(
   store: ControlRecordStore,
-  selected: FounderDecisionControlBinding,
+  selected: DirectorDecisionControlBinding,
 ): ControlRecordRevision {
   const revision = store.getRevision(selected.target.id, selected.target.revision);
   if (
@@ -460,17 +448,17 @@ function resolveBinding(
 }
 
 function oneBinding(
-  subject: FounderDecisionSubject,
-  relation: FounderDecisionControlBinding["relation"],
-): FounderDecisionControlBinding {
+  subject: DirectorDecisionSubject,
+  relation: DirectorDecisionControlBinding["relation"],
+): DirectorDecisionControlBinding {
   const selected = subject.selectedControl.filter((value) => value.relation === relation);
   if (selected.length !== 1) fail("selected-control", `Admission requires exactly one ${relation} binding`);
   return selected[0]!;
 }
 
 function noBinding(
-  subject: FounderDecisionSubject,
-  relation: FounderDecisionControlBinding["relation"],
+  subject: DirectorDecisionSubject,
+  relation: DirectorDecisionControlBinding["relation"],
 ): void {
   if (subject.selectedControl.some((value) => value.relation === relation)) {
     fail("selected-control", `Admission variant cannot carry ${relation}`);
@@ -492,7 +480,7 @@ function requiredArtifactPaths(boundary: ControlRecordRevision): readonly string
 function planFromDecision(
   store: ControlRecordStore,
   decision: ControlRecordRevision,
-  subject: FounderDecisionSubject,
+  subject: DirectorDecisionSubject,
 ): FoundationCompiledAdmissionEffectPlanV7 {
   if (subject.operation !== "delivery.admit") fail("decision", "Admission plan requires delivery.admit authority");
   if (subject.decision !== "admit" && subject.decision !== "readmit") {
@@ -548,8 +536,8 @@ function planFromDecision(
     processId: store.identity.processId,
     activityId: subject.activityId,
     decision: Object.freeze({
-      ...reference(decision, "founder-decision"),
-      subjectDigest: digest(decision.payload.subjectDigest, "Founder Decision subject digest"),
+      ...reference(decision, "director-decision"),
+      subjectDigest: digest(decision.payload.subjectDigest, "Director Decision subject digest"),
     }),
     boundary: reference(boundary, "work-boundary"),
     baselineReceipts,
@@ -570,75 +558,17 @@ function planFromDecision(
   return Object.freeze({ plan, effectDigest: digestCanonical(plan), decision, boundary });
 }
 
-/** Reproduce one effect plan from a retained and reverified Founder Decision. */
+/** Reproduce one effect plan from a retained and reverified Director Decision. */
 export function compileFoundationAdmissionEffectPlanV7(
   store: ControlRecordStore,
   activityId: string,
   contract: FoundationRepositoryContract,
 ): FoundationCompiledAdmissionEffectPlanV7 {
-  const verified = verifyRetainedFounderDecision({ store, activityId, contract });
+  const verified = verifyRetainedDirectorDecision({ store, activityId, contract });
   return planFromDecision(store, verified.revision, verified.subject);
 }
 
-async function assertCanonicalRepositoryIsFrozen(input: Readonly<{
-  repository: string;
-  historicalCommit: string;
-  historicalTree: string;
-  objectFormat: "sha1" | "sha256";
-}>): Promise<void> {
-  const current = await resolveAttachedEpoch(input.repository);
-  if (
-    current.objectFormat !== input.objectFormat ||
-    current.commit !== input.historicalCommit ||
-    current.tree !== input.historicalTree
-  ) {
-    fail(
-      "repository-drift",
-      "Admission requires the canonical branch to remain at the proposed Work Boundary basis",
-      {
-        expectedCommit: input.historicalCommit,
-        expectedTree: input.historicalTree,
-        expectedObjectFormat: input.objectFormat,
-        observedCommit: current.commit,
-        observedTree: current.tree,
-        observedObjectFormat: current.objectFormat,
-      },
-    );
-  }
-  await assertRepositoryEpochUnmoved(input.repository, current);
-}
-
-export async function observeFoundationAdmissionRepositoryV7(
-  target: string,
-  observedAt: string,
-  historicalCommit: string,
-): Promise<FoundationAdmissionRepositoryObservationV7> {
-  const exactObservedAt = controlTimestamp(observedAt, "Admission repository observation time");
-  const epoch = await loadRepositoryEpochAtCommit(target, historicalCommit);
-  const knowledge = await validateKnowledgeSet(epoch);
-  if (
-    knowledge.knowledgeSet === null || !knowledge.validation.complete || !knowledge.validation.valid
-  ) {
-    fail("repository", "Admission requires one complete valid Knowledge Set", {
-      validationDigest: knowledge.validation.digest,
-    });
-  }
-  const snapshot = await bindHistoricalRepositorySnapshot(epoch, knowledge.knowledgeSet);
-  const validation = await validateLoadedHistoricalRepositorySnapshot(snapshot, {
-    knowledge: knowledge.knowledgeSet,
-    observedAt: exactObservedAt,
-  });
-  if (!validation.complete || !validation.valid) {
-    fail("repository", "Admission requires one complete valid repository snapshot", {
-      validationDigest: validation.digest,
-    });
-  }
-  await assertCanonicalRepositoryIsFrozen({
-    repository: snapshot.repository,
-    historicalCommit,
-    historicalTree: snapshot.epoch.tree,
-    objectFormat: snapshot.epoch.objectFormat,
-  });
+function admissionRepositoryObservation(snapshot: FoundationLoadedRepositorySnapshot): FoundationAdmissionRepositoryObservationV7 {
   return Object.freeze({
     repository: snapshot.repository,
     contract: snapshot.contract,
@@ -658,15 +588,43 @@ export async function observeFoundationAdmissionRepositoryV7(
   });
 }
 
-function owners(options: FoundationAdmissionV7Options): AdmissionOwners {
+async function observeRetainedAdmissionRepository(
+  input: Pick<FoundationAdmissionV7Input, "machineHome" | "store">,
+  repository: string,
+  observedAt: string,
+  historicalCommit: string,
+): Promise<FoundationAdmissionRepositoryObservationV7> {
+  controlTimestamp(observedAt, "Admission repository observation time");
+  const state = input.store.state();
+  const selected = state.subjects.proposedBoundary ?? state.subjects.activeBoundary;
+  if (selected === null) fail("boundary", "Admission requires its exact retained Work Boundary");
+  const boundary = input.store.getRevision(selected.id, selected.revision);
+  if (boundary === null || boundary.recordKind !== "work-boundary" || boundary.digest !== selected.digest) {
+    fail("boundary", "Admission Work Boundary does not resolve exactly");
+  }
+  const retained = await openFoundationDeliveryGitBasisV1({
+    machineHome: input.machineHome, repository, store: input.store, boundary,
+  });
+  if (retained.loaded.epoch.commit !== historicalCommit) {
+    fail("repository", "Admission retained repository differs from its exact selected commit");
+  }
+  return admissionRepositoryObservation(retained.loaded);
+}
+
+function owners(
+  options: FoundationAdmissionV7Options,
+  input: Pick<FoundationAdmissionV7Input, "machineHome" | "store">,
+): AdmissionOwners {
   return Object.freeze({
     now: options.now ?? (() => new Date().toISOString()),
-    withTargetLock: options.withTargetLock ?? withTargetOperationLock,
-    observeRepository: options.observeRepository ?? observeFoundationAdmissionRepositoryV7,
+    withDeliveryLock: options.withDeliveryLock ?? withDeliveryOperationLock,
+    observeRepository: options.observeRepository ?? ((repository, observedAt, commit) =>
+      observeRetainedAdmissionRepository(input, repository, observedAt, commit)),
     publishCandidateCarrier:
       options.publishCandidateCarrier ?? publishCandidateRevisionCarrierFromGitTree,
     carrierVerifier:
       options.carrierVerifier ?? candidateRevisionCarrierVerifierFromWorkBoundary,
+    beforeAuthenticate: options.beforeAuthenticate ?? (() => undefined),
     onStage: options.onStage ?? (() => undefined),
   });
 }
@@ -678,8 +636,8 @@ function sampleTime(selected: AdmissionOwners, label: string): string {
 function openingTimes(selected: AdmissionOwners): AdmissionOpeningTimes {
   return Object.freeze({
     startedAt: sampleTime(selected, "Admission activity start time"),
-    authorizedAt: sampleTime(selected, "Founder admission authorization time"),
-    verifiedAt: sampleTime(selected, "Founder admission verification time"),
+    authorizedAt: sampleTime(selected, "Director admission authorization time"),
+    verifiedAt: sampleTime(selected, "Director admission verification time"),
   });
 }
 
@@ -816,7 +774,7 @@ function allEvents(store: ControlRecordStore): readonly ControlRecordEvent[] {
 function assertRepositoryBasis(
   store: ControlRecordStore,
   observed: FoundationAdmissionRepositoryObservationV7,
-  expected: FounderDecisionRepositoryBasis,
+  expected: DirectorDecisionRepositoryBasis,
 ): void {
   if (
     observed.basis.atlasStateDigest !== expected.atlasStateDigest ||
@@ -905,7 +863,7 @@ function assertContextMatchesDecision(input: Readonly<{
 function availableCandidateState(
   revision: ControlRecordRevision,
 ): CandidateRevisionState {
-  if (revision.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
+  if (revision.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
     fail("candidate", "Continuing Candidate Revision does not use the current exact payload");
   }
   return object(
@@ -1191,6 +1149,7 @@ async function observeAdmittedCandidate(input: Readonly<{
         repository: input.target,
         store: input.store,
         boundary: input.compiled.boundary,
+        ...(continuingCandidate === null ? {} : { candidate: continuingCandidate }),
         predecessor: retainedState === null
           ? null
           : Object.freeze({
@@ -1460,28 +1419,28 @@ function proposedBoundaryBaseCommit(store: ControlRecordStore): string {
 function unverifiedAdmissionRepositoryBasis(
   store: ControlRecordStore,
   activityId: string,
-): FounderDecisionRepositoryBasis {
+): DirectorDecisionRepositoryBasis {
   const decisions = allEvents(store).filter((event) =>
-    event.eventKind === "founder-decision-authenticated" &&
+    event.eventKind === "director-decision-authenticated" &&
     event.payload.activityId === activityId);
   if (decisions.length !== 1 || decisions[0]!.subject === null) {
-    fail("decision", "Admission recovery requires one exact retained Founder Decision");
+    fail("decision", "Admission recovery requires one exact retained Director Decision");
   }
   const selected = decisions[0]!.subject!;
   const revision = store.getRevision(selected.recordId, selected.revision);
   if (
-    revision === null || revision.recordKind !== "founder-decision" ||
+    revision === null || revision.recordKind !== "director-decision" ||
     revision.digest !== selected.digest
   ) {
-    fail("decision", "Admission recovery Founder Decision does not resolve exactly");
+    fail("decision", "Admission recovery Director Decision does not resolve exactly");
   }
-  const subject = object(revision.payload.subject, "Founder Decision subject");
+  const subject = object(revision.payload.subject, "Director Decision subject");
   if (subject.activityId !== activityId) {
-    fail("decision", "Admission recovery Founder Decision selects another activity");
+    fail("decision", "Admission recovery Director Decision selects another activity");
   }
-  const repository = object(subject.repository, "Founder Decision repository basis");
-  validateRepositoryBasis(repository, "Founder Decision repository basis");
-  return repository as unknown as FounderDecisionRepositoryBasis;
+  const repository = object(subject.repository, "Director Decision repository basis");
+  validateRepositoryBasis(repository, "Director Decision repository basis");
+  return repository as unknown as DirectorDecisionRepositoryBasis;
 }
 
 /**
@@ -1492,8 +1451,12 @@ export async function admitDeliveryV7(
   input: FoundationAdmissionV7Input,
   options: FoundationAdmissionV7Options = {},
 ): Promise<FoundationAdmissionV7Result> {
-  const selected = owners(options);
-  return selected.withTargetLock(input.target, "delivery-admit", async () => {
+  const selected = owners(options, input);
+  return selected.withDeliveryLock({
+    machineHome: input.machineHome,
+    targetId: input.store.identity.targetId,
+    deliveryId: input.store.identity.processId,
+  }, "delivery-admit", async () => {
     const state = input.store.state();
     if (!state.eligibleOperations.includes("delivery.admit")) {
       fail("standing", "Delivery is not eligible for one exact admission opening");
@@ -1510,12 +1473,12 @@ export async function admitDeliveryV7(
     }
     const times = openingTimes(selected);
     const activityId = createDeliveryActivityId("delivery.admit");
-    const opening = await compileFounderDecisionOpening({
+    const opening = await authenticateDirectorDecisionOpening({
       store: input.store,
       activityId,
       operation: "delivery.admit",
       semanticMarkdown: [
-        "# Founder Admission Decision",
+        "# Director Admission Decision",
         "",
         "Authorize the exact selected admission Control subjects on the observed repository basis.",
         "",
@@ -1523,13 +1486,14 @@ export async function admitDeliveryV7(
       repository: repository.basis,
       contract: repository.contract,
       authorityHome: input.authorityHome,
-      authoritySecret: input.authoritySecret,
+      authorityCredential: input.authorityCredential,
       startedAt: times.startedAt,
       authorizedAt: times.authorizedAt,
       expiresAt: null,
       nonce: `admission-${randomUUID()}`,
       verifiedAt: times.verifiedAt,
       runtimeId: input.runtimeId,
+      beforeAuthenticate: selected.beforeAuthenticate,
     });
     const compiled = planFromDecision(input.store, opening.revision, opening.subject);
     openFoundationActivityKernelV7({
@@ -1565,8 +1529,12 @@ export async function recoverAdmissionV7(
   input: FoundationAdmissionRecoveryV7Input,
   options: FoundationAdmissionV7Options = {},
 ): Promise<FoundationAdmissionV7Result> {
-  const selected = owners(options);
-  return selected.withTargetLock(input.target, "delivery-admit", async () => {
+  const selected = owners(options, input);
+  return selected.withDeliveryLock({
+    machineHome: input.machineHome,
+    targetId: input.store.identity.targetId,
+    deliveryId: input.store.identity.processId,
+  }, "delivery-admit", async () => {
     const state = input.store.state();
     const activityId = input.activityId === undefined
       ? (() => {

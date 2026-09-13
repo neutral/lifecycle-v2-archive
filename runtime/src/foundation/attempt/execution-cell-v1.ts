@@ -1,3 +1,5 @@
+import { PROVIDER_INPUT_SEMANTIC_BASIS_PATH, PROVIDER_INPUT_SEMANTIC_BASIS_MAXIMUM_BYTES } from "./provider-input-v4.js";
+import { parseFoundationDeliveryGitContextV1, FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1 } from "../repository/delivery-git-context-manifest.js";
 import { setTimeout as delay } from "node:timers/promises";
 import {
   parseCandidateRevisionCarrierManifest,
@@ -22,8 +24,14 @@ import type {
 import {
   compileControlRecordRevision,
   controlIdentifier,
+  controlTimestamp,
 } from "../control/model.js";
 import type { ControlRecordStore } from "../control/store.js";
+import {
+  readWorkDelegationExecution,
+  workDelegationAgentAttemptMatches,
+  workDelegationAgentSlot,
+} from "../control/work-delegation-execution.js";
 import type {
   ControlJsonObject,
   ControlJsonValue,
@@ -36,6 +44,7 @@ import type {
 import { FoundationError } from "../error.js";
 import type { FoundationExecutionBackend } from "../execution/backend.js";
 import {
+  executionObservationEstablishesContainment,
   parseFoundationExecutionBackendProfile,
   parseFoundationExecutionSpecification,
   type FoundationExecutionBackendProfileV1,
@@ -86,6 +95,7 @@ import {
   foundationAgentExecutionCellOutputContractV1,
   inspectFoundationAgentExecutionCellOutputV1,
   observeFoundationAgentProviderTerminalCompletionV1,
+  readFoundationAgentProviderFailureDiagnosticV1,
   readFoundationAgentProviderResultV1,
   readFoundationAgentProviderTerminalObservationV1,
   type FoundationAgentExecutionCellOwnedOutputV1,
@@ -101,6 +111,7 @@ const MAXIMUM_INPUT_ITEM_BYTES = 512 * 1024 * 1024;
 const MAXIMUM_INPUT_AGGREGATE_BYTES = 1024 * 1024 * 1024;
 const MAXIMUM_ACTIVITY_EVENTS = 100_000;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
+const PRE_INTENT_CONTAINED_DIAGNOSTIC = "lifecycle.agent-execution-cell-v1.pre-intent-contained";
 
 export const FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1 = Object.freeze({
   candidateManifestPath: "candidate/carrier-manifest.json" as const,
@@ -259,15 +270,35 @@ export type FoundationAgentCellOperationInputV1 = Readonly<{
   runtime: FoundationAgentCellRuntimeV1;
 }>;
 
-export type FoundationAgentCellSemanticDispositionV1 = Readonly<{
-  disposition: "valid" | "invalid" | "not-produced" | "unavailable";
-  artifact: FoundationValidatedExecutionOutputArtifactV1 | null;
-}>;
+/** Exact Attempt request; installed execution retains the physical runtime. */
+export type FoundationAgentCellOperationRequestV1 = Omit<
+  FoundationAgentCellOperationInputV1,
+  "runtime"
+>;
 
-export type FoundationAgentCellCandidateDispositionV1 = Readonly<{
-  disposition: "valid" | "invalid" | "not-applicable" | "unavailable";
-  carrier: FoundationPublishedCandidateOutputCarrierV1 | null;
-}>;
+export type FoundationAgentCellSemanticDispositionV1 =
+  | Readonly<{
+      disposition: "valid";
+      artifact: FoundationValidatedExecutionOutputArtifactV1;
+    }>
+  | Readonly<{
+      disposition: "invalid";
+      artifact: FoundationValidatedExecutionOutputArtifactV1 | null;
+    }>
+  | Readonly<{
+      disposition: "not-produced" | "unavailable";
+      artifact: null;
+    }>;
+
+export type FoundationAgentCellCandidateDispositionV1 =
+  | Readonly<{
+      disposition: "valid";
+      carrier: FoundationPublishedCandidateOutputCarrierV1;
+    }>
+  | Readonly<{
+      disposition: "invalid" | "not-applicable" | "unavailable";
+      carrier: null;
+    }>;
 
 export type FoundationAgentCellReceiptFactsV1 = Readonly<{
   provider: ExecutionReceiptProviderObservation | null;
@@ -276,15 +307,18 @@ export type FoundationAgentCellReceiptFactsV1 = Readonly<{
   retirement: ExecutionReceiptRetirement;
 }>;
 
-export type FoundationAgentCellOperationResultV1 = Readonly<{
-  preIntentRefused: boolean;
+export type FoundationAgentCellProviderFailureDiagnosticV1 =
+  | Readonly<{ disposition: "available"; bytes: Uint8Array }>
+  | Readonly<{ disposition: "not-produced" | "invalid" | "unavailable"; bytes: null }>;
+
+type FoundationAgentCellFinalizedOutputV1 = Readonly<{
   specification: FoundationExecutionSpecificationV1;
   inputSet: FoundationExecutionInputSetV1;
   validatedOutput: FoundationValidatedExecutionOutputV1 | null;
   providerResult: FoundationAgentExecutionCellProviderResultV1 | null;
+  providerFailureDiagnostic: FoundationAgentCellProviderFailureDiagnosticV1;
   semantic: FoundationAgentCellSemanticDispositionV1;
   candidate: FoundationAgentCellCandidateDispositionV1;
-  receiptFacts: FoundationAgentCellReceiptFactsV1;
   terminal: Readonly<{
     observationDigest: Sha256;
     containmentDigest: Sha256;
@@ -294,6 +328,20 @@ export type FoundationAgentCellOperationResultV1 = Readonly<{
     reclamationObligationDigest: Sha256;
   }>;
 }>;
+
+/** Completion, validated output, and physical finalization remain independent facts. */
+export type FoundationAgentCellOperationResultV1 = FoundationAgentCellFinalizedOutputV1 & (
+  | Readonly<{
+      preIntentRefused: true;
+      receiptFacts: FoundationAgentCellReceiptFactsV1 & Readonly<{ provider: null }>;
+    }>
+  | Readonly<{
+      preIntentRefused: false;
+      receiptFacts: FoundationAgentCellReceiptFactsV1 & Readonly<{
+        provider: ExecutionReceiptProviderObservation;
+      }>;
+    }>
+);
 
 type AttemptFacts = Readonly<{
   role: FoundationAgentExecutionCellRoleV1;
@@ -448,6 +496,12 @@ function immutableInputResolver(input: Readonly<{
   });
 }
 
+function assertGitContextCustody(store: ControlRecordStore, bytes: Uint8Array): void {
+  const context = parseFoundationDeliveryGitContextV1(bytes);
+  const expected = { targetId: store.identity.targetId, storeId: store.identity.storeId, processId: store.identity.processId };
+  if (canonicalJson(context.identity) !== canonicalJson(expected)) fail("input-binding", "Delivery Git context belongs to another Target, Store, or Delivery");
+}
+
 /** Compile exact immutable Agent inputs before the Attempt itself is retained. */
 export async function compileFoundationAgentCellInputV1(input: Readonly<{
   store: ControlRecordStore;
@@ -477,6 +531,10 @@ export async function compileFoundationAgentCellInputV1(input: Readonly<{
     toolInventoryDigest: input.toolInventoryDigest,
     resolver,
   });
+  const context = retained.subjects.find(({ subject }) => subject.kind === "delivery-git-context");
+  if (context !== undefined) {
+    assertGitContextCustody(input.store, context.bytes);
+  }
   const transportEntries = Object.freeze(inputSet.entries.map((descriptor) => {
     const raw = retained.entries.find(({ plan }) => plan.path === descriptor.path);
     if (raw === undefined) fail("input-substitution", "Compiled input entry bytes disappeared");
@@ -604,7 +662,7 @@ function exactEntry(inputSet: FoundationExecutionInputSetV1, input: Readonly<{
   mediaType: string;
   modeClass: FoundationExecutionInputEntryPlanV1["modeClass"];
   sourceSubjectDigest: Sha256;
-}>): void {
+}>): FoundationExecutionInputSetV1["entries"][number] {
   const selected = inputSet.entries.filter(({ path }) => path === input.path);
   if (selected.length !== 1) {
     fail("input-binding", `Agent Input Set lacks exact transported member ${input.path}`);
@@ -615,6 +673,7 @@ function exactEntry(inputSet: FoundationExecutionInputSetV1, input: Readonly<{
       entry.sourceSubjectDigest !== input.sourceSubjectDigest) {
     fail("input-binding", `Agent transported member ${input.path} differs from its exact owner`);
   }
+  return entry;
 }
 
 function attemptFacts(input: Readonly<{
@@ -643,7 +702,7 @@ function attemptFacts(input: Readonly<{
       [...relationships].some((value) => !allowed.has(value))) {
     fail("attempt-relationship", "Agent Attempt relationships are not the exact role-owned set");
   }
-  const brief = exactRelationship(input.store, attempt, "uses-brief", "founder-brief", true)!;
+  const brief = exactRelationship(input.store, attempt, "uses-brief", "director-brief", true)!;
   exactRelationship(input.store, attempt, "uses-boundary", "work-boundary", operation !== "delivery.prepare");
   const candidate = exactRelationship(
     input.store,
@@ -673,7 +732,7 @@ function attemptFacts(input: Readonly<{
     imageDigest: input.installed.image.imageDigest,
   });
   const expectedInputSet = Object.freeze({
-    profileId: "lifecycle.execution-input-set.v1" as const,
+    profileId: "lifecycle.execution-input-set.v2" as const,
     digest: input.inputSet.digest,
   });
   if (canonicalJson(execution.backendProfile) !== canonicalJson(expectedBackend) ||
@@ -683,7 +742,7 @@ function attemptFacts(input: Readonly<{
       provider.descriptorDigest !== input.installed.provider.descriptorDigest ||
       provider.executableIdentityClass !== input.installed.provider.executableIdentityClass ||
       provider.installedIdentityDigest !== input.installed.provider.installedIdentityDigest ||
-      provider.adapter !== "lifecycle.provider-adapter.v6") {
+      provider.adapter !== "lifecycle.provider-adapter.v7") {
     fail("installed-binding", "Attempt differs from the exact installed execution selection");
   }
   if (attemptInput.inputMaterialDigest !== input.inputSet.inputMaterialDigest ||
@@ -698,11 +757,11 @@ function attemptFacts(input: Readonly<{
   subjectMatches(singleton(input.inputSet, "role-subject"), {
     digest: exactDigest(attempt.payload.roleSubjectDigest, "Role subject digest"),
   }, "Role subject");
-  subjectMatches(singleton(input.inputSet, "founder-direction"), {
+  subjectMatches(singleton(input.inputSet, "director-direction"), {
     id: brief.recordId,
     revision: brief.revision,
     digest: brief.digest,
-  }, "Founder direction subject");
+  }, "Director direction subject");
   const roleBriefSubject = singleton(input.inputSet, "role-brief");
   subjectMatches(roleBriefSubject, {
     digest: exactDigest(authoring.roleBriefDigest, "Role Brief digest"),
@@ -742,6 +801,17 @@ function attemptFacts(input: Readonly<{
     sourceSubjectDigest: templateSubject.digest,
   });
 
+  const semanticBasis = exactEntry(input.inputSet, {
+    path: PROVIDER_INPUT_SEMANTIC_BASIS_PATH,
+    purpose: "operation-input",
+    mediaType: "application/json",
+    modeClass: "regular",
+    sourceSubjectDigest: exactDigest(attempt.payload.roleSubjectDigest, "Role subject digest"),
+  });
+  if (semanticBasis.byteLength > PROVIDER_INPUT_SEMANTIC_BASIS_MAXIMUM_BYTES) {
+    fail("semantic-basis-bound", "Semantic authoring basis exceeds its exact byte bound");
+  }
+
   const policyDigests = Object.values(executionPolicy).map((value) =>
     exactDigest(value, "Execution policy digest")).sort(compareCodePoints);
   const subjectPolicyDigests = input.inputSet.subjects
@@ -765,12 +835,24 @@ function attemptFacts(input: Readonly<{
     fail("policy-binding", "Installed environment, network, or credential policy is not Input-bound");
   }
 
+  if (candidate === null && input.inputSet.subjects.some(({ kind }) =>
+    kind === "candidate-revision" || kind === "candidate-revision-carrier-manifest" ||
+    kind === "delivery-git-context")) {
+    fail("candidate-input", "Initial preparation cannot bind Candidate transport subjects");
+  }
   if (candidate !== null) {
     subjectMatches(singleton(input.inputSet, "candidate-revision"), {
       id: candidate.recordId,
       revision: candidate.revision,
       digest: candidate.digest,
     }, "Candidate Revision subject");
+    const gitContextSubject = singleton(input.inputSet, "delivery-git-context");
+    for (const [path, mediaType] of [
+      [FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.manifest, "application/json"],
+      [FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.artifact, "application/octet-stream"],
+    ] as const) {
+      exactEntry(input.inputSet, { path, purpose: "operation-input", mediaType, modeClass: "regular", sourceSubjectDigest: gitContextSubject.digest });
+    }
     const carrier = object(candidate.payload.carrierManifest, "Candidate Carrier manifest");
     const manifestSubject = singleton(input.inputSet, "candidate-revision-carrier-manifest");
     subjectMatches(manifestSubject, {
@@ -813,6 +895,12 @@ export function compileFoundationAgentCellSpecificationV1(input: Readonly<{
   const profile = parseFoundationExecutionBackendProfile(input.installed.profile);
   const inputSet = input.compiledInput.inputSet;
   const facts = attemptFacts({ ...input, inputSet });
+  if (inputSet.subjects.some(({ kind }) => kind === "delivery-git-context")) {
+    const entries = input.compiledInput.transportEntries.filter(({ path }) => path === FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.manifest);
+    const subject = singleton(inputSet, "delivery-git-context");
+    if (entries.length !== 1 || sha256Bytes(entries[0]!.bytes) !== subject.digest) fail("input-binding", "Delivery Git context transport differs from its exact subject");
+    assertGitContextCustody(input.store, entries[0]!.bytes);
+  }
   if (inputSet.runnerContractDigest !== input.installed.image.runnerContractDigest ||
       inputSet.toolInventoryDigest !== input.installed.image.toolInventoryDigest ||
       !SHA256.test(input.installed.adapterImplementationDigest)) {
@@ -869,7 +957,7 @@ export function compileFoundationAgentCellSpecificationV1(input: Readonly<{
       imageId: input.installed.image.imageId,
       imageDigest: input.installed.image.imageDigest,
     }),
-    inputSet: Object.freeze({ profileId: "lifecycle.execution-input-set.v1" as const, digest: inputSet.digest }),
+    inputSet: Object.freeze({ profileId: "lifecycle.execution-input-set.v2" as const, digest: inputSet.digest }),
     operation: Object.freeze({
       kind: "agent-attempt" as const,
       role: facts.role,
@@ -993,6 +1081,39 @@ function preIntentRefusalFacts(error: unknown): Readonly<{
   });
 }
 
+/** Stable direct facts survive Retirement; elapsed time alone cannot prove Containment. */
+function containedPreIntentRefusalFacts(
+  checkpoint: FoundationExecutionOperationCheckpointV1,
+): ReturnType<typeof preIntentRefusalFacts> | null {
+  const { observation, containment, output } = checkpoint;
+  if (checkpoint.dispatchAuthorityConsumedAt !== null || checkpoint.handle === null ||
+      checkpoint.terminalCompletion !== null || observation === null || containment === null ||
+      output === null || output.validation !== "not-applicable" ||
+      output.disposition !== "not-produced" || observation.output.disposition !== "not-produced" ||
+      observation.dispatchState !== "not-observed" || observation.terminal !== null ||
+      !executionObservationEstablishesContainment(observation, false) ||
+      containment.observationDigest !== observation.digest ||
+      output.observationDigest !== observation.digest ||
+      (checkpoint.containmentRequestedAt === null && observation.allocationState !== "absent")) {
+    return null;
+  }
+  return Object.freeze({
+    diagnosticCode: PRE_INTENT_CONTAINED_DIAGNOSTIC,
+    refusalFactsDigest: digestCanonical(Object.freeze({
+      schema: "lifecycle.agent-pre-intent-contained-refusal-facts.private.v1",
+      diagnosticCode: PRE_INTENT_CONTAINED_DIAGNOSTIC,
+      specificationDigest: checkpoint.specificationDigest,
+      allocationKey: checkpoint.allocationKey,
+      handle: checkpoint.handle,
+      openedAt: checkpoint.openedAt,
+      containmentRequestedAt: checkpoint.containmentRequestedAt,
+      observationDigest: observation.digest,
+      containmentDigest: containment.digest,
+      outputDigest: output.digest,
+    })),
+  });
+}
+
 function assertDurablePreIntentRefusal(input: Readonly<{
   store: ControlRecordStore;
   activityId: string;
@@ -1000,7 +1121,7 @@ function assertDurablePreIntentRefusal(input: Readonly<{
   checkpoint: FoundationExecutionOperationCheckpointV1;
 }>): void {
   if (input.checkpoint.dispatchAuthorityConsumedAt !== null ||
-      input.checkpoint.handle === null || input.checkpoint.containmentRequestedAt === null ||
+      input.checkpoint.handle === null ||
       input.checkpoint.containment === null || input.checkpoint.observation === null) {
     fail("pre-intent-refusal", "Agent pre-intent refusal lacks one inert contained Cell checkpoint");
   }
@@ -1017,7 +1138,7 @@ function assertDurablePreIntentRefusal(input: Readonly<{
   const selected = refused[0];
   if (refused.length !== 1 || prepared.length !== 0 || intended.length !== 0 ||
       selected === undefined || selected.subject !== null ||
-      selected.occurredAt !== input.checkpoint.containmentRequestedAt ||
+      selected.payload.resolution !== "none" ||
       canonicalJson(selected.actor) !== canonicalJson(Object.freeze({
         kind: "runtime" as const,
         id: input.attempt.revision.producer.id,
@@ -1025,6 +1146,16 @@ function assertDurablePreIntentRefusal(input: Readonly<{
       typeof selected.payload.diagnosticCode !== "string" ||
       !SHA256.test(String(selected.payload.refusalFactsDigest))) {
     fail("pre-intent-refusal", "Agent refusal event and contained checkpoint are not one exact subject");
+  }
+  if (selected.payload.diagnosticCode === PRE_INTENT_CONTAINED_DIAGNOSTIC) {
+    const facts = containedPreIntentRefusalFacts(input.checkpoint);
+    if (facts === null || selected.payload.refusalFactsDigest !== facts.refusalFactsDigest ||
+        Date.parse(selected.occurredAt) < Date.parse(input.checkpoint.containment.establishedAt)) {
+      fail("pre-intent-refusal", "Contained Agent refusal does not bind its exact prior no-effect facts");
+    }
+  } else if (input.checkpoint.containmentRequestedAt === null ||
+      selected.occurredAt !== input.checkpoint.containmentRequestedAt) {
+    fail("pre-intent-refusal", "Agent revalidation refusal does not bind its exact containment request");
   }
 }
 
@@ -1081,9 +1212,11 @@ function agentPersistence(input: Readonly<{
   specification: FoundationExecutionSpecificationV1;
   owner: FoundationAgentCellActivityOwnerV1;
   revalidateBeforeIntent: FoundationAgentCellOperationInputV1["revalidateBeforeIntent"];
+  clock: FoundationAgentCellRuntimeV1["clock"];
 }>): Readonly<{
   checkpoints: FoundationExecutionOperationCheckpointPersistenceV1;
   commitPreDispatch: FoundationExecutionPreDispatchCommitV1;
+  refuseContainedBeforeIntent(): Promise<void>;
 }> {
   const binding = persistenceBinding({
     ...input,
@@ -1170,6 +1303,35 @@ function agentPersistence(input: Readonly<{
       return reopened;
     },
   });
+  const commitRefusal = async (refused: Readonly<{
+    current: FoundationRetainedExecutionOperationCheckpointV1;
+    checkpoint: FoundationExecutionOperationCheckpointV1;
+    refusedAt: string;
+    facts: ReturnType<typeof preIntentRefusalFacts>;
+  }>): Promise<FoundationRetainedExecutionOperationCheckpointV1> => {
+    const append = compileAgentPreIntentRefusalAppend({
+      store: input.store,
+      activityId: input.activityId,
+      refusedAt: refused.refusedAt,
+      runtimeId: input.attempt.revision.producer.id,
+      ...refused.facts,
+    });
+    const result = await input.owner.ownerCommitPreIntentRefusal({
+      binding,
+      expected: refused.current.coordinate,
+      checkpoint: refused.checkpoint,
+      append,
+    });
+    if (result.append.revision !== null || !eventMatchesInput(result.append.event, append.event)) {
+      fail("pre-intent-refusal", "Atomic Activity refusal commit returned another append result");
+    }
+    const reopened = await read();
+    if (reopened === null || canonicalJson(result.retained) !== canonicalJson(reopened) ||
+        canonicalJson(reopened.checkpoint) !== canonicalJson(refused.checkpoint)) {
+      fail("persistence-substitution", "Atomic Activity refusal commit retained another checkpoint");
+    }
+    return reopened;
+  };
   const commitPreDispatch: FoundationExecutionPreDispatchCommitV1 = async (boundary) => {
     if (boundary.specification.digest !== binding.specificationDigest ||
         boundary.dispatchCheckpoint.specificationDigest !== binding.specificationDigest ||
@@ -1227,30 +1389,32 @@ function agentPersistence(input: Readonly<{
         boundary.refusalCheckpoint.containment === null) {
       fail("dispatch-transition", "Agent pre-dispatch boundary lacks one inert refusal alternative");
     }
-    const append = compileAgentPreIntentRefusalAppend({
-      store: input.store,
-      activityId: input.activityId,
-      refusedAt,
-      runtimeId: input.attempt.revision.producer.id,
-      ...refusal,
-    });
-    const result = await input.owner.ownerCommitPreIntentRefusal({
-      binding,
-      expected: boundary.current.coordinate,
+    const reopened = await commitRefusal({
+      current: boundary.current,
       checkpoint: boundary.refusalCheckpoint,
-      append,
+      refusedAt,
+      facts: refusal,
     });
-    if (result.append.revision !== null || !eventMatchesInput(result.append.event, append.event)) {
-      fail("pre-intent-refusal", "Atomic Activity refusal commit returned another append result");
-    }
-    const reopened = await read();
-    if (reopened === null || canonicalJson(result.retained) !== canonicalJson(reopened) ||
-        canonicalJson(reopened.checkpoint) !== canonicalJson(boundary.refusalCheckpoint)) {
-      fail("persistence-substitution", "Atomic Activity refusal commit retained another checkpoint");
-    }
     return Object.freeze({ disposition: "refused" as const, retained: reopened });
   };
-  return Object.freeze({ checkpoints: persistence, commitPreDispatch });
+  const refuseContainedBeforeIntent = async (): Promise<void> => {
+    const current = await read();
+    if (current === null || current.checkpoint.dispatchAuthorityConsumedAt !== null) return;
+    const events = activityEvents(input.store, input.activityId);
+    if (events.some(({ eventKind }) => eventKind === "agent-pre-intent-refused")) return;
+    const facts = containedPreIntentRefusalFacts(current.checkpoint);
+    if (facts === null) return;
+    if (events.some(({ eventKind }) => eventKind === "agent-attempt-prepared")) {
+      fail("pre-intent-refusal", "Contained pre-intent refusal cannot retain an Agent Attempt milestone");
+    }
+    const sampled = controlTimestamp(input.clock.now(), "Contained Agent pre-intent refusal time");
+    const head = input.store.listEvents(Math.max(0, input.store.state().journal.eventCount - 1), 1)[0];
+    const refusedAt = [current.checkpoint.containment!.establishedAt,
+      current.checkpoint.retirement?.retiredAt ?? sampled, head?.occurredAt ?? sampled]
+      .reduce((latest, time) => Date.parse(time) > Date.parse(latest) ? time : latest, sampled);
+    await commitRefusal({ current, checkpoint: current.checkpoint, refusedAt, facts });
+  };
+  return Object.freeze({ checkpoints: persistence, commitPreDispatch, refuseContainedBeforeIntent });
 }
 
 function exactValidatorResult(value: unknown): "valid" | "invalid" {
@@ -1386,7 +1550,9 @@ export async function operateFoundationAgentCellV1(
   const candidateObjectFormat = await exactCandidateObjectFormat(compiledInput);
   const role = inputSet.owner.kind === "agent-attempt" ? inputSet.owner.role :
     fail("owner", "Agent operation reopened a non-Agent Input Set");
-  if ((role === "reconnaissance") !== (candidateObjectFormat === null)) {
+  const hasCandidate = inputSet.subjects.some(({ kind }) => kind === "candidate-revision");
+  if (hasCandidate !== (candidateObjectFormat !== null) ||
+      (role !== "reconnaissance" && !hasCandidate)) {
     fail("candidate-input", "Candidate object format does not follow the exact Attempt role and Carrier");
   }
   const specification = compileFoundationAgentCellSpecificationV1({
@@ -1396,6 +1562,16 @@ export async function operateFoundationAgentCellV1(
     compiledInput,
     installed: input.installed,
   });
+  const execution = readWorkDelegationExecution({ store: input.store, activityId: input.activityId });
+  const reservedSlot = workDelegationAgentSlot(execution, role);
+  const assertReservedSelection = () => {
+    if (reservedSlot !== null && !workDelegationAgentAttemptMatches(reservedSlot, input.attempt.revision)) {
+      fail("work-delegation-binding", "Agent execution differs from its exact retained Activity resource reservation");
+    }
+  };
+  // Specification compilation already joins this exact Attempt to installed
+  // resources and effective limits. Recovery must preserve the historical slot.
+  assertReservedSelection();
   const persistence = agentPersistence({
     store: input.store,
     activityId: input.activityId,
@@ -1404,11 +1580,13 @@ export async function operateFoundationAgentCellV1(
     specification,
     owner: input.activityOwner,
     revalidateBeforeIntent: input.revalidateBeforeIntent,
+    clock: input.runtime.clock,
   });
   input.runtime.registerOperation({ specification, persistence: persistence.checkpoints });
   let ownedOutput: FoundationAgentExecutionCellOwnedOutputV1 | null = null;
   let providerTerminal: FoundationAgentExecutionCellProviderTerminalObservationV1 | null = null;
   let providerResult: FoundationAgentExecutionCellProviderResultV1 | null = null;
+  let providerFailureDiagnostic: FoundationAgentCellProviderFailureDiagnosticV1 | null = null;
   let semantic: FoundationAgentCellSemanticDispositionV1 | null = null;
   let candidate: FoundationAgentCellCandidateDispositionV1 | null = null;
   const publisher = input.runtime.publishCandidateOutput ??
@@ -1509,6 +1687,30 @@ export async function operateFoundationAgentCellV1(
       // or Candidate output, and null records this branch's deterministic invalidity.
     }
 
+    let failureDiagnostic: FoundationAgentCellProviderFailureDiagnosticV1 = Object.freeze({
+      disposition: "not-produced" as const, bytes: null,
+    });
+    if (selected.providerFailureDiagnostic !== null) {
+      failureDiagnostic = Object.freeze({ disposition: "invalid" as const, bytes: null });
+      // A report is untrusted operational context for a failed invocation. It
+      // neither supplies terminal facts nor invalidates independent useful work.
+      if (terminal.outcome !== "natural-return") {
+        try {
+          failureDiagnostic = Object.freeze({
+            disposition: "available" as const,
+            bytes: await readFoundationAgentProviderFailureDiagnosticV1({
+              artifact: selected.providerFailureDiagnostic,
+            }),
+          });
+        } catch (error) {
+          if (!(error instanceof FoundationError) || error.code !==
+              "lifecycle.agent-execution-cell-operation-v1.provider-failure-diagnostic") {
+            throw error;
+          }
+        }
+      }
+    }
+
     let semanticResult: FoundationAgentCellSemanticDispositionV1;
     if (selected.semantic.disposition === "not-produced") {
       semanticResult = Object.freeze({ disposition: "not-produced" as const, artifact: null });
@@ -1522,7 +1724,9 @@ export async function operateFoundationAgentCellV1(
         output,
         artifact: selected.semantic.artifact,
       }));
-      semanticResult = Object.freeze({ disposition, artifact: selected.semantic.artifact });
+      semanticResult = disposition === "valid"
+        ? Object.freeze({ disposition: "valid" as const, artifact: selected.semantic.artifact })
+        : Object.freeze({ disposition: "invalid" as const, artifact: selected.semantic.artifact });
     }
 
     let candidateResult: FoundationAgentCellCandidateDispositionV1;
@@ -1551,6 +1755,7 @@ export async function operateFoundationAgentCellV1(
     ownedOutput = selected;
     providerTerminal = terminal;
     providerResult = normalizedProvider;
+    providerFailureDiagnostic = failureDiagnostic;
     semantic = semanticResult;
     candidate = candidateResult;
     // Generic bytes remain valid even when either owner branch is invalid.
@@ -1600,6 +1805,7 @@ export async function operateFoundationAgentCellV1(
       if (!Number.isFinite(openedAtMilliseconds)) fail("clock", "Retained Cell opening time is invalid");
     }
     if (before !== null && before.checkpoint.handle === null) {
+      assertReservedSelection();
       input.runtime.reclamation.assertAllocationAvailable();
     }
     if (before?.checkpoint.output !== null && before?.checkpoint.output !== undefined) break;
@@ -1666,6 +1872,10 @@ export async function operateFoundationAgentCellV1(
     }
     providerTerminal = retainedTerminal;
   }
+  // A recovery deadline or direct pre-dispatch absence can bypass #dispatch.
+  // Finish its subjectless refusal through the same atomic Activity owner;
+  // an already retired checkpoint retains all original physical facts.
+  await persistence.refuseContainedBeforeIntent();
   current = await host.retire(specification);
   const checkpoint = current.checkpoint;
   if (checkpoint.retirement === null || checkpoint.handle === null ||
@@ -1698,12 +1908,6 @@ export async function operateFoundationAgentCellV1(
         checkpoint,
       })
     : providerObservation(finalizedProviderTerminal);
-  if (!preIntentRefused && finalizedProviderObservation === null) {
-    fail(
-      "provider-terminal-observation",
-      "Dispatched Agent Cell lacks either retained runner-owned Provider terminal facts or one exact direct not-started observation",
-    );
-  }
   if (checkpoint.output.validation === "valid" &&
       (validatedOutput === null || ownedOutput === null || semantic === null || candidate === null)) {
     fail("output", "Valid Agent output could not be reopened and finalized after Retirement");
@@ -1712,7 +1916,7 @@ export async function operateFoundationAgentCellV1(
     disposition: "unavailable" as const,
     artifact: null,
   });
-  const finalCandidate = candidate ?? Object.freeze({
+  const finalCandidate: FoundationAgentCellCandidateDispositionV1 = candidate ?? Object.freeze({
     disposition: role === "builder" ? "unavailable" as const : "not-applicable" as const,
     carrier: null,
   });
@@ -1758,15 +1962,16 @@ export async function operateFoundationAgentCellV1(
       residualFactsDigest: checkpoint.retirement.reclamationObligation.digest,
     }),
   });
-  return Object.freeze({
-    preIntentRefused,
+  const finalizedOutput = Object.freeze({
     specification,
     inputSet,
     validatedOutput,
     providerResult: finalizedProviderResult,
+    providerFailureDiagnostic: providerFailureDiagnostic ?? Object.freeze({
+      disposition: "unavailable" as const, bytes: null,
+    }),
     semantic: finalSemantic,
     candidate: finalCandidate,
-    receiptFacts,
     terminal: Object.freeze({
       observationDigest: checkpoint.observation.digest,
       containmentDigest: checkpoint.containment.digest,
@@ -1775,5 +1980,26 @@ export async function operateFoundationAgentCellV1(
       retirementDigest: checkpoint.retirement.digest,
       reclamationObligationDigest: checkpoint.retirement.reclamationObligation.digest,
     }),
+  });
+  if (preIntentRefused) {
+    if (finalizedProviderObservation !== null) {
+      fail("provider-terminal-observation", "Pre-intent refusal cannot retain Provider invocation facts");
+    }
+    return Object.freeze({
+      ...finalizedOutput,
+      preIntentRefused: true as const,
+      receiptFacts: Object.freeze({ ...receiptFacts, provider: null }),
+    });
+  }
+  if (finalizedProviderObservation === null) {
+    fail(
+      "provider-terminal-observation",
+      "Dispatched Agent Cell lacks either retained runner-owned Provider terminal facts or one exact direct not-started observation",
+    );
+  }
+  return Object.freeze({
+    ...finalizedOutput,
+    preIntentRefused: false as const,
+    receiptFacts: Object.freeze({ ...receiptFacts, provider: finalizedProviderObservation }),
   });
 }

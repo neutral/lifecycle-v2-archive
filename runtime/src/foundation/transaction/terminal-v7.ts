@@ -1,3 +1,4 @@
+import { authenticateDirectorDecisionOpening, type FoundationAuthorityCredential } from "../repository/authority.js";
 import { createHash, randomUUID } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import { FOUNDATION_RUNTIME_PROTOCOL } from "../constants.js";
@@ -20,13 +21,17 @@ import {
   type ClosureTerminalExecutions,
 } from "../control/closure.js";
 import { archiveDeliveryControlRecordStore } from "../control/delivery-custody.js";
+import { verifyRetainedAcceptanceV7 } from "../control/evidence-packet.js";
 import {
-  compileFounderDecisionOpening,
-  verifyRetainedFounderDecision,
-  type FounderDecisionControlBinding,
-  type FounderDecisionRepositoryBasis,
-  type FounderDecisionSubject,
-} from "../control/founder-decision.js";
+  verifyRetainedDirectorDecision,
+  type DirectorDecisionAcceptanceBasis,
+  directorDecisionRepositoryBasisFromSnapshot,
+  type AuthorizationReviewGate,
+  type DirectorDecisionControlBinding,
+  type DirectorDecisionRepositoryBasis,
+  type DirectorDecisionSubject,
+} from "../control/director-decision.js";
+import { resolveCandidateIntegrationProvenanceV1 } from "../control/integration-assessment.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
 import { assertDeliveryControlRecordPayload } from "../control/payload-registry.js";
 import type { ControlRecordStore } from "../control/store.js";
@@ -37,6 +42,7 @@ import type {
   ControlRecordRevision,
 } from "../control/types.js";
 import { FoundationError } from "../error.js";
+import { observeFoundationAcceptanceEvidenceV7 } from "../evidence/physical-observation-v7.js";
 import {
   foundationExecutionReclamationPreIntentRefusalSetDigestV1,
   foundationExecutionReclamationTerminalSubjectSetDigestV1,
@@ -53,15 +59,17 @@ import {
   worktreePathInventory,
 } from "../repository/git.js";
 import { withTargetOperationLock } from "../repository/operation-lock.js";
+import { withDeliveryOperationLock } from "../control/delivery-operation-lock.js";
 import {
-  bindHistoricalRepositorySnapshot,
   bindRepositorySnapshot,
   loadRepositoryEpoch,
-  loadRepositoryEpochAtCommit,
+  loadRepositoryIdentityEpoch,
 } from "../repository/snapshot.js";
+import { openFoundationDeliveryGitBasisV1, openFoundationDeliveryGitSnapshotV1, retainFoundationDeliveryGitCommitV1 } from "../repository/delivery-git-basis.js";
 import type {
   FoundationGitObjectFormat,
   FoundationRepositoryContract,
+  FoundationRepositorySnapshot,
 } from "../repository/types.js";
 import { validateLoadedRepositorySnapshot } from "../repository/validate.js";
 import {
@@ -107,7 +115,7 @@ const TERMINAL_IMPLEMENTATION_PROFILE = Object.freeze({
   id: "foundation-terminal-transaction-v7",
   runtime: RUNTIME_COORDINATE,
   algorithms: Object.freeze([
-    "founder-authenticated-terminal-opening",
+    "director-authenticated-terminal-opening",
     "verified-carrier-import-and-deterministic-candidate-tree-commit",
     "canonical-ref-compare-and-swap",
     "exact-effect-observation",
@@ -188,13 +196,13 @@ export type FoundationTerminalEffectPlanV7 = Readonly<{
   storeId: string;
   processId: string;
   activityId: string;
-  decision: RevisionReference<"founder-decision"> & Readonly<{ subjectDigest: Sha256 }>;
+  decision: RevisionReference<"director-decision"> & Readonly<{ subjectDigest: Sha256 }>;
   boundary: RevisionReference<"work-boundary"> | null;
   candidate: TerminalCandidatePlan | null;
   seal: RevisionReference<"candidate-seal"> | null;
   evidence: RevisionReference<"evidence-packet"> | null;
   candidateTreatment: "integrated" | "abandoned" | "not-created";
-  repository: FounderDecisionRepositoryBasis;
+  repository: DirectorDecisionRepositoryBasis;
   canonical: Readonly<{
     ref: string;
     objectFormat: FoundationGitObjectFormat;
@@ -242,7 +250,7 @@ type TerminalCheckpointAdapter = FoundationActivityKernelCheckpointAdapterV7<
 export type FoundationTerminalRepositoryObservationV7 = Readonly<{
   repository: string;
   contract: FoundationRepositoryContract;
-  basis: FounderDecisionRepositoryBasis;
+  basis: DirectorDecisionRepositoryBasis;
   ref: string;
   objectFormat: FoundationGitObjectFormat;
 }>;
@@ -263,6 +271,8 @@ export type FoundationTerminalV7Stage =
   | "opening-committed"
   | "transaction-effect-intended"
   | "transaction-effect-observed"
+  | "canonical-effect-applied"
+  | "canonical-effect-ready"
   | "terminal-disposition-observed"
   | "closure-recorded"
   | "activity-completed"
@@ -280,6 +290,7 @@ type ArchiveResult = Readonly<{ manifestDigest: Sha256 }>;
 type TerminalOwners = Readonly<{
   now: () => string;
   withTargetLock: TargetLock;
+  withDeliveryLock: typeof withDeliveryOperationLock;
   observeRepository: (
     target: string,
     observedAt: string,
@@ -299,17 +310,20 @@ type TerminalOwners = Readonly<{
     deliveryId: string;
     archivedAt: string;
   }>) => Promise<ArchiveResult>;
+  beforeAuthenticate: AuthorizationReviewGate;
   onStage: (stage: FoundationTerminalV7Stage) => void | Promise<void>;
 }>;
 
 export type FoundationTerminalV7Options = Readonly<{
   now?: () => string;
   withTargetLock?: TargetLock;
+  withDeliveryLock?: typeof withDeliveryOperationLock;
   observeRepository?: TerminalOwners["observeRepository"];
   importCandidateCarrier?: TerminalOwners["importCandidateCarrier"];
   verifyCandidateCarriers?: TerminalOwners["verifyCandidateCarriers"];
   observeReclamationHandoff?: TerminalOwners["observeReclamationHandoff"];
   archiveStore?: TerminalOwners["archiveStore"];
+  beforeAuthenticate?: TerminalOwners["beforeAuthenticate"];
   onStage?: TerminalOwners["onStage"];
 }>;
 
@@ -318,8 +332,8 @@ export type FoundationTerminalV7Input = Readonly<{
   machineHome: string;
   store: ControlRecordStore;
   authorityHome: string;
-  authoritySecret: string;
-  /** Required only for the Founder-authored no-ship rationale. */
+  authorityCredential: FoundationAuthorityCredential;
+  /** Required only for the Director-authored no-ship rationale. */
   semanticMarkdown?: string;
   runtimeId: string;
 }>;
@@ -393,7 +407,7 @@ function reference<Kind extends string>(
 
 function resolveBinding(
   store: ControlRecordStore,
-  selected: FounderDecisionControlBinding,
+  selected: DirectorDecisionControlBinding,
 ): ControlRecordRevision {
   const revision = store.getRevision(selected.target.id, selected.target.revision);
   if (
@@ -407,46 +421,34 @@ function resolveBinding(
 }
 
 function bindings(
-  subject: FounderDecisionSubject,
-  relation: FounderDecisionControlBinding["relation"],
-): readonly FounderDecisionControlBinding[] {
+  subject: DirectorDecisionSubject,
+  relation: DirectorDecisionControlBinding["relation"],
+): readonly DirectorDecisionControlBinding[] {
   return subject.selectedControl.filter((value) => value.relation === relation);
 }
 
 function optionalBinding(
-  subject: FounderDecisionSubject,
-  relation: FounderDecisionControlBinding["relation"],
-): FounderDecisionControlBinding | null {
+  subject: DirectorDecisionSubject,
+  relation: DirectorDecisionControlBinding["relation"],
+): DirectorDecisionControlBinding | null {
   const selected = bindings(subject, relation);
   if (selected.length > 1) fail("selected-control", `Terminal Decision carries repeated ${relation}`);
   return selected[0] ?? null;
 }
 
 function noBinding(
-  subject: FounderDecisionSubject,
-  relation: FounderDecisionControlBinding["relation"],
+  subject: DirectorDecisionSubject,
+  relation: DirectorDecisionControlBinding["relation"],
 ): void {
   if (bindings(subject, relation).length !== 0) {
     fail("selected-control", `Terminal Decision cannot carry ${relation}`);
   }
 }
 
-function sameReference(
-  relationship: ControlRecordRevision,
-  relation: string,
-  expected: ControlRecordRevision,
-): boolean {
-  const matches = relationship.relationships.filter((value) => value.relation === relation);
-  return matches.length === 1 &&
-    matches[0]!.target.kind === expected.recordKind &&
-    matches[0]!.target.id === expected.recordId &&
-    matches[0]!.target.revision === expected.revision &&
-    matches[0]!.target.digest === expected.digest;
-}
 
 function candidateState(revision: ControlRecordRevision): CandidateState {
   if (
-    revision.payload.schema !== "lifecycle.candidate-revision-payload.v2"
+    revision.payload.schema !== "lifecycle.candidate-revision-payload.v3"
   ) {
     fail("candidate", "Terminal Decision requires one exact reconstructible Candidate Revision");
   }
@@ -521,13 +523,13 @@ function gitObjectDigest(
 }
 
 function acceptanceCommitTemplate(input: Readonly<{
-  subject: FounderDecisionSubject;
+  subject: DirectorDecisionSubject;
   decision: ControlRecordRevision;
   candidate: ControlRecordRevision;
 }>): AcceptanceCommitTemplate {
   const authoredAtUnix = Math.floor(Date.parse(input.subject.authorizedAt) / 1_000);
   if (!Number.isSafeInteger(authoredAtUnix) || authoredAtUnix < 0) {
-    fail("commit", "Founder Decision authorization time cannot name a deterministic Git commit");
+    fail("commit", "Director Decision authorization time cannot name a deterministic Git commit");
   }
   const message = [
     "Lifecycle acceptance",
@@ -575,9 +577,10 @@ function instantiateAcceptanceCommit(input: Readonly<{
 function planFromDecision(
   store: ControlRecordStore,
   decision: ControlRecordRevision,
-  subject: FounderDecisionSubject,
+  subject: DirectorDecisionSubject,
   contract: FoundationRepositoryContract,
   objectFormat: FoundationGitObjectFormat,
+  acceptanceBasis: DirectorDecisionAcceptanceBasis | null,
 ): FoundationCompiledTerminalEffectPlanV7 {
   if (!(subject.operation === "delivery.accept" || subject.operation === "delivery.no-ship")) {
     fail("decision", "Terminal plan requires exact accept or no-ship authority");
@@ -617,28 +620,12 @@ function planFromDecision(
     if (boundary === null || candidate === null || seal === null || evidence === null) {
       fail("selected-control", "Acceptance requires exact Boundary, Candidate, Seal, and Evidence selections");
     }
-    if (
-      !sameReference(seal, "seals", candidate) ||
-      !sameReference(seal, "governed-by", boundary) ||
-      !sameReference(evidence, "evaluates", candidate) ||
-      !sameReference(evidence, "uses-seal", seal) ||
-      !sameReference(evidence, "governed-by", boundary) ||
-      evidence.payload.readiness !== "acceptance-ready"
-    ) {
-      fail("evidence", "Acceptance selections do not prove the exact sealed Candidate as acceptance-ready");
+    if (acceptanceBasis === null || acceptanceBasis.directorSubject !== "matches") {
+      fail("selected-control", "Acceptance plan requires its authenticated Decision's verified semantic basis");
     }
     const state = candidateState(candidate);
     const baseCommit = string(candidate.payload.candidateBaseCommit, "Terminal Candidate base commit");
-    if (!GIT_OBJECT.test(baseCommit) || baseCommit !== subject.repository.canonicalCommit) {
-      fail("candidate", "Accepted Candidate does not retain the exact admitted canonical parent");
-    }
-    const boundaryBasis = object(boundary.payload.basis, "Terminal Work Boundary basis");
-    if (baseCommit !== string(
-      boundaryBasis.productBaseCommit,
-      "Terminal Work Boundary product base commit",
-    )) {
-      fail("candidate", "Accepted Candidate does not retain its exact admitted product base");
-    }
+    if (!GIT_OBJECT.test(baseCommit)) fail("candidate", "Accepted Candidate base is not one Git commit");
     selectedCandidate = Object.freeze({
       reference: reference(candidate, "candidate-revision"),
       baseCommit,
@@ -676,7 +663,7 @@ function planFromDecision(
     ? "not-applicable"
     : selectedCandidate === null ? "no-candidate" : "abandon";
   if (subject.candidateDisposition !== expectedDisposition) {
-    fail("candidate", "Founder Decision Candidate disposition differs from exact terminal treatment");
+    fail("candidate", "Director Decision Candidate disposition differs from exact terminal treatment");
   }
 
   const acceptanceCommit = selectedCandidate === null || commitTemplate === null
@@ -698,8 +685,8 @@ function planFromDecision(
     processId: store.identity.processId,
     activityId: subject.activityId,
     decision: Object.freeze({
-      ...reference(decision, "founder-decision"),
-      subjectDigest: digest(decision.payload.subjectDigest, "Founder Decision subject digest"),
+      ...reference(decision, "director-decision"),
+      subjectDigest: digest(decision.payload.subjectDigest, "Director Decision subject digest"),
     }),
     boundary: boundary === null ? null : reference(boundary, "work-boundary"),
     candidate: selectedCandidate,
@@ -726,16 +713,30 @@ export async function compileFoundationTerminalEffectPlanV7(
   contract: FoundationRepositoryContract,
   objectFormat: FoundationGitObjectFormat,
 ): Promise<FoundationCompiledTerminalEffectPlanV7> {
-  const verified = verifyRetainedFounderDecision({ store, activityId, contract });
-  return planFromDecision(store, verified.revision, verified.subject, contract, objectFormat);
+  const verified = verifyRetainedDirectorDecision({ store, activityId, contract });
+  return planFromDecision(store, verified.revision, verified.subject, contract, objectFormat, verified.acceptanceBasis);
 }
 
 async function observeFoundationTerminalRepositoryV7(
   target: string,
   observedAt: string,
+  custody: Pick<FoundationTerminalV7Input, "machineHome" | "store">,
 ): Promise<FoundationTerminalRepositoryObservationV7> {
   const exactObservedAt = controlTimestamp(observedAt, "Terminal repository observation time");
-  const epoch = await loadRepositoryEpoch(target);
+  const identity = await loadRepositoryIdentityEpoch(target);
+  const repository = await retainFoundationDeliveryGitCommitV1({
+    machineHome: custody.machineHome, repository: target, identity: custody.store.identity,
+    commit: identity.epoch.commit, tree: identity.epoch.tree, canonicalBranch: identity.epoch.ref,
+  });
+  return observeIndependentTerminalRepositoryV7(repository, exactObservedAt);
+}
+
+async function observeIndependentTerminalRepositoryV7(
+  repository: string,
+  observedAt: string,
+): Promise<FoundationTerminalRepositoryObservationV7> {
+  const exactObservedAt = controlTimestamp(observedAt, "Terminal repository observation time");
+  const epoch = await loadRepositoryEpoch(repository);
   const knowledge = await validateKnowledgeSet(epoch);
   if (
     knowledge.knowledgeSet === null || !knowledge.validation.complete || !knowledge.validation.valid
@@ -775,6 +776,30 @@ async function observeFoundationTerminalRepositoryV7(
   });
 }
 
+async function observeIntegrationTerminalRepositoryV7(
+  input: Pick<FoundationTerminalV7Input, "target" | "machineHome" | "store">,
+  observedAt: string,
+): Promise<FoundationTerminalRepositoryObservationV7> {
+  controlTimestamp(observedAt, "Acceptance integration-parent observation time");
+  const subjects = input.store.state().subjects;
+  const candidate = subjects.candidate === null ? null : input.store.getRevision(subjects.candidate.id, subjects.candidate.revision);
+  const boundary = subjects.activeBoundary === null ? null : input.store.getRevision(subjects.activeBoundary.id, subjects.activeBoundary.revision);
+  if (candidate === null || candidate.digest !== subjects.candidate?.digest || boundary === null || boundary.digest !== subjects.activeBoundary?.digest) {
+    fail("integration", "Acceptance requires its exact active Work Boundary and integrated Candidate");
+  }
+  const integration = resolveCandidateIntegrationProvenanceV1({ store: input.store, candidate });
+  if (integration === null) fail("integration", "Acceptance requires explicit Candidate integration provenance");
+  const parent = await openFoundationDeliveryGitSnapshotV1({
+    machineHome: input.machineHome, repository: input.target, identity: input.store.identity,
+    snapshot: integration.canonicalParent,
+  });
+  return Object.freeze({
+    repository: parent.repository, contract: parent.loaded.contract,
+    basis: directorDecisionRepositoryBasisFromSnapshot(parent.loaded.snapshot, parent.loaded.contract),
+    ref: parent.loaded.epoch.ref, objectFormat: parent.loaded.epoch.objectFormat,
+  });
+}
+
 function currentTerminalBoundary(
   store: ControlRecordStore,
 ): Readonly<{ id: string; revision: number; digest: Sha256 }> | null {
@@ -792,6 +817,7 @@ function currentTerminalBoundary(
 
 async function observeHistoricalTerminalRepositoryV7(
   target: string,
+  machineHome: string,
   store: ControlRecordStore,
   selected: Readonly<{ id: string; revision: number; digest: Sha256 }>,
   observedAt: string,
@@ -809,16 +835,8 @@ async function observeHistoricalTerminalRepositoryV7(
   if (!GIT_OBJECT.test(commit) || !GIT_OBJECT.test(tree)) {
     fail("boundary", "Acceptance Work Boundary basis has invalid Git object identities");
   }
-  const epoch = await loadRepositoryEpochAtCommit(target, commit);
-  const knowledge = await validateKnowledgeSet(epoch);
-  if (
-    knowledge.knowledgeSet === null || !knowledge.validation.complete || !knowledge.validation.valid
-  ) {
-    fail("repository", "Acceptance historical authority requires one complete valid Knowledge Set", {
-      validationDigest: knowledge.validation.digest,
-    });
-  }
-  const snapshot = await bindHistoricalRepositorySnapshot(epoch, knowledge.knowledgeSet);
+  const retained = await openFoundationDeliveryGitBasisV1({ machineHome, repository: target, store, boundary });
+  const snapshot = retained.loaded;
   controlTimestamp(observedAt, "Acceptance historical repository observation time");
   const repositoryBasis = Object.freeze({
     repositorySnapshotDigest: digest(
@@ -918,11 +936,16 @@ async function observeEmptyReclamationHandoff(input: Readonly<{
   });
 }
 
-function owners(options: FoundationTerminalV7Options): TerminalOwners {
+function owners(
+  options: FoundationTerminalV7Options,
+  input: Pick<FoundationTerminalV7Input, "machineHome" | "store">,
+): TerminalOwners {
   return Object.freeze({
     now: options.now ?? (() => new Date().toISOString()),
     withTargetLock: options.withTargetLock ?? withTargetOperationLock,
-    observeRepository: options.observeRepository ?? observeFoundationTerminalRepositoryV7,
+    withDeliveryLock: options.withDeliveryLock ?? withDeliveryOperationLock,
+    observeRepository: options.observeRepository ?? ((target, observedAt) =>
+      observeFoundationTerminalRepositoryV7(target, observedAt, input)),
     importCandidateCarrier: options.importCandidateCarrier ??
       importCandidateRevisionCarrierIntoRepository,
     verifyCandidateCarriers: options.verifyCandidateCarriers ??
@@ -930,6 +953,7 @@ function owners(options: FoundationTerminalV7Options): TerminalOwners {
     observeReclamationHandoff: options.observeReclamationHandoff ??
       observeEmptyReclamationHandoff,
     archiveStore: options.archiveStore ?? archiveDeliveryControlRecordStore,
+    beforeAuthenticate: options.beforeAuthenticate ?? (() => undefined),
     onStage: options.onStage ?? (() => undefined),
   });
 }
@@ -941,8 +965,8 @@ function sampleTime(selected: TerminalOwners, label: string): string {
 function openingTimes(selected: TerminalOwners): TerminalOpeningTimes {
   return Object.freeze({
     startedAt: sampleTime(selected, "Terminal activity start time"),
-    authorizedAt: sampleTime(selected, "Founder terminal authorization time"),
-    verifiedAt: sampleTime(selected, "Founder terminal verification time"),
+    authorizedAt: sampleTime(selected, "Director terminal authorization time"),
+    verifiedAt: sampleTime(selected, "Director terminal verification time"),
   });
 }
 
@@ -1312,10 +1336,12 @@ function acceptanceFacts(
   return Object.freeze({
     schema: FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1,
     ref: input.ref,
-    commit: input.commit,
-    tree: input.tree,
+    commit: result.commit,
+    tree: result.tree,
     objectFormat: input.objectFormat,
     canonicalResultDigest: digestCanonical(result),
+    observedTip: Object.freeze({ commit: input.commit, tree: input.tree }),
+    recognition: input.commit === result.commit ? "at-tip" : "ancestor",
   }) as FoundationTerminalAcceptanceObservationFactsV1;
 }
 
@@ -1510,7 +1536,7 @@ function exactAcceptanceResult(
     candidate.baseCommit !== plan.repository.canonicalCommit ||
     candidate.state.tree !== plan.canonical.expectedTree
   ) {
-    fail("candidate", "Acceptance plan does not bind the exact admitted parent and Candidate tree");
+    fail("candidate", "Acceptance plan does not bind the exact integration parent and Candidate tree");
   }
   const commit = instantiateAcceptanceCommit({
     template,
@@ -1556,12 +1582,9 @@ async function acceptedCommitParent(input: Readonly<{
   return GIT_OBJECT.test(parent) ? parent : null;
 }
 
-async function recognizeAcceptedAtHead(input: Readonly<{
+async function recognizeAcceptedInCanonicalHistory(input: Readonly<{
   observed: Readonly<{
-    repository: string;
-    ref: string;
-    commit: string;
-    tree: string;
+    repository: string; ref: string; commit: string; tree: string;
     objectFormat: FoundationGitObjectFormat;
   }>;
   compiled: FoundationCompiledTerminalEffectPlanV7;
@@ -1569,18 +1592,29 @@ async function recognizeAcceptedAtHead(input: Readonly<{
   const template = input.compiled.plan.acceptanceCommitTemplate;
   if (template === null) return null;
   const result = exactAcceptanceResult(input.compiled.plan);
-  if (
-    input.observed.ref !== input.compiled.plan.canonical.ref ||
-    input.observed.objectFormat !== input.compiled.plan.canonical.objectFormat ||
-    input.observed.commit !== result.commit ||
-    input.observed.tree !== result.tree
-  ) return null;
-  const parentCommit = await acceptedCommitParent({
+  if (input.observed.ref !== input.compiled.plan.canonical.ref ||
+    input.observed.objectFormat !== input.compiled.plan.canonical.objectFormat) return null;
+  const tree = await git(input.observed.repository, [
+    "rev-parse", "--verify", "--end-of-options", `${result.commit}^{tree}`,
+  ], { allowFailure: true });
+  if (tree.exitCode !== 0) return null;
+  if (tree.stdout.trim() !== result.tree) fail("commit", "Retained acceptance commit has another tree");
+  const parent = await acceptedCommitParent({
     repository: input.observed.repository,
-    observed: input.observed,
+    observed: { commit: result.commit, tree: result.tree },
     template,
   });
-  return parentCommit === result.parentCommit ? result : null;
+  if (parent !== result.parentCommit) fail("commit", "Retained acceptance commit does not reproduce its exact template and parent");
+  if (input.observed.commit === result.commit) {
+    if (input.observed.tree !== result.tree) fail("commit", "Observed acceptance tip has another tree");
+    return result;
+  }
+  const ancestry = await git(input.observed.repository, [
+    "merge-base", "--is-ancestor", result.commit, input.observed.commit,
+  ], { allowFailure: true });
+  if (ancestry.exitCode === 0) return result;
+  if (ancestry.exitCode !== 1) fail("history", "Acceptance canonical ancestry cannot be completely observed");
+  return null;
 }
 
 async function writeAcceptedCommit(
@@ -1609,7 +1643,7 @@ async function writeAcceptedCommit(
     "rev-parse", "--verify", "--end-of-options", `${commit.tree}^{tree}`,
   ], { allowFailure: true });
   if (tree.exitCode !== 0 || tree.stdout.trim() !== commit.tree) {
-    fail("candidate", "Accepted Candidate tree is unavailable from the shared object database");
+    fail("candidate", "Accepted Candidate tree is unavailable from the canonical object database");
   }
   const retained = await git(repository, ["hash-object", "-w", "-t", "commit", "--stdin"], {
     input: bytes.toString("utf8"),
@@ -1619,154 +1653,169 @@ async function writeAcceptedCommit(
   }
 }
 
-async function observeAcceptanceEffect(input: Readonly<{
+type AcceptanceEffectInput = Readonly<{
   target: string;
   machineHome: string;
   store: ControlRecordStore;
   compiled: FoundationCompiledTerminalEffectPlanV7;
   selected: TerminalOwners;
-}>): Promise<RepositoryEffectObservation> {
+  /** An earlier invocation may have crossed the exact CAS boundary. */
+  mayHaveApplied: boolean;
+}>;
+
+async function prepareAcceptancePublication(input: AcceptanceEffectInput, repository: string): Promise<void> {
+  const { contract } = await contractForRetainedPlan(input.target, input.compiled.plan, input);
+  const decision = verifyRetainedDirectorDecision({ store: input.store, activityId: input.compiled.plan.activityId, contract });
+  const selectedRevision = (relation: DirectorDecisionControlBinding["relation"]) => {
+    const selected = optionalBinding(decision.subject, relation);
+    if (selected === null) fail("selected-control", "Acceptance lost one exact selected Evidence subject");
+    return resolveBinding(input.store, selected);
+  };
+  const boundary = selectedRevision("selects-boundary");
+  const candidate = selectedRevision("selects-candidate");
+  const seal = selectedRevision("selects-seal");
+  const packet = selectedRevision("selects-evidence");
+  const physical = await observeFoundationAcceptanceEvidenceV7({
+    store: input.store, boundary, candidate, seal, machineHome: input.machineHome,
+    targetRepository: input.target, contract,
+  });
+  const current = input.store.state().subjects;
+  verifyRetainedAcceptanceV7({
+    store: input.store, packet,
+    current: { boundary: current.activeBoundary, candidate: current.candidate, seal: current.seal,
+      evidence: current.evidence, materialCondition: current.materialCondition },
+    parentCommit: input.compiled.plan.repository.canonicalCommit,
+    directorDecisionSubject: decision.subject, observation: physical,
+  });
+  await importAcceptanceCandidate({ repository, machineHome: input.machineHome,
+    store: input.store, compiled: input.compiled, selected: input.selected });
+  await writeAcceptedCommit(repository, input.compiled.plan, exactAcceptanceResult(input.compiled.plan));
+}
+
+function assertAcceptanceSubjectsCurrent(input: AcceptanceEffectInput): void {
+  const current = input.store.state().subjects;
+  const plan = input.compiled.plan;
+  const same = (actual: Readonly<{ id: string; revision: number; digest: Sha256 }> | null,
+    expected: Readonly<{ id: string; revision: number; digest: Sha256 }> | null) =>
+    actual !== null && expected !== null && actual.id === expected.id &&
+    actual.revision === expected.revision && actual.digest === expected.digest;
+  if (input.store.identity.targetId !== plan.targetId || input.store.identity.storeId !== plan.storeId ||
+    input.store.identity.processId !== plan.processId || current.materialCondition !== null ||
+    !same(current.activeBoundary, plan.boundary) || !same(current.candidate, plan.candidate?.reference ?? null) ||
+    !same(current.seal, plan.seal) || !same(current.evidence, plan.evidence)) {
+    fail("selected-control", "Acceptance subjects changed before canonical publication");
+  }
+}
+
+type AcceptancePreparationRequired = Readonly<{ preparationRequired: true; repository: string }>;
+
+async function observeLockedAcceptanceEffect(input: AcceptanceEffectInput & Readonly<{
+  preparation: "needed" | "failed" | "complete";
+  preparedRepository?: string;
+}>): Promise<RepositoryEffectObservation | AcceptancePreparationRequired> {
+  let attached;
   let observed;
   try {
-    observed = await currentRepositoryEffectFacts(input.target);
+    attached = await currentRepositoryEffectFacts(input.target);
+    const canonical = await plannedCanonicalRefFacts(attached.repository, input.compiled.plan);
+    observed = Object.freeze({ ...attached, ...canonical, ref: input.compiled.plan.canonical.ref });
   } catch (error) {
-    return Object.freeze({
-      outcome: "indeterminate",
-      facts: terminalFailureFacts(
-        "repository-observation",
-        error instanceof FoundationError ? error.code : "observation-unavailable",
-      ),
-      acceptance: null,
-    });
+    return Object.freeze({ outcome: "indeterminate", facts: terminalFailureFacts(
+      "repository-observation", error instanceof FoundationError ? error.code : "observation-unavailable"), acceptance: null });
   }
-  if (observed.ref !== input.compiled.plan.canonical.ref) {
-    try {
-      const canonical = await plannedCanonicalRefFacts(observed.repository, input.compiled.plan);
-      return Object.freeze({
-        outcome: "not-applied",
-        facts: Object.freeze({
-          schema: FOUNDATION_TERMINAL_DETACHED_OBSERVATION_FACTS_V1,
-          attached: Object.freeze({
-            ref: observed.ref,
-            commit: observed.commit,
-            tree: observed.tree,
-            objectFormat: observed.objectFormat,
-          }),
-          canonicalRef: input.compiled.plan.canonical.ref,
-          canonicalCommit: canonical.commit,
-          canonicalTree: canonical.tree,
-        }) as FoundationTerminalDetachedObservationFactsV1,
-        acceptance: null,
-      });
-    } catch {
+  let publicationAttempted = false;
+  try {
+    const recognized = await recognizeAcceptedInCanonicalHistory({ observed, compiled: input.compiled });
+    if (recognized !== null) {
+      await synchronizeRetainedAcceptanceIfCurrent(observed.repository, input.compiled.plan, recognized);
+      return Object.freeze({ outcome: "applied", facts: acceptanceFacts(observed, recognized), acceptance: recognized });
+    }
+    // A missing K at the current tip is not negative evidence after an
+    // interrupted intent: force rewrite or missing history may hide success.
+    if (input.mayHaveApplied) {
       return Object.freeze({ outcome: "indeterminate", facts: repositoryFacts(observed), acceptance: null });
     }
-  }
-  await contractForRetainedPlan(input.target, input.compiled.plan);
-  try {
-    const recognized = await recognizeAcceptedAtHead({
-      observed,
-      compiled: input.compiled,
-    });
-    if (recognized !== null) {
-      await synchronizeAcceptedWorktree(observed.repository, input.compiled.plan, recognized);
-      return Object.freeze({
-        outcome: "applied",
-        facts: acceptanceFacts(observed, recognized),
-        acceptance: recognized,
-      });
+    if (attached.ref !== input.compiled.plan.canonical.ref) {
+      return Object.freeze({ outcome: "not-applied", facts: Object.freeze({
+        schema: FOUNDATION_TERMINAL_DETACHED_OBSERVATION_FACTS_V1,
+        attached: Object.freeze({ ref: attached.ref, commit: attached.commit, tree: attached.tree, objectFormat: attached.objectFormat }),
+        canonicalRef: input.compiled.plan.canonical.ref, canonicalCommit: observed.commit, canonicalTree: observed.tree,
+      }) as FoundationTerminalDetachedObservationFactsV1, acceptance: null });
     }
-    if (
-      observed.objectFormat !== input.compiled.plan.canonical.objectFormat ||
+    if (observed.objectFormat !== input.compiled.plan.canonical.objectFormat ||
       observed.commit !== input.compiled.plan.repository.canonicalCommit ||
-      observed.tree !== input.compiled.plan.repository.canonicalTree
-    ) {
-      return Object.freeze({
-        outcome: "not-applied",
-        facts: repositoryFacts(observed),
-        acceptance: null,
-      });
+      observed.tree !== input.compiled.plan.repository.canonicalTree) {
+      return Object.freeze({ outcome: "not-applied", facts: repositoryFacts(observed), acceptance: null });
     }
-    await assertAcceptanceCheckoutBasis(
-      observed.repository,
-      input.compiled.plan.repository.canonicalTree,
-    );
-    await importAcceptanceCandidate({
-      repository: observed.repository,
-      machineHome: input.machineHome,
-      store: input.store,
-      compiled: input.compiled,
-      selected: input.selected,
-    });
+    await assertAcceptanceCheckoutBasis(observed.repository, input.compiled.plan.repository.canonicalTree);
+    if (input.preparation === "failed") {
+      return Object.freeze({ outcome: "not-applied", facts: repositoryFacts(observed), acceptance: null });
+    }
+    if (input.preparation === "needed") {
+      return Object.freeze({ preparationRequired: true, repository: observed.repository });
+    }
+    if (input.preparedRepository !== observed.repository) {
+      fail("repository-effect", "Canonical publication target differs from the prepared repository");
+    }
+    assertAcceptanceSubjectsCurrent(input);
     const proposed = exactAcceptanceResult(input.compiled.plan);
-    await writeAcceptedCommit(observed.repository, input.compiled.plan, proposed);
-    await git(observed.repository, [
-      "update-ref",
-      "--no-deref",
-      input.compiled.plan.canonical.ref,
-      proposed.commit,
-      input.compiled.plan.repository.canonicalCommit,
-    ]);
-    await synchronizeAcceptedWorktree(observed.repository, input.compiled.plan, proposed);
-    const applied = Object.freeze({
-      ...observed,
-      commit: proposed.commit,
-      tree: proposed.tree,
-    });
-    return Object.freeze({
-      outcome: "applied",
-      facts: acceptanceFacts(applied, proposed),
-      acceptance: proposed,
-    });
-  } catch (error) {
-    let after;
-    try {
-      after = await currentRepositoryEffectFacts(input.target);
-    } catch {
-      return Object.freeze({
-        outcome: "indeterminate",
-        facts: terminalFailureFacts(
-          "acceptance-effect",
-          error instanceof FoundationError ? error.code : "effect-unavailable",
-        ),
-        acceptance: null,
-      });
+    const beforeCas = await plannedCanonicalRefFacts(observed.repository, input.compiled.plan);
+    if (beforeCas.commit !== proposed.parentCommit || beforeCas.tree !== proposed.parentTree) {
+      return Object.freeze({ outcome: "not-applied", facts: repositoryFacts({ ...observed, ...beforeCas }), acceptance: null });
     }
+    await input.selected.onStage("canonical-effect-ready");
+    assertAcceptanceSubjectsCurrent(input);
+    publicationAttempted = true;
+    // Explicit Git transactions abort before commit if expected-old locking
+    // fails. Git flushes each phase acknowledgement; only a complete normal
+    // refusal before prepare is conclusive negative evidence. Lost output,
+    // cancellation, and every failure after prepare remain uncertain.
+    const publication = await git(observed.repository, ["update-ref", "--no-deref", "--stdin", "-z"], {
+      input: `start\0update ${input.compiled.plan.canonical.ref}\0${proposed.commit}\0${proposed.parentCommit}\0prepare\0commit\0`,
+      allowFailure: true, maxStdoutBytes: 4096, maxStderrBytes: 16 * 1024,
+    });
+    const refusedBeforePrepare = publication.exitCode !== 0 && publication.signal === null &&
+      publication.timedOut !== true && publication.stdoutTruncated !== true && publication.stderrTruncated !== true &&
+      publication.stdout === "start: ok\n";
+    if (refusedBeforePrepare) publicationAttempted = false;
+    const after = { ...observed, ...await plannedCanonicalRefFacts(observed.repository, input.compiled.plan) };
+    const applied = await recognizeAcceptedInCanonicalHistory({ observed: after, compiled: input.compiled });
+    if (applied === null) return Object.freeze({ outcome: refusedBeforePrepare ? "not-applied" : "indeterminate", facts: repositoryFacts(after), acceptance: null });
+    await synchronizeRetainedAcceptanceIfCurrent(observed.repository, input.compiled.plan, applied);
+    return Object.freeze({ outcome: "applied", facts: acceptanceFacts(after, applied), acceptance: applied });
+  } catch (error) {
     try {
-      const recognized = await recognizeAcceptedAtHead({
-        observed: after,
-        compiled: input.compiled,
-      });
+      const after = { ...observed, ...await plannedCanonicalRefFacts(observed.repository, input.compiled.plan) };
+      const recognized = await recognizeAcceptedInCanonicalHistory({ observed: after, compiled: input.compiled });
       if (recognized !== null) {
-        try {
-          await synchronizeAcceptedWorktree(after.repository, input.compiled.plan, recognized);
-        } catch (synchronizationError) {
-          return Object.freeze({
-            outcome: "indeterminate",
-            facts: terminalFailureFacts(
-              "accepted-checkout",
-              synchronizationError instanceof FoundationError
-                ? synchronizationError.code
-                : "checkout-unavailable",
-            ),
-            acceptance: null,
-          });
-        }
-        return Object.freeze({
-          outcome: "applied",
-          facts: acceptanceFacts(Object.freeze({
-            ...after,
-            commit: recognized.commit,
-            tree: recognized.tree,
-          }), recognized),
-          acceptance: recognized,
-        });
+        await synchronizeRetainedAcceptanceIfCurrent(observed.repository, input.compiled.plan, recognized);
+        return Object.freeze({ outcome: "applied", facts: acceptanceFacts(after, recognized), acceptance: recognized });
       }
-      return Object.freeze({ outcome: "not-applied", facts: repositoryFacts(after), acceptance: null });
+      return Object.freeze({ outcome: input.mayHaveApplied || publicationAttempted ? "indeterminate" : "not-applied",
+        facts: repositoryFacts(after), acceptance: null });
     } catch {
-      return Object.freeze({ outcome: "not-applied", facts: repositoryFacts(after), acceptance: null });
+      return Object.freeze({ outcome: "indeterminate", facts: terminalFailureFacts(
+        "acceptance-effect", error instanceof FoundationError ? error.code : "effect-unavailable"), acceptance: null });
     }
   }
+}
+
+async function observeAcceptanceEffect(input: AcceptanceEffectInput): Promise<RepositoryEffectObservation> {
+  const preflight = await input.selected.withTargetLock(input.target, "delivery-accept-observation", () =>
+    observeLockedAcceptanceEffect({ ...input, preparation: "needed" }));
+  if (!("preparationRequired" in preflight)) return preflight;
+  let preparation: "complete" | "failed" = "complete";
+  try {
+    // The Delivery lock protects these immutable subjects. Physical proof and
+    // object construction do not exclude another Delivery's canonical work.
+    await prepareAcceptancePublication(input, preflight.repository);
+  } catch {
+    preparation = "failed";
+  }
+  const result = await input.selected.withTargetLock(input.target, "delivery-accept-publication", () =>
+    observeLockedAcceptanceEffect({ ...input, preparation, preparedRepository: preflight.repository }));
+  if ("preparationRequired" in result) fail("repository-effect", "Acceptance preparation did not settle");
+  return result;
 }
 
 async function observeNoShipEffect(input: Readonly<{
@@ -1790,6 +1839,7 @@ async function observeEffect(input: Readonly<{
   store: ControlRecordStore;
   compiled: FoundationCompiledTerminalEffectPlanV7;
   selected: TerminalOwners;
+  mayHaveApplied: boolean;
 }>): Promise<RepositoryEffectObservation> {
   return input.compiled.plan.operation === "delivery.accept"
     ? observeAcceptanceEffect(input)
@@ -1989,7 +2039,7 @@ function terminalPreIntentRefusals(
     }
     exactKeys(
       event.payload,
-      ["activityId", "diagnosticCode", "refusalFactsDigest"],
+      ["activityId", "diagnosticCode", "refusalFactsDigest", "resolution"],
       "Pre-intent refusal event payload",
     );
     const activityId = controlIdentifier(
@@ -2042,6 +2092,13 @@ function terminalPreIntentRefusals(
         "Pre-intent refusal Activity retained an Attempt, provider effect, Work Product, or Receipt",
       );
     }
+    if (event.payload.resolution === "projection-condition-required") {
+      if (activity.operation !== "delivery.evaluate" && activity.operation !== "delivery.continue") {
+        fail("terminal-executions", "Only an unallocated builder or reviewer can require projection resolution");
+      }
+      return null;
+    }
+    if (event.payload.resolution !== "none") fail("terminal-executions", "Pre-intent refusal allocation disposition is invalid");
     return Object.freeze({
       event: Object.freeze({
         sequence: event.sequence,
@@ -2050,7 +2107,7 @@ function terminalPreIntentRefusals(
       }),
       activityId,
     });
-  });
+  }).filter((value): value is FoundationExecutionReclamationPreIntentRefusalV1 => value !== null);
   selectors.sort((left, right) => compareCodePoints(canonicalJson(left), canonicalJson(right)));
   return Object.freeze(selectors);
 }
@@ -2203,11 +2260,9 @@ async function observeTerminalDisposition(input: Readonly<{
     acceptance: checkpoint.acceptance,
   });
   if (checkpoint.acceptance !== null) {
-    await synchronizeRetainedAcceptanceIfCurrent(
-      input.target,
-      input.compiled.plan,
-      checkpoint.acceptance,
-    );
+    const acceptance = checkpoint.acceptance;
+    await input.selected.withTargetLock(input.target, "delivery-accept-checkout", () =>
+      synchronizeRetainedAcceptanceIfCurrent(input.target, input.compiled.plan, acceptance));
   }
   const executionSubjects = terminalExecutionSubjects(input.store);
   const preIntentRefusals = terminalPreIntentRefusals(input.store);
@@ -2488,6 +2543,7 @@ async function stepTerminal(input: Readonly<{
   compiled: FoundationCompiledTerminalEffectPlanV7;
   runtimeId: string;
   selected: TerminalOwners;
+  mayHaveApplied: boolean;
 }>): Promise<
   | Readonly<{ status: "continue" }>
   | Readonly<{ status: "deferred"; value: FoundationTerminalV7Result }>
@@ -2520,7 +2576,11 @@ async function stepTerminal(input: Readonly<{
         store: input.store,
         compiled: input.compiled,
         selected: input.selected,
+        mayHaveApplied: input.mayHaveApplied,
       });
+      if (input.compiled.plan.operation === "delivery.accept" && observation.outcome === "applied") {
+        await input.selected.onStage("canonical-effect-applied");
+      }
       return Object.freeze({
         outcome: observation.outcome,
         facts: observation.facts,
@@ -2601,77 +2661,69 @@ async function stepTerminal(input: Readonly<{
   });
 }
 
+function terminalRepositorySnapshot(
+  targetId: string,
+  basis: DirectorDecisionRepositoryBasis,
+  objectFormat: FoundationGitObjectFormat,
+): FoundationRepositorySnapshot {
+  return Object.freeze({
+    targetId, commit: basis.canonicalCommit, tree: basis.canonicalTree, objectFormat,
+    contractDigest: basis.repositoryContractDigest, productStateDigest: basis.productStateDigest,
+    atlasStateDigest: basis.atlasStateDigest, atlasResolutionDigest: basis.atlasResolutionDigest,
+    atlasNormalizedModelDigest: basis.atlasNormalizedModelDigest,
+    atlasResourceBindingsDigest: basis.atlasResourceBindingsDigest, knowledgeSetDigest: basis.knowledgeSetDigest,
+    digest: basis.repositorySnapshotDigest,
+  });
+}
+
 async function contractForRetainedPlan(
   target: string,
   plan: FoundationTerminalEffectPlanV7,
-): Promise<Readonly<{
-  contract: FoundationRepositoryContract;
-  objectFormat: FoundationGitObjectFormat;
-}>> {
-  const historical = await loadRepositoryEpochAtCommit(target, plan.repository.canonicalCommit);
-  if (
-    historical.contract.digest !== plan.repository.repositoryContractDigest ||
-    historical.contract.targetId !== plan.targetId ||
-    historical.epoch.objectFormat !== plan.canonical.objectFormat ||
-    historical.epoch.tree !== plan.repository.canonicalTree ||
-    historical.epoch.ref !== plan.canonical.ref
-  ) {
-    fail("repository", "Historical repository contract does not reproduce retained terminal support");
-  }
-  return Object.freeze({
-    contract: historical.contract,
-    objectFormat: historical.epoch.objectFormat,
+  custody: Pick<FoundationTerminalV7Input, "machineHome" | "store">,
+): Promise<Readonly<{ contract: FoundationRepositoryContract; objectFormat: FoundationGitObjectFormat }>> {
+  const historical = await openFoundationDeliveryGitSnapshotV1({
+    machineHome: custody.machineHome, repository: target, identity: custody.store.identity,
+    snapshot: terminalRepositorySnapshot(plan.targetId, plan.repository, plan.canonical.objectFormat),
   });
+  if (historical.loaded.epoch.ref !== plan.canonical.ref) {
+    fail("repository", "Historical repository contract does not reproduce retained terminal branch");
+  }
+  return Object.freeze({ contract: historical.loaded.contract, objectFormat: historical.loaded.epoch.objectFormat });
 }
 
 function unverifiedDecisionPlanBasis(
   store: ControlRecordStore,
   activityId: string,
-): Readonly<{
-  canonicalCommit: string;
-  canonicalTree: string;
-  repositoryContractDigest: Sha256;
-}> {
+): DirectorDecisionRepositoryBasis {
   const decisionEvent = allEvents(store).filter((event) =>
-    event.eventKind === "founder-decision-authenticated" &&
+    event.eventKind === "director-decision-authenticated" &&
     event.payload.activityId === activityId);
   if (decisionEvent.length !== 1 || decisionEvent[0]!.subject === null) {
-    fail("decision", "Terminal recovery requires one exact retained Founder Decision");
+    fail("decision", "Terminal recovery requires one exact retained Director Decision");
   }
   const selected = decisionEvent[0]!.subject!;
   const revision = store.getRevision(selected.recordId, selected.revision);
   if (
-    revision === null || revision.recordKind !== "founder-decision" ||
+    revision === null || revision.recordKind !== "director-decision" ||
     revision.digest !== selected.digest
   ) {
-    fail("decision", "Terminal recovery Founder Decision does not resolve exactly");
+    fail("decision", "Terminal recovery Director Decision does not resolve exactly");
   }
-  const subject = object(revision.payload.subject, "Founder Decision subject");
-  const repository = object(subject.repository, "Founder Decision repository basis");
-  const canonicalCommit = string(repository.canonicalCommit, "Founder Decision canonical commit");
-  const canonicalTree = string(repository.canonicalTree, "Founder Decision canonical tree");
-  if (!GIT_OBJECT.test(canonicalCommit) || !GIT_OBJECT.test(canonicalTree)) {
-    fail("decision", "Founder Decision repository basis has invalid Git object identities");
-  }
-  return Object.freeze({
-    canonicalCommit,
-    canonicalTree,
-    repositoryContractDigest: digest(
-      repository.repositoryContractDigest,
-      "Founder Decision repository contract digest",
-    ),
-  });
+  assertDeliveryControlRecordPayload(revision);
+  const subject = object(revision.payload.subject, "Director Decision subject");
+  return Object.freeze({ ...object(subject.repository, "Director Decision repository basis") }) as DirectorDecisionRepositoryBasis;
 }
 
 async function compiledForRecovery(input: Readonly<{
   target: string;
+  machineHome: string;
   store: ControlRecordStore;
   activityId: string;
   context: TerminalKernelContext | null;
 }>): Promise<FoundationCompiledTerminalEffectPlanV7> {
   if (input.context !== null) {
     const plan = input.context.envelope.plan.value;
-    const historical = await contractForRetainedPlan(input.target, plan);
+    const historical = await contractForRetainedPlan(input.target, plan, input);
     return compileFoundationTerminalEffectPlanV7(
       input.target,
       input.store,
@@ -2681,19 +2733,13 @@ async function compiledForRecovery(input: Readonly<{
     );
   }
   const basis = unverifiedDecisionPlanBasis(input.store, input.activityId);
-  const historical = await loadRepositoryEpochAtCommit(input.target, basis.canonicalCommit);
-  if (
-    historical.contract.digest !== basis.repositoryContractDigest ||
-    historical.epoch.tree !== basis.canonicalTree
-  ) {
-    fail("repository", "Terminal recovery historical contract differs from the retained Decision basis");
-  }
+  const historical = await openFoundationDeliveryGitSnapshotV1({
+    machineHome: input.machineHome, repository: input.target, identity: input.store.identity,
+    snapshot: terminalRepositorySnapshot(input.store.identity.targetId, basis,
+      basis.canonicalCommit.length === 40 ? "sha1" : "sha256"),
+  });
   return compileFoundationTerminalEffectPlanV7(
-    input.target,
-    input.store,
-    input.activityId,
-    historical.contract,
-    historical.epoch.objectFormat,
+    input.target, input.store, input.activityId, historical.loaded.contract, historical.loaded.epoch.objectFormat,
   );
 }
 
@@ -2759,8 +2805,12 @@ async function beginTerminal(
   input: FoundationTerminalV7Input,
   options: FoundationTerminalV7Options,
 ): Promise<FoundationTerminalV7Result> {
-  const selected = owners(options);
-  return selected.withTargetLock(input.target, "delivery-terminal", async () => {
+  const selected = owners(options, input);
+  return selected.withDeliveryLock({
+    machineHome: input.machineHome,
+    targetId: input.store.identity.targetId,
+    deliveryId: input.store.identity.processId,
+  }, "delivery-terminal", async () => {
     const state = input.store.state();
     if (!state.eligibleOperations.includes(operation)) {
       fail("standing", `Delivery is not eligible for one exact ${operation} opening`);
@@ -2772,9 +2822,12 @@ async function beginTerminal(
     if (operation === "delivery.accept" && historicalBoundary === null) {
       fail("boundary", "Acceptance authority requires one exact active Work Boundary");
     }
-    const repository = historicalBoundary !== null
+    const repository = operation === "delivery.accept"
+      ? await observeIntegrationTerminalRepositoryV7(input, basisObservedAt)
+      : historicalBoundary !== null
       ? await observeHistoricalTerminalRepositoryV7(
           input.target,
+          input.machineHome,
           input.store,
           historicalBoundary,
           basisObservedAt,
@@ -2791,16 +2844,16 @@ async function beginTerminal(
     const activityId = createDeliveryActivityId(operation);
     const semanticMarkdown = operation === "delivery.accept"
       ? [
-          "# Founder Acceptance Decision",
+          "# Director Acceptance Decision",
           "",
           "Accept the exact evidenced sealed Candidate selected by this authenticated Decision.",
           "",
         ].join("\n")
       : input.semanticMarkdown;
     if (semanticMarkdown === undefined) {
-      fail("semantic-input", "No-ship requires one exact Founder-supplied semantic rationale");
+      fail("semantic-input", "No-ship requires one exact Director-supplied semantic rationale");
     }
-    const opening = await compileFounderDecisionOpening({
+    const opening = await authenticateDirectorDecisionOpening({
       store: input.store,
       activityId,
       operation,
@@ -2808,13 +2861,14 @@ async function beginTerminal(
       repository: repository.basis,
       contract: repository.contract,
       authorityHome: input.authorityHome,
-      authoritySecret: input.authoritySecret,
+      authorityCredential: input.authorityCredential,
       startedAt: times.startedAt,
       authorizedAt: times.authorizedAt,
       expiresAt: null,
       nonce: `terminal-${randomUUID()}`,
       verifiedAt: times.verifiedAt,
       runtimeId: input.runtimeId,
+      beforeAuthenticate: selected.beforeAuthenticate,
     });
     const compiled = planFromDecision(
       input.store,
@@ -2822,6 +2876,7 @@ async function beginTerminal(
       opening.subject,
       repository.contract,
       repository.objectFormat,
+      opening.acceptanceBasis,
     );
     const definition = terminalDefinition(operation);
     openFoundationActivityKernelV7({
@@ -2847,6 +2902,7 @@ async function beginTerminal(
         compiled,
         runtimeId: input.runtimeId,
         selected,
+        mayHaveApplied: false,
       }),
     });
     return advanced.status === "completed"
@@ -2881,8 +2937,12 @@ export async function recoverTerminalDeliveryV7(
   input: FoundationTerminalRecoveryV7Input,
   options: FoundationTerminalV7Options = {},
 ): Promise<FoundationTerminalV7Result> {
-  const selected = owners(options);
-  return selected.withTargetLock(input.target, "delivery-terminal", async () => {
+  const selected = owners(options, input);
+  return selected.withDeliveryLock({
+    machineHome: input.machineHome,
+    targetId: input.store.identity.targetId,
+    deliveryId: input.store.identity.processId,
+  }, "delivery-terminal", async () => {
     const state = input.store.state();
     const activityId = input.activityId === undefined
       ? (() => {
@@ -2912,6 +2972,7 @@ export async function recoverTerminalDeliveryV7(
         });
     const compiled = await compiledForRecovery({
       target: input.target,
+      machineHome: input.machineHome,
       store: input.store,
       activityId,
       context,
@@ -2940,6 +3001,7 @@ export async function recoverTerminalDeliveryV7(
           compiled,
           runtimeId: input.runtimeId,
           selected,
+          mayHaveApplied: context.recovery.resumesAt !== "transaction-effect-intended",
       }),
     });
     return advanced.status === "completed"

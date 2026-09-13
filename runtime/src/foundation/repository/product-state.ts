@@ -25,6 +25,11 @@ export function pathWithin(path: string, root: string): boolean {
   return path === root || path.startsWith(`${root}/`);
 }
 
+/** Adopted Discipline content and its Registry are maintained only outside Delivery. */
+export function isDisciplineMaintenancePath(contract: FoundationRepositoryContract, path: string): boolean {
+  return pathWithin(path, contract.knowledge.roots.discipline);
+}
+
 function coveredBy(path: string, roots: readonly string[]): boolean {
   return roots.some((root) => pathWithin(path, root));
 }
@@ -41,6 +46,7 @@ function knowledgeRoots(contract: FoundationRepositoryContract): readonly string
     contract.knowledge.roots.assurance,
     contract.knowledge.roots.blueprint,
     contract.knowledge.roots.check,
+    contract.knowledge.roots.discipline,
   ];
 }
 
@@ -170,7 +176,7 @@ export function buildProductState(contract: FoundationRepositoryContract, treeEn
   if (trackedControl !== undefined) {
     throw new FoundationError(
       "lifecycle.repository.epoch-mixed",
-      `Repository v15 forbids repository-visible Delivery Control at ${trackedControl.path}; Control Record Stores remain off HEAD in runtime custody`,
+      `Repository v22 forbids repository-visible Delivery Control at ${trackedControl.path}; Control Record Stores remain off HEAD in runtime custody`,
       { observedFacts: { path: trackedControl.path } },
     );
   }

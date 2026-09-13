@@ -15,15 +15,15 @@ function deepFreeze<T>(value: T, seen = new Set<object>()): T {
   return Object.freeze(value);
 }
 
-export const FOUNDATION_GENERATED_SPECIFICATION_REVISION = "lifecycle.foundation.1.0.0-rc.10" as const;
-export const FOUNDATION_GENERATED_PUBLICATION_DIGEST = "sha256:c959757f7fc4e73fdff1161dfdba53365ac810ed64ea7e28ee0129472be86674" as const;
-export const FOUNDATION_GENERATED_SCHEMA_SET_DIGEST = "sha256:2b39a8869891be61e0d1ab3113c0deafaa2df6122c307de65aee61554dc7c017" as const;
+export const FOUNDATION_GENERATED_SPECIFICATION_REVISION = "lifecycle.foundation.1.0.0-rc.17" as const;
+export const FOUNDATION_GENERATED_PUBLICATION_DIGEST = "sha256:928eae667c58a5b5e234690c9ba3a709c4b9d68c59929e233da2ec992edeb646" as const;
+export const FOUNDATION_GENERATED_SCHEMA_SET_DIGEST = "sha256:b6a0225bfb66324b3d5732f61888ec07841d72961400054f1592a8985e73a7e8" as const;
 
 export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] = deepFreeze([
   {
     path: "spec-source/schemas/agent-attempt-payload.schema.json",
     id: "urn:lifecycle:schema:agent-attempt-payload:v3",
-    sourceDigest: "sha256:0a1138509613ddc7897718bba5abf33c8a2935ea25f7faf9e224705826ce257c",
+    sourceDigest: "sha256:936b6f4ac702a4dd4ad6e3d71924d285269a83c4ee6088d6768e6ad092341b99",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:agent-attempt-payload:v3",
@@ -55,7 +55,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.agent-attempt-payload.v3"
         },
         "activityId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "operation": {
           "enum": [
@@ -74,10 +74,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "invocationId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "preDispatchStateDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "projection": {
           "type": "object",
@@ -89,18 +89,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "profileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
         "roleSubjectDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "capability": {
           "type": "object",
@@ -112,13 +112,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "effectiveGrantDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -136,16 +136,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "model": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "reasoning": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "wallTimeMs": {
               "type": "integer",
@@ -185,7 +185,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "rationale": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             }
           }
         },
@@ -201,19 +201,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "descriptorId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "descriptorDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "adapter": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             },
             "executableIdentityClass": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "installedIdentityDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -252,25 +252,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "roleBriefDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "templateProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "templateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "parserProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "parserProfileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "compilerProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "compilerProfileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "submissionPolicy": {
               "enum": [
@@ -292,13 +292,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "contentInventoryDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "inputMaterialDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "citationRegistryDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "evidenceSetDigest": {
               "$ref": "#/$defs/nullableDigest"
@@ -320,19 +320,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "cancellationPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "containmentPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "parentLossPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "retirementPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "recoveryPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -341,7 +341,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 16,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         }
       },
@@ -398,7 +398,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "input": {
                 "properties": {
                   "evidenceSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "propositionSetDigest": {
                     "type": "null"
@@ -427,10 +427,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "input": {
                 "properties": {
                   "evidenceSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "propositionSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -455,10 +455,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -471,10 +471,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "imageId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "imageDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -487,10 +487,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "const": "lifecycle.execution-input-set.v1"
+              "const": "lifecycle.execution-input-set.v2"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -500,7 +500,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             }
           ]
         },
@@ -510,7 +510,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         }
@@ -519,12 +519,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/agent-work-product-payload.schema.json",
-    id: "urn:lifecycle:schema:agent-work-product-payload:v2",
-    sourceDigest: "sha256:4da9b4940d01842135493fd6dda22c00cba724fbb2d2891eafaec1591365f95c",
+    id: "urn:lifecycle:schema:agent-work-product-payload:v5",
+    sourceDigest: "sha256:1c2a7cdc38edda309c6a979ae046251b86f0822a302e57438df1cab7f5221c4b",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:agent-work-product-payload:v2",
-      "title": "Lifecycle Agent Work Product Payload v2",
+      "$id": "urn:lifecycle:schema:agent-work-product-payload:v5",
+      "title": "Lifecycle Agent Work Product Payload v5",
       "description": "Complete runtime-normalized typed semantics compiled from one valid governed Agent Markdown submission.",
       "type": "object",
       "additionalProperties": false,
@@ -546,13 +546,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.agent-work-product-payload.v2"
+          "const": "lifecycle.agent-work-product-payload.v5"
         },
         "profileId": {
           "enum": [
-            "lifecycle.agent-work-product-body.reconnaissance.v2",
-            "lifecycle.agent-work-product-body.builder.v2",
-            "lifecycle.agent-work-product-body.reviewer.v2"
+            "lifecycle.agent-work-product-body.reconnaissance.v4",
+            "lifecycle.agent-work-product-body.builder.v4",
+            "lifecycle.agent-work-product-body.reviewer.v4"
           ]
         },
         "role": {
@@ -579,10 +579,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "text": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -603,7 +603,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -664,15 +664,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "parseResultDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "fixedBindingSubjectDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "body": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlBodyBinding"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlBodyBinding"
             },
             {
               "properties": {
@@ -740,7 +740,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "profileId": {
-                "const": "lifecycle.agent-work-product-body.reconnaissance.v2"
+                "const": "lifecycle.agent-work-product-body.reconnaissance.v4"
               },
               "roleSemantics": {
                 "$ref": "#/$defs/reconnaissanceSemantics"
@@ -748,7 +748,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "body": {
                 "properties": {
                   "profileId": {
-                    "const": "lifecycle.agent-work-product-body.reconnaissance.v2"
+                    "const": "lifecycle.agent-work-product-body.reconnaissance.v4"
                   }
                 }
               }
@@ -769,7 +769,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "profileId": {
-                "const": "lifecycle.agent-work-product-body.builder.v2"
+                "const": "lifecycle.agent-work-product-body.builder.v4"
               },
               "roleSemantics": {
                 "$ref": "#/$defs/builderSemantics"
@@ -777,7 +777,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "body": {
                 "properties": {
                   "profileId": {
-                    "const": "lifecycle.agent-work-product-body.builder.v2"
+                    "const": "lifecycle.agent-work-product-body.builder.v4"
                   }
                 }
               }
@@ -798,7 +798,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "profileId": {
-                "const": "lifecycle.agent-work-product-body.reviewer.v2"
+                "const": "lifecycle.agent-work-product-body.reviewer.v4"
               },
               "roleSemantics": {
                 "$ref": "#/$defs/reviewerSemantics"
@@ -806,7 +806,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "body": {
                 "properties": {
                   "profileId": {
-                    "const": "lifecycle.agent-work-product-body.reviewer.v2"
+                    "const": "lifecycle.agent-work-product-body.reviewer.v4"
                   }
                 }
               }
@@ -831,7 +831,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "category": {
               "enum": [
@@ -851,7 +851,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "knowledgeIds": {
               "$ref": "#/$defs/knowledgeIdSet"
@@ -871,7 +871,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -890,10 +890,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "subjectId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "subjectKind": {
               "enum": [
@@ -906,19 +906,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "subjectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "locator": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "authorityClass": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/provenanceClass"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/provenanceClass"
             },
             "claimIds": {
               "$ref": "#/$defs/nonemptyIdSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -932,13 +932,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -956,7 +956,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "kind": {
               "enum": [
@@ -972,13 +972,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "trigger": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "target": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "reversibility": {
               "enum": [
@@ -989,7 +989,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1146,7 +1146,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "obligations",
             "artifacts",
             "checks",
-            "propositions"
+            "propositions",
+            "selectedWorkTypeIds"
           ],
           "properties": {
             "selectedKnowledgeIds": {
@@ -1156,7 +1157,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "capabilityProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "projectionProfile": {
               "enum": [
@@ -1221,6 +1222,9 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "items": {
                 "$ref": "#/$defs/boundaryProposition"
               }
+            },
+            "selectedWorkTypeIds": {
+              "$ref": "#/$defs/idSet"
             }
           }
         },
@@ -1234,13 +1238,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "interpretation": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1261,13 +1265,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "selectedMeaning": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "whyNow": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "included": {
               "$ref": "#/$defs/nonemptyTextSet"
@@ -1288,7 +1292,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/textSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1306,10 +1310,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "effectIds": {
               "$ref": "#/$defs/idSet"
@@ -1328,7 +1332,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1347,7 +1351,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "kind": {
               "enum": [
@@ -1364,7 +1368,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "sourceIds": {
               "$ref": "#/$defs/idSet"
@@ -1382,7 +1386,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1400,10 +1404,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "role": {
               "enum": [
@@ -1425,10 +1429,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nonemptyIdSet"
             },
             "changeRule": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1449,10 +1453,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "checkKnowledgeId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "bindingIds": {
               "$ref": "#/$defs/nonemptyIdSet"
@@ -1467,7 +1471,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "purpose": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "obligationIds": {
               "$ref": "#/$defs/nonemptyIdSet"
@@ -1482,7 +1486,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/textSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1505,10 +1509,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "claim": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "evidenceKinds": {
               "type": "array",
@@ -1544,7 +1548,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 }
               ]
             },
@@ -1554,7 +1558,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             },
@@ -1567,12 +1571,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 }
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1658,12 +1662,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "statement",
             "falsifiedMandateIds",
             "knowledgeIds",
-            "founderJudgmentRequired",
+            "directorJudgmentRequired",
             "fragmentDigest"
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "conditionClass": {
               "enum": [
@@ -1674,7 +1678,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "risk-change",
                 "architecture-conflict",
                 "assurance-conflict",
-                "founder-tradeoff",
+                "director-tradeoff",
                 "missing-authority",
                 "missing-required-source",
                 "required-capability-unavailable",
@@ -1683,7 +1687,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "falsifiedMandateIds": {
               "$ref": "#/$defs/idSet"
@@ -1691,11 +1695,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "knowledgeIds": {
               "$ref": "#/$defs/knowledgeIdSet"
             },
-            "founderJudgmentRequired": {
+            "directorJudgmentRequired": {
               "type": "boolean"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1707,7 +1711,9 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "judgments",
             "mandateExcess",
             "missingObligationIds",
-            "conditions"
+            "conditions",
+            "mandateApplicability",
+            "baselineApplicability"
           ],
           "properties": {
             "role": {
@@ -1734,6 +1740,17 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "items": {
                 "$ref": "#/$defs/materialCondition"
               }
+            },
+            "mandateApplicability": {
+              "$ref": "#/$defs/mandateApplicability"
+            },
+            "baselineApplicability": {
+              "type": "array",
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/baselineApplicability"
+              }
             }
           }
         },
@@ -1753,10 +1770,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "propositionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "disposition": {
               "enum": [
@@ -1773,7 +1790,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nonemptyIdSet"
             },
             "rationale": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "uncertainty": {
               "enum": [
@@ -1787,7 +1804,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -1796,7 +1813,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         },
         "nonemptyIdSet": {
@@ -1805,7 +1822,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         },
         "knowledgeIdSet": {
@@ -1813,7 +1830,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
           }
         },
         "nonemptyKnowledgeIdSet": {
@@ -1822,7 +1839,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
           }
         },
         "pathSet": {
@@ -1830,7 +1847,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
           }
         },
         "textSet": {
@@ -1838,7 +1855,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "nonemptyTextSet": {
@@ -1847,16 +1864,292 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+          }
+        },
+        "mandateApplicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disposition",
+            "rationale",
+            "citationIds",
+            "fragmentDigest"
+          ],
+          "properties": {
+            "disposition": {
+              "enum": [
+                "applicable",
+                "requires-readmission",
+                "indeterminate"
+              ]
+            },
+            "rationale": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "citationIds": {
+              "$ref": "#/$defs/idSet"
+            },
+            "fragmentDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "baselineApplicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "receiptId",
+            "disposition",
+            "rationale",
+            "citationIds",
+            "fragmentDigest"
+          ],
+          "properties": {
+            "receiptId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "disposition": {
+              "enum": [
+                "applicable",
+                "insufficient",
+                "indeterminate"
+              ]
+            },
+            "rationale": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "citationIds": {
+              "$ref": "#/$defs/idSet"
+            },
+            "fragmentDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           }
         }
       }
     },
   },
   {
+    path: "spec-source/schemas/agent-work-product-validation-basis.schema.json",
+    id: "urn:lifecycle:schema:agent-work-product-validation-basis:v1",
+    sourceDigest: "sha256:7ebbc1e386d451fb58cb5651c253c14ba1fb8a99f31fbf8ce1b0a526dc52edc1",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:agent-work-product-validation-basis:v1",
+      "title": "Lifecycle compact semantic authoring basis v1",
+      "description": "Exact immutable inputs for scoped local semantic draft inspection and independent final Runtime validation. A supplied value or passing local result grants no currentness or authority.",
+      "$comment": "Semantic ownership requires canonical self-digest, sorted unique citation facts by id, sorted unique proposition identities, exact installed template/parser/compiler digests, and matching role/body profile. Runtime construction verifies complete frozen registry and proposition inputs; the compact file omits locators and full subjects. Null propositionSetDigest requires an empty propositionIds array. Canonical UTF-8 bytes are limited to 8 MiB.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "role",
+        "bodyProfileId",
+        "templateDigest",
+        "parserProfileId",
+        "parserProfileDigest",
+        "compilerProfileId",
+        "compilerProfileDigest",
+        "citationRegistryDigest",
+        "citationFacts",
+        "propositionSetDigest",
+        "propositionIds",
+        "digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.agent-work-product-validation-basis.v1"
+        },
+        "role": {
+          "enum": [
+            "reconnaissance",
+            "builder",
+            "reviewer"
+          ]
+        },
+        "bodyProfileId": {
+          "enum": [
+            "lifecycle.agent-work-product-body.reconnaissance.v4",
+            "lifecycle.agent-work-product-body.builder.v4",
+            "lifecycle.agent-work-product-body.reviewer.v4"
+          ]
+        },
+        "templateDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "parserProfileId": {
+          "const": "lifecycle.agent-work-product-parser.v4"
+        },
+        "parserProfileDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "compilerProfileId": {
+          "const": "lifecycle.agent-work-product-compiler.v4"
+        },
+        "compilerProfileDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "citationRegistryDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "citationFacts": {
+          "type": "array",
+          "maxItems": 16384,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "knowledgeIdentity"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "kind": {
+                "enum": [
+                  "knowledge",
+                  "projection",
+                  "source",
+                  "candidate",
+                  "evidence",
+                  "boundary"
+                ]
+              },
+              "knowledgeIdentity": {
+                "oneOf": [
+                  {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "knowledge"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "knowledgeIdentity": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "knowledgeIdentity": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "propositionSetDigest": {
+          "oneOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "propositionIds": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+          }
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "reconnaissance"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bodyProfileId": {
+                "const": "lifecycle.agent-work-product-body.reconnaissance.v4"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "builder"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bodyProfileId": {
+                "const": "lifecycle.agent-work-product-body.builder.v4"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "reviewer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "bodyProfileId": {
+                "const": "lifecycle.agent-work-product-body.reviewer.v4"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "propositionSetDigest": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "propositionIds": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+  },
+  {
     path: "spec-source/schemas/atlas-resolution.schema.json",
     id: "urn:lifecycle:schema:atlas-resolution:v2",
-    sourceDigest: "sha256:1b031e1b15600fe8b3a6606dcde1ca2d8ebb330b082c78b3a0807a6fb67f44d8",
+    sourceDigest: "sha256:4f263645764f42ce96099f5fadf87d750ac1de07a4f17c980f937f4913258710",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:atlas-resolution:v2",
@@ -1882,11 +2175,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.atlas-resolution.v2"
         },
         "selection": {
-          "description": "The complete exact Atlas 0.7.0 selection fixed by repository contract v15.",
-          "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/atlasSelection"
+          "description": "The complete exact Atlas 0.8.0 selection fixed by repository contract v22.",
+          "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/atlasSelection"
         },
         "atlasStateDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "resourceBindings": {
           "description": "Ordered Resource bindings. JSON Schema uniqueItems rejects repeated complete binding values; Resource-id uniqueness and Unicode code-point ordering require semantic validation.",
@@ -1898,7 +2191,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "resourceBindingsDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "processor": {
           "type": "object",
@@ -1913,18 +2206,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "atlas-reference-validator"
             },
             "version": {
-              "const": "0.7.0"
+              "const": "0.8.0"
             },
             "implementationDigest": {
               "description": "Canonical digest of the exact installed processor file manifest selected for execution, excluding caches and mutable runtime support.",
-              "const": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+              "const": "sha256:7432f9d49b9efdc828fbbc573fa32f395def8e201c628d7741ba56b2acf230be"
             }
           }
         },
         "externalValidationResultDigest": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             {
               "type": "null"
@@ -1934,7 +2227,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "normalizedModelDigest": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             {
               "type": "null"
@@ -1948,7 +2241,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "type": "boolean"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "oneOf": [
@@ -1956,10 +2249,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "description": "A complete valid outcome carries both complete external-result and normalized-model identities.",
           "properties": {
             "externalValidationResultDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "normalizedModelDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "complete": {
               "const": true
@@ -1973,7 +2266,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "description": "A complete invalid outcome carries the complete external result but no normalized model.",
           "properties": {
             "externalValidationResultDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "normalizedModelDigest": {
               "type": "null"
@@ -2005,7 +2298,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "nullablePath": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             {
               "type": "null"
@@ -2015,7 +2308,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "nullableGitObject": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             {
               "type": "null"
@@ -2025,7 +2318,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "nullableDigest": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             {
               "type": "null"
@@ -2046,10 +2339,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "resourceId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "uri": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "path": {
               "$ref": "#/$defs/nullablePath"
@@ -2095,16 +2388,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "path": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   },
                   "mode": {
                     "const": "100644"
                   },
                   "objectId": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
                   },
                   "byteDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -2126,7 +2419,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "path": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   },
                   "mode": {
                     "type": "null"
@@ -2179,7 +2472,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/atlas-state.schema.json",
     id: "urn:lifecycle:schema:atlas-state:v1",
-    sourceDigest: "sha256:6296af47fd6620ad00fc6e8874776c9a96ebb88fc7184074863aa965c4ca9069",
+    sourceDigest: "sha256:15b228be211681f41cdd7ac4fb63ab288b773c3f3b56abc2a4668a0673420081",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:atlas-state:v1",
@@ -2200,7 +2493,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -2214,13 +2507,530 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "mode": {
               "const": "100644"
             },
             "objectId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            }
+          }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/authorization-review.schema.json",
+    id: "urn:lifecycle:schema:authorization-review:v1",
+    sourceDigest: "sha256:3343b3ae16062159aeb42e76f783d6a95b3e9338abf565b2d68cd0d760943368",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:authorization-review:v1",
+      "title": "Lifecycle Authorization Review v1",
+      "description": "Deterministic reviewable semantic core compiled before Director authentication; operation-instance and authentication mechanics are deliberately absent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "targetId",
+        "storeId",
+        "processId",
+        "operation",
+        "decision",
+        "consequence",
+        "semanticMarkdown",
+        "semanticDigest",
+        "journalHead",
+        "reducerFactsDigest",
+        "repository",
+        "selectedControl",
+        "coordinates",
+        "authority",
+        "candidateDisposition",
+        "authorizationReviewDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.authorization-review.v1"
+        },
+        "targetId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "storeId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "processId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "operation": {
+          "enum": [
+            "delivery.admit",
+            "delivery.accept",
+            "delivery.no-ship"
+          ]
+        },
+        "decision": {
+          "enum": [
+            "admit",
+            "readmit",
+            "accept",
+            "no-ship"
+          ]
+        },
+        "consequence": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "semanticMarkdown": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
+          "pattern": "^(?![\\s\\S]*\\r)(?![\\s\\S]*\\u0000)(?=[\\s\\S]*\\S)[\\s\\S]*\\n$"
+        },
+        "semanticDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "journalHead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "digest"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "reducerFactsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repositorySnapshotDigest",
+            "canonicalCommit",
+            "canonicalTree",
+            "productStateDigest",
+            "atlasStateDigest",
+            "atlasResolutionDigest",
+            "atlasNormalizedModelDigest",
+            "atlasResourceBindingsDigest",
+            "repositoryContractDigest",
+            "knowledgeSetDigest",
+            "checkBindingSetDigest"
+          ],
+          "properties": {
+            "repositorySnapshotDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "canonicalCommit": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            "canonicalTree": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            "productStateDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "atlasStateDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "atlasResolutionDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "atlasNormalizedModelDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "atlasResourceBindingsDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "repositoryContractDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "knowledgeSetDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "checkBindingSetDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "selectedControl": {
+          "type": "array",
+          "maxItems": 4100,
+          "items": {
+            "$ref": "#/$defs/controlBinding"
+          }
+        },
+        "coordinates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "qualification",
+            "repository",
+            "provider",
+            "authoritySubject",
+            "transactionRules"
+          ],
+          "properties": {
+            "qualification": {
+              "const": "lifecycle.foundation.1.0.0-rc.17"
+            },
+            "repository": {
+              "const": "lifecycle.repository.v22"
+            },
+            "provider": {
+              "const": "lifecycle.provider-adapter.v7"
+            },
+            "authoritySubject": {
+              "const": "lifecycle.director-decision-subject.v4"
+            },
+            "transactionRules": {
+              "const": "lifecycle.delivery-transaction-rules.v1"
+            }
+          }
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "principalId",
+            "keyId",
+            "algorithm"
+          ],
+          "properties": {
+            "principalId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "keyId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "algorithm": {
+              "const": "ed25519"
+            }
+          }
+        },
+        "candidateDisposition": {
+          "enum": [
+            "not-applicable",
+            "no-candidate",
+            "abandon"
+          ]
+        },
+        "authorizationReviewDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "delivery.admit"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "enum": [
+                  "admit",
+                  "readmit"
+                ]
+              },
+              "candidateDisposition": {
+                "const": "not-applicable"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "delivery.accept"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "const": "accept"
+              },
+              "candidateDisposition": {
+                "const": "not-applicable"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "delivery.no-ship"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "const": "no-ship"
+              },
+              "candidateDisposition": {
+                "enum": [
+                  "no-candidate",
+                  "abandon"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "$defs": {
+        "controlTarget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "work-boundary",
+                "check-receipt",
+                "material-condition",
+                "candidate-revision",
+                "candidate-seal",
+                "evidence-packet"
+              ]
+            },
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "controlBinding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "relation",
+            "target"
+          ],
+          "properties": {
+            "relation": {
+              "enum": [
+                "selects-boundary",
+                "selects-baseline-receipt",
+                "continues-from-boundary",
+                "resolves",
+                "selects-candidate",
+                "selects-seal",
+                "selects-evidence"
+              ]
+            },
+            "target": {
+              "$ref": "#/$defs/controlTarget"
+            }
+          }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/builder-repair-output.schema.json",
+    id: "urn:lifecycle:schema:builder-repair-output:v1",
+    sourceDigest: "sha256:542ef48f3ef114cbfb4589575dcb4834788fb0146554b60c0a834c4872cf65bc",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:builder-repair-output:v1",
+      "title": "Lifecycle Builder Repair Output v1",
+      "description": "Runtime-derived Receipt-adjacent selection of a complete rejected Product Carrier for read-only repair. It does not select a Candidate Revision.",
+      "$comment": "The canonical JSON line is at most 65,536 UTF-8 bytes. Each self-digest omits only its own digest field. The Receipt must select both this descriptor and the unchanged Carrier manifest using the manifest's established purpose and media type. The manifest file digest, root tree and application base must equal the owner-issued rejection. The original Attempt, Work Boundary and input Candidate are exact retained provenance. Only the owning Runtime compiler creates the descriptor; provider-authored bytes cannot create this selection. Carrier closure and artifact bytes are independently reopened, and a missing exact binding is unavailable rather than an omitted repair source.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "attempt",
+        "boundary",
+        "inputCandidate",
+        "rejection",
+        "carrierManifest",
+        "digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.builder-repair-output.v1"
+        },
+        "attempt": {
+          "$ref": "#/$defs/reference"
+        },
+        "boundary": {
+          "$ref": "#/$defs/reference"
+        },
+        "inputCandidate": {
+          "$ref": "#/$defs/reference"
+        },
+        "rejection": {
+          "$ref": "#/$defs/rejection"
+        },
+        "carrierManifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "digest",
+            "byteLength",
+            "mediaType",
+            "purpose"
+          ],
+          "properties": {
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 268435456
+            },
+            "mediaType": {
+              "const": "application/vnd.lifecycle.candidate-revision-carrier-manifest+json"
+            },
+            "purpose": {
+              "const": "candidate-revision-carrier-manifest"
+            }
+          }
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      },
+      "$defs": {
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "rejection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "manifestFileDigest",
+            "candidateTree",
+            "applicationBaseCommit",
+            "explanation",
+            "knowledgeDiagnostic",
+            "validationResultDigest",
+            "violationDigest",
+            "digest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.candidate-output-rejection.v1"
+            },
+            "manifestFileDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "candidateTree": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            "applicationBaseCommit": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            "explanation": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384,
+              "$comment": "The owner also enforces a 16,384-byte UTF-8 maximum; it carries a bounded Candidate explanation, never a raw exception dump."
+            },
+            "knowledgeDiagnostic": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "code",
+                    "locator"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "locator": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4096,
+                          "pattern": "^(?!/)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.?(?:/|$)).+$"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "validationResultDigest": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              ]
+            },
+            "violationDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -2230,7 +3040,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/candidate-revision-carrier-manifest.schema.json",
     id: "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
-    sourceDigest: "sha256:2e51eece863d00519bfa1b260f12103618a853c6db03a0895656f9ea77fa85b1",
+    sourceDigest: "sha256:1e513cf09efc38ca7180e25c5d0f0e768faac2099089b0f28780952c28987691",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
@@ -2262,7 +3072,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "rootTree": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
         },
         "allowedTreeModes": {
           "const": [
@@ -2291,13 +3101,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maximum": 9007199254740991
         },
         "objectInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "carrierArtifact": {
           "$ref": "#/$defs/carrierArtifact"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -2311,7 +3121,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "objectId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectType": {
               "enum": [
@@ -2344,7 +3154,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 9007199254740991
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -2353,12 +3163,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/candidate-revision-payload.schema.json",
-    id: "urn:lifecycle:schema:candidate-revision-payload:v2",
-    sourceDigest: "sha256:87e5c3ea902ac93b05d75e1b4f564ac1ad7df8c8c05062bcf5e7d938be5af3a3",
+    id: "urn:lifecycle:schema:candidate-revision-payload:v3",
+    sourceDigest: "sha256:7e6357bb812f31d7101aaa2d9959aa2f1d7429f2026992b5f5f084b2d6ae3b32",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:candidate-revision-payload:v2",
-      "title": "Lifecycle Candidate Revision Payload v2",
+      "$id": "urn:lifecycle:schema:candidate-revision-payload:v3",
+      "title": "Lifecycle Candidate Revision Payload v3",
       "description": "Exact valid and reconstructible state of Delivery's continuing reversible Candidate.",
       "$comment": "Semantic validation reopens the exact adjacent Candidate Revision Carrier manifest and its complete Git object closure before retaining the Revision, requires the Carrier root tree and every reproduced Candidate digest to equal state, and requires the observation-specific relationships and atomic publication rules. Invalid, unavailable, missing, or provisional output never creates this payload.",
       "type": "object",
@@ -2375,20 +3185,21 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.candidate-revision-payload.v2"
+          "const": "lifecycle.candidate-revision-payload.v3"
         },
         "profileId": {
-          "const": "lifecycle.candidate-revision.observation.v1"
+          "const": "lifecycle.candidate-revision.observation.v2"
         },
         "observation": {
           "enum": [
             "initialization",
             "builder-successor",
-            "readmission-rebind"
+            "readmission-rebind",
+            "integration-successor"
           ]
         },
         "candidateBaseCommit": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
         },
         "carrierManifest": {
           "$ref": "#/$defs/carrierManifestReference"
@@ -2405,10 +3216,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -2417,7 +3228,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 128,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         }
       },
@@ -2425,7 +3236,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "carrierManifestReference": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/retainedFileReference"
             },
             {
               "type": "object",
@@ -2461,28 +3272,28 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "candidateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "productStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "knowledgeSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "diffDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "pathInventoryDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "artifactSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "descriptionCoverageDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "unchangedFromPredecessor": {
               "type": "boolean"
@@ -2502,7 +3313,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "path": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   },
                   "change": {
                     "enum": [
@@ -2531,7 +3342,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         }
@@ -2541,7 +3352,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/candidate-seal-payload.schema.json",
     id: "urn:lifecycle:schema:candidate-seal-payload:v2",
-    sourceDigest: "sha256:1360c0acb1613cbf12867393b1a2221e83e067beca902ea374cb719e5e4ed6f6",
+    sourceDigest: "sha256:37c3c9771c70ce5d6888919e019fa9fd54666c28f637c655bc7861a1f0ec8665",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:candidate-seal-payload:v2",
@@ -2597,16 +3408,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "ruleSetId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "ruleSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -2615,7 +3426,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 128,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         }
       }
@@ -2624,7 +3435,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/capability-profile.schema.json",
     id: "urn:lifecycle:schema:capability-profile:v2",
-    sourceDigest: "sha256:1aec0859547c4fb45b39c3a6d02e94138fb6f7a25ae998e8155f86c7c1aafbde",
+    sourceDigest: "sha256:9c58146ee82bf95a30e1bcbee2033cff6e90317a20e2997be66ca4b6bcbb91e7",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:capability-profile:v2",
@@ -2645,7 +3456,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "candidateWrites": {
           "type": "boolean"
@@ -2691,19 +3502,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
   },
   {
     path: "spec-source/schemas/check-receipt-payload.schema.json",
-    id: "urn:lifecycle:schema:check-receipt-payload:v2",
-    sourceDigest: "sha256:c5f26c40d7f87c7fc8cc2bfc14eb3f07c68a9a45ef2595d6d16a6e4a0565c4df",
+    id: "urn:lifecycle:schema:check-receipt-payload:v3",
+    sourceDigest: "sha256:237c42a3eba31e258a946fa078951849f96609c85ee00d88dbc69470f94c07b3",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:check-receipt-payload:v2",
-      "title": "Lifecycle Check Receipt Payload v2",
+      "$id": "urn:lifecycle:schema:check-receipt-payload:v3",
+      "title": "Lifecycle Check Receipt Payload v3",
       "description": "Runtime-observed operational proof facts for one exact Work Boundary or Candidate Seal through the private Execution contract.",
       "$comment": "An allocated Check binds its exact Backend Profile, Image, Input Set, Specification, Cell runner, terminal Observation, optional retrieved Output Carrier and Manifest, Containment, and Runtime-owned Retirement. A Check classified not-run or unsupported before allocation carries no execution digests and uses not-required Containment and Retirement. No branch may expose a Handle, allocation key, Cell or container identity, endpoint, credential, path, or Reclamation state.",
       "type": "object",
@@ -2736,13 +3547,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.check-receipt-payload.v2"
+          "const": "lifecycle.check-receipt-payload.v3"
         },
         "profileId": {
           "const": "lifecycle.check-receipt.foundation-v1"
         },
         "selectionId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "definition": {
           "type": "object",
@@ -2755,16 +3566,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "sourceDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "semanticDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -2778,13 +3589,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -2804,7 +3615,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "proofRequestDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "startedAt": {
           "$ref": "#/$defs/nullableTime"
@@ -2819,11 +3630,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "identityDigest",
             "requested",
             "runtimeEnforced",
-            "founderManaged"
+            "directorManaged"
           ],
           "properties": {
             "identityDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "requested": {
               "$ref": "#/$defs/conditionSet"
@@ -2831,7 +3642,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "runtimeEnforced": {
               "$ref": "#/$defs/conditionSet"
             },
-            "founderManaged": {
+            "directorManaged": {
               "$ref": "#/$defs/conditionSet"
             }
           }
@@ -2859,7 +3670,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             ],
             "properties": {
               "name": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
               },
               "value": {
                 "anyOf": [
@@ -2878,7 +3689,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "type": "number"
                   },
                   {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
                   }
                 ]
               }
@@ -2926,7 +3737,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 16,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/adjacentFileAvailability"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/adjacentFileAvailability"
           }
         },
         "subjectIntegrity": {
@@ -2967,7 +3778,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 128,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         }
       },
@@ -3027,7 +3838,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "reasonCode": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
               },
               "notRunAuthorization": {
                 "type": "object"
@@ -3052,7 +3863,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "reasonCode": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
               },
               "notRunAuthorization": {
                 "type": "null"
@@ -3077,7 +3888,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "then": {
             "properties": {
               "reasonCode": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
               },
               "notRunAuthorization": {
                 "type": "null"
@@ -3215,7 +4026,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
             }
           ]
         },
@@ -3225,7 +4036,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
@@ -3235,7 +4046,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             }
           ]
         },
@@ -3244,7 +4055,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 128,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         },
         "baselinePostconditionAuthorization": {
@@ -3272,10 +4083,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "upstream-condition"
             },
             "conditionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "conditionDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3289,13 +4100,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "stage": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3315,10 +4126,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3331,10 +4142,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "imageId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "imageDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3347,10 +4158,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "const": "lifecycle.execution-input-set.v1"
+              "const": "lifecycle.execution-input-set.v2"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3410,10 +4221,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "maximum": 9007199254740991
                   },
                   "carrierDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "manifestDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               },
@@ -3464,13 +4275,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/inputSetReference"
             },
             "specificationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "runnerDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "observationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "output": {
               "$ref": "#/$defs/outputBinding"
@@ -3536,7 +4347,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "contained"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3568,7 +4379,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "retired"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3597,10 +4408,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -3609,13 +4420,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/closure-payload.schema.json",
-    id: "urn:lifecycle:schema:closure-payload:v4",
-    sourceDigest: "sha256:868f0a5ce57dc25302615d811959576e97b5b3b810b6050911cb43d6e9342326",
+    id: "urn:lifecycle:schema:closure-payload:v6",
+    sourceDigest: "sha256:3267af58d9bf322b0ea90b4653c41aaae616c01cfcc00dc1270a97fc46b648c3",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:closure-payload:v4",
-      "title": "Lifecycle Closure Payload v4",
-      "description": "Sufficient terminal Delivery facts after one applied Founder-authenticated acceptance or no-ship transaction.",
+      "$id": "urn:lifecycle:schema:closure-payload:v6",
+      "title": "Lifecycle Closure Payload v6",
+      "description": "Sufficient terminal Delivery facts after one applied Director-authenticated acceptance or no-ship transaction.",
       "$comment": "Closure proves final execution disposition, synchronous Containment and Runtime-owned Retirement, and durable handoff of the exact remaining Reclamation obligation set. It contains no Handle, Cell identity, backend coordinate, physical path, handoff payload, current or later Reclamation ledger state, and it does not claim synchronous deletion or secure erasure.",
       "type": "object",
       "additionalProperties": false,
@@ -3634,7 +4445,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.closure-payload.v4"
+          "const": "lifecycle.closure-payload.v6"
         },
         "profileId": {
           "const": "lifecycle.delivery-closure.foundation-v1"
@@ -3658,25 +4469,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "effectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "outcome": {
               "const": "applied"
             },
             "observationFactsSchema": {
               "enum": [
-                "lifecycle.terminal-acceptance-effect-observation.v1",
+                "lifecycle.terminal-acceptance-effect-observation.v2",
                 "lifecycle.terminal-repository-effect-observation.v1"
               ]
             },
             "observationFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "canonicalResultDigest": {
               "$ref": "#/$defs/nullableDigest"
             },
             "observedAt": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
             }
           }
         },
@@ -3711,7 +4522,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "terminalExecutionSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "executionCount": {
               "$ref": "#/$defs/nonnegativeSafeInteger"
@@ -3733,7 +4544,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "obligationSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "obligationCount": {
               "$ref": "#/$defs/nonnegativeSafeInteger"
@@ -3756,36 +4567,36 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "qualification": {
-              "const": "lifecycle.foundation.1.0.0-rc.10"
+              "const": "lifecycle.foundation.1.0.0-rc.17"
             },
             "repository": {
-              "const": "lifecycle.repository.v15"
+              "const": "lifecycle.repository.v22"
             },
             "runtimeProtocol": {
-              "const": "lifecycle.runtime.foundation.v10"
+              "const": "lifecycle.runtime.foundation.v17"
             },
             "interfaceProtocol": {
-              "const": "lifecycle.interface.foundation.v10"
+              "const": "lifecycle.interface.foundation.v17"
             },
             "provider": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             },
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "ruleSetId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "ruleSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
         "terminalAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         }
       },
       "allOf": [
@@ -3811,10 +4622,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "transaction": {
                 "properties": {
                   "observationFactsSchema": {
-                    "const": "lifecycle.terminal-acceptance-effect-observation.v1"
+                    "const": "lifecycle.terminal-acceptance-effect-observation.v2"
                   },
                   "canonicalResultDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               },
@@ -3858,7 +4669,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
@@ -3879,7 +4690,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "complete"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -3897,25 +4708,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "parentCommit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "parentTree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "candidateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "productStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "knowledgeSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -3924,11 +4735,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/common.schema.json",
-    id: "urn:lifecycle:schema:common:v1",
-    sourceDigest: "sha256:f58a45cc718e4490db6e441cffc313eb1b71c5ac8e1b123e388fde88ce871105",
+    id: "urn:lifecycle:schema:common:v2",
+    sourceDigest: "sha256:76a1fa0a876a2e3a5fd533adc54487da14308e663d418e73c746502eb269b5da",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:common:v1",
+      "$id": "urn:lifecycle:schema:common:v2",
       "title": "Lifecycle Common Definitions",
       "type": "object",
       "$defs": {
@@ -3979,7 +4790,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "kind": {
               "enum": [
                 "agent",
-                "founder",
+                "director",
                 "runtime"
               ]
             },
@@ -3991,8 +4802,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "controlSemanticAuthority": {
           "enum": [
             "agent-proposed",
-            "founder-supplied",
-            "founder-authenticated",
+            "director-supplied",
+            "director-authenticated",
             "runtime-observed",
             "runtime-derived"
           ]
@@ -4093,7 +4904,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "type": "string",
           "minLength": 3,
           "maxLength": 160,
-          "pattern": "^(?:behavior|assurance|blueprint|description|check)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+          "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
         },
         "ownerId": {
           "type": "string",
@@ -4111,6 +4922,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "type": "string",
           "minLength": 1,
           "maxLength": 16384,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "orientationObjective": {
+          "description": "The complete Orientation objective is nonempty NUL-free semantic text of at most 1,048,576 UTF-8 bytes. This structural character ceiling is necessary but not sufficient: the Projection owner independently enforces the UTF-8 byte bound on request and completed core content.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
           "pattern": "^[^\\u0000]+$"
         },
         "normalizedPath": {
@@ -4141,8 +4959,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "runtime-observed",
             "runtime-derived",
             "agent-proposed",
-            "founder-supplied",
-            "founder-authenticated"
+            "director-supplied",
+            "director-authenticated"
           ]
         },
         "identityReference": {
@@ -4416,7 +5234,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/conformance-claim.schema.json",
     id: "urn:lifecycle:schema:conformance-claim:v2",
-    sourceDigest: "sha256:cf9777281b4a8f7b4b463112d36466d39f1f17d54645b21ec3f122ba0d398268",
+    sourceDigest: "sha256:938e85538741027ec3995cf71cbfaa3b5a3a3e4321d72b90e10ebc91125a8dfc",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:conformance-claim:v2",
@@ -4451,25 +5269,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.conformance-claim.v2"
         },
         "claimId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "specificationId": {
           "const": "lifecycle"
         },
         "specificationVersion": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "publicationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "publicationStatementDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "releaseNotesDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "issuer": {
           "$ref": "#/$defs/issuer"
@@ -4503,7 +5321,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "minimum": 0
               },
               {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
               },
               {
                 "type": "boolean"
@@ -4519,7 +5337,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 64,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
           }
         },
         "extensions": {
@@ -4527,7 +5345,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 256,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
           }
         },
         "evidence": {
@@ -4552,7 +5370,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -4561,7 +5379,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 256,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
           }
         },
         "issuer": {
@@ -4574,15 +5392,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
             },
             "name": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "contact": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
                 },
                 {
                   "type": "null"
@@ -4603,19 +5421,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "buildId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "artifactDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "sourceRevision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             }
           }
         },
@@ -4666,7 +5484,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "assurance",
                   "blueprint",
                   "description",
-                  "check"
+                  "check",
+                  "discipline"
                 ]
               }
             },
@@ -4712,10 +5531,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "draft": {
               "const": "2020-12"
@@ -4752,10 +5571,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "locator": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "complete": {
               "type": "boolean"
@@ -4781,15 +5600,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "validationBundleDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "fixtureBundleDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "operatedBundleDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -4839,21 +5658,21 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "requirement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "detail": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "consequence": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "workaround": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -4863,7 +5682,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "plannedResolution": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -4876,14 +5695,1041 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
     },
   },
   {
-    path: "spec-source/schemas/control-lifecycle-profile.schema.json",
-    id: "urn:lifecycle:schema:control-lifecycle-profile:v4",
-    sourceDigest: "sha256:ce893dbccaa6ae05412ec5c76ef4a5f363aaf6a1a6d1904ea86eb93f6aabb77b",
+    path: "spec-source/schemas/context-inspection-selector.schema.json",
+    id: "urn:lifecycle:schema:context-inspection-selector:v3",
+    sourceDigest: "sha256:088425ff17ae2b3c66872e84567a979b1809074f33dd23f19947d04c2338e255",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:control-lifecycle-profile:v4",
-      "title": "Lifecycle Control Lifecycle Profile v4",
-      "description": "Exact Foundation profile for the per-Delivery Control Record Store and its twelve closed Delivery record families.",
+      "$id": "urn:lifecycle:schema:context-inspection-selector:v3",
+      "title": "Lifecycle Context Inspection Selector v3",
+      "description": "Closed nine-kind selector union for retained-provenance Knowledge, Code, Atlas and Source reads, plus full-generation Authorization Review.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/knowledgeIndex"
+        },
+        {
+          "$ref": "#/$defs/knowledgeRecord"
+        },
+        {
+          "$ref": "#/$defs/codeIndex"
+        },
+        {
+          "$ref": "#/$defs/codeFile"
+        },
+        {
+          "$ref": "#/$defs/atlasOverview"
+        },
+        {
+          "$ref": "#/$defs/atlasPoint"
+        },
+        {
+          "$ref": "#/$defs/atlasResource"
+        },
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "$ref": "#/$defs/authorizationReview"
+        }
+      ],
+      "$defs": {
+        "cursor": {
+          "oneOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "repositoryRelativePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//)(?!.*[?#])(?!.*%(?:2[fF]|5[cC]))[^\\u0000]+$",
+          "$comment": "Structural length is in Unicode code points; semantic interface validation additionally requires Unicode scalar values and at most 4096 UTF-8 bytes."
+        },
+        "knowledgeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+        },
+        "workBoundaryReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "work-boundary"
+            },
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "inspectionOrigin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "digest"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "inspectionBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "reference"
+          ],
+          "properties": {
+            "role": {
+              "enum": [
+                "proposed",
+                "active"
+              ]
+            },
+            "reference": {
+              "$ref": "#/$defs/workBoundaryReference"
+            }
+          }
+        },
+        "candidateReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "candidate-revision"
+            },
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "sealReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "candidate-seal"
+            },
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "targetId",
+            "storeId",
+            "processId",
+            "origin",
+            "boundary",
+            "digest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.context-selection.v1"
+            },
+            "targetId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "storeId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "processId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "origin": {
+              "$ref": "#/$defs/inspectionOrigin"
+            },
+            "boundary": {
+              "$ref": "#/$defs/inspectionBoundary"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          },
+          "$comment": "Semantic validation reproduces the self-digest and selected Boundary role/reference from the exact retained Journal origin; provenance is not current operation currency."
+        },
+        "codeSelection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "targetId",
+            "storeId",
+            "processId",
+            "origin",
+            "subject",
+            "boundary",
+            "candidate",
+            "seal",
+            "digest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.code-selection.v1"
+            },
+            "targetId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "storeId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "processId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "origin": {
+              "$ref": "#/$defs/inspectionOrigin"
+            },
+            "subject": {
+              "enum": [
+                "candidate",
+                "decision"
+              ]
+            },
+            "boundary": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/workBoundaryReference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "candidate": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/candidateReference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "seal": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/sealReference"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "candidate": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "candidate"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "boundary": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "subject": {
+                        "const": "candidate"
+                      }
+                    },
+                    "required": [
+                      "subject"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "candidate": {
+                        "type": "null"
+                      }
+                    },
+                    "required": [
+                      "candidate"
+                    ]
+                  }
+                ]
+              },
+              "then": {
+                "properties": {
+                  "seal": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "knowledgeReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "kind",
+            "status",
+            "revision",
+            "path",
+            "sourceDigest",
+            "semanticDigest"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+            },
+            "kind": {
+              "enum": [
+                "behavior",
+                "assurance",
+                "blueprint",
+                "description",
+                "check",
+                "discipline"
+              ]
+            },
+            "status": {
+              "enum": [
+                "draft",
+                "current",
+                "superseded",
+                "retired"
+              ]
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "path": {
+              "$ref": "#/$defs/repositoryRelativePath"
+            },
+            "sourceDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "semanticDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "knowledgeIndex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "context",
+            "afterCursor",
+            "limit"
+          ],
+          "properties": {
+            "kind": {
+              "const": "knowledge-index"
+            },
+            "context": {
+              "$ref": "#/$defs/context"
+            },
+            "afterCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "limit": {
+              "$ref": "#/$defs/limit"
+            }
+          }
+        },
+        "knowledgeRecord": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "context",
+            "reference"
+          ],
+          "properties": {
+            "kind": {
+              "const": "knowledge-record"
+            },
+            "context": {
+              "$ref": "#/$defs/context"
+            },
+            "reference": {
+              "$ref": "#/$defs/knowledgeReference"
+            }
+          }
+        },
+        "codeIndex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selection",
+            "subject",
+            "afterCursor",
+            "limit"
+          ],
+          "properties": {
+            "kind": {
+              "const": "code-index"
+            },
+            "selection": {
+              "$ref": "#/$defs/codeSelection"
+            },
+            "subject": {
+              "enum": [
+                "candidate",
+                "decision"
+              ]
+            },
+            "afterCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "limit": {
+              "$ref": "#/$defs/limit"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "subject": {
+                    "const": "candidate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selection": {
+                    "properties": {
+                      "subject": {
+                        "const": "candidate"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "subject": {
+                    "const": "decision"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selection": {
+                    "properties": {
+                      "subject": {
+                        "const": "decision"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "codeFile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selection",
+            "subject",
+            "fileCursor",
+            "maximumDiffBytes"
+          ],
+          "properties": {
+            "kind": {
+              "const": "code-file"
+            },
+            "selection": {
+              "$ref": "#/$defs/codeSelection"
+            },
+            "subject": {
+              "enum": [
+                "candidate",
+                "decision"
+              ]
+            },
+            "fileCursor": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "maximumDiffBytes": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 262144
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "subject": {
+                    "const": "candidate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selection": {
+                    "properties": {
+                      "subject": {
+                        "const": "candidate"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "subject": {
+                    "const": "decision"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selection": {
+                    "properties": {
+                      "subject": {
+                        "const": "decision"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "atlasOverview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "context",
+            "afterMapCursor",
+            "mapLimit",
+            "afterPointCursor",
+            "pointLimit",
+            "afterResourceCursor",
+            "resourceLimit"
+          ],
+          "properties": {
+            "kind": {
+              "const": "atlas-overview"
+            },
+            "context": {
+              "$ref": "#/$defs/context"
+            },
+            "afterMapCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "mapLimit": {
+              "$ref": "#/$defs/limit"
+            },
+            "afterPointCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "pointLimit": {
+              "$ref": "#/$defs/limit"
+            },
+            "afterResourceCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "resourceLimit": {
+              "$ref": "#/$defs/limit"
+            }
+          }
+        },
+        "atlasPoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "context",
+            "pointCursor",
+            "afterRecordCursor",
+            "recordLimit",
+            "afterRelationCursor",
+            "relationLimit"
+          ],
+          "properties": {
+            "kind": {
+              "const": "atlas-point"
+            },
+            "context": {
+              "$ref": "#/$defs/context"
+            },
+            "pointCursor": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "afterRecordCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "recordLimit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "afterRelationCursor": {
+              "$ref": "#/$defs/cursor"
+            },
+            "relationLimit": {
+              "$ref": "#/$defs/limit"
+            }
+          }
+        },
+        "atlasResourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "atlasResource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "context",
+            "resourceId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "atlas-resource"
+            },
+            "context": {
+              "$ref": "#/$defs/context"
+            },
+            "resourceId": {
+              "$ref": "#/$defs/atlasResourceId"
+            }
+          }
+        },
+        "sourceSubject": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "revision",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "knowledge-record"
+                },
+                "id": {
+                  "$ref": "#/$defs/knowledgeId"
+                },
+                "revision": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "atlas-point"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "atlas-resource"
+                },
+                "id": {
+                  "$ref": "#/$defs/atlasResourceId"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "repository-blob"
+                },
+                "id": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "revision",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "candidate-revision"
+                },
+                "id": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                },
+                "revision": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            }
+          ]
+        },
+        "sourceReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "selection",
+            "basisDigest",
+            "sourceKind",
+            "subject",
+            "label",
+            "path",
+            "mediaType",
+            "contentDigest",
+            "byteLength",
+            "digest"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.source-reference.v2"
+            },
+            "selection": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/context"
+                },
+                {
+                  "$ref": "#/$defs/codeSelection"
+                }
+              ]
+            },
+            "basisDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "sourceKind": {
+              "enum": [
+                "knowledge-body",
+                "atlas-body",
+                "atlas-resource",
+                "canonical-blob",
+                "candidate-blob"
+              ]
+            },
+            "subject": {
+              "$ref": "#/$defs/sourceSubject"
+            },
+            "label": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "path": {
+              "$ref": "#/$defs/repositoryRelativePath"
+            },
+            "mediaType": {
+              "enum": [
+                "markdown",
+                "plain",
+                "json"
+              ]
+            },
+            "contentDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777216
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "sourceKind": {
+                    "enum": [
+                      "canonical-blob",
+                      "candidate-blob"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "selection": {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/codeSelection"
+                      },
+                      {
+                        "properties": {
+                          "boundary": {
+                            "$ref": "#/$defs/workBoundaryReference"
+                          },
+                          "candidate": {
+                            "$ref": "#/$defs/candidateReference"
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "subject": {
+                              "const": "decision"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "seal": {
+                              "$ref": "#/$defs/sealReference"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "selection": {
+                    "$ref": "#/$defs/context"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "reference",
+            "startByte",
+            "maximumBytes"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source"
+            },
+            "reference": {
+              "$ref": "#/$defs/sourceReference"
+            },
+            "startByte": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16777216
+            },
+            "maximumBytes": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 262144
+            }
+          }
+        },
+        "authorizationReview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "expectedGeneration",
+            "operation",
+            "input"
+          ],
+          "properties": {
+            "kind": {
+              "const": "authorization-review"
+            },
+            "expectedGeneration": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "operation": {
+              "enum": [
+                "delivery.admit",
+                "delivery.accept",
+                "delivery.no-ship"
+              ]
+            },
+            "input": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "semanticMarkdown"
+                  ],
+                  "properties": {
+                    "semanticMarkdown": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1048576,
+                      "pattern": "^[^\\u0000]*$"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.no-ship"
+                  }
+                },
+                "required": [
+                  "operation"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "input": {
+                    "type": "object"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "input": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/control-lifecycle-profile.schema.json",
+    id: "urn:lifecycle:schema:control-lifecycle-profile:v7",
+    sourceDigest: "sha256:d452da02aba45f7855b0ec7a2db8632b3f04ad47d542c574276dff97f3306896",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:control-lifecycle-profile:v7",
+      "title": "Lifecycle Control Lifecycle Profile v7",
+      "description": "Exact Foundation profile for the per-Delivery Control Record Store, physical SQLite version 2 and its fourteen closed Delivery record families.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -4894,10 +6740,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.control-lifecycle-profile.v4"
+          "const": "lifecycle.control-lifecycle-profile.v6"
         },
         "id": {
-          "const": "foundation-delivery-control-lifecycle-v4"
+          "const": "foundation-delivery-control-lifecycle-v7"
         },
         "store": {
           "type": "object",
@@ -4919,17 +6765,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "postClosureDisposition",
             "semanticMarkdown",
             "workingValues",
-            "adjacentDuplicateMarkdown"
+            "adjacentDuplicateMarkdown",
+            "physicalUserVersion"
           ],
           "properties": {
             "schema": {
-              "const": "lifecycle.control-record-store.v1"
+              "const": "lifecycle.control-record-store.v2"
             },
             "revisionSchema": {
-              "const": "lifecycle.control-record-revision.v1"
+              "const": "lifecycle.control-record-revision.v2"
             },
             "eventSchema": {
-              "const": "lifecycle.control-record-event.v2"
+              "const": "lifecycle.control-record-event.v6"
             },
             "referencedFileSchema": {
               "const": "lifecycle.control-record-file.v1"
@@ -4972,28 +6819,80 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             },
             "adjacentDuplicateMarkdown": {
               "const": false
+            },
+            "physicalUserVersion": {
+              "const": 3
             }
           }
         },
         "families": {
           "type": "array",
-          "minItems": 12,
-          "maxItems": 12,
+          "minItems": 14,
+          "maxItems": 14,
           "prefixItems": [
             {
               "const": {
-                "kind": "founder-brief",
-                "payloadSchema": "urn:lifecycle:schema:founder-brief-payload:v1",
+                "kind": "director-brief",
+                "payloadSchema": "urn:lifecycle:schema:director-brief-payload:v2",
                 "dossier": "frame",
                 "producer": "runtime",
-                "semanticAuthor": "founder",
-                "semanticAuthority": "founder-supplied",
-                "editor": "founder",
+                "semanticAuthor": "director",
+                "semanticAuthority": "director-supplied",
+                "editor": "director",
                 "editWindow": "before-activity",
                 "revisionMode": "single",
-                "finalizationEvent": "founder-brief-submitted",
+                "finalizationEvent": "director-brief-submitted",
                 "retention": "archive-with-delivery",
                 "relationships": []
+              }
+            },
+            {
+              "const": {
+                "kind": "work-delegation",
+                "payloadSchema": "urn:lifecycle:schema:work-delegation-payload:v2",
+                "dossier": "attempt",
+                "producer": "runtime",
+                "semanticAuthor": "director",
+                "semanticAuthority": "director-supplied",
+                "editor": "director",
+                "editWindow": "before-activity",
+                "revisionMode": "successive",
+                "finalizationEvent": "work-delegation-set",
+                "retention": "archive-with-delivery",
+                "relationships": [
+                  {
+                    "relation": "uses-boundary",
+                    "targetKinds": [
+                      "work-boundary"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1
+                  },
+                  {
+                    "relation": "uses-admission",
+                    "targetKinds": [
+                      "director-decision"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1
+                  },
+                  {
+                    "relation": "uses-brief",
+                    "targetKinds": [
+                      "director-brief"
+                    ],
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  {
+                    "relation": "revises",
+                    "targetKinds": [
+                      "work-delegation"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                ]
               }
             },
             {
@@ -5013,7 +6912,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   {
                     "relation": "uses-brief",
                     "targetKinds": [
-                      "founder-brief"
+                      "director-brief"
                     ],
                     "minimum": 1,
                     "maximum": 1
@@ -5048,7 +6947,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "agent-work-product",
-                "payloadSchema": "urn:lifecycle:schema:agent-work-product-payload:v2",
+                "payloadSchema": "urn:lifecycle:schema:agent-work-product-payload:v5",
                 "dossier": "attempt",
                 "producer": "runtime",
                 "semanticAuthor": "agent",
@@ -5114,7 +7013,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "candidate-revision",
-                "payloadSchema": "urn:lifecycle:schema:candidate-revision-payload:v2",
+                "payloadSchema": "urn:lifecycle:schema:candidate-revision-payload:v3",
                 "dossier": "candidate",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5148,6 +7047,47 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     ],
                     "minimum": 1,
                     "maximum": 1
+                  },
+                  {
+                    "relation": "integrated-from",
+                    "targetKinds": [
+                      "integration-assessment"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                ]
+              }
+            },
+            {
+              "const": {
+                "kind": "integration-assessment",
+                "payloadSchema": "urn:lifecycle:schema:integration-assessment-payload:v1",
+                "dossier": "candidate",
+                "producer": "runtime",
+                "semanticAuthor": "runtime",
+                "semanticAuthority": "runtime-observed",
+                "editor": "none",
+                "editWindow": "none",
+                "revisionMode": "single",
+                "finalizationEvent": "integration-assessed",
+                "retention": "archive-with-delivery",
+                "relationships": [
+                  {
+                    "relation": "governed-by",
+                    "targetKinds": [
+                      "work-boundary"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1
+                  },
+                  {
+                    "relation": "integrates",
+                    "targetKinds": [
+                      "candidate-revision"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1
                   }
                 ]
               }
@@ -5155,7 +7095,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "work-boundary",
-                "payloadSchema": "urn:lifecycle:schema:work-boundary-payload:v4",
+                "payloadSchema": "urn:lifecycle:schema:work-boundary-payload:v6",
                 "dossier": "boundary",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5169,7 +7109,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   {
                     "relation": "uses-brief",
                     "targetKinds": [
-                      "founder-brief"
+                      "director-brief"
                     ],
                     "minimum": 1,
                     "maximum": 1
@@ -5204,7 +7144,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "material-condition",
-                "payloadSchema": "urn:lifecycle:schema:material-condition-payload:v1",
+                "payloadSchema": "urn:lifecycle:schema:material-condition-payload:v4",
                 "dossier": "boundary",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5218,17 +7158,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   {
                     "relation": "reported-by",
                     "targetKinds": [
-                      "agent-work-product"
+                      "agent-work-product",
+                      "integration-assessment"
                     ],
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 1
                   },
                   {
                     "relation": "observed-in",
                     "targetKinds": [
-                      "execution-receipt"
+                      "execution-receipt",
+                      "candidate-seal"
                     ],
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 1
                   },
                   {
@@ -5252,16 +7194,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             },
             {
               "const": {
-                "kind": "founder-decision",
-                "payloadSchema": "urn:lifecycle:schema:founder-decision-payload:v4",
+                "kind": "director-decision",
+                "payloadSchema": "urn:lifecycle:schema:director-decision-payload:v5",
                 "dossier": "decision",
                 "producer": "runtime",
-                "semanticAuthor": "founder",
-                "semanticAuthority": "founder-authenticated",
-                "editor": "founder",
+                "semanticAuthor": "director",
+                "semanticAuthority": "director-authenticated",
+                "editor": "director",
                 "editWindow": "before-authentication",
                 "revisionMode": "single",
-                "finalizationEvent": "founder-decision-authenticated",
+                "finalizationEvent": "director-decision-authenticated",
                 "retention": "archive-with-delivery",
                 "relationships": [
                   {
@@ -5359,7 +7301,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "check-receipt",
-                "payloadSchema": "urn:lifecycle:schema:check-receipt-payload:v2",
+                "payloadSchema": "urn:lifecycle:schema:check-receipt-payload:v3",
                 "dossier": "evidence",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5392,7 +7334,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "evidence-packet",
-                "payloadSchema": "urn:lifecycle:schema:evidence-packet-payload:v1",
+                "payloadSchema": "urn:lifecycle:schema:evidence-packet-payload:v2",
                 "dossier": "evidence",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5457,7 +7399,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             {
               "const": {
                 "kind": "closure",
-                "payloadSchema": "urn:lifecycle:schema:closure-payload:v4",
+                "payloadSchema": "urn:lifecycle:schema:closure-payload:v6",
                 "dossier": "closure",
                 "producer": "runtime",
                 "semanticAuthor": "runtime",
@@ -5471,7 +7413,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   {
                     "relation": "closes-with",
                     "targetKinds": [
-                      "founder-decision"
+                      "director-decision"
                     ],
                     "minimum": 1,
                     "maximum": 1
@@ -5519,13 +7461,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/control-record-event.schema.json",
-    id: "urn:lifecycle:schema:control-record-event:v2",
-    sourceDigest: "sha256:8c50d47d8f4337e080d775cd605e727f81118371fa5edc43e5862045333f3f0f",
+    id: "urn:lifecycle:schema:control-record-event:v6",
+    sourceDigest: "sha256:f02d153dee73d618a50b65f88d8d6f3f155c376b25de2d6359966aca26387e32",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:control-record-event:v2",
-      "title": "Lifecycle Delivery Control Record Event v2",
-      "description": "Closed Foundation rc.10 Delivery event envelope and exact twenty-two-kind payload vocabulary; private Execution Cell and Reclamation state never enters the Journal.",
+      "$id": "urn:lifecycle:schema:control-record-event:v6",
+      "title": "Lifecycle Delivery Control Record Event v6",
+      "description": "Closed Delivery event envelope including standing Director direction, finite resource delegation and optional Activity-opening reservation. Physical execution custody and pending stop-request metadata remain outside the Journal.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -5544,24 +7486,26 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.control-record-event.v2"
+          "const": "lifecycle.control-record-event.v6"
         },
         "storeId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "processId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "sequence": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
         },
         "eventId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "eventKind": {
           "enum": [
             "delivery-created",
-            "founder-brief-submitted",
+            "director-brief-submitted",
+            "work-delegation-set",
+            "work-delegation-stopped",
             "activity-started",
             "activity-recovery-recorded",
             "agent-pre-intent-refused",
@@ -5570,6 +7514,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "provider-effect-observed",
             "agent-work-product-submitted",
             "agent-work-product-abandoned",
+            "integration-assessed",
             "candidate-revision-observed",
             "execution-receipt-recorded",
             "work-boundary-finalized",
@@ -5577,7 +7522,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "candidate-sealed",
             "check-receipt-recorded",
             "evidence-packet-finalized",
-            "founder-decision-authenticated",
+            "director-decision-authenticated",
             "transaction-effect-intended",
             "transaction-effect-observed",
             "activity-completed",
@@ -5585,7 +7530,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "occurredAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
         "actor": {
           "$ref": "#/$defs/runtimeActor"
@@ -5610,12 +7555,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "oneOf": [
@@ -5635,13 +7580,46 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "properties": {
             "eventKind": {
-              "const": "founder-brief-submitted"
+              "const": "director-brief-submitted"
             },
             "subject": {
               "$ref": "#/$defs/eventSubject"
             },
             "payload": {
-              "$ref": "#/$defs/activityPayload"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/activityPayload"
+                },
+                {
+                  "$ref": "#/$defs/standingBriefPayload"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "eventKind": {
+              "const": "work-delegation-set"
+            },
+            "subject": {
+              "$ref": "#/$defs/eventSubject"
+            },
+            "payload": {
+              "$ref": "#/$defs/emptyPayload"
+            }
+          }
+        },
+        {
+          "properties": {
+            "eventKind": {
+              "const": "work-delegation-stopped"
+            },
+            "subject": {
+              "$ref": "#/$defs/eventSubject"
+            },
+            "payload": {
+              "$ref": "#/$defs/workDelegationStoppedPayload"
             }
           }
         },
@@ -5752,6 +7730,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "properties": {
             "eventKind": {
+              "const": "integration-assessed"
+            },
+            "subject": {
+              "$ref": "#/$defs/eventSubject"
+            },
+            "payload": {
+              "$ref": "#/$defs/activityPayload"
+            }
+          }
+        },
+        {
+          "properties": {
+            "eventKind": {
               "const": "candidate-revision-observed"
             },
             "subject": {
@@ -5843,7 +7834,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "properties": {
             "eventKind": {
-              "const": "founder-decision-authenticated"
+              "const": "director-decision-authenticated"
             },
             "subject": {
               "$ref": "#/$defs/eventSubject"
@@ -5919,7 +7910,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "runtime"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             }
           }
         },
@@ -5933,13 +7924,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "recordId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -5956,7 +7947,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             }
           }
         },
@@ -5966,17 +7957,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "required": [
             "activityId",
             "diagnosticCode",
-            "refusalFactsDigest"
+            "refusalFactsDigest",
+            "resolution"
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "diagnosticCode": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "refusalFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "resolution": {
+              "description": "The required variant names an owned measured continue or evaluate refusal and requires its exact runtime Material Condition before Activity completion; it proves zero Agent allocation.",
+              "enum": [
+                "none",
+                "projection-condition-required"
+              ]
             }
           }
         },
@@ -5990,13 +7989,17 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "sourceKind": {
-              "const": "agent-proposal"
+              "enum": [
+                "agent-proposal",
+                "integration-assessment",
+                "projection-compilation"
+              ]
             },
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "observedFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -6009,13 +8012,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "operation": {
               "enum": [
                 "delivery.prepare",
                 "delivery.admit",
                 "delivery.continue",
+                "delivery.integrate",
                 "delivery.evaluate",
                 "delivery.revise",
                 "delivery.reaffirm",
@@ -6023,8 +8027,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "delivery.no-ship",
                 "delivery.recover"
               ]
+            },
+            "reservation": {
+              "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/reservation"
             }
-          }
+          },
+          "description": "An optional exact reservation finances this Activity only. Semantic validation binds its activity/operation, predecessor Journal head, current delegation, lifetime charges and complete selected execution slots; canonical event payload remains bounded to 65536 bytes."
         },
         "activityRecoveryPayload": {
           "type": "object",
@@ -6037,7 +8045,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "kind": {
               "enum": [
@@ -6049,6 +8057,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             },
             "resumesAt": {
               "enum": [
+                "integration-assessed",
                 "provider-effect-observed",
                 "work-product-observation",
                 "candidate-revision-observed",
@@ -6070,7 +8079,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               ]
             }
@@ -6115,6 +8124,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     },
                     "resumesAt": {
                       "enum": [
+                        "integration-assessed",
                         "work-product-observation",
                         "execution-receipt-recorded",
                         "work-boundary-finalized",
@@ -6142,10 +8152,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "effectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -6159,10 +8169,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "effectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "outcome": {
               "enum": [
@@ -6185,16 +8195,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "effectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "facts": {
               "$ref": "#/$defs/transactionObservationFacts"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "outcome": {
               "enum": [
@@ -6224,7 +8234,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "observedFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -6264,7 +8274,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               ]
             }
@@ -6286,10 +8296,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
             },
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectFormat": {
               "enum": [
@@ -6359,10 +8369,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
             },
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectFormat": {
               "enum": [
@@ -6421,11 +8431,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "commit",
             "tree",
             "objectFormat",
-            "canonicalResultDigest"
+            "canonicalResultDigest",
+            "observedTip",
+            "recognition"
           ],
           "properties": {
             "schema": {
-              "const": "lifecycle.terminal-acceptance-effect-observation.v1"
+              "const": "lifecycle.terminal-acceptance-effect-observation.v2"
             },
             "ref": {
               "type": "string",
@@ -6433,10 +8445,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
             },
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectFormat": {
               "enum": [
@@ -6445,7 +8457,29 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "canonicalResultDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "observedTip": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit",
+                "tree"
+              ],
+              "properties": {
+                "commit": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                },
+                "tree": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                }
+              }
+            },
+            "recognition": {
+              "enum": [
+                "at-tip",
+                "ancestor"
+              ]
             }
           },
           "allOf": [
@@ -6464,6 +8498,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   },
                   "tree": {
                     "pattern": "^[a-f0-9]{40}$"
+                  },
+                  "observedTip": {
+                    "properties": {
+                      "commit": {
+                        "pattern": "^[a-f0-9]{40}$"
+                      },
+                      "tree": {
+                        "pattern": "^[a-f0-9]{40}$"
+                      }
+                    }
                   }
                 }
               }
@@ -6483,6 +8527,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   },
                   "tree": {
                     "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "observedTip": {
+                    "properties": {
+                      "commit": {
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "tree": {
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    }
                   }
                 }
               }
@@ -6512,10 +8566,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
             },
             "canonicalCommit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "canonicalTree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             }
           },
           "allOf": [
@@ -6588,7 +8642,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             }
           }
         },
@@ -6620,7 +8674,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "outcome": {
               "enum": [
@@ -6630,6 +8684,49 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             }
           }
+        },
+        "standingBriefPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "delegationId",
+            "delegationRevision",
+            "operation"
+          ],
+          "properties": {
+            "delegationId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "delegationRevision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "operation": {
+              "enum": [
+                "delivery.continue",
+                "delivery.evaluate"
+              ]
+            }
+          }
+        },
+        "workDelegationStoppedPayload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requestDigest",
+            "requestedAt",
+            "requestedBy"
+          ],
+          "properties": {
+            "requestDigest": {
+              "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/exactDigest"
+            },
+            "requestedAt": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+            },
+            "requestedBy": {
+              "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/exactControlId"
+            }
+          }
         }
       }
     },
@@ -6637,7 +8734,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/control-record-file.schema.json",
     id: "urn:lifecycle:schema:control-record-file:v1",
-    sourceDigest: "sha256:7538097abbd78e6218a5f69d2eeb73f007fc00a622822535f1f1b4ac89ce1eef",
+    sourceDigest: "sha256:84fee9e932e368727a3327ba14c3d4e2f403ecdfff4795aa259ce02baaa00456",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:control-record-file:v1",
@@ -6655,22 +8752,22 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.control-record-file.v1"
         },
         "reference": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/retainedFileReference"
         },
         "createdAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         }
       }
     },
   },
   {
     path: "spec-source/schemas/control-record-revision.schema.json",
-    id: "urn:lifecycle:schema:control-record-revision:v1",
-    sourceDigest: "sha256:d540d628605e1547a38f8c1a1f66208d687229edf9d477372064bb9abfc338f8",
+    id: "urn:lifecycle:schema:control-record-revision:v2",
+    sourceDigest: "sha256:d0a51459ab111b2d20a6df1cc8f70a895169757e467c1d12913858863251a281",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:control-record-revision:v1",
-      "title": "Lifecycle Control Record Revision Envelope v1",
+      "$id": "urn:lifecycle:schema:control-record-revision:v2",
+      "title": "Lifecycle Control Record Revision Envelope v2",
       "description": "Generic immutable Control revision envelope. The selected Process registry validates payload against the independent schema for recordKind.",
       "type": "object",
       "additionalProperties": false,
@@ -6691,31 +8788,31 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.control-record-revision.v1"
+          "const": "lifecycle.control-record-revision.v2"
         },
         "processId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "recordId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "recordKind": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
         },
         "revision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
         },
         "producer": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlActor"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlActor"
         },
         "semanticAuthor": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlActor"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlActor"
         },
         "semanticAuthority": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlSemanticAuthority"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlSemanticAuthority"
         },
         "createdAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
         "semanticMarkdown": {
           "type": "string",
@@ -6740,16 +8837,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             ],
             "properties": {
               "relation": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
               },
               "target": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
               }
             }
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
@@ -6757,7 +8854,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/control-record-store-archive.schema.json",
     id: "urn:lifecycle:schema:control-record-store-archive:v1",
-    sourceDigest: "sha256:72c35d14bc3f6e813bea96de13730d04f9929f766085b7e7ab9cd39bdc0a4ac8",
+    sourceDigest: "sha256:42a152e60660c5c53f0073b6fb1ae6f6b909fc2dd8ca4d17a71fe4a267377eac",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:control-record-store-archive:v1",
@@ -6778,7 +8875,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.control-record-store-archive.v1"
         },
         "store": {
-          "$ref": "urn:lifecycle:schema:control-record-store:v1"
+          "$ref": "urn:lifecycle:schema:control-record-store:v2"
         },
         "seal": {
           "$ref": "urn:lifecycle:schema:control-record-store-seal:v1"
@@ -6801,7 +8898,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 17179869184
             },
             "retrievalDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -6822,13 +8919,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "pattern": "^sha256-[a-f0-9]{64}$"
               },
               "reference": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/retainedFileReference"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/retainedFileReference"
               }
             }
           }
         },
         "archivedAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         }
       }
     },
@@ -6836,7 +8933,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/control-record-store-seal.schema.json",
     id: "urn:lifecycle:schema:control-record-store-seal:v1",
-    sourceDigest: "sha256:3b5a552c6e87311ff01bc9684993516e15e1a981a066b35053e486f1d363a60e",
+    sourceDigest: "sha256:0b8075361f2a7fa0aaeee9fdd8edf1d621e5bc953ea1c26542b8373bb5b9a237",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:control-record-store-seal:v1",
@@ -6865,13 +8962,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "recordId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -6884,30 +8981,30 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "sequence": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
         "logicalInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "sealedAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         }
       }
     },
   },
   {
     path: "spec-source/schemas/control-record-store.schema.json",
-    id: "urn:lifecycle:schema:control-record-store:v1",
-    sourceDigest: "sha256:7a3e3543ad3f3fe9fff27c2d418b5829b038df575442a221ba07b3b786d99aed",
+    id: "urn:lifecycle:schema:control-record-store:v2",
+    sourceDigest: "sha256:e9348a787f57896c063a63cce972ca76c78af1a909d2b5a403a4a6f32616c2b6",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:control-record-store:v1",
-      "title": "Lifecycle Control Record Store Identity v1",
+      "$id": "urn:lifecycle:schema:control-record-store:v2",
+      "title": "Lifecycle Control Record Store Identity v2",
       "description": "Immutable identity of one runtime-owned Delivery Control Record Store.",
       "type": "object",
       "additionalProperties": false,
@@ -6921,34 +9018,34 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.control-record-store.v1"
+          "const": "lifecycle.control-record-store.v2"
         },
         "storeId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "targetId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "processKind": {
           "const": "delivery"
         },
         "processId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "createdAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         }
       }
     },
   },
   {
     path: "spec-source/schemas/delivery-reduction.schema.json",
-    id: "urn:lifecycle:schema:delivery-reduction:v2",
-    sourceDigest: "sha256:3e80ce6b3fd515baac6ba2b296ffb292e62bd323102b7aa0a6a459bc6b099d1f",
+    id: "urn:lifecycle:schema:delivery-reduction:v5",
+    sourceDigest: "sha256:133c12342f4ab09d4ba21250a94185733dc27f19fb33903885ffac845d5f5a3c",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:delivery-reduction:v2",
-      "title": "Lifecycle Delivery Reduction v2",
+      "$id": "urn:lifecycle:schema:delivery-reduction:v5",
+      "title": "Lifecycle Delivery Reduction v5",
       "description": "Ephemeral Delivery-only state derived from the complete validated event chain, exact revisions, and post-Closure store observations; private Execution Cell and Reclamation state never enters this value.",
       "type": "object",
       "additionalProperties": false,
@@ -6961,19 +9058,20 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "activities",
         "recovery",
         "subjects",
+        "delegation",
         "journal",
         "storeDisposition",
         "eligibleOperations"
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.delivery-reduction.v2"
+          "const": "lifecycle.delivery-reduction.v5"
         },
         "storeId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "processId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "standing": {
           "description": "Mandate-governance projection. Active requires a current admitted Boundary and can precede the initial Candidate observation.",
@@ -7017,7 +9115,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             ],
             "properties": {
               "id": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
               },
               "operation": {
                 "$ref": "#/$defs/operation"
@@ -7025,7 +9123,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "family": {
                 "enum": [
                   "agent",
-                  "transaction"
+                  "transaction",
+                  "integration"
                 ]
               },
               "stage": {
@@ -7062,7 +9161,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "materialCondition",
             "seal",
             "evidence",
-            "closure"
+            "closure",
+            "integrationAssessment"
           ],
           "properties": {
             "proposedBoundary": {
@@ -7084,6 +9184,9 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nullableReference"
             },
             "closure": {
+              "$ref": "#/$defs/nullableReference"
+            },
+            "integrationAssessment": {
               "$ref": "#/$defs/nullableReference"
             }
           }
@@ -7108,7 +9211,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
                 }
               ]
             },
@@ -7118,7 +9221,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               ]
             }
@@ -7164,6 +9267,47 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "items": {
             "$ref": "#/$defs/operation"
           }
+        },
+        "delegation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "admission",
+            "current",
+            "charged"
+          ],
+          "properties": {
+            "admission": {
+              "$ref": "#/$defs/nullableReference"
+            },
+            "current": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "reference",
+                    "stopped"
+                  ],
+                  "properties": {
+                    "reference": {
+                      "$ref": "#/$defs/reference"
+                    },
+                    "stopped": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              ]
+            },
+            "charged": {
+              "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/accounting"
+            }
+          },
+          "description": "The exact applied Director Decision, latest Work Delegation reference/stopped flag and lifetime conservative delegated reservations. These are reducer facts; current applicability still binds the active Boundary/admission. Charges survive stop, replacement and readmission; no measured-use refund or pending operational stop row is implied."
         }
       },
       "$defs": {
@@ -7172,6 +9316,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "delivery.prepare",
             "delivery.admit",
             "delivery.continue",
+            "delivery.integrate",
             "delivery.evaluate",
             "delivery.revise",
             "delivery.reaffirm",
@@ -7190,13 +9335,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -7216,7 +9361,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
@@ -7243,7 +9388,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             },
@@ -7257,6 +9402,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             },
             "resumesAt": {
               "enum": [
+                "integration-assessed",
                 "candidate-sealed",
                 "agent-attempt-prepared",
                 "provider-effect-intended",
@@ -7269,7 +9415,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "evaluation-checks",
                 "activity-finalization",
                 "activity-completed",
-                "founder-decision-authenticated",
+                "director-decision-authenticated",
                 "transaction-effect-intended",
                 "transaction-effect-observed",
                 "transaction-finalization",
@@ -7321,6 +9467,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     },
                     "resumesAt": {
                       "enum": [
+                        "integration-assessed",
                         "candidate-sealed",
                         "agent-attempt-prepared",
                         "provider-effect-intended",
@@ -7331,7 +9478,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                         "evaluation-checks",
                         "activity-finalization",
                         "activity-completed",
-                        "founder-decision-authenticated",
+                        "director-decision-authenticated",
                         "transaction-effect-intended",
                         "transaction-finalization",
                         "store-seal",
@@ -7350,7 +9497,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                       "const": "activity"
                     },
                     "activityId": {
-                      "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                     },
                     "resumesAt": {
                       "not": {
@@ -7392,13 +9539,896 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
     },
   },
   {
-    path: "spec-source/schemas/evidence-packet-payload.schema.json",
-    id: "urn:lifecycle:schema:evidence-packet-payload:v1",
-    sourceDigest: "sha256:883580caf8abb0a44131cb8e27f9a39d9ad420c8ed9f3c4bd9c78e424cf85b81",
+    path: "spec-source/schemas/director-brief-payload.schema.json",
+    id: "urn:lifecycle:schema:director-brief-payload:v2",
+    sourceDigest: "sha256:ac4bb664b6901ce75d09b3ce6cd5482ceb608eb7f49ebe89345c8c93610ff840",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:evidence-packet-payload:v1",
-      "title": "Lifecycle Evidence Packet Payload v1",
+      "$id": "urn:lifecycle:schema:director-brief-payload:v2",
+      "title": "Lifecycle Director Brief Payload v2",
+      "description": "Exact Director-supplied direction for one Activity or one operation in a retained work delegation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "scope",
+        "inputProfile",
+        "templateProfileId",
+        "semanticMarkdownDigest",
+        "submission"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.director-brief-payload.v2"
+        },
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "activityId"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "activity"
+                },
+                "activityId": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "delegationId",
+                "delegationRevision",
+                "operation"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "delegation"
+                },
+                "delegationId": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+                },
+                "delegationRevision": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "operation": {
+                  "enum": [
+                    "delivery.continue",
+                    "delivery.evaluate"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "inputProfile": {
+          "enum": [
+            "delivery.prepare",
+            "delivery.continue",
+            "delivery.evaluate",
+            "delivery.revise",
+            "delivery.reaffirm"
+          ]
+        },
+        "templateProfileId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "semanticMarkdownDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "submission": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rawDigest",
+            "rawByteLength",
+            "normalizedByteLength"
+          ],
+          "properties": {
+            "rawDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "rawByteLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1048576
+            },
+            "normalizedByteLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1048576
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "properties": {
+                  "kind": {
+                    "const": "delegation"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "inputProfile": {
+                    "const": "delivery.continue"
+                  },
+                  "scope": {
+                    "properties": {
+                      "operation": {
+                        "const": "delivery.continue"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "inputProfile": {
+                    "const": "delivery.evaluate"
+                  },
+                  "scope": {
+                    "properties": {
+                      "operation": {
+                        "const": "delivery.evaluate"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+  },
+  {
+    path: "spec-source/schemas/director-decision-payload.schema.json",
+    id: "urn:lifecycle:schema:director-decision-payload:v5",
+    sourceDigest: "sha256:2e9f823c8e4ee2df685f284a04c41c82dcf7875fc69ee0aaad9e00dca4009163",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:director-decision-payload:v5",
+      "title": "Lifecycle Director Decision Payload v5",
+      "description": "Exact Director-authenticated Delivery decision subject and bounded public authentication facts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "profileId",
+        "decision",
+        "semanticDigest",
+        "subject",
+        "subjectDigest",
+        "authentication"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.director-decision-payload.v5"
+        },
+        "profileId": {
+          "const": "lifecycle.director-decision.foundation-v1"
+        },
+        "decision": {
+          "enum": [
+            "admit",
+            "readmit",
+            "accept",
+            "no-ship"
+          ]
+        },
+        "semanticDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "targetId",
+            "storeId",
+            "processId",
+            "activityId",
+            "operation",
+            "decisionId",
+            "decision",
+            "decisionSemanticDigest",
+            "journalHead",
+            "reducerFactsDigest",
+            "repository",
+            "selectedControl",
+            "coordinates",
+            "principalId",
+            "keyId",
+            "algorithm",
+            "authorizedAt",
+            "expiresAt",
+            "nonce",
+            "candidateDisposition"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.director-decision-subject.v4"
+            },
+            "targetId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "storeId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "processId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "activityId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "operation": {
+              "enum": [
+                "delivery.admit",
+                "delivery.accept",
+                "delivery.no-ship"
+              ]
+            },
+            "decisionId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "decision": {
+              "enum": [
+                "admit",
+                "readmit",
+                "accept",
+                "no-ship"
+              ]
+            },
+            "decisionSemanticDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "journalHead": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sequence",
+                "digest"
+              ],
+              "properties": {
+                "sequence": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            "reducerFactsDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "repository": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "repositorySnapshotDigest",
+                "canonicalCommit",
+                "canonicalTree",
+                "productStateDigest",
+                "atlasStateDigest",
+                "atlasResolutionDigest",
+                "atlasNormalizedModelDigest",
+                "atlasResourceBindingsDigest",
+                "repositoryContractDigest",
+                "knowledgeSetDigest",
+                "checkBindingSetDigest"
+              ],
+              "properties": {
+                "repositorySnapshotDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "canonicalCommit": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                },
+                "canonicalTree": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                },
+                "productStateDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "atlasStateDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "atlasResolutionDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "atlasNormalizedModelDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "atlasResourceBindingsDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "repositoryContractDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "knowledgeSetDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                },
+                "checkBindingSetDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            "selectedControl": {
+              "type": "array",
+              "maxItems": 4100,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "relation",
+                  "target"
+                ],
+                "properties": {
+                  "relation": {
+                    "enum": [
+                      "selects-boundary",
+                      "selects-baseline-receipt",
+                      "continues-from-boundary",
+                      "resolves",
+                      "selects-candidate",
+                      "selects-seal",
+                      "selects-evidence"
+                    ]
+                  },
+                  "target": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+                  }
+                }
+              }
+            },
+            "coordinates": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "qualification",
+                "repository",
+                "provider",
+                "authoritySubject",
+                "transactionRules"
+              ],
+              "properties": {
+                "qualification": {
+                  "const": "lifecycle.foundation.1.0.0-rc.17"
+                },
+                "repository": {
+                  "const": "lifecycle.repository.v22"
+                },
+                "provider": {
+                  "const": "lifecycle.provider-adapter.v7"
+                },
+                "authoritySubject": {
+                  "const": "lifecycle.director-decision-subject.v4"
+                },
+                "transactionRules": {
+                  "const": "lifecycle.delivery-transaction-rules.v1"
+                }
+              }
+            },
+            "principalId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
+            },
+            "keyId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "algorithm": {
+              "const": "ed25519"
+            },
+            "authorizedAt": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+            },
+            "expiresAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+                }
+              ]
+            },
+            "nonce": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "candidateDisposition": {
+              "enum": [
+                "not-applicable",
+                "no-candidate",
+                "abandon"
+              ]
+            }
+          }
+        },
+        "subjectDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "authentication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "principalId",
+            "keyId",
+            "algorithm",
+            "signature",
+            "verifiedAt"
+          ],
+          "properties": {
+            "principalId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
+            },
+            "keyId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "algorithm": {
+              "const": "ed25519"
+            },
+            "signature": {
+              "type": "string",
+              "minLength": 94,
+              "maxLength": 94,
+              "pattern": "^ed25519:[A-Za-z0-9_-]{86}$"
+            },
+            "verifiedAt": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "enum": [
+                  "admit",
+                  "readmit"
+                ]
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "subject": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.admit"
+                  },
+                  "decision": {
+                    "enum": [
+                      "admit",
+                      "readmit"
+                    ]
+                  },
+                  "candidateDisposition": {
+                    "const": "not-applicable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "accept"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "subject": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.accept"
+                  },
+                  "decision": {
+                    "const": "accept"
+                  },
+                  "candidateDisposition": {
+                    "const": "not-applicable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "no-ship"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "subject": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.no-ship"
+                  },
+                  "decision": {
+                    "const": "no-ship"
+                  },
+                  "candidateDisposition": {
+                    "enum": [
+                      "no-candidate",
+                      "abandon"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+  },
+  {
+    path: "spec-source/schemas/discipline-pack.schema.json",
+    id: "urn:lifecycle:schema:discipline-pack:v1",
+    sourceDigest: "sha256:e7eb4ed58303ed0498be1908a97ce86d1b910891e886c4498504cd778af5504f",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:discipline-pack:v1",
+      "title": "Lifecycle Discipline Pack v1",
+      "description": "A fresh-only distribution manifest for independently adoptable Discipline records and curated Sets.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "title",
+        "version",
+        "publisher",
+        "contract",
+        "records",
+        "sets",
+        "digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.discipline-pack.v1"
+        },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "title": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+        },
+        "version": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "publisher": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
+        },
+        "contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "specificationRevision",
+            "knowledgeRecordSchema"
+          ],
+          "properties": {
+            "specificationRevision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId",
+              "description": "Exact Pack authoring provenance; adoption validates record bytes against the current selected Knowledge schema and target contract."
+            },
+            "knowledgeRecordSchema": {
+              "const": "urn:lifecycle:schema:knowledge-record:v2"
+            }
+          }
+        },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 65536,
+          "items": {
+            "$ref": "#/$defs/record"
+          }
+        },
+        "sets": {
+          "description": "Publisher presentation sequence retained in the manifest digest; Set identities are unique, without a lexical outer-order requirement.",
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/set"
+          }
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      },
+      "$defs": {
+        "record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "path",
+            "revision",
+            "sourceDigest",
+            "semanticDigest"
+          ],
+          "properties": {
+            "id": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                },
+                {
+                  "pattern": "^discipline\\."
+                }
+              ]
+            },
+            "path": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+                },
+                {
+                  "pattern": "^records/.+\\.md$"
+                }
+              ]
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "sourceDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "semanticDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "set": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "description",
+            "recordIds"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "title": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+            },
+            "description": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "recordIds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                  },
+                  {
+                    "pattern": "^discipline\\."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/discipline-registry.schema.json",
+    id: "urn:lifecycle:schema:discipline-registry:v1",
+    sourceDigest: "sha256:668a722b51c74dfdac99a696a54771afb1c364273b140482c3e145b4a23001d0",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:discipline-registry:v1",
+      "title": "Lifecycle Discipline Registry v1",
+      "description": "Tracked target configuration for adopted Discipline records and the work types that make them discoverable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "packs",
+        "adoptions",
+        "workTypes",
+        "digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.discipline-registry.v1"
+        },
+        "packs": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/pack"
+          }
+        },
+        "adoptions": {
+          "type": "array",
+          "maxItems": 65536,
+          "items": {
+            "$ref": "#/$defs/adoption"
+          }
+        },
+        "workTypes": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/workType"
+          }
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      },
+      "$defs": {
+        "pack": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "publisher",
+            "source",
+            "revision",
+            "manifestDigest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "version": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "publisher": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
+            },
+            "source": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "manifestDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "adoption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "revision",
+            "path",
+            "sourceDigest",
+            "semanticDigest",
+            "packId"
+          ],
+          "properties": {
+            "id": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                },
+                {
+                  "pattern": "^discipline\\."
+                }
+              ]
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "path": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+                },
+                {
+                  "pattern": "^records/disciplines/.+\\.md$"
+                }
+              ]
+            },
+            "sourceDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "semanticDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "packId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            }
+          }
+        },
+        "workType": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "description",
+            "disciplineIds"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "title": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+            },
+            "description": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "disciplineIds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                  },
+                  {
+                    "pattern": "^discipline\\."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/evidence-packet-payload.schema.json",
+    id: "urn:lifecycle:schema:evidence-packet-payload:v2",
+    sourceDigest: "sha256:d9a0b9f58c6db865c98600bfe14ddabb443facbade174f8efbd9b2aa964963c1",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:evidence-packet-payload:v2",
+      "title": "Lifecycle Evidence Packet Payload v2",
       "description": "Bounded normalized evaluation ledgers and derived readiness for one exact sealed Candidate.",
       "type": "object",
       "additionalProperties": false,
@@ -7417,20 +10447,21 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "diagnostics",
         "uncertainty",
         "validator",
-        "readiness"
+        "readiness",
+        "integrationApplicability"
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.evidence-packet-payload.v1"
+          "const": "lifecycle.evidence-packet-payload.v2"
         },
         "profileId": {
-          "const": "lifecycle.evidence-packet.foundation-v1"
+          "const": "lifecycle.evidence-packet.foundation-v2"
         },
         "ruleSet": {
           "$ref": "#/$defs/implementation"
         },
         "evaluatedAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
         "artifacts": {
           "type": "array",
@@ -7531,6 +10562,80 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "revision-required",
             "no-ship-recommended"
           ]
+        },
+        "integrationApplicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assessment",
+            "mandate",
+            "baselines"
+          ],
+          "properties": {
+            "assessment": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "integration-assessment"
+                    }
+                  }
+                }
+              ]
+            },
+            "mandate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "disposition",
+                "fragmentDigest"
+              ],
+              "properties": {
+                "disposition": {
+                  "enum": [
+                    "applicable",
+                    "requires-readmission",
+                    "indeterminate"
+                  ]
+                },
+                "fragmentDigest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            "baselines": {
+              "type": "array",
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "receiptId",
+                  "disposition",
+                  "fragmentDigest"
+                ],
+                "properties": {
+                  "receiptId": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                  },
+                  "disposition": {
+                    "enum": [
+                      "applicable",
+                      "insufficient",
+                      "indeterminate"
+                    ]
+                  },
+                  "fragmentDigest": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "allOf": [
@@ -7585,40 +10690,77 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     {
                       "if": {
                         "properties": {
-                          "use": {
-                            "enum": [
-                              "executed",
-                              "reused"
-                            ]
+                          "reasonCode": {
+                            "const": "baseline-postcondition-not-run"
                           }
                         },
                         "required": [
-                          "use"
+                          "reasonCode"
                         ]
                       },
                       "then": {
                         "properties": {
+                          "phase": {
+                            "const": "baseline"
+                          },
                           "receiptId": {
-                            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                          },
+                          "use": {
+                            "const": "excluded"
                           },
                           "freshness": {
-                            "const": "fresh"
+                            "const": "not-applicable"
                           },
                           "subjectEquivalence": {
-                            "enum": [
-                              "exact",
-                              "proven-equivalent"
-                            ]
+                            "const": "exact"
+                          },
+                          "ageMs": {
+                            "type": "null"
+                          },
+                          "maximumAgeMs": {
+                            "type": "null"
                           }
                         }
                       },
                       "else": {
-                        "properties": {
-                          "receiptId": {
-                            "type": "null"
+                        "if": {
+                          "properties": {
+                            "use": {
+                              "enum": [
+                                "executed",
+                                "reused"
+                              ]
+                            }
                           },
-                          "freshness": {
-                            "const": "not-applicable"
+                          "required": [
+                            "use"
+                          ]
+                        },
+                        "then": {
+                          "properties": {
+                            "receiptId": {
+                              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                            },
+                            "freshness": {
+                              "const": "fresh"
+                            },
+                            "subjectEquivalence": {
+                              "enum": [
+                                "exact",
+                                "proven-equivalent"
+                              ]
+                            }
+                          }
+                        },
+                        "else": {
+                          "properties": {
+                            "receiptId": {
+                              "type": "null"
+                            },
+                            "freshness": {
+                              "const": "not-applicable"
+                            }
                           }
                         }
                       }
@@ -7639,7 +10781,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "items": {
                   "properties": {
                     "providerSession": {
-                      "const": "fresh"
+                      "enum": [
+                        "fresh",
+                        "indeterminate"
+                      ]
                     },
                     "subjectDisposition": {
                       "const": "exact-read-only"
@@ -7710,10 +10855,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -7722,7 +10867,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         },
         "nullableDigest": {
@@ -7731,7 +10876,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
@@ -7741,7 +10886,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             }
           ]
         },
@@ -7779,13 +10924,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "artifactId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "fileKind": {
               "enum": [
@@ -7875,10 +11020,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "descriptionId": {
               "$ref": "#/$defs/nullableId"
@@ -7889,7 +11034,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
                 }
               ]
             },
@@ -7961,10 +11106,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "checkId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "phase": {
               "enum": [
@@ -8006,7 +11151,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nullableAge"
             },
             "reasonCode": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "provenance": {
               "const": "runtime-derived"
@@ -8028,10 +11173,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "subjectRecordId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "dependencyClass": {
               "enum": [
@@ -8057,7 +11202,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "reasonCode": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "provenance": {
               "const": "runtime-derived"
@@ -8082,25 +11227,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "ruleId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "attemptId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "workProductId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "receiptId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "capabilityDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "projectionDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "providerSession": {
               "enum": [
@@ -8146,10 +11291,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "propositionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "reviewerDisposition": {
               "enum": [
@@ -8160,10 +11305,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "reviewWorkProductId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "citationIds": {
               "$ref": "#/$defs/idSet"
@@ -8210,10 +11355,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "obligationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "state": {
               "enum": [
@@ -8239,7 +11384,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "reasonCode": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "provenance": {
               "const": "runtime-derived"
@@ -8256,13 +11401,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "stage": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -8272,7 +11417,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-backend-profile.schema.json",
     id: "urn:lifecycle:schema:execution-backend-profile:v1",
-    sourceDigest: "sha256:7ccbe97383da7bdbc439ca886d60a797bfffe30ba88fe518d176c8aa4b35092c",
+    sourceDigest: "sha256:5cf4602e697fbb4d06dc9dfe0dfc2c7b46a42335f869a38c94f62c3f008b4e6a",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-backend-profile:v1",
@@ -8370,7 +11515,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "allOf": [
@@ -8475,16 +11620,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "contractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -8505,13 +11650,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "compatibilityProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "compatibleVersion": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "contractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -8539,7 +11684,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             }
@@ -8810,25 +11955,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "maximumWallTimeMilliseconds": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumProcesses": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumStorageBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumOutputEntries": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumOutputBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumOutputEntryBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumEvents": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             }
           }
         },
@@ -8872,10 +12017,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "claimId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "evidenceDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -8885,7 +12030,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-image.schema.json",
     id: "urn:lifecycle:schema:execution-image:v1",
-    sourceDigest: "sha256:d71687cade84ee243468131ac70cf948d2c8a973c2886085accd3b15dcc438de",
+    sourceDigest: "sha256:44f4f2d34413830ce90efd86e534aeede1f742a5f7f6c0a24fea1acc8f8ed462",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-image:v1",
@@ -8911,7 +12056,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.execution-image.v1"
         },
         "imageId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "manifestMediaType": {
           "enum": [
@@ -8920,10 +12065,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "manifestDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "configurationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "platform": {
           "$ref": "#/$defs/platform"
@@ -8940,10 +12085,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "toolInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -8971,7 +12116,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             }
@@ -8992,16 +12137,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.execution-cell-runner.v1"
             },
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "contractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -9015,13 +12160,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "executableDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -9030,14 +12175,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/execution-input-set.schema.json",
-    id: "urn:lifecycle:schema:execution-input-set:v1",
-    sourceDigest: "sha256:07f57f64ad66619a7b21e1468a9ae240d81f7dc4e3c5c6da3354b565e82ad2f3",
+    id: "urn:lifecycle:schema:execution-input-set:v2",
+    sourceDigest: "sha256:e2d68bd04c8a61a024d6c0c94421c846a4c7d3eb933418741233ecc0bc609b52",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:execution-input-set:v1",
-      "title": "Lifecycle Execution Input Set v1",
+      "$id": "urn:lifecycle:schema:execution-input-set:v2",
+      "title": "Lifecycle Execution Input Set v2",
       "description": "Exact immutable logical input and ordered content inventory for one Agent Attempt or Check execution.",
-      "$comment": "Semantic validation recomputes digest over the complete value without digest, entryCount and aggregateByteLength from entries, and contentInventoryDigest as digestCanonical over the complete canonically path-ordered unique entries array, and requires subjects in canonical kind/id/revision/digest order. Every owner requires exactly one runner subject whose digest equals runnerContractDigest. For an Agent owner, owner.ownerSubjectDigest equals the singleton exact role-subject digest; for a Check owner it equals the singleton exact check-proof-subject digest. It is never the digest of an Agent Attempt that itself selects this Input Set, preventing an Attempt digest cycle, and no other subject can substitute for either owner binding. Agent owners require their exact Projection, role subject, Founder direction, Role Brief, semantic template, Capability Profile, Provider Descriptor, Investment, and one or more policy subjects; builder and reviewer owners additionally require one exact Candidate Revision and Candidate Revision Carrier manifest and artifact, while reconnaissance forbids them. Final Check owners require one exact Candidate Revision, Candidate Revision Carrier manifest, and Carrier artifact. Baseline Check owners instead require one exact product-base subject and deterministic Git object-closure manifest and artifact binding the exact Work Boundary product-base commit and tree; those bytes are immutable operation input and never Candidate truth. Every Check also requires one exact Check Definition, Binding, proof subject, and runner and may bind zero or more separately resolved policy subjects. Every subject and entry must resolve to independently verified immutable bytes, Candidate Carrier bindings must agree with the selected Revision, and no physical materialization, volume, cache, Cell, backend, credential, private path identity, provider-invoked validator, or live validity claim may enter the value.",
+      "$comment": "Semantic validation recomputes digest over the complete value without digest, entryCount and aggregateByteLength from entries, and contentInventoryDigest as digestCanonical over the complete canonically path-ordered unique entries array, and requires subjects in canonical kind/id/revision/digest order. Every owner requires exactly one runner subject whose digest equals runnerContractDigest. For an Agent owner, owner.ownerSubjectDigest equals the singleton exact role-subject digest; for a Check owner it equals the singleton exact check-proof-subject digest. It is never the digest of an Agent Attempt that itself selects this Input Set, preventing an Attempt digest cycle, and no other subject can substitute for either owner binding. Agent owners require their exact Projection, role subject, Director direction, Role Brief, semantic template, Capability Profile, Provider Descriptor, Investment, and one or more policy subjects; builder and reviewer owners additionally require one exact Candidate Revision and Candidate Revision Carrier manifest and artifact, plus one delivery-git-context subject binding exact canonical private manifest bytes and a complete pack as operation-input entries. Reconnaissance permits either none of this Candidate selection or the complete exact selection; partial selections are invalid. The Agent owner requires absence for initial preparation and binds the complete frozen Candidate selection to the exact uses-candidate Attempt relationship for boundary resolution. Resolution materializes read-only with no Candidate write capability or Candidate Output export. Final Check owners require one exact Candidate Revision, Candidate Revision Carrier manifest, and Carrier artifact. Baseline Check owners instead require one exact product-base subject and deterministic Git object-closure manifest and artifact binding the exact Work Boundary product-base commit and tree; those bytes are immutable operation input and never Candidate truth. Every Check also requires one exact Check Definition, Binding, proof subject, and runner and may bind zero or more separately resolved policy subjects. Every subject and entry must resolve to independently verified immutable bytes, Candidate Carrier bindings must agree with the selected Revision, and no physical materialization, volume, cache, Cell, backend, credential, private path identity, or claim of final submission validity may enter the value. Provider Adapter v7 Agent input includes exactly one semantic-basis.json operation-input member: application/json, regular, at most 8 MiB, bound to the role-subject digest. Its canonical bytes reproduce the compact immutable basis selected by provider input v7; its presence grants only the bounded local draft assistance profile, never a host callback or authority.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -9055,13 +12200,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.execution-input-set.v1"
+          "const": "lifecycle.execution-input-set.v2"
         },
         "owner": {
           "$ref": "#/$defs/owner"
         },
         "inputMaterialDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "subjects": {
           "type": "array",
@@ -9092,16 +12237,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maximum": 9007199254740991
         },
         "contentInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "runnerContractDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "toolInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -9122,10 +12267,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "const": "agent-attempt"
                 },
                 "activityId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "attemptId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "role": {
                   "enum": [
@@ -9135,7 +12280,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "ownerSubjectDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             },
@@ -9154,10 +12299,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "const": "check"
                 },
                 "activityId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "selectionId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "phase": {
                   "enum": [
@@ -9166,7 +12311,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "ownerSubjectDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             }
@@ -9186,11 +12331,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "enum": [
                 "candidate-revision",
                 "candidate-revision-carrier-manifest",
+                "delivery-git-context",
                 "product-base",
                 "product-base-object-closure-manifest",
                 "projection",
                 "role-subject",
-                "founder-direction",
+                "director-direction",
                 "role-brief",
                 "semantic-template",
                 "capability-profile",
@@ -9204,7 +12350,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
               "oneOf": [
@@ -9212,12 +12358,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
                 }
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -9235,7 +12381,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "purpose": {
               "enum": [
@@ -9267,10 +12413,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 9007199254740991
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "sourceSubjectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -9280,7 +12426,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-observation.schema.json",
     id: "urn:lifecycle:schema:execution-observation:v1",
-    sourceDigest: "sha256:dcc9cd4510515e26e72d7373e723dd4ef3d51be8b3a540ab80ebbe7a8f594ed1",
+    sourceDigest: "sha256:c9ea87cee02f06680b178b9fdc649daede30dd622a5aa8cf3115b5d1c4032c86",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-observation:v1",
@@ -9311,22 +12457,22 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.execution-observation.v1"
         },
         "specificationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "backendProfile": {
           "$ref": "#/$defs/backendProfileReference"
         },
         "imageDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "inputSetDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "observationSequence": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
         },
         "observedAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
         "allocationState": {
           "enum": [
@@ -9374,7 +12520,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/resourceFacts"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "allOf": [
@@ -9422,10 +12568,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -9441,7 +12587,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "finishedAt": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
             },
             "reason": {
               "enum": [
@@ -9573,7 +12719,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               ]
             },
@@ -9605,7 +12751,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "manifestDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "carrierByteLength": {
                     "type": "integer",
@@ -9710,7 +12856,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-output-manifest.schema.json",
     id: "urn:lifecycle:schema:execution-output-manifest:v1",
-    sourceDigest: "sha256:eb702f5c2762095dff5f00e25a4e7563eb4cdab7860558a2daab385f16178348",
+    sourceDigest: "sha256:e10894f4089aaddd82304bd509b8849c5dbcfb6894464c5ccd2720125d15dfdb",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-output-manifest:v1",
@@ -9738,22 +12884,22 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.execution-output-manifest.v1"
         },
         "specificationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "inputSetDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "imageDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "outputContractDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "runnerDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "completedAt": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
         "entries": {
           "type": "array",
@@ -9774,10 +12920,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maximum": 9007199254740991
         },
         "entryInventoryDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -9796,7 +12942,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "properties": {
             "path": {
               "description": "Normalized carrier-relative file path. For candidate-output this must be strictly below its declared root and maps to the repository path after that exact root prefix is stripped.",
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "entryKind": {
               "const": "file"
@@ -9829,7 +12975,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 9007199254740991
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -9839,7 +12985,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-receipt-payload.schema.json",
     id: "urn:lifecycle:schema:execution-receipt-payload:v3",
-    sourceDigest: "sha256:de77dcd57fa2263b2c7382974f79dde92a75afc4c500084650f7904df86c105b",
+    sourceDigest: "sha256:03a4c8cdaed2304d06e309e871323cc6f625ee4b0e30dd4e55b9156fafdbbe00",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-receipt-payload:v3",
@@ -9870,7 +13016,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.execution-receipt-payload.v3"
         },
         "activityId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "role": {
           "enum": [
@@ -9888,7 +13034,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "effectDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "outcome": {
               "enum": [
@@ -9943,22 +13089,22 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "descriptorId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "descriptorDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "adapter": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             },
             "installedIdentityDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "observedExecutableIdentity": {
               "$ref": "#/$defs/nullableDigest"
             },
             "model": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "sessionId": {
               "oneOf": [
@@ -9966,7 +13112,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             },
@@ -10063,13 +13209,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/inputSetReference"
             },
             "specificationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "runnerDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "observationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "output": {
               "$ref": "#/$defs/outputBinding"
@@ -10120,7 +13266,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 32,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/adjacentFileAvailability"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/adjacentFileAvailability"
           }
         },
         "runtime": {
@@ -10134,16 +13280,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "ruleSetId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "ruleSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         }
@@ -10165,13 +13311,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "inputBindings": {
                 "properties": {
                   "roleBriefDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "contentInventoryDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "inputMaterialDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -10243,7 +13389,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           ]
         },
@@ -10253,7 +13399,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
             }
           ]
         },
@@ -10273,10 +13419,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10289,10 +13435,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "imageId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "imageDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10305,10 +13451,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "const": "lifecycle.execution-input-set.v1"
+              "const": "lifecycle.execution-input-set.v2"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10368,10 +13514,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "maximum": 9007199254740991
                   },
                   "carrierDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "manifestDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               },
@@ -10401,7 +13547,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "stage": {
               "enum": [
@@ -10412,7 +13558,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10451,7 +13597,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 1048576
             },
             "workspaceRawDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "semanticMarkdownDigest": {
               "$ref": "#/$defs/nullableDigest"
@@ -10518,7 +13664,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "null"
             },
             "failureFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "submissionDiagnostic": {
               "type": "null"
@@ -10548,13 +13694,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "agent-work-product"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10602,7 +13748,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/candidateRevisionReference"
             },
             "carrierManifestDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10620,13 +13766,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "candidate-revision"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -10776,7 +13922,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "contained"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "cancellationRequested": {
               "type": "boolean"
@@ -10806,7 +13952,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "retired"
             },
             "factsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "residualClass": {
               "enum": [
@@ -10840,7 +13986,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "else": {
                 "properties": {
                   "residualFactsDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -10853,7 +13999,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/execution-specification.schema.json",
     id: "urn:lifecycle:schema:execution-specification:v1",
-    sourceDigest: "sha256:d27db29b4090ac724ee1c866984f1d1fe207e56c810777b92b2fabbe5be9980c",
+    sourceDigest: "sha256:989f5c2f682ac97c1a60c6ecf75fea8b886a6460086fd0fde5473bccd5ac2cb1",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:execution-specification:v1",
@@ -10928,7 +14074,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/terminalPolicy"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "allOf": [
@@ -10999,7 +14145,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "const": "agent-attempt"
                 },
                 "activityId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "attempt": {
                   "$ref": "#/$defs/attemptReference"
@@ -11021,10 +14167,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "const": "check"
                 },
                 "activityId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "selectionId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "phase": {
                   "enum": [
@@ -11033,7 +14179,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "ownerSubjectDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             }
@@ -11053,13 +14199,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "agent-attempt"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11079,10 +14225,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11095,10 +14241,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "imageId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "imageDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11111,10 +14257,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "const": "lifecycle.execution-input-set.v1"
+              "const": "lifecycle.execution-input-set.v2"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11141,10 +14287,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "providerDescriptorDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "adapterImplementationDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             },
@@ -11171,19 +14317,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "selectionId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 },
                 "definitionDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "bindingDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "runnerImplementationDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "parserImplementationDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             }
@@ -11203,13 +14349,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.execution-cell-runner.v1"
             },
             "contractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "operationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "argumentsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11236,7 +14382,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "bindingDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11253,7 +14399,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "capabilityProfileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "candidateWrites": {
               "type": "boolean"
@@ -11294,7 +14440,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "agentPolicyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "providerControlPlane": {
               "enum": [
@@ -11308,7 +14454,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               ]
             },
@@ -11338,7 +14484,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "else": {
                 "properties": {
                   "providerPolicyDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -11415,10 +14561,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "policyDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11436,25 +14582,25 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "wallTimeMilliseconds": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "processes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "storageBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "outputEntries": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "outputBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "outputEntryBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "events": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             }
           }
         },
@@ -11492,7 +14638,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": false
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -11511,7 +14657,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "properties": {
             "path": {
               "description": "Normalized carrier-relative root. Candidate entries map to repository paths by stripping exactly this path plus one slash.",
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "purpose": {
               "enum": [
@@ -11539,10 +14685,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "maximumEntries": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "maximumBytes": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             }
           }
         },
@@ -11580,7 +14726,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/fixture-manifest.schema.json",
     id: "urn:lifecycle:schema:fixture-manifest:v1",
-    sourceDigest: "sha256:24135e7500100476cd900bc793421ad369aaf0387376d8f8f8015459b68420c3",
+    sourceDigest: "sha256:662eb2262d8be1cba4a8efe24c3aadaf04641bfa7ed41e234bbfcbd932a7f798",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:fixture-manifest:v1",
@@ -11601,7 +14747,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "fixtures": {
           "type": "array",
@@ -11638,13 +14784,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "profile": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "complete": {
               "type": "boolean"
@@ -11661,7 +14807,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "subjectDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -11669,7 +14815,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "description": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           },
           "allOf": [
@@ -11705,364 +14851,179 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
     },
   },
   {
-    path: "spec-source/schemas/founder-brief-payload.schema.json",
-    id: "urn:lifecycle:schema:founder-brief-payload:v1",
-    sourceDigest: "sha256:b9479f5671d7fbfc0eb99cc2776c48609b4044910910f16e04273053082214d0",
+    path: "spec-source/schemas/integration-assessment-payload.schema.json",
+    id: "urn:lifecycle:schema:integration-assessment-payload:v1",
+    sourceDigest: "sha256:d55880cd783421a85bf3c73053400414a8ca207ecaf8cdfe39625b9549c6ef9e",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:founder-brief-payload:v1",
-      "title": "Lifecycle Founder Brief Payload v1",
-      "description": "Typed mechanics for one complete fresh Founder semantic input to one Agent activity.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "schema",
-        "inputProfile",
-        "templateProfileId",
-        "semanticMarkdownDigest",
-        "submission"
-      ],
-      "properties": {
-        "schema": {
-          "const": "lifecycle.founder-brief-payload.v1"
-        },
-        "inputProfile": {
-          "enum": [
-            "delivery.prepare",
-            "delivery.continue",
-            "delivery.evaluate",
-            "delivery.revise",
-            "delivery.reaffirm"
-          ]
-        },
-        "templateProfileId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
-        },
-        "semanticMarkdownDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-        },
-        "submission": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "rawDigest",
-            "rawByteLength",
-            "normalizedByteLength"
-          ],
-          "properties": {
-            "rawDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-            },
-            "rawByteLength": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1048576
-            },
-            "normalizedByteLength": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1048576
-            }
-          }
-        }
-      }
-    },
-  },
-  {
-    path: "spec-source/schemas/founder-decision-payload.schema.json",
-    id: "urn:lifecycle:schema:founder-decision-payload:v4",
-    sourceDigest: "sha256:c9cc441bc5bfba5fc52c3a171ec51c2b92be4c0fdd2d326ffa908c36052aef0f",
-    schema: {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:founder-decision-payload:v4",
-      "title": "Lifecycle Founder Decision Payload v4",
-      "description": "Exact Founder-authenticated Delivery decision subject and bounded public authentication facts.",
+      "$id": "urn:lifecycle:schema:integration-assessment-payload:v1",
+      "title": "Lifecycle Integration Assessment Payload v1",
+      "description": "Runtime-owned exact integration facts about source Candidate and selected canonical parent; result state belongs only to the successor Candidate Revision.",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "schema",
         "profileId",
-        "decision",
-        "semanticDigest",
-        "subject",
-        "subjectDigest",
-        "authentication"
+        "canonicalParent",
+        "mergeRule",
+        "outcome",
+        "conflicts",
+        "validation",
+        "contextualApplicability",
+        "assessedAt",
+        "limitations"
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.founder-decision-payload.v4"
+          "const": "lifecycle.integration-assessment-payload.v1"
         },
         "profileId": {
-          "const": "lifecycle.founder-decision.foundation-v1"
+          "const": "lifecycle.integration-assessment.foundation-v1"
         },
-        "decision": {
-          "enum": [
-            "admit",
-            "readmit",
-            "accept",
-            "no-ship"
-          ]
+        "canonicalParent": {
+          "$ref": "urn:lifecycle:schema:repository-snapshot:v1"
         },
-        "semanticDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-        },
-        "subject": {
+        "mergeRule": {
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "schema",
-            "targetId",
-            "storeId",
-            "processId",
-            "activityId",
-            "operation",
-            "decisionId",
-            "decision",
-            "decisionSemanticDigest",
-            "journalHead",
-            "reducerFactsDigest",
-            "repository",
-            "selectedControl",
-            "coordinates",
-            "principalId",
-            "keyId",
-            "algorithm",
-            "authorizedAt",
-            "expiresAt",
-            "nonce",
-            "candidateDisposition"
+            "id",
+            "implementationId",
+            "implementationDigest"
           ],
           "properties": {
-            "schema": {
-              "const": "lifecycle.founder-decision-subject.v3"
+            "id": {
+              "const": "lifecycle.integration.three-way.v2"
             },
-            "targetId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "implementationId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
-            "storeId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "processId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "activityId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "operation": {
-              "enum": [
-                "delivery.admit",
-                "delivery.accept",
-                "delivery.no-ship"
-              ]
-            },
-            "decisionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "decision": {
-              "enum": [
-                "admit",
-                "readmit",
-                "accept",
-                "no-ship"
-              ]
-            },
-            "decisionSemanticDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-            },
-            "journalHead": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "sequence",
-                "digest"
-              ],
-              "properties": {
-                "sequence": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
-                },
-                "digest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                }
+            "implementationDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "outcome": {
+          "enum": [
+            "constructed",
+            "conflicted",
+            "invalid"
+          ]
+        },
+        "conflicts": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "kind"
+            ],
+            "properties": {
+              "path": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+              },
+              "kind": {
+                "enum": [
+                  "content",
+                  "add-add",
+                  "modify-delete",
+                  "rename",
+                  "mode",
+                  "type",
+                  "unsupported"
+                ]
               }
+            }
+          }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "complete",
+            "valid",
+            "diagnosticCodes",
+            "factsDigest"
+          ],
+          "properties": {
+            "complete": {
+              "type": "boolean"
             },
-            "reducerFactsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+            "valid": {
+              "type": "boolean"
             },
-            "repository": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "repositorySnapshotDigest",
-                "canonicalCommit",
-                "canonicalTree",
-                "productStateDigest",
-                "atlasStateDigest",
-                "atlasResolutionDigest",
-                "atlasNormalizedModelDigest",
-                "atlasResourceBindingsDigest",
-                "repositoryContractDigest",
-                "knowledgeSetDigest",
-                "checkBindingSetDigest"
-              ],
-              "properties": {
-                "repositorySnapshotDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "canonicalCommit": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
-                },
-                "canonicalTree": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
-                },
-                "productStateDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "atlasStateDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "atlasResolutionDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "atlasNormalizedModelDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "atlasResourceBindingsDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "repositoryContractDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "knowledgeSetDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                },
-                "checkBindingSetDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
-                }
-              }
-            },
-            "selectedControl": {
+            "diagnosticCodes": {
               "type": "array",
-              "maxItems": 4100,
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+              }
+            },
+            "factsDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "contextualApplicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disposition",
+            "changes"
+          ],
+          "properties": {
+            "disposition": {
+              "enum": [
+                "unchanged",
+                "requires-readmission"
+              ]
+            },
+            "changes": {
+              "type": "array",
+              "maxItems": 5,
               "uniqueItems": true,
               "items": {
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "relation",
-                  "target"
+                  "subject",
+                  "admittedDigest",
+                  "parentDigest"
                 ],
                 "properties": {
-                  "relation": {
+                  "subject": {
                     "enum": [
-                      "selects-boundary",
-                      "selects-baseline-receipt",
-                      "continues-from-boundary",
-                      "resolves",
-                      "selects-candidate",
-                      "selects-seal",
-                      "selects-evidence"
+                      "repository-contract",
+                      "atlas",
+                      "discipline-registry",
+                      "knowledge-closure",
+                      "required-sources"
                     ]
                   },
-                  "target": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+                  "admittedDigest": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                  },
+                  "parentDigest": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
-            },
-            "coordinates": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "qualification",
-                "repository",
-                "provider",
-                "authoritySubject",
-                "transactionRules"
-              ],
-              "properties": {
-                "qualification": {
-                  "const": "lifecycle.foundation.1.0.0-rc.10"
-                },
-                "repository": {
-                  "const": "lifecycle.repository.v15"
-                },
-                "provider": {
-                  "const": "lifecycle.provider-adapter.v6"
-                },
-                "authoritySubject": {
-                  "const": "lifecycle.founder-decision-subject.v3"
-                },
-                "transactionRules": {
-                  "const": "lifecycle.delivery-transaction-rules.v1"
-                }
-              }
-            },
-            "principalId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
-            },
-            "keyId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "algorithm": {
-              "const": "ed25519"
-            },
-            "authorizedAt": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
-            },
-            "expiresAt": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
-                }
-              ]
-            },
-            "nonce": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "candidateDisposition": {
-              "enum": [
-                "not-applicable",
-                "no-candidate",
-                "abandon"
-              ]
             }
           }
         },
-        "subjectDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+        "assessedAt": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
         },
-        "authentication": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "principalId",
-            "keyId",
-            "algorithm",
-            "signature",
-            "verifiedAt"
-          ],
-          "properties": {
-            "principalId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
-            },
-            "keyId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
-            },
-            "algorithm": {
-              "const": "ed25519"
-            },
-            "signature": {
-              "type": "string",
-              "minLength": 94,
-              "maxLength": 94,
-              "pattern": "^ed25519:[A-Za-z0-9_-]{86}$"
-            },
-            "verifiedAt": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime"
-            }
+        "limitations": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         }
       },
@@ -12070,32 +15031,23 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "if": {
             "properties": {
-              "decision": {
-                "enum": [
-                  "admit",
-                  "readmit"
-                ]
+              "outcome": {
+                "const": "constructed"
               }
-            },
-            "required": [
-              "decision"
-            ]
+            }
           },
           "then": {
             "properties": {
-              "subject": {
+              "conflicts": {
+                "maxItems": 0
+              },
+              "validation": {
                 "properties": {
-                  "operation": {
-                    "const": "delivery.admit"
+                  "complete": {
+                    "const": true
                   },
-                  "decision": {
-                    "enum": [
-                      "admit",
-                      "readmit"
-                    ]
-                  },
-                  "candidateDisposition": {
-                    "const": "not-applicable"
+                  "valid": {
+                    "const": true
                   }
                 }
               }
@@ -12105,28 +15057,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "if": {
             "properties": {
-              "decision": {
-                "const": "accept"
+              "outcome": {
+                "const": "conflicted"
               }
-            },
-            "required": [
-              "decision"
-            ]
+            }
           },
           "then": {
             "properties": {
-              "subject": {
-                "properties": {
-                  "operation": {
-                    "const": "delivery.accept"
-                  },
-                  "decision": {
-                    "const": "accept"
-                  },
-                  "candidateDisposition": {
-                    "const": "not-applicable"
-                  }
-                }
+              "conflicts": {
+                "minItems": 1
               }
             }
           }
@@ -12134,29 +15073,32 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         {
           "if": {
             "properties": {
-              "decision": {
-                "const": "no-ship"
+              "contextualApplicability": {
+                "properties": {
+                  "disposition": {
+                    "const": "unchanged"
+                  }
+                }
               }
-            },
-            "required": [
-              "decision"
-            ]
+            }
           },
           "then": {
             "properties": {
-              "subject": {
+              "contextualApplicability": {
                 "properties": {
-                  "operation": {
-                    "const": "delivery.no-ship"
-                  },
-                  "decision": {
-                    "const": "no-ship"
-                  },
-                  "candidateDisposition": {
-                    "enum": [
-                      "no-candidate",
-                      "abandon"
-                    ]
+                  "changes": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "contextualApplicability": {
+                "properties": {
+                  "changes": {
+                    "minItems": 1
                   }
                 }
               }
@@ -12169,7 +15111,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/investment-allocation.schema.json",
     id: "urn:lifecycle:schema:investment-allocation:v1",
-    sourceDigest: "sha256:b5d114032d330d15d96a486682443d98f03b093c20b1c2f5dae837fe18b346da",
+    sourceDigest: "sha256:06c195e0feaa24127874b1c440c2d13cdb75202291837792eb7e1cd0eb41d40c",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:investment-allocation:v1",
@@ -12198,10 +15140,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.investment-allocation.v1"
         },
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "eligibleOperationId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "role": {
           "type": "string",
@@ -12212,16 +15154,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "providerDescriptorId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "providerDescriptorDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "model": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "reasoning": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "wallTimeMs": {
           "type": "integer",
@@ -12253,12 +15195,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "callerPolicyId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "cumulativePolicyObservationDigest": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             {
               "type": "null"
@@ -12292,7 +15234,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -12312,12 +15254,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/knowledge-projection.schema.json",
-    id: "urn:lifecycle:schema:knowledge-projection:v4",
-    sourceDigest: "sha256:8c3b7a72a93672c578e74a312aafb82a8ee23aee2e12fb3df00026f266b0193b",
+    id: "urn:lifecycle:schema:knowledge-projection:v6",
+    sourceDigest: "sha256:be029ee5fc94f6bf0d93f245f5e3a6d9af113cd4c9f54cb215183e4a5a795ffd",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:knowledge-projection:v4",
-      "title": "Lifecycle Knowledge Projection v4",
+      "$id": "urn:lifecycle:schema:knowledge-projection:v6",
+      "title": "Lifecycle Knowledge Projection v6",
       "type": "object",
       "required": [
         "schema",
@@ -12344,7 +15286,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.knowledge-projection.v4"
+          "const": "lifecycle.knowledge-projection.v6"
         },
         "projectionId": {
           "type": "string",
@@ -12370,17 +15312,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "enum": [
             "orientation-standard-v1",
             "execution-standard-v1",
-            "execution-large-v1"
+            "execution-large-v1",
+            "orientation-large-v1"
           ]
         },
         "profileDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "compiler": {
           "$ref": "#/$defs/compiler"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "basis": {
           "$ref": "#/$defs/basis"
@@ -12459,7 +15402,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/counts"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "patternProperties": {
@@ -12481,7 +15424,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "const": "reconnaissance"
               },
               "profile": {
-                "const": "orientation-standard-v1"
+                "enum": [
+                  "orientation-standard-v1",
+                  "orientation-large-v1"
+                ]
               },
               "core": {
                 "$ref": "#/$defs/orientationCore"
@@ -12524,13 +15470,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "basis": {
                 "properties": {
                   "repositorySnapshotDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "repositoryValidationDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "knowledgeSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "workBoundary": {
                     "type": "object"
@@ -12597,7 +15543,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "type": "object",
                     "properties": {
                       "sealedTree": {
-                        "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+                        "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
                       },
                       "seal": {
                         "$ref": "#/$defs/candidateSealReference"
@@ -12734,6 +15680,48 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "profile": {
+                "const": "orientation-large-v1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "omission": {
+                "properties": {
+                  "bounds": {
+                    "properties": {
+                      "maximumMandatoryItems": {
+                        "const": 512
+                      },
+                      "maximumMandatoryBytes": {
+                        "const": 8388608
+                      },
+                      "maximumItemBytes": {
+                        "const": 1048576
+                      },
+                      "maximumReachableItems": {
+                        "const": 4096
+                      },
+                      "maximumReachableBytes": {
+                        "const": 33554432
+                      },
+                      "maximumSourceBytes": {
+                        "const": 8388608
+                      },
+                      "maximumRelationshipDepth": {
+                        "const": 32
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       ],
       "$defs": {
@@ -12741,7 +15729,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "type": "array",
           "maxItems": 2048,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "idList": {
@@ -12749,7 +15737,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
           }
         },
         "compiler": {
@@ -12762,13 +15750,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -12781,7 +15769,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "generation": {
               "type": "integer",
@@ -12806,28 +15794,28 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "root": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "entrypoint": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "specificationRevision": {
-              "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "processorRevision": {
-              "const": "746cbce73c51b28d617b96ca08f18d498ac749c4"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "stateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "resolutionDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "normalizedModelDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "resourceBindingsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "complete": {
               "const": true
@@ -12851,14 +15839,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "work-boundary"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "revision": {
               "type": "integer",
               "minimum": 1
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -12871,25 +15859,26 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "stateDigest",
             "carrierManifestDigest",
             "sealedTree",
-            "seal"
+            "seal",
+            "integration"
           ],
           "properties": {
             "baseCommit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "revision": {
               "$ref": "#/$defs/candidateRevisionReference"
             },
             "stateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "carrierManifestDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "sealedTree": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
                 },
                 {
                   "type": "null"
@@ -12905,13 +15894,23 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 }
               ]
+            },
+            "integration": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/integrationBasis"
+                }
+              ]
             }
           }
         },
         "candidateSealReference": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
             },
             {
               "properties": {
@@ -12925,7 +15924,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "candidateRevisionReference": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
             },
             {
               "properties": {
@@ -12959,16 +15958,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "requestDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "target": {
               "$ref": "#/$defs/target"
             },
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectFormat": {
               "type": "string",
@@ -12978,18 +15977,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "repositoryEpochDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "productStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositoryContractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositorySnapshotDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -12999,7 +15998,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "repositoryValidationDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -13010,12 +16009,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/atlasBasis"
             },
             "knowledgeObservationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "knowledgeSetDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -13023,7 +16022,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "knowledgeValidationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "workBoundary": {
               "oneOf": [
@@ -13058,7 +16057,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "severity": {
               "type": "string",
@@ -13069,7 +16068,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "detail": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "sourceIds": {
               "$ref": "#/$defs/idList"
@@ -13092,7 +16091,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "kind": {
               "enum": [
@@ -13100,7 +16099,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "assurance",
                 "blueprint",
                 "description",
-                "check"
+                "check",
+                "discipline"
               ]
             },
             "revision": {
@@ -13108,22 +16108,22 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "minimum": 1
             },
             "title": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "owners": {
               "$ref": "#/$defs/idList"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "sourceDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "semanticDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13139,7 +16139,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "sourceId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "type": {
               "enum": [
@@ -13152,7 +16152,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "targetId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "required": {
               "type": "boolean"
@@ -13160,7 +16160,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "scope": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -13193,7 +16193,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13209,17 +16209,17 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "descriptionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "descriptionRevision": {
               "type": "integer",
               "minimum": 1
             },
             "selectorPath": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "selectorMode": {
               "enum": [
@@ -13245,7 +16245,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 4096,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
               }
             },
             "exemptions": {
@@ -13261,10 +16261,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "path": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   },
                   "reason": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                   },
                   "matched": {
                     "type": "boolean"
@@ -13313,7 +16313,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13330,10 +16330,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "binding": {
-              "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/checkBinding"
+              "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/checkBinding"
             },
             "checkIds": {
               "$ref": "#/$defs/idList"
@@ -13357,7 +16357,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "capabilityProfileId": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -13365,7 +16365,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13385,7 +16385,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13410,19 +16410,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "id": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "profile": {
-                    "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/capabilityProfile"
+                    "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/capabilityProfile"
                   },
                   "digest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13438,11 +16438,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "type": "array",
               "maxItems": 1024,
               "items": {
-                "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/projectionProfile"
+                "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/projectionProfile"
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13470,16 +16470,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "handle": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "id": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "kind": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "digest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "byteLength": {
                     "type": "integer",
@@ -13496,7 +16496,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -13514,17 +16514,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "capabilityIndex",
             "profileIndex",
             "retrievalIndex",
-            "indexDigest"
+            "indexDigest",
+            "disciplineIndex"
           ],
           "properties": {
             "class": {
               "const": "orientation"
             },
             "objective": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/orientationObjective"
             },
             "purpose": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "conditions": {
               "type": "array",
@@ -13552,7 +16553,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/retrievalIndex"
             },
             "indexDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "disciplineIndex": {
+              "$ref": "#/$defs/disciplineIndex"
             }
           }
         },
@@ -13568,7 +16572,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "kind": {
               "type": "string",
@@ -13586,7 +16590,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "sourceIds": {
               "$ref": "#/$defs/idList"
@@ -13607,10 +16611,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "role": {
               "type": "string",
@@ -13644,7 +16648,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "kind": {
               "type": "string",
@@ -13661,13 +16665,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "trigger": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "target": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "reversibility": {
               "type": "string",
@@ -13691,10 +16695,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "effectIds": {
               "$ref": "#/$defs/idList"
@@ -13721,10 +16725,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "checkId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "bindingIds": {
               "$ref": "#/$defs/idList"
@@ -13740,7 +16744,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "purpose": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -13762,10 +16766,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "claim": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "evidenceKinds": {
               "type": "array",
@@ -13799,7 +16803,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "path": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 },
                 {
                   "type": "null"
@@ -13809,7 +16813,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "checkId": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -13822,7 +16826,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "notApplicableCondition": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -13842,7 +16846,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "notApplicableCondition": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                   }
                 }
               },
@@ -13879,17 +16883,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "materialConditionPolicy",
             "completionReturnRules",
             "requestDigest",
-            "workBoundaryDigest"
+            "workBoundaryDigest",
+            "disciplines"
           ],
           "properties": {
             "class": {
               "const": "execution"
             },
             "objective": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "selectedMeaning": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "included": {
               "$ref": "#/$defs/stringList"
@@ -13957,30 +16962,33 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ],
               "properties": {
                 "profileId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 "profileDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             },
             "capabilitySummary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "prohibitedEffects": {
               "$ref": "#/$defs/stringList"
             },
             "materialConditionPolicy": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "completionReturnRules": {
               "$ref": "#/$defs/stringList"
             },
             "requestDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "workBoundaryDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "disciplines": {
+              "$ref": "#/$defs/disciplineSelection"
             }
           }
         },
@@ -13989,7 +16997,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "minItems": 1,
           "maxItems": 129,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
           }
         },
         "presentationHint": {
@@ -14038,7 +17046,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "maximum": 4194304
                 },
                 "digest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             },
@@ -14071,7 +17079,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "path": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 },
                 "byteLength": {
                   "type": "integer",
@@ -14079,7 +17087,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "maximum": 4194304
                 },
                 "digest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "scope": {
                   "const": "projection-bundle"
@@ -14147,16 +17155,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "itemDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "category": {
               "const": "knowledge"
             },
             "sourceIdentity": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "kind": {
               "oneOf": [
@@ -14170,7 +17178,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "check",
                     "implementation",
                     "binding",
-                    "source"
+                    "source",
+                    "discipline"
                   ]
                 },
                 {
@@ -14185,11 +17194,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "atlas",
                 "repository-reality",
                 "check-binding",
-                "informational-source"
+                "informational-source",
+                "discipline-guidance"
               ]
             },
             "locator": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "revision": {
               "oneOf": [
@@ -14198,7 +17208,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "minimum": 1
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -14206,12 +17216,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "sourceDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "semanticDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -14223,7 +17233,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "minItems": 1,
               "maxItems": 128,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
               }
             },
             "relationshipPaths": {
@@ -14242,7 +17252,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "useLimit": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -14253,6 +17263,50 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "allOf": [
             {
               "$ref": "#/$defs/materialPresentationRule"
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "discipline"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "authority": {
+                    "const": "discipline-guidance"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "behavior",
+                      "assurance",
+                      "blueprint",
+                      "description",
+                      "check"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "authority": {
+                    "const": "product-knowledge"
+                  }
+                }
+              }
             }
           ]
         },
@@ -14273,13 +17327,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "itemDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "artifactKind": {
               "type": "string",
@@ -14292,7 +17346,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "descriptionIds": {
               "$ref": "#/$defs/idList"
@@ -14309,7 +17363,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "useLimit": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -14341,13 +17395,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "itemDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "binding": {
-              "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/checkBinding"
+              "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/checkBinding"
             },
             "checkIds": {
               "$ref": "#/$defs/idList"
@@ -14356,7 +17410,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idList"
             },
             "bindingDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "evidenceKinds": {
               "type": "array",
@@ -14386,7 +17440,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "useLimit": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -14418,18 +17472,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "itemDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "reference": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "revision": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -14437,7 +17491,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "authority": {
               "type": "string",
@@ -14468,10 +17522,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "subjectId": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 "subjectDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "evidenceKind": {
                   "oneOf": [
@@ -14529,7 +17583,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "useLimit": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -14681,10 +17735,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "itemDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "unitKind": {
               "enum": [
@@ -14698,15 +17752,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "unitId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "atlasId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "mapId": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -14716,7 +17770,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "pointId": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -14737,10 +17791,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "sourcePath": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "normalizedDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "inclusionReasons": {
               "$ref": "#/$defs/stringList"
@@ -14754,7 +17808,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "useLimit": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -14784,7 +17838,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "mapId": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   }
                 }
               },
@@ -14813,10 +17867,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "mapId": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "pointId": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "recordKind": {
                     "enum": [
@@ -14894,24 +17948,24 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "handle": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "category": {
               "$ref": "#/$defs/reachableCategory"
             },
             "kind": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "sourceRevision": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "null"
@@ -14919,7 +17973,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "byteLength": {
               "type": "integer",
@@ -14936,7 +17990,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "mountedPath": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 },
                 {
                   "type": "null"
@@ -14956,7 +18010,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "mountedPath": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   }
                 }
               },
@@ -14982,10 +18036,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "severity": {
               "type": "string",
@@ -14999,7 +18053,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idList"
             },
             "detail": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -15015,19 +18069,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "code": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "required": {
               "type": "boolean"
             },
             "reference": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
             },
             "detail": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -15116,7 +18170,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 262144,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
               }
             }
           }
@@ -15135,10 +18189,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profile": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "bounds": {
               "$ref": "#/$defs/bounds"
@@ -15238,18 +18292,164 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "minimum": 0
             }
           }
+        },
+        "disciplineWorkType": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "description",
+            "disciplineIds"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "title": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "description": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "disciplineIds": {
+              "$ref": "#/$defs/idList"
+            }
+          }
+        },
+        "disciplineIndex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "registryDigest",
+            "workTypes",
+            "digest"
+          ],
+          "properties": {
+            "registryDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "workTypes": {
+              "type": "array",
+              "maxItems": 4096,
+              "items": {
+                "$ref": "#/$defs/disciplineWorkType"
+              }
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "disciplineBrief": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "summary",
+            "path",
+            "revision",
+            "sourceDigest",
+            "semanticDigest"
+          ],
+          "properties": {
+            "id": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                },
+                {
+                  "pattern": "^discipline\\."
+                }
+              ]
+            },
+            "title": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "summary": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "path": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "sourceDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "semanticDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "disciplineSelection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "registryDigest",
+            "workTypeIds",
+            "records"
+          ],
+          "properties": {
+            "registryDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "workTypeIds": {
+              "$ref": "#/$defs/idList"
+            },
+            "records": {
+              "type": "array",
+              "maxItems": 4096,
+              "items": {
+                "$ref": "#/$defs/disciplineBrief"
+              }
+            }
+          }
+        },
+        "integrationBasis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assessment",
+            "sourceCandidate",
+            "canonicalParent"
+          ],
+          "properties": {
+            "assessment": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "integration-assessment"
+                    }
+                  }
+                }
+              ]
+            },
+            "sourceCandidate": {
+              "$ref": "#/$defs/candidateRevisionReference"
+            },
+            "canonicalParent": {
+              "$ref": "urn:lifecycle:schema:repository-snapshot:v1"
+            }
+          }
         }
       }
     },
   },
   {
     path: "spec-source/schemas/knowledge-record.schema.json",
-    id: "urn:lifecycle:schema:knowledge-record:v1",
-    sourceDigest: "sha256:e91ec9e5407ee39f68d769608d6e0ad8b8943b4bb3524b6c64fee9f53e81c10b",
+    id: "urn:lifecycle:schema:knowledge-record:v2",
+    sourceDigest: "sha256:b0d5d4b768af44e55d7f102a447d154690273c503e27605d21139c724ca368c3",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:knowledge-record:v1",
-      "title": "Lifecycle Knowledge Record v1",
+      "$id": "urn:lifecycle:schema:knowledge-record:v2",
+      "title": "Lifecycle Knowledge Record v2",
       "type": "object",
       "required": [
         "schema",
@@ -15269,7 +18469,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.knowledge-record.v1"
+          "const": "lifecycle.knowledge-record.v2"
         },
         "kind": {
           "type": "string",
@@ -15278,14 +18478,15 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "assurance",
             "blueprint",
             "description",
-            "check"
+            "check",
+            "discipline"
           ]
         },
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
         },
         "title": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
         },
         "status": {
           "type": "string",
@@ -15317,24 +18518,24 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ],
               "properties": {
                 "id": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
                 },
                 "revision": {
                   "type": "integer",
                   "minimum": 1
                 },
                 "sourceDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "semanticDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             }
           ]
         },
         "summary": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
         },
         "owners": {
           "type": "array",
@@ -15342,14 +18543,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 32,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
           }
         },
         "sources": {
           "type": "array",
           "maxItems": 128,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/sourceBinding"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/sourceBinding"
           }
         },
         "relationships": {
@@ -15491,6 +18692,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "$ref": "#/$defs/checkSpec"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "discipline"
+                },
+                "id": {
+                  "pattern": "^discipline\\."
+                },
+                "spec": {
+                  "$ref": "#/$defs/disciplineSpec"
+                }
+              }
             }
           ]
         },
@@ -15501,7 +18715,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "enum": [
                   "behavior",
                   "description",
-                  "check"
+                  "check",
+                  "discipline"
                 ]
               }
             }
@@ -15577,6 +18792,51 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "discipline"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "owners": {
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "sources": {
+                "items": {
+                  "properties": {
+                    "required": {
+                      "const": false
+                    }
+                  }
+                }
+              },
+              "relationships": {
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/relationship"
+                    },
+                    {
+                      "properties": {
+                        "type": {
+                          "const": "related-to"
+                        },
+                        "required": {
+                          "const": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
         }
       ],
       "$defs": {
@@ -15585,7 +18845,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 256,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "nonemptyStringList": {
@@ -15594,7 +18854,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 256,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "relationship": {
@@ -15617,7 +18877,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "target": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "required": {
               "type": "boolean"
@@ -15625,7 +18885,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "scope": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -15635,7 +18895,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "rationale": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -15684,13 +18944,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "target": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "localFact": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "targetFact": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -15708,7 +18968,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "outcome": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "actors": {
               "$ref": "#/$defs/nonemptyStringList"
@@ -15743,7 +19003,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "obligation": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "scope": {
               "$ref": "#/$defs/nonemptyStringList"
@@ -15777,7 +19037,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "decision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "scope": {
               "$ref": "#/$defs/nonemptyStringList"
@@ -15813,7 +19073,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "mode": {
               "type": "string",
@@ -15830,7 +19090,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 512,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
               }
             }
           },
@@ -15868,7 +19128,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "responsibility": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "coverage": {
               "type": "array",
@@ -15918,7 +19178,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "selector": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -15933,16 +19193,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "pass": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fail": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "indeterminate": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "notRun": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -15995,7 +19255,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "proposition": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "subjects": {
               "type": "array",
@@ -16028,7 +19288,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 64,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
               }
             },
             "evaluation": {
@@ -16044,18 +19304,46 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nonemptyStringList"
             }
           }
+        },
+        "disciplineSpec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "practice",
+            "appliesWhen",
+            "doesNotApplyWhen",
+            "guidance",
+            "verification"
+          ],
+          "properties": {
+            "practice": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            "appliesWhen": {
+              "$ref": "#/$defs/nonemptyStringList"
+            },
+            "doesNotApplyWhen": {
+              "$ref": "#/$defs/boundedStringList"
+            },
+            "guidance": {
+              "$ref": "#/$defs/nonemptyStringList"
+            },
+            "verification": {
+              "$ref": "#/$defs/boundedStringList"
+            }
+          }
         }
       }
     },
   },
   {
     path: "spec-source/schemas/material-condition-payload.schema.json",
-    id: "urn:lifecycle:schema:material-condition-payload:v1",
-    sourceDigest: "sha256:1ad84d5651743630375f8d351b02ed055386fa11a6dd1c48e10d1198e9c31b18",
+    id: "urn:lifecycle:schema:material-condition-payload:v4",
+    sourceDigest: "sha256:42a1ca2fc73369a9a9760706a0ce6ac60fc7eb1c23bda5db2c25d263f5dde074",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:material-condition-payload:v1",
-      "title": "Lifecycle Material Condition Payload v1",
+      "$id": "urn:lifecycle:schema:material-condition-payload:v4",
+      "title": "Lifecycle Material Condition Payload v4",
       "description": "Runtime-derived fact that the active mandate can no longer govern productive Candidate work honestly.",
       "type": "object",
       "additionalProperties": false,
@@ -16071,10 +19359,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.material-condition-payload.v1"
+          "const": "lifecycle.material-condition-payload.v4"
         },
         "profileId": {
-          "const": "lifecycle.material-condition.foundation-v1"
+          "const": "lifecycle.material-condition.foundation-v3"
         },
         "conditionClass": {
           "enum": [
@@ -16085,19 +19373,30 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "risk-change",
             "architecture-conflict",
             "assurance-conflict",
-            "founder-tradeoff",
+            "director-tradeoff",
             "missing-authority",
             "missing-required-source",
             "required-capability-unavailable",
             "projection-closure-exceeded",
-            "no-honest-route"
+            "no-honest-route",
+            "integration-context-change"
           ]
         },
         "source": {
-          "$ref": "#/$defs/agentProposalSource"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/agentProposalSource"
+            },
+            {
+              "$ref": "#/$defs/integrationAssessmentSource"
+            },
+            {
+              "$ref": "#/$defs/projectionCompilationSource"
+            }
+          ]
         },
         "observedFactsDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "blocking": {
           "const": true
@@ -16113,16 +19412,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -16131,7 +19430,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 128,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
           }
         }
       },
@@ -16149,20 +19448,291 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "agent-proposal"
             },
             "conditionId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "integrationAssessmentSource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "integration-assessment"
+            }
+          }
+        },
+        "projectionCompilationSource": {
+          "description": "Exact owned mandatory-size refusal before builder or reviewer allocation. The Control course binds the frozen Candidate and governing Boundary; only evaluation additionally binds its exact Seal.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "requestDigest",
+            "profile",
+            "compiler",
+            "measurement",
+            "refusalFactsDigest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "projection-compilation"
+            },
+            "requestDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "profile": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "digest"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
+            },
+            "refusalFactsDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "measurement": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "mandatoryItems",
+                    "mandatoryBytes",
+                    "sourceBytes",
+                    "maximumMandatoryItems",
+                    "maximumMandatoryBytes",
+                    "maximumItemBytes",
+                    "maximumSourceBytes",
+                    "oversized"
+                  ],
+                  "properties": {
+                    "mandatoryItems": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "mandatoryBytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "sourceBytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "maximumMandatoryItems": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "maximumMandatoryBytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "maximumItemBytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "maximumSourceBytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "oversized": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "count",
+                        "digest",
+                        "witness"
+                      ],
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000000
+                        },
+                        "digest": {
+                          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                        },
+                        "witness": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "id",
+                                "bytes"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[!-~]{1,512}$"
+                                },
+                                "bytes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "kind": {
+                      "const": "complete-closure"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "category",
+                    "id",
+                    "locator",
+                    "objectId",
+                    "observedBytes",
+                    "maximumItemBytes"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "mandatory-item"
+                    },
+                    "category": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "locator": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "objectId": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "observedBytes": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "maximumItemBytes": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  }
+                }
+              ]
+            },
+            "compiler": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "version",
+                "digest"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "digest": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                }
+              }
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "conditionClass": {
+                "const": "integration-context-change"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/integrationAssessmentSource"
+              }
+            }
+          },
+          "else": {
+            "if": {
+              "properties": {
+                "conditionClass": {
+                  "const": "projection-closure-exceeded"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "source": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/agentProposalSource"
+                    },
+                    {
+                      "$ref": "#/$defs/projectionCompilationSource"
+                    }
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/agentProposalSource"
+                }
+              }
+            }
+          }
+        }
+      ]
     },
   },
   {
     path: "spec-source/schemas/product-state.schema.json",
     id: "urn:lifecycle:schema:product-state:v1",
-    sourceDigest: "sha256:fd00b7fdf1ef32812a39103162e38392398836da6b232d1b17bd0b0fbf59312f",
+    sourceDigest: "sha256:3f8f5e520230de4138d6b7ae68cf4cb5b80024425633cd76d60f96a6f746a963",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:product-state:v1",
@@ -16203,7 +19773,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxContains": 1
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -16218,7 +19788,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "mode": {
               "type": "string",
@@ -16228,7 +19798,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "objectId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "role": {
               "type": "string",
@@ -16246,13 +19816,74 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
     },
   },
   {
-    path: "spec-source/schemas/projection-request.schema.json",
-    id: "urn:lifecycle:schema:projection-request:v4",
-    sourceDigest: "sha256:752185153939faae017441f95e7077301e86b30949608c8da3f1ba2f628c5675",
+    path: "spec-source/schemas/productive-semantic-operation.schema.json",
+    id: "urn:lifecycle:schema:productive-semantic-operation:v1",
+    sourceDigest: "sha256:34f89f3462df0527c5244449d47b842f5ece6c04cd30f872221f7aeb7acc5ff9",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:projection-request:v4",
-      "title": "Lifecycle Projection Request v4",
+      "$id": "urn:lifecycle:schema:productive-semantic-operation:v1",
+      "title": "Lifecycle Productive Semantic Operation Request v1",
+      "description": "Exact public v15 request carrier for one productive semantic mutation over an existing Delivery.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "target",
+        "operation",
+        "deliveryId",
+        "input"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.foundation-runtime-facade.v17"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "operation": {
+          "enum": [
+            "delivery.continue",
+            "delivery.evaluate",
+            "delivery.revise",
+            "delivery.reaffirm"
+          ]
+        },
+        "deliveryId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "semanticMarkdown",
+            "expectedGeneration"
+          ],
+          "properties": {
+            "semanticMarkdown": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1048576,
+              "pattern": "^[^\\u0000]+$"
+            },
+            "expectedGeneration": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/projection-request.schema.json",
+    id: "urn:lifecycle:schema:projection-request:v5",
+    sourceDigest: "sha256:419a06913289152fae8ef52e338ead3cf29f6e8680902880219ef63be436b9c4",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:projection-request:v5",
+      "title": "Lifecycle Projection Request v5",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -16272,7 +19903,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.projection-request.v4"
+          "const": "lifecycle.projection-request.v5"
         },
         "class": {
           "enum": [
@@ -16288,7 +19919,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "target": {
           "$ref": "#/$defs/target"
@@ -16303,7 +19934,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/knowledge"
         },
         "profile": {
-          "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/projectionProfile"
+          "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/projectionProfile"
         },
         "subject": {
           "oneOf": [
@@ -16322,7 +19953,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/retrieval"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "patternProperties": {
@@ -16345,7 +19976,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "profile": {
                 "properties": {
                   "id": {
-                    "const": "orientation-standard-v1"
+                    "enum": [
+                      "orientation-standard-v1",
+                      "orientation-large-v1"
+                    ]
                   }
                 }
               },
@@ -16394,10 +20028,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "repository": {
                 "properties": {
                   "repositorySnapshotDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "validationDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "complete": {
                     "const": true
@@ -16410,7 +20044,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "knowledge": {
                 "properties": {
                   "knowledgeSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "complete": {
                     "const": true
@@ -16447,7 +20081,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "knowledge": {
                 "properties": {
                   "knowledgeSetDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -16536,7 +20170,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                     "type": "object",
                     "properties": {
                       "sealedTree": {
-                        "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+                        "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
                       },
                       "seal": {
                         "$ref": "#/$defs/candidateSealReference"
@@ -16579,7 +20213,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "retrieval": {
                 "properties": {
                   "authoritySubjectDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -16711,6 +20345,48 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "profile": {
+                "properties": {
+                  "id": {
+                    "const": "orientation-large-v1"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "profile": {
+                "properties": {
+                  "maximumMandatoryItems": {
+                    "const": 512
+                  },
+                  "maximumMandatoryBytes": {
+                    "const": 8388608
+                  },
+                  "maximumItemBytes": {
+                    "const": 1048576
+                  },
+                  "maximumReachableItems": {
+                    "const": 4096
+                  },
+                  "maximumReachableBytes": {
+                    "const": 33554432
+                  },
+                  "maximumSourceBytes": {
+                    "const": 8388608
+                  },
+                  "maximumRelationshipDepth": {
+                    "const": 32
+                  }
+                }
+              }
+            }
+          }
         }
       ],
       "$defs": {
@@ -16723,7 +20399,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "generation": {
               "type": "integer",
@@ -16748,10 +20424,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "commit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "tree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "objectFormat": {
               "enum": [
@@ -16760,18 +20436,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "repositoryEpochDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "productStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositoryContractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositorySnapshotDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -16781,7 +20457,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "validationDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -16819,28 +20495,28 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "root": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "entrypoint": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "specificationRevision": {
-              "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "processorRevision": {
-              "const": "746cbce73c51b28d617b96ca08f18d498ac749c4"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "stateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "resolutionDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "normalizedModelDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "resourceBindingsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "complete": {
               "const": true
@@ -16862,12 +20538,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "knowledgeObservationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "knowledgeSetDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -16875,7 +20551,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "knowledgeValidationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "complete": {
               "type": "boolean"
@@ -16899,14 +20575,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "work-boundary"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "revision": {
               "type": "integer",
               "minimum": 1
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -16919,25 +20595,26 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "stateDigest",
             "carrierManifestDigest",
             "sealedTree",
-            "seal"
+            "seal",
+            "integration"
           ],
           "properties": {
             "baseCommit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "revision": {
               "$ref": "#/$defs/candidateRevisionReference"
             },
             "stateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "carrierManifestDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "sealedTree": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
                 },
                 {
                   "type": "null"
@@ -16953,13 +20630,23 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 }
               ]
+            },
+            "integration": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/integrationBasis"
+                }
+              ]
             }
           }
         },
         "candidateSealReference": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
             },
             {
               "properties": {
@@ -16973,7 +20660,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "candidateRevisionReference": {
           "allOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
             },
             {
               "properties": {
@@ -16997,10 +20684,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "orientation"
             },
             "objective": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/orientationObjective"
             },
             "objectiveDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -17072,7 +20759,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "authoritySubjectDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -17092,16 +20779,47 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "reference": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
                   },
                   "revision": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                   },
                   "digest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
+            }
+          }
+        },
+        "integrationBasis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assessment",
+            "sourceCandidate",
+            "canonicalParent"
+          ],
+          "properties": {
+            "assessment": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "integration-assessment"
+                    }
+                  }
+                }
+              ]
+            },
+            "sourceCandidate": {
+              "$ref": "#/$defs/candidateRevisionReference"
+            },
+            "canonicalParent": {
+              "$ref": "urn:lifecycle:schema:repository-snapshot:v1"
             }
           }
         }
@@ -17110,12 +20828,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/provider-descriptor.schema.json",
-    id: "urn:lifecycle:schema:provider-descriptor:v6",
-    sourceDigest: "sha256:3bf4785e7ff687dd8b175878fec599298a7868f5854854ae69d38fcd86981a7a",
+    id: "urn:lifecycle:schema:provider-descriptor:v7",
+    sourceDigest: "sha256:06b5731d4b5de7ff8060c960c54a10a9839452ad16c643597531d15527f246c7",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:provider-descriptor:v6",
-      "title": "Lifecycle Provider Descriptor v6",
+      "$id": "urn:lifecycle:schema:provider-descriptor:v7",
+      "title": "Lifecycle Provider Descriptor v7",
       "description": "Strict provider-adapter-v6 descriptor for provider execution through the fixed Execution Cell runner.",
       "$comment": "The descriptor declares requirement classes, never a credential value, endpoint, daemon or container identity, Execution Handle, allocation key, physical path, host process group, custody root, or Reclamation coordinate. The Execution Backend and fixed runner own physical allocation, dispatch, containment, retrieval, Retirement, and Reclamation.",
       "type": "object",
@@ -17135,10 +20853,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.provider-descriptor.v6"
+          "const": "lifecycle.provider-descriptor.v7"
         },
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "adapter": {
           "$ref": "#/$defs/adapter"
@@ -17165,7 +20883,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/observation"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -17180,16 +20898,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "protocol": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             }
           }
         },
@@ -17203,13 +20921,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "product": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "compatibleVersion": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "executableIdentityClass": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             }
           }
         },
@@ -17289,19 +21007,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             },
             "bodyProfileIds": {
               "const": [
-                "lifecycle.agent-work-product-body.builder.v2",
-                "lifecycle.agent-work-product-body.reconnaissance.v2",
-                "lifecycle.agent-work-product-body.reviewer.v2"
+                "lifecycle.agent-work-product-body.builder.v4",
+                "lifecycle.agent-work-product-body.reconnaissance.v4",
+                "lifecycle.agent-work-product-body.reviewer.v4"
               ]
             },
             "parserProfileId": {
-              "const": "lifecycle.agent-work-product-parser.v2"
+              "const": "lifecycle.agent-work-product-parser.v4"
             },
             "compilerProfileId": {
-              "const": "lifecycle.agent-work-product-compiler.v2"
+              "const": "lifecycle.agent-work-product-compiler.v4"
             },
             "workProductPayloadSchemaId": {
-              "const": "urn:lifecycle:schema:agent-work-product-payload:v2"
+              "const": "urn:lifecycle:schema:agent-work-product-payload:v5"
             },
             "submissionTriggers": {
               "const": [
@@ -17451,7 +21169,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/publication-manifest.schema.json",
     id: "urn:lifecycle:schema:publication-manifest:v1",
-    sourceDigest: "sha256:8c278a9119969995180e78617671974da1c4188dbdfa266f7f16cac2da06c366",
+    sourceDigest: "sha256:6e349177aabdd45af9e451f10f9348798cd988b955ba305f10e975d80a9c53ea",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:publication-manifest:v1",
@@ -17476,7 +21194,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "status": {
           "description": "The common maturity of the inventoried specification documents, distinct from publication lifecycle status in an authenticated publication statement.",
@@ -17512,7 +21230,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "publicationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -17527,13 +21245,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "role": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "normative": {
               "type": "boolean"
@@ -17546,7 +21264,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/publication-statement.schema.json",
     id: "urn:lifecycle:schema:publication-statement:v1",
-    sourceDigest: "sha256:9a0c9fc64550d9d529d1250e0f71242608bb080a194d151fa8a7627f9c4108dc",
+    sourceDigest: "sha256:39c5c7ef729be6f9fc8d1fae608cc331acd50f15d6911958f8145544f2195712",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:publication-statement:v1",
@@ -17568,13 +21286,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "$ref": "#/$defs/subject"
         },
         "subjectDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "authority": {
           "$ref": "#/$defs/authority"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -17600,16 +21318,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.publication-statement-subject.v1"
             },
             "statementId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "specificationId": {
               "const": "lifecycle"
             },
             "specificationVersion": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "specificationRevision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "sourceRevision": {
               "description": "The immutable Git object identity of the source revision containing the exact publication manifest and inventoried bytes.",
@@ -17617,7 +21335,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
             },
             "publicationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "status": {
               "type": "string",
@@ -17632,7 +21350,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "previousStatementDigest": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 {
                   "type": "null"
@@ -17648,10 +21366,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ],
               "properties": {
                 "locator": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
                 },
                 "digest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 }
               }
             },
@@ -17662,7 +21380,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "reason": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 },
                 {
                   "type": "null"
@@ -17688,7 +21406,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "then": {
                 "properties": {
                   "reason": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                   }
                 }
               }
@@ -17706,10 +21424,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "principalId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
             },
             "keyId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "algorithm": {
               "const": "ed25519"
@@ -17727,7 +21445,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/release-notes.schema.json",
     id: "urn:lifecycle:schema:release-notes:v1",
-    sourceDigest: "sha256:f3df49e64b4dfd8df7f3b6e5d77b3359e5089cef3d51287671854f7c00a27608",
+    sourceDigest: "sha256:da6d9b3143c2d7d657bcbec53f2d07453c2d42ef96a826febdab086145065627",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:release-notes:v1",
@@ -17754,19 +21472,19 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.release-notes.v1"
         },
         "releaseNotesId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "specificationId": {
           "const": "lifecycle"
         },
         "specificationVersion": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "publicationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "previousPublication": {
           "oneOf": [
@@ -17779,7 +21497,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "summary": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
         },
         "changes": {
           "type": "array",
@@ -17803,18 +21521,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "type": "array",
           "maxItems": 1024,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "operatorActions": {
           "type": "array",
           "maxItems": 1024,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -17823,7 +21541,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
           }
         },
         "pathSet": {
@@ -17831,7 +21549,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
           }
         },
         "publicationCoordinate": {
@@ -17844,13 +21562,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "specificationVersion": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "specificationRevision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "publicationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -17869,7 +21587,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "classification": {
               "type": "string",
@@ -17882,7 +21600,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "owners": {
               "$ref": "#/$defs/pathSet"
@@ -17894,10 +21612,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "compatibilityEffect": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "securityEffect": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -17922,12 +21640,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "lastAcceptedPredecessorCoordinate": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
             },
             "firstAcceptedSuccessorCoordinate": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
                 },
                 {
                   "type": "null"
@@ -17935,13 +21653,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "activeAttemptTreatment": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "historicalRecordTreatment": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "unsupportedStateTreatment": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fixtureIds": {
               "$ref": "#/$defs/idSet"
@@ -17953,12 +21671,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/repository-contract.schema.json",
-    id: "urn:lifecycle:schema:repository-contract:v15",
-    sourceDigest: "sha256:3920f5da1e40133cc9a2b8f86d37149a76018e7590ac9670b880ad615f0381c5",
+    id: "urn:lifecycle:schema:repository-contract:v22",
+    sourceDigest: "sha256:11dcaec7f132ef3ef6515f9f42b4a1bfe38e634712eedc026117093b43f5a8bc",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:repository-contract:v15",
-      "title": "Lifecycle Repository Contract v15",
+      "$id": "urn:lifecycle:schema:repository-contract:v22",
+      "title": "Lifecycle Repository Contract v22",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -17985,13 +21703,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "$schema": {
-          "const": "lifecycle.repository.v15"
+          "const": "lifecycle.repository.v22"
         },
         "schemaVersion": {
-          "const": 15
+          "const": 22
         },
         "targetId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "generation": {
           "type": "integer",
@@ -18016,10 +21734,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle"
             },
             "revision": {
-              "const": "lifecycle.foundation.1.0.0-rc.10"
+              "const": "lifecycle.foundation.1.0.0-rc.17"
             },
             "publicationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "status": {
               "enum": [
@@ -18038,10 +21756,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "compatible": {
-              "const": "lifecycle.runtime.foundation.v10"
+              "const": "lifecycle.runtime.foundation.v17"
             },
             "interface": {
-              "const": "lifecycle.interface.foundation.v10"
+              "const": "lifecycle.interface.foundation.v17"
             }
           }
         },
@@ -18055,13 +21773,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "defaultDescriptorId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "defaultDescriptorDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "protocol": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             }
           }
         },
@@ -18117,7 +21835,9 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 "assurance",
                 "blueprint",
                 "check",
-                "descriptionPattern"
+                "descriptionPattern",
+                "discipline",
+                "disciplineRegistry"
               ],
               "properties": {
                 "behavior": {
@@ -18134,6 +21854,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 },
                 "descriptionPattern": {
                   "const": "**/_*.desc.md"
+                },
+                "discipline": {
+                  "const": "records/disciplines"
+                },
+                "disciplineRegistry": {
+                  "const": "records/disciplines/registry.json"
                 }
               }
             },
@@ -18143,7 +21869,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 4096,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
               }
             },
             "limits": {
@@ -18199,70 +21925,78 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "schemas": {
               "const": [
                 "urn:lifecycle:schema:agent-attempt-payload:v3",
-                "urn:lifecycle:schema:agent-work-product-payload:v2",
+                "urn:lifecycle:schema:agent-work-product-payload:v5",
                 "urn:lifecycle:schema:atlas-resolution:v2",
                 "urn:lifecycle:schema:atlas-state:v1",
+                "urn:lifecycle:schema:authorization-review:v1",
+                "urn:lifecycle:schema:builder-repair-output:v1",
                 "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
-                "urn:lifecycle:schema:candidate-revision-payload:v2",
+                "urn:lifecycle:schema:candidate-revision-payload:v3",
                 "urn:lifecycle:schema:candidate-seal-payload:v2",
                 "urn:lifecycle:schema:capability-profile:v2",
-                "urn:lifecycle:schema:check-receipt-payload:v2",
-                "urn:lifecycle:schema:closure-payload:v4",
-                "urn:lifecycle:schema:common:v1",
+                "urn:lifecycle:schema:check-receipt-payload:v3",
+                "urn:lifecycle:schema:closure-payload:v6",
+                "urn:lifecycle:schema:common:v2",
                 "urn:lifecycle:schema:conformance-claim:v2",
-                "urn:lifecycle:schema:control-lifecycle-profile:v4",
-                "urn:lifecycle:schema:control-record-event:v2",
+                "urn:lifecycle:schema:context-inspection-selector:v3",
+                "urn:lifecycle:schema:control-lifecycle-profile:v7",
+                "urn:lifecycle:schema:control-record-event:v6",
                 "urn:lifecycle:schema:control-record-file:v1",
-                "urn:lifecycle:schema:control-record-revision:v1",
+                "urn:lifecycle:schema:control-record-revision:v2",
                 "urn:lifecycle:schema:control-record-store-archive:v1",
                 "urn:lifecycle:schema:control-record-store-seal:v1",
-                "urn:lifecycle:schema:control-record-store:v1",
-                "urn:lifecycle:schema:delivery-reduction:v2",
-                "urn:lifecycle:schema:evidence-packet-payload:v1",
+                "urn:lifecycle:schema:control-record-store:v2",
+                "urn:lifecycle:schema:delivery-reduction:v5",
+                "urn:lifecycle:schema:director-brief-payload:v2",
+                "urn:lifecycle:schema:director-decision-payload:v5",
+                "urn:lifecycle:schema:discipline-pack:v1",
+                "urn:lifecycle:schema:discipline-registry:v1",
+                "urn:lifecycle:schema:evidence-packet-payload:v2",
                 "urn:lifecycle:schema:execution-backend-profile:v1",
                 "urn:lifecycle:schema:execution-image:v1",
-                "urn:lifecycle:schema:execution-input-set:v1",
+                "urn:lifecycle:schema:execution-input-set:v2",
                 "urn:lifecycle:schema:execution-observation:v1",
                 "urn:lifecycle:schema:execution-output-manifest:v1",
                 "urn:lifecycle:schema:execution-receipt-payload:v3",
                 "urn:lifecycle:schema:execution-specification:v1",
                 "urn:lifecycle:schema:fixture-manifest:v1",
-                "urn:lifecycle:schema:founder-brief-payload:v1",
-                "urn:lifecycle:schema:founder-decision-payload:v4",
+                "urn:lifecycle:schema:integration-assessment-payload:v1",
                 "urn:lifecycle:schema:investment-allocation:v1",
-                "urn:lifecycle:schema:knowledge-projection:v4",
-                "urn:lifecycle:schema:knowledge-record:v1",
-                "urn:lifecycle:schema:material-condition-payload:v1",
+                "urn:lifecycle:schema:knowledge-projection:v6",
+                "urn:lifecycle:schema:knowledge-record:v2",
+                "urn:lifecycle:schema:material-condition-payload:v4",
                 "urn:lifecycle:schema:product-state:v1",
-                "urn:lifecycle:schema:projection-request:v4",
-                "urn:lifecycle:schema:provider-descriptor:v6",
+                "urn:lifecycle:schema:productive-semantic-operation:v1",
+                "urn:lifecycle:schema:projection-request:v5",
+                "urn:lifecycle:schema:provider-descriptor:v7",
                 "urn:lifecycle:schema:publication-manifest:v1",
                 "urn:lifecycle:schema:publication-statement:v1",
                 "urn:lifecycle:schema:release-notes:v1",
-                "urn:lifecycle:schema:repository-contract:v15",
+                "urn:lifecycle:schema:repository-contract:v22",
                 "urn:lifecycle:schema:repository-snapshot:v1",
                 "urn:lifecycle:schema:validation-result:v1",
-                "urn:lifecycle:schema:work-boundary-payload:v4"
+                "urn:lifecycle:schema:work-boundary-payload:v6",
+                "urn:lifecycle:schema:work-delegation-payload:v2"
               ]
             },
             "profiles": {
               "const": [
-                "knowledge-set-v1",
-                "knowledge-structural-v1",
-                "repository-v7"
+                "knowledge-set-v2",
+                "knowledge-structural-v2",
+                "repository-v9"
               ]
             },
             "controlStore": {
-              "const": "lifecycle.control-record-store.v1"
+              "const": "lifecycle.control-record-store.v2"
             },
             "controlLifecycleProfile": {
-              "const": "foundation-delivery-control-lifecycle-v4"
+              "const": "foundation-delivery-control-lifecycle-v7"
             },
             "controlRecordRevision": {
-              "const": "lifecycle.control-record-revision.v1"
+              "const": "lifecycle.control-record-revision.v2"
             },
             "controlRecordEvent": {
-              "const": "lifecycle.control-record-event.v2"
+              "const": "lifecycle.control-record-event.v6"
             },
             "controlReferencedFile": {
               "const": "lifecycle.control-record-file.v1"
@@ -18274,7 +22008,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.control-record-store-archive.v1"
             },
             "deliveryReduction": {
-              "const": "lifecycle.delivery-reduction.v2"
+              "const": "lifecycle.delivery-reduction.v5"
             },
             "candidateRevisionCarrierManifest": {
               "const": "lifecycle.candidate-revision-carrier-manifest.v1"
@@ -18289,7 +22023,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.execution-specification.v1"
             },
             "executionInputSet": {
-              "const": "lifecycle.execution-input-set.v1"
+              "const": "lifecycle.execution-input-set.v2"
             },
             "executionImage": {
               "const": "lifecycle.execution-image.v1"
@@ -18348,10 +22082,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "path": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                   },
                   "reason": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                   }
                 }
               }
@@ -18484,6 +22218,41 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   }
                 }
               ]
+            },
+            "orientation-large-v1": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/projectionProfile"
+                },
+                {
+                  "properties": {
+                    "id": {
+                      "const": "orientation-large-v1"
+                    },
+                    "maximumMandatoryItems": {
+                      "const": 512
+                    },
+                    "maximumMandatoryBytes": {
+                      "const": 8388608
+                    },
+                    "maximumItemBytes": {
+                      "const": 1048576
+                    },
+                    "maximumReachableItems": {
+                      "const": 4096
+                    },
+                    "maximumReachableBytes": {
+                      "const": 33554432
+                    },
+                    "maximumSourceBytes": {
+                      "const": 8388608
+                    },
+                    "maximumRelationshipDepth": {
+                      "const": 32
+                    }
+                  }
+                }
+              ]
             }
           },
           "additionalProperties": {
@@ -18501,16 +22270,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "capabilityProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "orientationProjectionProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "executionProjectionProfileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "providerDescriptorId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             }
           }
         },
@@ -18524,10 +22293,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "principalId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
             },
             "keyId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "publicKey": {
               "type": "string",
@@ -18537,7 +22306,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "$defs": {
@@ -18556,16 +22325,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "release": {
-              "const": "0.7.0"
+              "const": "0.8.0"
             },
             "specificationRevision": {
-              "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "authoredFormat": {
               "const": 1
             },
             "processorRevision": {
-              "const": "746cbce73c51b28d617b96ca08f18d498ac749c4"
+              "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
             },
             "validationProfile": {
               "const": "neutral.atlas-validator.resolved"
@@ -18577,7 +22346,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "urn:atlas:schema:normalized:1"
             },
             "consumerProfile": {
-              "const": "lifecycle.atlas-consumer.v1"
+              "const": "lifecycle.atlas-consumer.v2"
             }
           }
         },
@@ -18586,7 +22355,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
           }
         },
         "knowledgeLimits": {
@@ -18730,7 +22499,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "maximumMandatoryItems": {
               "type": "integer",
@@ -18762,7 +22531,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maximum": 256
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -18790,14 +22559,14 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "checkIds": {
               "type": "array",
               "maxItems": 4096,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
               }
             },
             "subjectSelectors": {
@@ -18827,7 +22596,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "path": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 }
               }
             },
@@ -18845,7 +22614,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "const": "."
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 }
               ]
             },
@@ -18881,7 +22650,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 }
               ]
             },
@@ -18912,7 +22681,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "forbidden"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "limitations": {
               "type": "array",
@@ -18925,7 +22694,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               }
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -18949,7 +22718,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "selector": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             }
           }
         },
@@ -18986,13 +22755,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           }
         }
       },
-      "description": "Fresh Foundation rc.10 target contract selecting repository v15, runtime/interface v10, Provider Adapter v6, Docker-local execution contracts, immutable Candidate Revision Carriers, and the SQLite Delivery Control Record Store contracts without a backend fallback or repository-authored execution default."
+      "description": "Fresh Foundation rc.17 target contract selecting repository v22, runtime/interface v17, independent per-Delivery Git repositories, exact integration assessments, and conditional canonical publication."
     },
   },
   {
     path: "spec-source/schemas/repository-snapshot.schema.json",
     id: "urn:lifecycle:schema:repository-snapshot:v1",
-    sourceDigest: "sha256:6b747835509b1ec4cf5b10be0b79c012df38b55ac8ff08550fcbd170236965a7",
+    sourceDigest: "sha256:08bd6b50cdd92d370f4a03dc948daabaa214f4dfcf899437839371c8afc6d609",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:repository-snapshot:v1",
@@ -19015,13 +22784,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
       ],
       "properties": {
         "targetId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "commit": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
         },
         "tree": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
         },
         "objectFormat": {
           "type": "string",
@@ -19031,28 +22800,28 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ]
         },
         "contractDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "productStateDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "atlasStateDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "atlasResolutionDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "atlasNormalizedModelDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "atlasResourceBindingsDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "knowledgeSetDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
@@ -19060,7 +22829,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   {
     path: "spec-source/schemas/validation-result.schema.json",
     id: "urn:lifecycle:schema:validation-result:v1",
-    sourceDigest: "sha256:8270f433c8a55850b483eae58d8c3886d6eb43001538bea2bcaf218cf56c24ab",
+    sourceDigest: "sha256:fc031d18415531c1baad5a7450b82d314ca077798b30a68f84eedb310c609e74",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:lifecycle:schema:validation-result:v1",
@@ -19087,13 +22856,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "const": "lifecycle.validation-result.v1"
         },
         "specificationRevision": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "publicationDigest": {
           "$ref": "#/$defs/nullableDigest"
         },
         "profile": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "subject": {
           "$ref": "#/$defs/subject"
@@ -19130,7 +22899,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "format": "date-time"
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       },
       "allOf": [
@@ -19161,7 +22930,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "nullableDigest": {
           "oneOf": [
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             {
               "type": "null"
@@ -19180,10 +22949,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "kind": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "digest": {
               "$ref": "#/$defs/nullableDigest"
@@ -19191,7 +22960,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "revision": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
                 },
                 {
                   "type": "integer",
@@ -19205,7 +22974,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "locator": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
                 },
                 {
                   "type": "null"
@@ -19226,7 +22995,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "complete": {
               "type": "boolean"
@@ -19278,7 +23047,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "complete": {
               "type": "boolean"
@@ -19302,7 +23071,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
             "locator": {
               "oneOf": [
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
                 },
                 {
                   "type": "null"
@@ -19366,7 +23135,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "kind": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "id": {
               "type": "string",
@@ -19400,7 +23169,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "stage": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "location": {
               "$ref": "#/$defs/location"
@@ -19439,7 +23208,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/diagnosticProperties/properties/severity"
             },
             "message": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "stage": {
               "$ref": "#/$defs/diagnosticProperties/properties/stage"
@@ -19502,16 +23271,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "version": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "claimedClass": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "supportedProfiles": {
               "type": "array",
@@ -19519,7 +23288,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 128,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
               }
             },
             "schemaEngine": {
@@ -19533,7 +23302,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "maxItems": 128,
               "uniqueItems": true,
               "items": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
               }
             }
           }
@@ -19562,7 +23331,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "ajv-formats-full-3.0.1"
             },
             "schemaSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -19597,13 +23366,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "const": "lifecycle.validation-result.v1"
             },
             "specificationRevision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "publicationDigest": {
               "$ref": "#/$defs/nullableDigest"
             },
             "profile": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             },
             "subject": {
               "$ref": "#/$defs/subject"
@@ -19639,12 +23408,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
   },
   {
     path: "spec-source/schemas/work-boundary-payload.schema.json",
-    id: "urn:lifecycle:schema:work-boundary-payload:v4",
-    sourceDigest: "sha256:37ab5d95bf60442a220c298c47f6665d1d7140963c38f3eeb8531e683922e61e",
+    id: "urn:lifecycle:schema:work-boundary-payload:v6",
+    sourceDigest: "sha256:9147bc9d5dc685d3e17ea52a6f8a1c53b4f2e87077f073ca7a1b4c1fdf959d7f",
     schema: {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "urn:lifecycle:schema:work-boundary-payload:v4",
-      "title": "Lifecycle Work Boundary Payload v4",
+      "$id": "urn:lifecycle:schema:work-boundary-payload:v6",
+      "title": "Lifecycle Work Boundary Payload v6",
       "description": "Complete runtime-compiled mandate and proof-plan facts for one immutable Work Boundary revision.",
       "type": "object",
       "additionalProperties": false,
@@ -19660,17 +23429,18 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
         "projectionProfile",
         "mandate",
         "resolution",
-        "compiler"
+        "compiler",
+        "disciplines"
       ],
       "properties": {
         "schema": {
-          "const": "lifecycle.work-boundary-payload.v4"
+          "const": "lifecycle.work-boundary-payload.v6"
         },
         "profileId": {
-          "const": "lifecycle.work-boundary.foundation-v1"
+          "const": "lifecycle.work-boundary.foundation-v3"
         },
         "targetId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
         },
         "proposalKind": {
           "enum": [
@@ -19699,43 +23469,43 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "specificationRevision": {
-              "const": "lifecycle.foundation.1.0.0-rc.10"
+              "const": "lifecycle.foundation.1.0.0-rc.17"
             },
             "repositoryContract": {
-              "const": "lifecycle.repository.v15"
+              "const": "lifecycle.repository.v22"
             },
             "providerAdapter": {
-              "const": "lifecycle.provider-adapter.v6"
+              "const": "lifecycle.provider-adapter.v7"
             },
             "productBaseCommit": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "productBaseTree": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
             },
             "productStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "atlasStateDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "atlasResolutionDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "atlasNormalizedModelDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "atlasResourceBindingsDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositoryContractDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "knowledgeSetDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "repositorySnapshotDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -19887,11 +23657,11 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   ]
                 },
                 "rationaleDigest": {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                 },
                 "changedMandateFields": {
                   "type": "array",
-                  "maxItems": 11,
+                  "maxItems": 12,
                   "uniqueItems": true,
                   "items": {
                     "enum": [
@@ -19905,7 +23675,8 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                       "/mandate/obligations",
                       "/mandate/artifacts",
                       "/mandate/checks",
-                      "/mandate/acceptancePropositions"
+                      "/mandate/acceptancePropositions",
+                      "/disciplines"
                     ]
                   }
                 }
@@ -19924,16 +23695,57 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "profileId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "profileDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "implementationId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "implementationDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "disciplines": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "registryDigest",
+            "workTypeIds",
+            "records"
+          ],
+          "properties": {
+            "registryDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "workTypeIds": {
+              "type": "array",
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              }
+            },
+            "records": {
+              "type": "array",
+              "maxItems": 4096,
+              "uniqueItems": true,
+              "items": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/knowledgeReference"
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "pattern": "^discipline\\."
+                      }
+                    }
+                  }
+                ]
+              }
             }
           }
         }
@@ -20025,10 +23837,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20043,16 +23855,16 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
             },
             "revision": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
             },
             "sourceDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             },
             "semanticDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20068,13 +23880,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "ownerKind": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRecordKind"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRecordKind"
             },
             "ownerId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "sourceId": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "revision": {
               "oneOf": [
@@ -20082,12 +23894,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             },
             "digest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20101,13 +23913,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "interpretation": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20128,13 +23940,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "selectedMeaning": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "whyNow": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "included": {
               "$ref": "#/$defs/nonemptyTextSet"
@@ -20155,7 +23967,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/textSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20173,7 +23985,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "kind": {
               "enum": [
@@ -20189,13 +24001,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "summary": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "trigger": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "target": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "reversibility": {
               "enum": [
@@ -20206,7 +24018,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20224,10 +24036,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "effectIds": {
               "$ref": "#/$defs/idSet"
@@ -20246,7 +24058,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20265,7 +24077,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "kind": {
               "enum": [
@@ -20282,7 +24094,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "statement": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "sourceIds": {
               "$ref": "#/$defs/idSet"
@@ -20300,7 +24112,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/idSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20318,10 +24130,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "path": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             },
             "role": {
               "enum": [
@@ -20343,10 +24155,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/nonemptyIdSet"
             },
             "changeRule": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20367,7 +24179,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "definition": {
               "$ref": "#/$defs/knowledgeReference"
@@ -20387,13 +24199,13 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                 ],
                 "properties": {
                   "id": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                   },
                   "digest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   },
                   "implementationDigest": {
-                    "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
                   }
                 }
               }
@@ -20408,7 +24220,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               ]
             },
             "purpose": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "baselineRequired": {
               "type": "boolean"
@@ -20423,7 +24235,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
               "$ref": "#/$defs/textSet"
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20446,10 +24258,10 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           ],
           "properties": {
             "id": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
             },
             "claim": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
             },
             "evidenceKinds": {
               "type": "array",
@@ -20485,7 +24297,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
                 }
               ]
             },
@@ -20495,7 +24307,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
                 }
               ]
             },
@@ -20508,12 +24320,12 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
                   "type": "null"
                 },
                 {
-                  "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
                 }
               ]
             },
             "fragmentDigest": {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
             }
           }
         },
@@ -20522,7 +24334,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         },
         "nonemptyIdSet": {
@@ -20531,7 +24343,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
           }
         },
         "textSet": {
@@ -20539,7 +24351,7 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
         },
         "nonemptyTextSet": {
@@ -20548,8 +24360,1131 @@ export const FOUNDATION_GENERATED_SCHEMAS: readonly GeneratedFoundationSchema[] 
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
           }
+        }
+      }
+    },
+  },
+  {
+    path: "spec-source/schemas/work-delegation-payload.schema.json",
+    id: "urn:lifecycle:schema:work-delegation-payload:v2",
+    sourceDigest: "sha256:29ba10a4a7bbe95ac5e7a2c9b223a8c14f181d66284d4f99e28d847e52394fa9",
+    schema: {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:lifecycle:schema:work-delegation-payload:v2",
+      "title": "Lifecycle Work Delegation payload v2",
+      "description": "Director-supplied nonauthoritative finite resource permission bound to one exact admission and Work Boundary. Physical selections are Runtime-resolved. The fixed policy digest and all retained reference/currentness relationships require semantic validation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "boundary",
+        "admission",
+        "replaces",
+        "policy",
+        "allowedOperations",
+        "directions",
+        "agentSelections",
+        "ceilings",
+        "expiresAt",
+        "stopPolicy"
+      ],
+      "properties": {
+        "schema": {
+          "const": "lifecycle.work-delegation.v2"
+        },
+        "boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "work-boundary"
+            },
+            "id": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "admission": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "director-decision"
+            },
+            "id": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "digest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "replaces": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "revision",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "work-delegation"
+                },
+                "id": {
+                  "$ref": "#/$defs/exactControlId"
+                },
+                "revision": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                "digest": {
+                  "$ref": "#/$defs/exactDigest"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "const": "lifecycle.work-delegation.standard-v1"
+            },
+            "digest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "allowedOperations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "delivery.continue",
+              "delivery.evaluate",
+              "delivery.integrate"
+            ]
+          },
+          "description": "Strict ascending codepoint order, also checked by the semantic owner."
+        },
+        "directions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "continue",
+            "evaluate"
+          ],
+          "properties": {
+            "continue": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id",
+                    "revision",
+                    "digest"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "director-brief"
+                    },
+                    "id": {
+                      "$ref": "#/$defs/exactControlId"
+                    },
+                    "revision": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                    },
+                    "digest": {
+                      "$ref": "#/$defs/exactDigest"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evaluate": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id",
+                    "revision",
+                    "digest"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "director-brief"
+                    },
+                    "id": {
+                      "$ref": "#/$defs/exactControlId"
+                    },
+                    "revision": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                    },
+                    "digest": {
+                      "$ref": "#/$defs/exactDigest"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "agentSelections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "builder",
+            "reviewer"
+          ],
+          "properties": {
+            "builder": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/agentSelection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reviewer": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/agentSelection"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "ceilings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operations",
+            "agentAttempts",
+            "reservedCellWallTimeMs"
+          ],
+          "properties": {
+            "operations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "agentAttempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "reservedCellWallTimeMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "expiresAt": {
+          "oneOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stopPolicy": {
+          "const": "finish-reserved-operation"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "allowedOperations": {
+                "contains": {
+                  "const": "delivery.continue"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "directions": {
+                "properties": {
+                  "continue": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind",
+                      "id",
+                      "revision",
+                      "digest"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "director-brief"
+                      },
+                      "id": {
+                        "$ref": "#/$defs/exactControlId"
+                      },
+                      "revision": {
+                        "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                      },
+                      "digest": {
+                        "$ref": "#/$defs/exactDigest"
+                      }
+                    }
+                  }
+                }
+              },
+              "agentSelections": {
+                "properties": {
+                  "builder": {
+                    "$ref": "#/$defs/agentSelection"
+                  }
+                }
+              },
+              "ceilings": {
+                "properties": {
+                  "agentAttempts": {
+                    "minimum": 1
+                  },
+                  "reservedCellWallTimeMs": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "directions": {
+                "properties": {
+                  "continue": {
+                    "type": "null"
+                  }
+                }
+              },
+              "agentSelections": {
+                "properties": {
+                  "builder": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "allowedOperations": {
+                "contains": {
+                  "const": "delivery.evaluate"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "directions": {
+                "properties": {
+                  "evaluate": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind",
+                      "id",
+                      "revision",
+                      "digest"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "director-brief"
+                      },
+                      "id": {
+                        "$ref": "#/$defs/exactControlId"
+                      },
+                      "revision": {
+                        "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                      },
+                      "digest": {
+                        "$ref": "#/$defs/exactDigest"
+                      }
+                    }
+                  }
+                }
+              },
+              "agentSelections": {
+                "properties": {
+                  "reviewer": {
+                    "$ref": "#/$defs/agentSelection"
+                  }
+                }
+              },
+              "ceilings": {
+                "properties": {
+                  "agentAttempts": {
+                    "minimum": 1
+                  },
+                  "reservedCellWallTimeMs": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "directions": {
+                "properties": {
+                  "evaluate": {
+                    "type": "null"
+                  }
+                }
+              },
+              "agentSelections": {
+                "properties": {
+                  "reviewer": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "$defs": {
+        "resourceReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "digest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "backendProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "profileId",
+            "profileDigest",
+            "implementationDigest"
+          ],
+          "properties": {
+            "profileId": {
+              "enum": [
+                "lifecycle.execution-backend-profile.docker-local.v1",
+                "lifecycle.execution-backend-profile.fault-injection.v1"
+              ]
+            },
+            "profileDigest": {
+              "$ref": "#/$defs/exactDigest"
+            },
+            "implementationDigest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "imageId",
+            "imageDigest"
+          ],
+          "properties": {
+            "imageId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "imageDigest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "agentLimits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tokens",
+            "events",
+            "outputBytes",
+            "toolCalls",
+            "processes",
+            "storageBytes"
+          ],
+          "properties": {
+            "tokens": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "events": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outputBytes": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "toolCalls": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "processes": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "storageBytes": {
+              "oneOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "agentSelection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "providerDescriptor",
+            "backendProfile",
+            "image",
+            "model",
+            "reasoning",
+            "wallTimeMs",
+            "limits"
+          ],
+          "properties": {
+            "providerDescriptor": {
+              "$ref": "#/$defs/resourceReference"
+            },
+            "backendProfile": {
+              "$ref": "#/$defs/backendProfile"
+            },
+            "image": {
+              "$ref": "#/$defs/image"
+            },
+            "model": {
+              "$ref": "#/$defs/exactOpaqueId"
+            },
+            "reasoning": {
+              "$ref": "#/$defs/exactOpaqueId"
+            },
+            "wallTimeMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400000
+            },
+            "limits": {
+              "$ref": "#/$defs/agentLimits"
+            }
+          }
+        },
+        "accounting": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operations",
+            "agentAttempts",
+            "reservedCellWallTimeMs"
+          ],
+          "properties": {
+            "operations": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "agentAttempts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "reservedCellWallTimeMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "agentSlot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "slotId",
+            "purpose",
+            "role",
+            "selection"
+          ],
+          "properties": {
+            "slotId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "purpose": {
+              "const": "agent"
+            },
+            "role": {
+              "enum": [
+                "builder",
+                "reviewer"
+              ]
+            },
+            "selection": {
+              "$ref": "#/$defs/agentSelection"
+            }
+          }
+        },
+        "checkDefinition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "revision",
+            "sourceDigest",
+            "semanticDigest"
+          ],
+          "properties": {
+            "id": {
+              "allOf": [
+                {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                },
+                {
+                  "pattern": "^check\\."
+                },
+                {
+                  "not": {
+                    "pattern": "[\\r\\n\\u2028\\u2029]"
+                  }
+                }
+              ]
+            },
+            "revision": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "sourceDigest": {
+              "$ref": "#/$defs/exactDigest"
+            },
+            "semanticDigest": {
+              "$ref": "#/$defs/exactDigest"
+            }
+          }
+        },
+        "executionLimits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wallTimeMilliseconds",
+            "processes",
+            "storageBytes",
+            "outputEntries",
+            "outputBytes",
+            "outputEntryBytes",
+            "events"
+          ],
+          "properties": {
+            "wallTimeMilliseconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400000
+            },
+            "processes": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "storageBytes": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "outputEntries": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "outputBytes": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "outputEntryBytes": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            },
+            "events": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+            }
+          }
+        },
+        "checkSlot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "slotId",
+            "purpose",
+            "phase",
+            "selectionId",
+            "definition",
+            "binding",
+            "backendProfile",
+            "image",
+            "wallTimeMs",
+            "limits"
+          ],
+          "properties": {
+            "slotId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "purpose": {
+              "const": "check"
+            },
+            "phase": {
+              "const": "final"
+            },
+            "selectionId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "definition": {
+              "$ref": "#/$defs/checkDefinition"
+            },
+            "binding": {
+              "$ref": "#/$defs/resourceReference"
+            },
+            "backendProfile": {
+              "$ref": "#/$defs/backendProfile"
+            },
+            "image": {
+              "$ref": "#/$defs/image"
+            },
+            "wallTimeMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400000
+            },
+            "limits": {
+              "$ref": "#/$defs/executionLimits"
+            }
+          }
+        },
+        "reservation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "reservationId",
+            "delegation",
+            "activityId",
+            "operation",
+            "decision",
+            "charges",
+            "slots"
+          ],
+          "properties": {
+            "schema": {
+              "const": "lifecycle.work-delegation-reservation.v1"
+            },
+            "reservationId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "delegation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id",
+                "revision",
+                "digest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "work-delegation"
+                },
+                "id": {
+                  "$ref": "#/$defs/exactControlId"
+                },
+                "revision": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                },
+                "digest": {
+                  "$ref": "#/$defs/exactDigest"
+                }
+              }
+            },
+            "activityId": {
+              "$ref": "#/$defs/exactControlId"
+            },
+            "operation": {
+              "enum": [
+                "delivery.continue",
+                "delivery.evaluate",
+                "delivery.integrate"
+              ]
+            },
+            "decision": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "journalHead",
+                "basisDigest",
+                "reason"
+              ],
+              "properties": {
+                "journalHead": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "sequence",
+                    "digest"
+                  ],
+                  "properties": {
+                    "sequence": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+                    },
+                    "digest": {
+                      "$ref": "#/$defs/exactDigest"
+                    }
+                  }
+                },
+                "basisDigest": {
+                  "$ref": "#/$defs/exactDigest"
+                },
+                "reason": {
+                  "enum": [
+                    "develop-candidate",
+                    "integrate-ready-candidate",
+                    "evaluate-integrated-candidate",
+                    "correct-in-scope-findings"
+                  ]
+                }
+              }
+            },
+            "charges": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/accounting"
+                },
+                {
+                  "properties": {
+                    "operations": {
+                      "const": 1
+                    },
+                    "agentAttempts": {
+                      "maximum": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "slots": {
+              "type": "array",
+              "maxItems": 4097,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/agentSlot"
+                  },
+                  {
+                    "$ref": "#/$defs/checkSlot"
+                  }
+                ]
+              }
+            }
+          },
+          "description": "Runtime-derived reservation. Semantic validation requires ordered unique slot identities and Check selection IDs, the operation-specific role/slot set, one operation charge, exact Agent count and checked-safe sum of every reserved Cell wall-time, including unused slots. Grant and current Boundary/Check joins are independently required before opening. The complete activity-started payload including this reservation must independently fit the existing 65536-byte canonical Control event payload and JSON bounds; slot count does not expand them.",
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.integrate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "decision": {
+                    "properties": {
+                      "reason": {
+                        "enum": [
+                          "integrate-ready-candidate"
+                        ]
+                      }
+                    }
+                  },
+                  "charges": {
+                    "properties": {
+                      "agentAttempts": {
+                        "const": 0
+                      },
+                      "reservedCellWallTimeMs": {
+                        "const": 0
+                      }
+                    }
+                  },
+                  "slots": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.continue"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "decision": {
+                    "properties": {
+                      "reason": {
+                        "enum": [
+                          "develop-candidate",
+                          "correct-in-scope-findings"
+                        ]
+                      }
+                    }
+                  },
+                  "charges": {
+                    "properties": {
+                      "agentAttempts": {
+                        "const": 1
+                      },
+                      "reservedCellWallTimeMs": {
+                        "minimum": 1
+                      }
+                    }
+                  },
+                  "slots": {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "purpose",
+                        "role"
+                      ],
+                      "properties": {
+                        "purpose": {
+                          "const": "agent"
+                        },
+                        "role": {
+                          "const": "builder"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1,
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {
+                      "allOf": [
+                        {
+                          "$ref": "#/$defs/agentSlot"
+                        },
+                        {
+                          "properties": {
+                            "role": {
+                              "const": "builder"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operation": {
+                    "const": "delivery.evaluate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "decision": {
+                    "properties": {
+                      "reason": {
+                        "enum": [
+                          "evaluate-integrated-candidate"
+                        ]
+                      }
+                    }
+                  },
+                  "charges": {
+                    "properties": {
+                      "agentAttempts": {
+                        "const": 1
+                      },
+                      "reservedCellWallTimeMs": {
+                        "minimum": 1
+                      }
+                    }
+                  },
+                  "slots": {
+                    "contains": {
+                      "type": "object",
+                      "required": [
+                        "purpose",
+                        "role"
+                      ],
+                      "properties": {
+                        "purpose": {
+                          "const": "agent"
+                        },
+                        "role": {
+                          "const": "reviewer"
+                        }
+                      }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1,
+                    "items": {
+                      "oneOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/$defs/agentSlot"
+                            },
+                            {
+                              "properties": {
+                                "role": {
+                                  "const": "reviewer"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "$ref": "#/$defs/checkSlot"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "exactDigest": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "minLength": 71,
+              "maxLength": 71
+            }
+          ]
+        },
+        "exactControlId": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            {
+              "not": {
+                "pattern": "[\\r\\n\\u2028\\u2029]"
+              }
+            }
+          ]
+        },
+        "exactOpaqueId": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "not": {
+                "pattern": "[\\r\\n\\u2028\\u2029]"
+              }
+            }
+          ]
         }
       }
     },

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:knowledge-projection:v4",
-  "title": "Lifecycle Knowledge Projection v4",
+  "$id": "urn:lifecycle:schema:knowledge-projection:v6",
+  "title": "Lifecycle Knowledge Projection v6",
   "type": "object",
   "required": [
     "schema",
@@ -27,71 +27,125 @@
     "digest"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.knowledge-projection.v4" },
-    "projectionId": { "type": "string", "pattern": "^projection:[a-f0-9]{64}$" },
-    "class": { "type": "string", "enum": ["orientation", "execution"] },
+    "schema": {
+      "const": "lifecycle.knowledge-projection.v6"
+    },
+    "projectionId": {
+      "type": "string",
+      "pattern": "^projection:[a-f0-9]{64}$"
+    },
+    "class": {
+      "type": "string",
+      "enum": [
+        "orientation",
+        "execution"
+      ]
+    },
     "role": {
       "type": "string",
-      "enum": ["reconnaissance", "builder", "reviewer"]
+      "enum": [
+        "reconnaissance",
+        "builder",
+        "reviewer"
+      ]
     },
     "profile": {
       "type": "string",
-      "enum": ["orientation-standard-v1", "execution-standard-v1", "execution-large-v1"]
+      "enum": [
+        "orientation-standard-v1",
+        "execution-standard-v1",
+        "execution-large-v1",
+        "orientation-large-v1"
+      ]
     },
-    "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "compiler": { "$ref": "#/$defs/compiler" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "basis": { "$ref": "#/$defs/basis" },
+    "profileDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "compiler": {
+      "$ref": "#/$defs/compiler"
+    },
+    "specificationRevision": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+    },
+    "basis": {
+      "$ref": "#/$defs/basis"
+    },
     "core": {
       "oneOf": [
-        { "$ref": "#/$defs/orientationCore" },
-        { "$ref": "#/$defs/executionCore" }
+        {
+          "$ref": "#/$defs/orientationCore"
+        },
+        {
+          "$ref": "#/$defs/executionCore"
+        }
       ]
     },
     "atlas": {
       "type": "array",
       "minItems": 1,
       "maxItems": 4096,
-      "items": { "$ref": "#/$defs/atlasItem" }
+      "items": {
+        "$ref": "#/$defs/atlasItem"
+      }
     },
     "mandatory": {
       "type": "array",
       "maxItems": 4096,
-      "items": { "$ref": "#/$defs/mandatoryItem" }
+      "items": {
+        "$ref": "#/$defs/mandatoryItem"
+      }
     },
     "implementation": {
       "type": "array",
       "maxItems": 4096,
-      "items": { "$ref": "#/$defs/implementationItem" }
+      "items": {
+        "$ref": "#/$defs/implementationItem"
+      }
     },
     "bindings": {
       "type": "array",
       "maxItems": 4096,
-      "items": { "$ref": "#/$defs/bindingItem" }
+      "items": {
+        "$ref": "#/$defs/bindingItem"
+      }
     },
     "sources": {
       "type": "array",
       "maxItems": 4096,
-      "items": { "$ref": "#/$defs/sourceItem" }
+      "items": {
+        "$ref": "#/$defs/sourceItem"
+      }
     },
     "reachable": {
       "type": "array",
       "maxItems": 16384,
-      "items": { "$ref": "#/$defs/reachableItem" }
+      "items": {
+        "$ref": "#/$defs/reachableItem"
+      }
     },
     "conflicts": {
       "type": "array",
       "maxItems": 2048,
-      "items": { "$ref": "#/$defs/conflict" }
+      "items": {
+        "$ref": "#/$defs/conflict"
+      }
     },
     "unresolved": {
       "type": "array",
       "maxItems": 2048,
-      "items": { "$ref": "#/$defs/unresolved" }
+      "items": {
+        "$ref": "#/$defs/unresolved"
+      }
     },
-    "omission": { "$ref": "#/$defs/omission" },
-    "counts": { "$ref": "#/$defs/counts" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "omission": {
+      "$ref": "#/$defs/omission"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "digest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    }
   },
   "patternProperties": {
     "^x-[a-z0-9]+(?:-[a-z0-9]+)*$": true
@@ -99,47 +153,102 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "if": { "properties": { "class": { "const": "orientation" } } },
+      "if": {
+        "properties": {
+          "class": {
+            "const": "orientation"
+          }
+        }
+      },
       "then": {
         "properties": {
-          "role": { "const": "reconnaissance" },
-          "profile": { "const": "orientation-standard-v1" },
-          "core": { "$ref": "#/$defs/orientationCore" },
+          "role": {
+            "const": "reconnaissance"
+          },
+          "profile": {
+            "enum": [
+              "orientation-standard-v1",
+              "orientation-large-v1"
+            ]
+          },
+          "core": {
+            "$ref": "#/$defs/orientationCore"
+          },
           "basis": {
             "properties": {
-              "repositorySnapshotDigest": { "type": "null" },
-              "repositoryValidationDigest": { "type": "null" },
-              "workBoundary": { "type": "null" },
-              "candidate": { "type": "null" }
+              "repositorySnapshotDigest": {
+                "type": "null"
+              },
+              "repositoryValidationDigest": {
+                "type": "null"
+              },
+              "workBoundary": {
+                "type": "null"
+              },
+              "candidate": {
+                "type": "null"
+              }
             }
           }
         }
       },
       "else": {
         "properties": {
-          "role": { "enum": ["builder", "reviewer"] },
-          "profile": { "enum": ["execution-standard-v1", "execution-large-v1"] },
-          "core": { "$ref": "#/$defs/executionCore" },
+          "role": {
+            "enum": [
+              "builder",
+              "reviewer"
+            ]
+          },
+          "profile": {
+            "enum": [
+              "execution-standard-v1",
+              "execution-large-v1"
+            ]
+          },
+          "core": {
+            "$ref": "#/$defs/executionCore"
+          },
           "basis": {
             "properties": {
-              "repositorySnapshotDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "repositoryValidationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "workBoundary": { "type": "object" }
+              "repositorySnapshotDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              },
+              "repositoryValidationDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              },
+              "knowledgeSetDigest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              },
+              "workBoundary": {
+                "type": "object"
+              }
             }
           },
-          "conflicts": { "maxItems": 0 },
-          "unresolved": { "maxItems": 0 },
+          "conflicts": {
+            "maxItems": 0
+          },
+          "unresolved": {
+            "maxItems": 0
+          },
           "omission": {
             "properties": {
-              "mandatoryOmissions": { "const": 0 }
+              "mandatoryOmissions": {
+                "const": 0
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "role": { "const": "builder" } } },
+      "if": {
+        "properties": {
+          "role": {
+            "const": "builder"
+          }
+        }
+      },
       "then": {
         "properties": {
           "basis": {
@@ -147,8 +256,12 @@
               "candidate": {
                 "type": "object",
                 "properties": {
-                  "sealedTree": { "type": "null" },
-                  "seal": { "type": "null" }
+                  "sealedTree": {
+                    "type": "null"
+                  },
+                  "seal": {
+                    "type": "null"
+                  }
                 }
               }
             }
@@ -157,7 +270,13 @@
       }
     },
     {
-      "if": { "properties": { "role": { "const": "reviewer" } } },
+      "if": {
+        "properties": {
+          "role": {
+            "const": "reviewer"
+          }
+        }
+      },
       "then": {
         "properties": {
           "basis": {
@@ -165,8 +284,12 @@
               "candidate": {
                 "type": "object",
                 "properties": {
-                  "sealedTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-                  "seal": { "$ref": "#/$defs/candidateSealReference" }
+                  "sealedTree": {
+                    "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+                  },
+                  "seal": {
+                    "$ref": "#/$defs/candidateSealReference"
+                  }
                 }
               }
             }
@@ -175,20 +298,40 @@
       }
     },
     {
-      "if": { "properties": { "profile": { "const": "orientation-standard-v1" } } },
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "orientation-standard-v1"
+          }
+        }
+      },
       "then": {
         "properties": {
           "omission": {
             "properties": {
               "bounds": {
                 "properties": {
-                  "maximumMandatoryItems": { "const": 256 },
-                  "maximumMandatoryBytes": { "const": 4194304 },
-                  "maximumItemBytes": { "const": 1048576 },
-                  "maximumReachableItems": { "const": 4096 },
-                  "maximumReachableBytes": { "const": 33554432 },
-                  "maximumSourceBytes": { "const": 8388608 },
-                  "maximumRelationshipDepth": { "const": 24 }
+                  "maximumMandatoryItems": {
+                    "const": 256
+                  },
+                  "maximumMandatoryBytes": {
+                    "const": 4194304
+                  },
+                  "maximumItemBytes": {
+                    "const": 1048576
+                  },
+                  "maximumReachableItems": {
+                    "const": 4096
+                  },
+                  "maximumReachableBytes": {
+                    "const": 33554432
+                  },
+                  "maximumSourceBytes": {
+                    "const": 8388608
+                  },
+                  "maximumRelationshipDepth": {
+                    "const": 24
+                  }
                 }
               }
             }
@@ -197,20 +340,40 @@
       }
     },
     {
-      "if": { "properties": { "profile": { "const": "execution-standard-v1" } } },
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "execution-standard-v1"
+          }
+        }
+      },
       "then": {
         "properties": {
           "omission": {
             "properties": {
               "bounds": {
                 "properties": {
-                  "maximumMandatoryItems": { "const": 512 },
-                  "maximumMandatoryBytes": { "const": 8388608 },
-                  "maximumItemBytes": { "const": 1048576 },
-                  "maximumReachableItems": { "const": 4096 },
-                  "maximumReachableBytes": { "const": 33554432 },
-                  "maximumSourceBytes": { "const": 8388608 },
-                  "maximumRelationshipDepth": { "const": 32 }
+                  "maximumMandatoryItems": {
+                    "const": 512
+                  },
+                  "maximumMandatoryBytes": {
+                    "const": 8388608
+                  },
+                  "maximumItemBytes": {
+                    "const": 1048576
+                  },
+                  "maximumReachableItems": {
+                    "const": 4096
+                  },
+                  "maximumReachableBytes": {
+                    "const": 33554432
+                  },
+                  "maximumSourceBytes": {
+                    "const": 8388608
+                  },
+                  "maximumRelationshipDepth": {
+                    "const": 32
+                  }
                 }
               }
             }
@@ -219,20 +382,82 @@
       }
     },
     {
-      "if": { "properties": { "profile": { "const": "execution-large-v1" } } },
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "execution-large-v1"
+          }
+        }
+      },
       "then": {
         "properties": {
           "omission": {
             "properties": {
               "bounds": {
                 "properties": {
-                  "maximumMandatoryItems": { "const": 4096 },
-                  "maximumMandatoryBytes": { "const": 67108864 },
-                  "maximumItemBytes": { "const": 4194304 },
-                  "maximumReachableItems": { "const": 16384 },
-                  "maximumReachableBytes": { "const": 134217728 },
-                  "maximumSourceBytes": { "const": 33554432 },
-                  "maximumRelationshipDepth": { "const": 128 }
+                  "maximumMandatoryItems": {
+                    "const": 4096
+                  },
+                  "maximumMandatoryBytes": {
+                    "const": 67108864
+                  },
+                  "maximumItemBytes": {
+                    "const": 4194304
+                  },
+                  "maximumReachableItems": {
+                    "const": 16384
+                  },
+                  "maximumReachableBytes": {
+                    "const": 134217728
+                  },
+                  "maximumSourceBytes": {
+                    "const": 33554432
+                  },
+                  "maximumRelationshipDepth": {
+                    "const": 128
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "orientation-large-v1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "omission": {
+            "properties": {
+              "bounds": {
+                "properties": {
+                  "maximumMandatoryItems": {
+                    "const": 512
+                  },
+                  "maximumMandatoryBytes": {
+                    "const": 8388608
+                  },
+                  "maximumItemBytes": {
+                    "const": 1048576
+                  },
+                  "maximumReachableItems": {
+                    "const": 4096
+                  },
+                  "maximumReachableBytes": {
+                    "const": 33554432
+                  },
+                  "maximumSourceBytes": {
+                    "const": 8388608
+                  },
+                  "maximumRelationshipDepth": {
+                    "const": 32
+                  }
                 }
               }
             }
@@ -245,94 +470,211 @@
     "stringList": {
       "type": "array",
       "maxItems": 2048,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+      }
     },
     "idList": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+      }
     },
     "compiler": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "version", "digest"],
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "version": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "generation"],
+      "required": [
+        "id",
+        "generation"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "generation": { "type": "integer", "minimum": 1 }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "atlasBasis": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["root", "entrypoint", "specificationRevision", "processorRevision", "stateDigest", "resolutionDigest", "normalizedModelDigest", "resourceBindingsDigest", "complete", "valid"],
+      "required": [
+        "root",
+        "entrypoint",
+        "specificationRevision",
+        "processorRevision",
+        "stateDigest",
+        "resolutionDigest",
+        "normalizedModelDigest",
+        "resourceBindingsDigest",
+        "complete",
+        "valid"
+      ],
       "properties": {
-        "root": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "entrypoint": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "specificationRevision": { "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f" },
-        "processorRevision": { "const": "746cbce73c51b28d617b96ca08f18d498ac749c4" },
-        "stateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "resolutionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "normalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "resourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "complete": { "const": true },
-        "valid": { "const": true }
+        "root": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "entrypoint": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "specificationRevision": {
+          "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
+        },
+        "processorRevision": {
+          "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
+        },
+        "stateDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "resolutionDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "normalizedModelDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "resourceBindingsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "complete": {
+          "const": true
+        },
+        "valid": {
+          "const": true
+        }
       }
     },
     "boundaryBasis": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "id", "revision", "digest"],
+      "required": [
+        "kind",
+        "id",
+        "revision",
+        "digest"
+      ],
       "properties": {
-        "kind": { "const": "work-boundary" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "revision": { "type": "integer", "minimum": 1 },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "kind": {
+          "const": "work-boundary"
+        },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "candidateBasis": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["baseCommit", "revision", "stateDigest", "carrierManifestDigest", "sealedTree", "seal"],
+      "required": [
+        "baseCommit",
+        "revision",
+        "stateDigest",
+        "carrierManifestDigest",
+        "sealedTree",
+        "seal",
+        "integration"
+      ],
       "properties": {
-        "baseCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "revision": { "$ref": "#/$defs/candidateRevisionReference" },
-        "stateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "carrierManifestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "baseCommit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "revision": {
+          "$ref": "#/$defs/candidateRevisionReference"
+        },
+        "stateDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "carrierManifestDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "sealedTree": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "seal": {
           "oneOf": [
-            { "$ref": "#/$defs/candidateSealReference" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/candidateSealReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "integration": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/integrationBasis"
+            }
           ]
         }
       }
     },
     "candidateSealReference": {
       "allOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" },
-        { "properties": { "kind": { "const": "candidate-seal" } } }
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "candidate-seal"
+            }
+          }
+        }
       ]
     },
     "candidateRevisionReference": {
       "allOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlRevisionReference" },
-        { "properties": { "kind": { "const": "candidate-revision" } } }
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "candidate-revision"
+            }
+          }
+        }
       ]
     },
     "basis": {
@@ -357,45 +699,91 @@
         "candidate"
       ],
       "properties": {
-        "requestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "target": { "$ref": "#/$defs/target" },
-        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "objectFormat": { "type": "string", "enum": ["sha1", "sha256"] },
-        "repositoryEpochDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "repositoryContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "requestDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "commit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "tree": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "objectFormat": {
+          "type": "string",
+          "enum": [
+            "sha1",
+            "sha256"
+          ]
+        },
+        "repositoryEpochDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "productStateDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "repositoryContractDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "repositorySnapshotDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "repositoryValidationDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "atlas": { "$ref": "#/$defs/atlasBasis" },
-        "knowledgeObservationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "atlas": {
+          "$ref": "#/$defs/atlasBasis"
+        },
+        "knowledgeObservationDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "knowledgeSetDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "knowledgeValidationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "knowledgeValidationDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "workBoundary": {
           "oneOf": [
-            { "$ref": "#/$defs/boundaryBasis" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/boundaryBasis"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "candidate": {
           "oneOf": [
-            { "$ref": "#/$defs/candidateBasis" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/candidateBasis"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -403,43 +791,122 @@
     "condition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "severity", "detail", "sourceIds"],
+      "required": [
+        "code",
+        "severity",
+        "detail",
+        "sourceIds"
+      ],
       "properties": {
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "severity": { "type": "string", "enum": ["error", "warning", "information"] },
-        "detail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "sourceIds": { "$ref": "#/$defs/idList" }
+        "code": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ]
+        },
+        "detail": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "sourceIds": {
+          "$ref": "#/$defs/idList"
+        }
       }
     },
     "knowledgeIndexEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "revision", "title", "summary", "owners", "path", "sourceDigest", "semanticDigest"],
+      "required": [
+        "id",
+        "kind",
+        "revision",
+        "title",
+        "summary",
+        "owners",
+        "path",
+        "sourceDigest",
+        "semanticDigest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
-        "kind": { "enum": ["behavior", "assurance", "blueprint", "description", "check"] },
-        "revision": { "type": "integer", "minimum": 1 },
-        "title": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "owners": { "$ref": "#/$defs/idList" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+        },
+        "kind": {
+          "enum": [
+            "behavior",
+            "assurance",
+            "blueprint",
+            "description",
+            "check",
+            "discipline"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "summary": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "owners": {
+          "$ref": "#/$defs/idList"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "sourceDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "semanticDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "relationshipIndexEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sourceId", "type", "targetId", "required", "scope"],
+      "required": [
+        "sourceId",
+        "type",
+        "targetId",
+        "required",
+        "scope"
+      ],
       "properties": {
-        "sourceId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
-        "type": { "enum": ["refines", "constrains", "realizes", "verified-by", "depends-on", "related-to"] },
-        "targetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
-        "required": { "type": "boolean" },
+        "sourceId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+        },
+        "type": {
+          "enum": [
+            "refines",
+            "constrains",
+            "realizes",
+            "verified-by",
+            "depends-on",
+            "related-to"
+          ]
+        },
+        "targetId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+        },
+        "required": {
+          "type": "boolean"
+        },
         "scope": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -447,43 +914,81 @@
     "knowledgeIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["records", "relationships", "digest"],
+      "required": [
+        "records",
+        "relationships",
+        "digest"
+      ],
       "properties": {
         "records": {
           "type": "array",
           "maxItems": 65536,
-          "items": { "$ref": "#/$defs/knowledgeIndexEntry" }
+          "items": {
+            "$ref": "#/$defs/knowledgeIndexEntry"
+          }
         },
         "relationships": {
           "type": "array",
           "maxItems": 262144,
-          "items": { "$ref": "#/$defs/relationshipIndexEntry" }
+          "items": {
+            "$ref": "#/$defs/relationshipIndexEntry"
+          }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "coverageIndexEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "descriptionId", "descriptionRevision", "selectorPath", "selectorMode"],
+      "required": [
+        "path",
+        "descriptionId",
+        "descriptionRevision",
+        "selectorPath",
+        "selectorMode"
+      ],
       "properties": {
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "descriptionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
-        "descriptionRevision": { "type": "integer", "minimum": 1 },
-        "selectorPath": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "selectorMode": { "enum": ["file", "tree"] }
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "descriptionId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+        },
+        "descriptionRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectorPath": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "selectorMode": {
+          "enum": [
+            "file",
+            "tree"
+          ]
+        }
       }
     },
     "coverageIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["implementationRoots", "exemptions", "entries", "summary", "digest"],
+      "required": [
+        "implementationRoots",
+        "exemptions",
+        "entries",
+        "summary",
+        "digest"
+      ],
       "properties": {
         "implementationRoots": {
           "type": "array",
           "maxItems": 4096,
           "uniqueItems": true,
-          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+          }
         },
         "exemptions": {
           "type": "array",
@@ -491,75 +996,148 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["path", "reason", "matched"],
+            "required": [
+              "path",
+              "reason",
+              "matched"
+            ],
             "properties": {
-              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-              "reason": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-              "matched": { "type": "boolean" }
+              "path": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+              },
+              "reason": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+              },
+              "matched": {
+                "type": "boolean"
+              }
             }
           }
         },
         "entries": {
           "type": "array",
           "maxItems": 100000,
-          "items": { "$ref": "#/$defs/coverageIndexEntry" }
+          "items": {
+            "$ref": "#/$defs/coverageIndexEntry"
+          }
         },
         "summary": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["governedImplementationItems", "coveredItems", "missingItems", "ambiguousItems", "exemptionItems"],
+          "required": [
+            "governedImplementationItems",
+            "coveredItems",
+            "missingItems",
+            "ambiguousItems",
+            "exemptionItems"
+          ],
           "properties": {
-            "governedImplementationItems": { "type": "integer", "minimum": 0 },
-            "coveredItems": { "type": "integer", "minimum": 0 },
-            "missingItems": { "type": "integer", "minimum": 0 },
-            "ambiguousItems": { "type": "integer", "minimum": 0 },
-            "exemptionItems": { "type": "integer", "minimum": 0 }
+            "governedImplementationItems": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "coveredItems": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missingItems": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguousItems": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "exemptionItems": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "bindingIndexEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "binding", "checkIds", "evidenceKinds", "capabilityProfileId", "digest"],
+      "required": [
+        "id",
+        "binding",
+        "checkIds",
+        "evidenceKinds",
+        "capabilityProfileId",
+        "digest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "binding": { "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/checkBinding" },
-        "checkIds": { "$ref": "#/$defs/idList" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "binding": {
+          "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/checkBinding"
+        },
+        "checkIds": {
+          "$ref": "#/$defs/idList"
+        },
         "evidenceKinds": {
           "type": "array",
           "minItems": 1,
           "maxItems": 6,
           "uniqueItems": true,
-          "items": { "enum": ["command", "inspection", "artifact", "diff", "analysis", "mixed"] }
+          "items": {
+            "enum": [
+              "command",
+              "inspection",
+              "artifact",
+              "diff",
+              "analysis",
+              "mixed"
+            ]
+          }
         },
         "capabilityProfileId": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "bindingIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entries", "digest"],
+      "required": [
+        "entries",
+        "digest"
+      ],
       "properties": {
         "entries": {
           "type": "array",
           "maxItems": 8192,
-          "items": { "$ref": "#/$defs/bindingIndexEntry" }
+          "items": {
+            "$ref": "#/$defs/bindingIndexEntry"
+          }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "capabilityIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entries", "digest"],
+      "required": [
+        "entries",
+        "digest"
+      ],
       "properties": {
         "entries": {
           "type": "array",
@@ -567,34 +1145,56 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "profile", "digest"],
+            "required": [
+              "id",
+              "profile",
+              "digest"
+            ],
             "properties": {
-              "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "profile": { "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/capabilityProfile" },
-              "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+              "id": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "profile": {
+                "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/capabilityProfile"
+              },
+              "digest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              }
             }
           }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "profileIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entries", "digest"],
+      "required": [
+        "entries",
+        "digest"
+      ],
       "properties": {
         "entries": {
           "type": "array",
           "maxItems": 1024,
-          "items": { "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/projectionProfile" }
+          "items": {
+            "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/projectionProfile"
+          }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "retrievalIndex": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entries", "digest"],
+      "required": [
+        "entries",
+        "digest"
+      ],
       "properties": {
         "entries": {
           "type": "array",
@@ -602,153 +1202,403 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["handle", "id", "kind", "digest", "byteLength", "availability"],
+            "required": [
+              "handle",
+              "id",
+              "kind",
+              "digest",
+              "byteLength",
+              "availability"
+            ],
             "properties": {
-              "handle": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-              "byteLength": { "type": "integer", "minimum": 0 },
-              "availability": { "enum": ["mounted", "resolver", "inaccessible"] }
+              "handle": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "id": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "kind": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "digest": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+              },
+              "byteLength": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "availability": {
+                "enum": [
+                  "mounted",
+                  "resolver",
+                  "inaccessible"
+                ]
+              }
             }
           }
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "orientationCore": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["class", "objective", "purpose", "conditions", "knowledgeIndex", "coverageIndex", "bindingIndex", "capabilityIndex", "profileIndex", "retrievalIndex", "indexDigest"],
+      "required": [
+        "class",
+        "objective",
+        "purpose",
+        "conditions",
+        "knowledgeIndex",
+        "coverageIndex",
+        "bindingIndex",
+        "capabilityIndex",
+        "profileIndex",
+        "retrievalIndex",
+        "indexDigest",
+        "disciplineIndex"
+      ],
       "properties": {
-        "class": { "const": "orientation" },
-        "objective": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "purpose": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "class": {
+          "const": "orientation"
+        },
+        "objective": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/orientationObjective"
+        },
+        "purpose": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
         "conditions": {
           "type": "array",
           "maxItems": 2048,
-          "items": { "$ref": "#/$defs/condition" }
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
         },
-        "knowledgeIndex": { "$ref": "#/$defs/knowledgeIndex" },
-        "coverageIndex": { "$ref": "#/$defs/coverageIndex" },
-        "bindingIndex": { "$ref": "#/$defs/bindingIndex" },
-        "capabilityIndex": { "$ref": "#/$defs/capabilityIndex" },
-        "profileIndex": { "$ref": "#/$defs/profileIndex" },
-        "retrievalIndex": { "$ref": "#/$defs/retrievalIndex" },
-        "indexDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "knowledgeIndex": {
+          "$ref": "#/$defs/knowledgeIndex"
+        },
+        "coverageIndex": {
+          "$ref": "#/$defs/coverageIndex"
+        },
+        "bindingIndex": {
+          "$ref": "#/$defs/bindingIndex"
+        },
+        "capabilityIndex": {
+          "$ref": "#/$defs/capabilityIndex"
+        },
+        "profileIndex": {
+          "$ref": "#/$defs/profileIndex"
+        },
+        "retrievalIndex": {
+          "$ref": "#/$defs/retrievalIndex"
+        },
+        "indexDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "disciplineIndex": {
+          "$ref": "#/$defs/disciplineIndex"
+        }
       }
     },
     "obligation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "statement", "sourceIds", "requiredEvidenceIds"],
+      "required": [
+        "id",
+        "kind",
+        "statement",
+        "sourceIds",
+        "requiredEvidenceIds"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
         "kind": {
           "type": "string",
-          "enum": ["behavior", "assurance", "blueprint", "description", "artifact", "check", "effect", "risk", "exclusion", "acceptance"]
+          "enum": [
+            "behavior",
+            "assurance",
+            "blueprint",
+            "description",
+            "artifact",
+            "check",
+            "effect",
+            "risk",
+            "exclusion",
+            "acceptance"
+          ]
         },
-        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "sourceIds": { "$ref": "#/$defs/idList" },
-        "requiredEvidenceIds": { "$ref": "#/$defs/idList" }
+        "statement": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "sourceIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "requiredEvidenceIds": {
+          "$ref": "#/$defs/idList"
+        }
       }
     },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "path", "role", "mustChange"],
+      "required": [
+        "id",
+        "path",
+        "role",
+        "mustChange"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
         "role": {
           "type": "string",
-          "enum": ["code", "test", "behavior", "assurance", "blueprint", "description", "check", "documentation", "external-source"]
+          "enum": [
+            "code",
+            "test",
+            "behavior",
+            "assurance",
+            "blueprint",
+            "description",
+            "check",
+            "documentation",
+            "external-source"
+          ]
         },
-        "mustChange": { "type": "boolean" }
+        "mustChange": {
+          "type": "boolean"
+        }
       }
     },
     "effect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "summary", "trigger", "target", "reversibility"],
+      "required": [
+        "id",
+        "kind",
+        "summary",
+        "trigger",
+        "target",
+        "reversibility"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
         "kind": {
           "type": "string",
-          "enum": ["local-read", "local-write", "network-request", "external-mutation", "notification", "publication", "spend", "deployment", "other"]
+          "enum": [
+            "local-read",
+            "local-write",
+            "network-request",
+            "external-mutation",
+            "notification",
+            "publication",
+            "spend",
+            "deployment",
+            "other"
+          ]
         },
-        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "trigger": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "target": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "reversibility": { "type": "string", "enum": ["read-only", "reversible", "compensatable", "irreversible"] }
+        "summary": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "trigger": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "target": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "reversibility": {
+          "type": "string",
+          "enum": [
+            "read-only",
+            "reversible",
+            "compensatable",
+            "irreversible"
+          ]
+        }
       }
     },
     "risk": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "statement", "effectIds", "treatment"],
+      "required": [
+        "id",
+        "statement",
+        "effectIds",
+        "treatment"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "statement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "effectIds": { "$ref": "#/$defs/idList" },
-        "treatment": { "type": "string", "enum": ["eliminate", "mitigate", "accept"] }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "statement": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "effectIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "treatment": {
+          "type": "string",
+          "enum": [
+            "eliminate",
+            "mitigate",
+            "accept"
+          ]
+        }
       }
     },
     "checkSelection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "checkId", "bindingIds", "modality", "purpose"],
+      "required": [
+        "id",
+        "checkId",
+        "bindingIds",
+        "modality",
+        "purpose"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "checkId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" },
-        "bindingIds": { "$ref": "#/$defs/idList" },
-        "modality": { "type": "string", "enum": ["precondition", "repair-target", "regression-guard", "postcondition", "diagnostic"] },
-        "purpose": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "checkId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+        },
+        "bindingIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "modality": {
+          "type": "string",
+          "enum": [
+            "precondition",
+            "repair-target",
+            "regression-guard",
+            "postcondition",
+            "diagnostic"
+          ]
+        },
+        "purpose": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        }
       }
     },
     "proposition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "claim", "evidenceKinds", "evidenceIds", "obligationIds", "effectIds", "riskIds", "path", "checkId", "allowNotApplicable", "notApplicableCondition"],
+      "required": [
+        "id",
+        "claim",
+        "evidenceKinds",
+        "evidenceIds",
+        "obligationIds",
+        "effectIds",
+        "riskIds",
+        "path",
+        "checkId",
+        "allowNotApplicable",
+        "notApplicableCondition"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "claim": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "claim": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
         "evidenceKinds": {
           "type": "array",
           "minItems": 1,
           "maxItems": 6,
           "uniqueItems": true,
-          "items": { "type": "string", "enum": ["inspection", "artifact", "check", "diff", "analysis", "mixed"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "inspection",
+              "artifact",
+              "check",
+              "diff",
+              "analysis",
+              "mixed"
+            ]
+          }
         },
-        "evidenceIds": { "$ref": "#/$defs/idList" },
-        "obligationIds": { "$ref": "#/$defs/idList" },
-        "effectIds": { "$ref": "#/$defs/idList" },
-        "riskIds": { "$ref": "#/$defs/idList" },
+        "evidenceIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "obligationIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "effectIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "riskIds": {
+          "$ref": "#/$defs/idList"
+        },
         "path": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "checkId": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "allowNotApplicable": { "type": "boolean" },
+        "allowNotApplicable": {
+          "type": "boolean"
+        },
         "notApplicableCondition": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "allowNotApplicable": { "const": true } } },
-          "then": { "properties": { "notApplicableCondition": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" } } },
-          "else": { "properties": { "notApplicableCondition": { "type": "null" } } }
+          "if": {
+            "properties": {
+              "allowNotApplicable": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "notApplicableCondition": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "notApplicableCondition": {
+                "type": "null"
+              }
+            }
+          }
         }
       ]
     },
@@ -775,115 +1625,240 @@
         "materialConditionPolicy",
         "completionReturnRules",
         "requestDigest",
-        "workBoundaryDigest"
+        "workBoundaryDigest",
+        "disciplines"
       ],
       "properties": {
-        "class": { "const": "execution" },
-        "objective": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "selectedMeaning": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "included": { "$ref": "#/$defs/stringList" },
-        "excluded": { "$ref": "#/$defs/stringList" },
-        "assumptions": { "$ref": "#/$defs/stringList" },
-        "falsifiers": { "$ref": "#/$defs/stringList" },
+        "class": {
+          "const": "execution"
+        },
+        "objective": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "selectedMeaning": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "included": {
+          "$ref": "#/$defs/stringList"
+        },
+        "excluded": {
+          "$ref": "#/$defs/stringList"
+        },
+        "assumptions": {
+          "$ref": "#/$defs/stringList"
+        },
+        "falsifiers": {
+          "$ref": "#/$defs/stringList"
+        },
         "obligations": {
           "type": "array",
           "minItems": 1,
           "maxItems": 4096,
-          "items": { "$ref": "#/$defs/obligation" }
+          "items": {
+            "$ref": "#/$defs/obligation"
+          }
         },
         "requiredArtifacts": {
           "type": "array",
           "maxItems": 4096,
-          "items": { "$ref": "#/$defs/artifact" }
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
         },
         "effects": {
           "type": "array",
           "maxItems": 512,
-          "items": { "$ref": "#/$defs/effect" }
+          "items": {
+            "$ref": "#/$defs/effect"
+          }
         },
         "risks": {
           "type": "array",
           "maxItems": 512,
-          "items": { "$ref": "#/$defs/risk" }
+          "items": {
+            "$ref": "#/$defs/risk"
+          }
         },
         "checks": {
           "type": "array",
           "maxItems": 1024,
-          "items": { "$ref": "#/$defs/checkSelection" }
+          "items": {
+            "$ref": "#/$defs/checkSelection"
+          }
         },
         "propositions": {
           "type": "array",
           "minItems": 1,
           "maxItems": 4096,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/proposition" }
+          "items": {
+            "$ref": "#/$defs/proposition"
+          }
         },
         "capability": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["profileId", "profileDigest"],
+          "required": [
+            "profileId",
+            "profileDigest"
+          ],
           "properties": {
-            "profileId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            "profileId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "profileDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           }
         },
-        "capabilitySummary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "prohibitedEffects": { "$ref": "#/$defs/stringList" },
-        "materialConditionPolicy": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "completionReturnRules": { "$ref": "#/$defs/stringList" },
-        "requestDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "workBoundaryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "capabilitySummary": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "prohibitedEffects": {
+          "$ref": "#/$defs/stringList"
+        },
+        "materialConditionPolicy": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "completionReturnRules": {
+          "$ref": "#/$defs/stringList"
+        },
+        "requestDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "workBoundaryDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "disciplines": {
+          "$ref": "#/$defs/disciplineSelection"
+        }
       }
     },
     "relationshipPath": {
       "type": "array",
       "minItems": 1,
       "maxItems": 129,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId" }
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+      }
     },
     "presentationHint": {
-      "enum": ["markdown", "json", "source", "diff", "plain-text", "binary"]
+      "enum": [
+        "markdown",
+        "json",
+        "source",
+        "diff",
+        "plain-text",
+        "binary"
+      ]
     },
     "projectionContent": {
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mode", "mediaType", "encoding", "text", "byteLength", "digest"],
+          "required": [
+            "mode",
+            "mediaType",
+            "encoding",
+            "text",
+            "byteLength",
+            "digest"
+          ],
           "properties": {
-            "mode": { "const": "inline" },
-            "mediaType": { "type": "string", "minLength": 1, "maxLength": 256 },
-            "encoding": { "const": "utf-8" },
-            "text": { "type": "string", "maxLength": 4194304, "pattern": "^[^\\u0000]*$" },
-            "byteLength": { "type": "integer", "minimum": 0, "maximum": 4194304 },
-            "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            "mode": {
+              "const": "inline"
+            },
+            "mediaType": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "encoding": {
+              "const": "utf-8"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 4194304,
+              "pattern": "^[^\\u0000]*$"
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mode", "mediaType", "encoding", "path", "byteLength", "digest", "scope", "readOnly"],
+          "required": [
+            "mode",
+            "mediaType",
+            "encoding",
+            "path",
+            "byteLength",
+            "digest",
+            "scope",
+            "readOnly"
+          ],
           "properties": {
-            "mode": { "const": "mounted" },
-            "mediaType": { "type": "string", "minLength": 1, "maxLength": 256 },
-            "encoding": { "enum": ["utf-8", "binary"] },
-            "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-            "byteLength": { "type": "integer", "minimum": 0, "maximum": 4194304 },
-            "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-            "scope": { "const": "projection-bundle" },
-            "readOnly": { "const": true }
+            "mode": {
+              "const": "mounted"
+            },
+            "mediaType": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "encoding": {
+              "enum": [
+                "utf-8",
+                "binary"
+              ]
+            },
+            "path": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            "scope": {
+              "const": "projection-bundle"
+            },
+            "readOnly": {
+              "const": true
+            }
           }
         }
       ]
     },
     "materialPresentationRule": {
-      "if": { "properties": { "presentationHint": { "const": "binary" } } },
+      "if": {
+        "properties": {
+          "presentationHint": {
+            "const": "binary"
+          }
+        }
+      },
       "then": {
         "properties": {
           "content": {
             "properties": {
-              "mode": { "const": "mounted" },
-              "encoding": { "const": "binary" }
+              "mode": {
+                "const": "mounted"
+              },
+              "encoding": {
+                "const": "binary"
+              }
             }
           }
         }
@@ -892,7 +1867,9 @@
         "properties": {
           "content": {
             "properties": {
-              "encoding": { "const": "utf-8" }
+              "encoding": {
+                "const": "utf-8"
+              }
             }
           }
         }
@@ -901,132 +1878,397 @@
     "mandatoryItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "itemDigest", "category", "sourceIdentity", "kind", "authority", "locator", "revision", "sourceDigest", "semanticDigest", "inclusionReasons", "relationshipPaths", "presentationHint", "content", "useLimit"],
+      "required": [
+        "id",
+        "itemDigest",
+        "category",
+        "sourceIdentity",
+        "kind",
+        "authority",
+        "locator",
+        "revision",
+        "sourceDigest",
+        "semanticDigest",
+        "inclusionReasons",
+        "relationshipPaths",
+        "presentationHint",
+        "content",
+        "useLimit"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "itemDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "category": { "const": "knowledge" },
-        "sourceIdentity": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "itemDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "category": {
+          "const": "knowledge"
+        },
+        "sourceIdentity": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
         "kind": {
           "oneOf": [
-            { "type": "string", "enum": ["behavior", "assurance", "blueprint", "description", "check", "implementation", "binding", "source"] },
-            { "type": "null" }
+            {
+              "type": "string",
+              "enum": [
+                "behavior",
+                "assurance",
+                "blueprint",
+                "description",
+                "check",
+                "implementation",
+                "binding",
+                "source",
+                "discipline"
+              ]
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "authority": { "type": "string", "enum": ["product-knowledge", "atlas", "repository-reality", "check-binding", "informational-source"] },
-        "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "authority": {
+          "type": "string",
+          "enum": [
+            "product-knowledge",
+            "atlas",
+            "repository-reality",
+            "check-binding",
+            "informational-source",
+            "discipline-guidance"
+          ]
+        },
+        "locator": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
+        },
         "revision": {
           "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "sourceDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "semanticDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "inclusionReasons": {
           "type": "array",
           "minItems": 1,
           "maxItems": 128,
-          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+          }
         },
         "relationshipPaths": {
           "type": "array",
           "maxItems": 128,
-          "items": { "$ref": "#/$defs/relationshipPath" }
+          "items": {
+            "$ref": "#/$defs/relationshipPath"
+          }
         },
-        "presentationHint": { "$ref": "#/$defs/presentationHint" },
-        "content": { "$ref": "#/$defs/projectionContent" },
+        "presentationHint": {
+          "$ref": "#/$defs/presentationHint"
+        },
+        "content": {
+          "$ref": "#/$defs/projectionContent"
+        },
         "useLimit": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
-      "allOf": [{ "$ref": "#/$defs/materialPresentationRule" }]
+      "allOf": [
+        {
+          "$ref": "#/$defs/materialPresentationRule"
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "discipline"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "discipline-guidance"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "behavior",
+                  "assurance",
+                  "blueprint",
+                  "description",
+                  "check"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "product-knowledge"
+              }
+            }
+          }
+        }
+      ]
     },
     "implementationItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "itemDigest", "path", "artifactKind", "digest", "descriptionIds", "inclusionReasons", "presentationHint", "content", "useLimit"],
+      "required": [
+        "id",
+        "itemDigest",
+        "path",
+        "artifactKind",
+        "digest",
+        "descriptionIds",
+        "inclusionReasons",
+        "presentationHint",
+        "content",
+        "useLimit"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "itemDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "artifactKind": { "type": "string", "enum": ["code", "test", "configuration", "documentation", "other"] },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "descriptionIds": { "$ref": "#/$defs/idList" },
-        "inclusionReasons": { "$ref": "#/$defs/stringList" },
-        "presentationHint": { "$ref": "#/$defs/presentationHint" },
-        "content": { "$ref": "#/$defs/projectionContent" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "itemDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "artifactKind": {
+          "type": "string",
+          "enum": [
+            "code",
+            "test",
+            "configuration",
+            "documentation",
+            "other"
+          ]
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "descriptionIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "inclusionReasons": {
+          "$ref": "#/$defs/stringList"
+        },
+        "presentationHint": {
+          "$ref": "#/$defs/presentationHint"
+        },
+        "content": {
+          "$ref": "#/$defs/projectionContent"
+        },
         "useLimit": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
-      "allOf": [{ "$ref": "#/$defs/materialPresentationRule" }]
+      "allOf": [
+        {
+          "$ref": "#/$defs/materialPresentationRule"
+        }
+      ]
     },
     "bindingItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "itemDigest", "binding", "checkIds", "compatibleCheckIds", "bindingDigest", "evidenceKinds", "inclusionReasons", "presentationHint", "content", "useLimit"],
+      "required": [
+        "id",
+        "itemDigest",
+        "binding",
+        "checkIds",
+        "compatibleCheckIds",
+        "bindingDigest",
+        "evidenceKinds",
+        "inclusionReasons",
+        "presentationHint",
+        "content",
+        "useLimit"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "itemDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "binding": { "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/checkBinding" },
-        "checkIds": { "$ref": "#/$defs/idList" },
-        "compatibleCheckIds": { "$ref": "#/$defs/idList" },
-        "bindingDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "itemDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "binding": {
+          "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/checkBinding"
+        },
+        "checkIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "compatibleCheckIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "bindingDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
         "evidenceKinds": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "enum": ["command", "inspection", "artifact", "diff", "analysis", "mixed"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "command",
+              "inspection",
+              "artifact",
+              "diff",
+              "analysis",
+              "mixed"
+            ]
+          }
         },
-        "inclusionReasons": { "$ref": "#/$defs/stringList" },
-        "presentationHint": { "$ref": "#/$defs/presentationHint" },
-        "content": { "$ref": "#/$defs/projectionContent" },
+        "inclusionReasons": {
+          "$ref": "#/$defs/stringList"
+        },
+        "presentationHint": {
+          "$ref": "#/$defs/presentationHint"
+        },
+        "content": {
+          "$ref": "#/$defs/projectionContent"
+        },
         "useLimit": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
-      "allOf": [{ "$ref": "#/$defs/materialPresentationRule" }]
+      "allOf": [
+        {
+          "$ref": "#/$defs/materialPresentationRule"
+        }
+      ]
     },
     "sourceItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "itemDigest", "reference", "revision", "digest", "authority", "semantic", "inclusionReasons", "presentationHint", "content", "useLimit"],
+      "required": [
+        "id",
+        "itemDigest",
+        "reference",
+        "revision",
+        "digest",
+        "authority",
+        "semantic",
+        "inclusionReasons",
+        "presentationHint",
+        "content",
+        "useLimit"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "itemDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "itemDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "reference": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
+        },
         "revision": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "authority": { "type": "string", "enum": ["atlas", "informational-source", "repository-reality", "runtime-authenticated-fact", "agent-proposed-claim"] },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "authority": {
+          "type": "string",
+          "enum": [
+            "atlas",
+            "informational-source",
+            "repository-reality",
+            "runtime-authenticated-fact",
+            "agent-proposed-claim"
+          ]
+        },
         "semantic": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["class", "subjectId", "subjectDigest", "evidenceKind"],
+          "required": [
+            "class",
+            "subjectId",
+            "subjectDigest",
+            "evidenceKind"
+          ],
           "properties": {
-            "class": { "type": "string", "enum": ["source", "candidate", "evidence"] },
-            "subjectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            "subjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            "class": {
+              "type": "string",
+              "enum": [
+                "source",
+                "candidate",
+                "evidence"
+              ]
+            },
+            "subjectId": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            "subjectDigest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            },
             "evidenceKind": {
               "oneOf": [
                 {
@@ -1039,269 +2281,904 @@
                     "execution-receipt"
                   ]
                 },
-                { "type": "null" }
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "allOf": [
             {
-              "if": { "properties": { "class": { "const": "evidence" } } },
-              "then": { "properties": { "evidenceKind": { "type": "string" } } },
-              "else": { "properties": { "evidenceKind": { "type": "null" } } }
+              "if": {
+                "properties": {
+                  "class": {
+                    "const": "evidence"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "evidenceKind": {
+                    "type": "string"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "evidenceKind": {
+                    "type": "null"
+                  }
+                }
+              }
             }
           ]
         },
-        "inclusionReasons": { "$ref": "#/$defs/stringList" },
-        "presentationHint": { "$ref": "#/$defs/presentationHint" },
-        "content": { "$ref": "#/$defs/projectionContent" },
+        "inclusionReasons": {
+          "$ref": "#/$defs/stringList"
+        },
+        "presentationHint": {
+          "$ref": "#/$defs/presentationHint"
+        },
+        "content": {
+          "$ref": "#/$defs/projectionContent"
+        },
         "useLimit": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "allOf": [
-        { "$ref": "#/$defs/materialPresentationRule" },
         {
-          "if": { "properties": { "semantic": { "properties": { "class": { "const": "source" } } } } },
-          "then": { "properties": { "authority": { "enum": ["atlas", "informational-source", "repository-reality"] } } }
-        },
-        {
-          "if": { "properties": { "semantic": { "properties": { "class": { "const": "candidate" } } } } },
-          "then": { "properties": { "authority": { "const": "runtime-authenticated-fact" } } }
-        },
-        {
-          "if": { "properties": { "semantic": { "properties": { "class": { "const": "evidence" }, "evidenceKind": { "const": "agent-work-product" } } } } },
-          "then": { "properties": { "authority": { "const": "agent-proposed-claim" } } }
-        },
-        {
-          "if": { "properties": { "semantic": { "properties": { "class": { "const": "evidence" }, "evidenceKind": { "const": "check-receipt" } } } } },
-          "then": { "properties": { "authority": { "const": "runtime-authenticated-fact" } } }
+          "$ref": "#/$defs/materialPresentationRule"
         },
         {
           "if": {
             "properties": {
               "semantic": {
                 "properties": {
-                  "class": { "const": "evidence" },
-                  "evidenceKind": {
-                    "enum": ["candidate-seal", "evidence-packet", "execution-receipt"]
+                  "class": {
+                    "const": "source"
                   }
                 }
               }
             }
           },
-          "then": { "properties": { "authority": { "const": "runtime-authenticated-fact" } } }
+          "then": {
+            "properties": {
+              "authority": {
+                "enum": [
+                  "atlas",
+                  "informational-source",
+                  "repository-reality"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic": {
+                "properties": {
+                  "class": {
+                    "const": "candidate"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "runtime-authenticated-fact"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic": {
+                "properties": {
+                  "class": {
+                    "const": "evidence"
+                  },
+                  "evidenceKind": {
+                    "const": "agent-work-product"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "agent-proposed-claim"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic": {
+                "properties": {
+                  "class": {
+                    "const": "evidence"
+                  },
+                  "evidenceKind": {
+                    "const": "check-receipt"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "runtime-authenticated-fact"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic": {
+                "properties": {
+                  "class": {
+                    "const": "evidence"
+                  },
+                  "evidenceKind": {
+                    "enum": [
+                      "candidate-seal",
+                      "evidence-packet",
+                      "execution-receipt"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authority": {
+                "const": "runtime-authenticated-fact"
+              }
+            }
+          }
         }
       ]
     },
     "atlasItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "itemDigest", "unitKind", "unitId", "atlasId", "mapId", "pointId", "recordKind", "sourcePath", "normalizedDigest", "inclusionReasons", "presentationHint", "content", "useLimit"],
+      "required": [
+        "id",
+        "itemDigest",
+        "unitKind",
+        "unitId",
+        "atlasId",
+        "mapId",
+        "pointId",
+        "recordKind",
+        "sourcePath",
+        "normalizedDigest",
+        "inclusionReasons",
+        "presentationHint",
+        "content",
+        "useLimit"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "itemDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "unitKind": { "enum": ["atlas", "map", "point-anchor", "point-context", "resource", "check", "publication-profile"] },
-        "unitId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "atlasId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "itemDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "unitKind": {
+          "enum": [
+            "atlas",
+            "map",
+            "point-anchor",
+            "point-context",
+            "resource",
+            "check",
+            "publication-profile"
+          ]
+        },
+        "unitId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "atlasId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
         "mapId": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "pointId": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "recordKind": {
           "oneOf": [
-            { "enum": ["anchor", "context"] },
-            { "type": "null" }
+            {
+              "enum": [
+                "anchor",
+                "context"
+              ]
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "sourcePath": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "normalizedDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "inclusionReasons": { "$ref": "#/$defs/stringList" },
-        "presentationHint": { "$ref": "#/$defs/presentationHint" },
-        "content": { "$ref": "#/$defs/projectionContent" },
+        "sourcePath": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "normalizedDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "inclusionReasons": {
+          "$ref": "#/$defs/stringList"
+        },
+        "presentationHint": {
+          "$ref": "#/$defs/presentationHint"
+        },
+        "content": {
+          "$ref": "#/$defs/projectionContent"
+        },
         "useLimit": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "allOf": [
-        { "$ref": "#/$defs/materialPresentationRule" },
         {
-          "if": { "properties": { "unitKind": { "enum": ["map", "point-anchor", "point-context"] } }, "required": ["unitKind"] },
-          "then": { "properties": { "mapId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" } } },
-          "else": { "properties": { "mapId": { "type": "null" } } }
+          "$ref": "#/$defs/materialPresentationRule"
         },
         {
-          "if": { "properties": { "unitKind": { "enum": ["point-anchor", "point-context"] } }, "required": ["unitKind"] },
+          "if": {
+            "properties": {
+              "unitKind": {
+                "enum": [
+                  "map",
+                  "point-anchor",
+                  "point-context"
+                ]
+              }
+            },
+            "required": [
+              "unitKind"
+            ]
+          },
           "then": {
             "properties": {
-              "mapId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "pointId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-              "recordKind": { "enum": ["anchor", "context"] }
+              "mapId": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              }
             }
           },
-          "else": { "properties": { "pointId": { "type": "null" }, "recordKind": { "type": "null" } } }
+          "else": {
+            "properties": {
+              "mapId": {
+                "type": "null"
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "unitKind": { "const": "point-anchor" } }, "required": ["unitKind"] },
-          "then": { "properties": { "recordKind": { "const": "anchor" } } }
+          "if": {
+            "properties": {
+              "unitKind": {
+                "enum": [
+                  "point-anchor",
+                  "point-context"
+                ]
+              }
+            },
+            "required": [
+              "unitKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mapId": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "pointId": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+              },
+              "recordKind": {
+                "enum": [
+                  "anchor",
+                  "context"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "pointId": {
+                "type": "null"
+              },
+              "recordKind": {
+                "type": "null"
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "unitKind": { "const": "point-context" } }, "required": ["unitKind"] },
-          "then": { "properties": { "recordKind": { "const": "context" } } }
+          "if": {
+            "properties": {
+              "unitKind": {
+                "const": "point-anchor"
+              }
+            },
+            "required": [
+              "unitKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recordKind": {
+                "const": "anchor"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unitKind": {
+                "const": "point-context"
+              }
+            },
+            "required": [
+              "unitKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recordKind": {
+                "const": "context"
+              }
+            }
+          }
         }
       ]
     },
     "reachableItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["handle", "id", "category", "kind", "summary", "sourceRevision", "digest", "byteLength", "retrieval", "mountedPath"],
+      "required": [
+        "handle",
+        "id",
+        "category",
+        "kind",
+        "summary",
+        "sourceRevision",
+        "digest",
+        "byteLength",
+        "retrieval",
+        "mountedPath"
+      ],
       "properties": {
-        "handle": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "category": { "$ref": "#/$defs/reachableCategory" },
-        "kind": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "handle": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "category": {
+          "$ref": "#/$defs/reachableCategory"
+        },
+        "kind": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "summary": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
         "sourceRevision": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "byteLength": { "type": "integer", "minimum": 0 },
-        "retrieval": { "type": "string", "enum": ["mounted", "resolver", "inaccessible"] },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retrieval": {
+          "type": "string",
+          "enum": [
+            "mounted",
+            "resolver",
+            "inaccessible"
+          ]
+        },
         "mountedPath": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-            { "type": "null" }
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "retrieval": { "const": "mounted" } } },
-          "then": { "properties": { "mountedPath": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" } } },
-          "else": { "properties": { "mountedPath": { "type": "null" } } }
+          "if": {
+            "properties": {
+              "retrieval": {
+                "const": "mounted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mountedPath": {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "mountedPath": {
+                "type": "null"
+              }
+            }
+          }
         }
       ]
     },
     "conflict": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "code", "severity", "recordIds", "detail"],
+      "required": [
+        "id",
+        "code",
+        "severity",
+        "recordIds",
+        "detail"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "severity": { "type": "string", "enum": ["error", "warning", "information"] },
-        "recordIds": { "$ref": "#/$defs/idList" },
-        "detail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "code": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ]
+        },
+        "recordIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "detail": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        }
       }
     },
     "unresolved": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "code", "required", "reference", "detail"],
+      "required": [
+        "id",
+        "code",
+        "required",
+        "reference",
+        "detail"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "required": { "type": "boolean" },
-        "reference": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
-        "detail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "code": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "reference": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference"
+        },
+        "detail": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        }
       }
     },
     "bounds": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["maximumMandatoryItems", "maximumMandatoryBytes", "maximumItemBytes", "maximumReachableItems", "maximumReachableBytes", "maximumSourceBytes", "maximumRelationshipDepth"],
+      "required": [
+        "maximumMandatoryItems",
+        "maximumMandatoryBytes",
+        "maximumItemBytes",
+        "maximumReachableItems",
+        "maximumReachableBytes",
+        "maximumSourceBytes",
+        "maximumRelationshipDepth"
+      ],
       "properties": {
-        "maximumMandatoryItems": { "type": "integer", "minimum": 1 },
-        "maximumMandatoryBytes": { "type": "integer", "minimum": 1 },
-        "maximumItemBytes": { "type": "integer", "minimum": 1 },
-        "maximumReachableItems": { "type": "integer", "minimum": 0 },
-        "maximumReachableBytes": { "type": "integer", "minimum": 0 },
-        "maximumSourceBytes": { "type": "integer", "minimum": 0 },
-        "maximumRelationshipDepth": { "type": "integer", "minimum": 1 }
+        "maximumMandatoryItems": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maximumMandatoryBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maximumItemBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maximumReachableItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximumReachableBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximumSourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximumRelationshipDepth": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "reachableCategory": {
-      "enum": ["related-knowledge", "atlas-context", "provenance-source", "historical-revision", "neighboring-description", "unaffected-implementation"]
+      "enum": [
+        "related-knowledge",
+        "atlas-context",
+        "provenance-source",
+        "historical-revision",
+        "neighboring-description",
+        "unaffected-implementation"
+      ]
     },
     "omissionCategory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["category", "before", "after", "omitted", "enumerationComplete", "omittedIds"],
+      "required": [
+        "category",
+        "before",
+        "after",
+        "omitted",
+        "enumerationComplete",
+        "omittedIds"
+      ],
       "properties": {
-        "category": { "$ref": "#/$defs/reachableCategory" },
-        "before": { "$ref": "#/$defs/countPair" },
-        "after": { "$ref": "#/$defs/countPair" },
-        "omitted": { "$ref": "#/$defs/countPair" },
-        "enumerationComplete": { "const": true },
+        "category": {
+          "$ref": "#/$defs/reachableCategory"
+        },
+        "before": {
+          "$ref": "#/$defs/countPair"
+        },
+        "after": {
+          "$ref": "#/$defs/countPair"
+        },
+        "omitted": {
+          "$ref": "#/$defs/countPair"
+        },
+        "enumerationComplete": {
+          "const": true
+        },
         "omittedIds": {
           "type": "array",
           "maxItems": 262144,
           "uniqueItems": true,
-          "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+          "items": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+          }
         }
       }
     },
     "omission": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile", "profileDigest", "bounds", "eligibleCategories", "categories", "policy", "mandatoryOmissions"],
+      "required": [
+        "profile",
+        "profileDigest",
+        "bounds",
+        "eligibleCategories",
+        "categories",
+        "policy",
+        "mandatoryOmissions"
+      ],
       "properties": {
-        "profile": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "profileDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "bounds": { "$ref": "#/$defs/bounds" },
+        "profile": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "profileDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "bounds": {
+          "$ref": "#/$defs/bounds"
+        },
         "eligibleCategories": {
-          "const": ["related-knowledge", "atlas-context", "provenance-source", "historical-revision", "neighboring-description", "unaffected-implementation"]
+          "const": [
+            "related-knowledge",
+            "atlas-context",
+            "provenance-source",
+            "historical-revision",
+            "neighboring-description",
+            "unaffected-implementation"
+          ]
         },
         "categories": {
           "type": "array",
           "minItems": 6,
           "maxItems": 6,
-          "items": { "$ref": "#/$defs/omissionCategory" }
+          "items": {
+            "$ref": "#/$defs/omissionCategory"
+          }
         },
-        "policy": { "const": "category-code-point-prefix-v1" },
-        "mandatoryOmissions": { "const": 0 }
+        "policy": {
+          "const": "category-code-point-prefix-v1"
+        },
+        "mandatoryOmissions": {
+          "const": 0
+        }
       }
     },
     "countPair": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["items", "bytes"],
+      "required": [
+        "items",
+        "bytes"
+      ],
       "properties": {
-        "items": { "type": "integer", "minimum": 0 },
-        "bytes": { "type": "integer", "minimum": 0 }
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["coreBytes", "atlas", "mandatory", "implementation", "bindings", "sources", "reachable", "conflicts", "unresolved", "totalBytes"],
+      "required": [
+        "coreBytes",
+        "atlas",
+        "mandatory",
+        "implementation",
+        "bindings",
+        "sources",
+        "reachable",
+        "conflicts",
+        "unresolved",
+        "totalBytes"
+      ],
       "properties": {
-        "coreBytes": { "type": "integer", "minimum": 0 },
-        "atlas": { "$ref": "#/$defs/countPair" },
-        "mandatory": { "$ref": "#/$defs/countPair" },
-        "implementation": { "$ref": "#/$defs/countPair" },
-        "bindings": { "$ref": "#/$defs/countPair" },
-        "sources": { "$ref": "#/$defs/countPair" },
-        "reachable": { "$ref": "#/$defs/countPair" },
-        "conflicts": { "type": "integer", "minimum": 0 },
-        "unresolved": { "type": "integer", "minimum": 0 },
-        "totalBytes": { "type": "integer", "minimum": 0 }
+        "coreBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "atlas": {
+          "$ref": "#/$defs/countPair"
+        },
+        "mandatory": {
+          "$ref": "#/$defs/countPair"
+        },
+        "implementation": {
+          "$ref": "#/$defs/countPair"
+        },
+        "bindings": {
+          "$ref": "#/$defs/countPair"
+        },
+        "sources": {
+          "$ref": "#/$defs/countPair"
+        },
+        "reachable": {
+          "$ref": "#/$defs/countPair"
+        },
+        "conflicts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "disciplineWorkType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "disciplineIds"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+        },
+        "title": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "description": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "disciplineIds": {
+          "$ref": "#/$defs/idList"
+        }
+      }
+    },
+    "disciplineIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registryDigest",
+        "workTypes",
+        "digest"
+      ],
+      "properties": {
+        "registryDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "workTypes": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/disciplineWorkType"
+          }
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      }
+    },
+    "disciplineBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "path",
+        "revision",
+        "sourceDigest",
+        "semanticDigest"
+      ],
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+            },
+            {
+              "pattern": "^discipline\\."
+            }
+          ]
+        },
+        "title": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "summary": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
+        },
+        "path": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+        },
+        "revision": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+        },
+        "sourceDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "semanticDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      }
+    },
+    "disciplineSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registryDigest",
+        "workTypeIds",
+        "records"
+      ],
+      "properties": {
+        "registryDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "workTypeIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "records": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/disciplineBrief"
+          }
+        }
+      }
+    },
+    "integrationBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessment",
+        "sourceCandidate",
+        "canonicalParent"
+      ],
+      "properties": {
+        "assessment": {
+          "allOf": [
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlRevisionReference"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "integration-assessment"
+                }
+              }
+            }
+          ]
+        },
+        "sourceCandidate": {
+          "$ref": "#/$defs/candidateRevisionReference"
+        },
+        "canonicalParent": {
+          "$ref": "urn:lifecycle:schema:repository-snapshot:v1"
+        }
       }
     }
   }

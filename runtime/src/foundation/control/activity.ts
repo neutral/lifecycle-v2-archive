@@ -19,6 +19,7 @@ import {
   controlTimestamp,
 } from "./model.js";
 import type { ControlRecordStore } from "./store.js";
+import { parseWorkDelegationReservation, type WorkDelegationReservation } from "./work-delegation.js";
 import type {
   ControlJsonObject,
   ControlRecordEvent,
@@ -35,6 +36,7 @@ export type AgentPreIntentRefusalFacts = Readonly<{
   diagnosticCode: string;
   refusalFactsDigest: Sha256;
 }>;
+export type ControlActivityReadView = Pick<ControlRecordStore, "identity" | "state" | "getRevision" | "listEvents">;
 
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 
@@ -48,7 +50,7 @@ function digest(value: Sha256, label: string): Sha256 {
 }
 
 function activity(
-  store: ControlRecordStore,
+  store: Pick<ControlActivityReadView, "state">,
   activityId: string,
 ): ReducedDeliveryState["activities"][number] {
   const id = controlIdentifier(activityId, "Delivery activity identity");
@@ -59,7 +61,7 @@ function activity(
   return value;
 }
 
-function allEvents(store: ControlRecordStore): readonly ControlRecordEvent[] {
+function allEvents(store: Pick<ControlActivityReadView, "listEvents">): readonly ControlRecordEvent[] {
   const events: ControlRecordEvent[] = [];
   let cursor = 0;
   for (;;) {
@@ -74,8 +76,8 @@ function allEvents(store: ControlRecordStore): readonly ControlRecordEvent[] {
 function exactActivitySubject(
   store: ControlRecordStore,
   activityId: string,
-  eventKind: "agent-attempt-prepared" | "founder-decision-authenticated",
-  recordKind: "agent-attempt" | "founder-decision",
+  eventKind: "agent-attempt-prepared" | "director-decision-authenticated",
+  recordKind: "agent-attempt" | "director-decision",
 ): ControlRecordRevision {
   const matches = allEvents(store).filter((event) =>
     event.eventKind === eventKind && event.payload.activityId === activityId);
@@ -120,7 +122,7 @@ function transactionDecisionKind(
 }
 
 function eventIdentity(
-  store: ControlRecordStore,
+  store: Pick<ControlActivityReadView, "identity">,
   eventKind: string,
   activityId: string,
   discriminator: ControlJsonObject = Object.freeze({}),
@@ -136,7 +138,7 @@ function eventIdentity(
 }
 
 function compileAppend(input: Readonly<{
-  store: ControlRecordStore;
+  store: Pick<ControlActivityReadView, "identity">;
   eventKind: string;
   activityId: string;
   occurredAt: string;
@@ -167,7 +169,7 @@ function compileAppend(input: Readonly<{
   });
 }
 
-function append(input: Parameters<typeof compileAppend>[0]): ControlRecordEvent {
+function append(input: Parameters<typeof compileAppend>[0] & Readonly<{ store: ControlRecordStore }>): ControlRecordEvent {
   return input.store.append(compileAppend(input)).event;
 }
 
@@ -178,22 +180,27 @@ export function createDeliveryActivityId(operation: DeliveryMutableOperation): s
 }
 
 /**
- * Compile, but do not retain, one eligible activity opening. The Founder Brief
+ * Compile, but do not retain, one eligible activity opening. The Director Brief
  * owner uses this to place an agent Brief and its activity opening in one
  * SQLite transaction; transaction activities retain this append directly.
  */
 export function compileDeliveryActivityStartAppend(input: Readonly<{
-  store: ControlRecordStore;
+  store: Pick<ControlRecordStore, "identity" | "state">;
   activityId: string;
   operation: DeliveryMutableOperation;
   startedAt: string;
   runtimeId: string;
+  reservation?: WorkDelegationReservation;
 }>): ControlRecordStoreAppend {
   const activityId = controlIdentifier(input.activityId, "Delivery activity identity");
   const startedAt = controlTimestamp(input.startedAt, "activity-started time");
   const runtimeId = controlIdentifier(input.runtimeId, "Delivery runtime identity");
   if (!input.store.state().eligibleOperations.includes(input.operation)) {
     fail("eligibility", `${input.operation} is not eligible at the exact Journal head`);
+  }
+  const reservation = input.reservation === undefined ? null : parseWorkDelegationReservation(input.reservation);
+  if (reservation !== null && (reservation.activityId !== activityId || reservation.operation !== input.operation)) {
+    fail("reservation", "The opening must bind its exact reserved Activity and operation");
   }
   return Object.freeze({
     event: Object.freeze({
@@ -202,7 +209,8 @@ export function compileDeliveryActivityStartAppend(input: Readonly<{
       occurredAt: startedAt,
       actor: Object.freeze({ kind: "runtime" as const, id: runtimeId }),
       subject: null,
-      payload: Object.freeze({ activityId, operation: input.operation }),
+      payload: reservation === null ? Object.freeze({ activityId, operation: input.operation })
+        : Object.freeze({ activityId, operation: input.operation, reservation }),
     }),
   });
 }
@@ -222,7 +230,7 @@ export function startDeliveryActivity(input: Readonly<{
   ) {
     fail(
       "agent-opening",
-      "Agent activities must retain their Founder Brief and activity opening atomically",
+      "Agent activities must retain their Director Brief and activity opening atomically",
     );
   }
   return input.store.append(compileDeliveryActivityStartAppend(input)).event;
@@ -332,12 +340,13 @@ export function compileProviderEffectIntentBesideAttemptAppend(input: Readonly<
 
 /** Record a pre-intent refusal without manufacturing an Agent Attempt. */
 export function compileAgentPreIntentRefusalAppend(input: Readonly<{
-  store: ControlRecordStore;
+  store: ControlActivityReadView;
   activityId: string;
   refusedAt: string;
   runtimeId: string;
   diagnosticCode: string;
   refusalFactsDigest: Sha256;
+  resolution?: "none" | "projection-condition-required";
 }>): ControlRecordStoreAppend {
   const current = activity(input.store, input.activityId);
   const preAttemptStage = current.operation === "delivery.evaluate" ? "finalizing" : "started";
@@ -353,14 +362,20 @@ export function compileAgentPreIntentRefusalAppend(input: Readonly<{
   }
   const diagnosticCode = controlIdentifier(input.diagnosticCode, "Pre-intent refusal diagnostic code");
   const refusalFactsDigest = digest(input.refusalFactsDigest, "Pre-intent refusal facts digest");
+  const resolution = input.resolution ?? "none";
+  if (resolution !== "none" && (resolution !== "projection-condition-required" ||
+      (current.operation !== "delivery.evaluate" && current.operation !== "delivery.continue") ||
+      diagnosticCode !== "lifecycle.projection.mandatory-too-large")) {
+    fail("pre-intent-refusal", "Projection resolution requires an exact measured builder or reviewer refusal");
+  }
   return compileAppend({
     store: input.store,
     eventKind: "agent-pre-intent-refused",
     activityId: current.id,
     occurredAt: input.refusedAt,
     runtimeId: input.runtimeId,
-    payload: Object.freeze({ activityId: current.id, diagnosticCode, refusalFactsDigest }),
-    discriminator: Object.freeze({ diagnosticCode, refusalFactsDigest }),
+    payload: Object.freeze({ activityId: current.id, diagnosticCode, refusalFactsDigest, resolution }),
+    discriminator: Object.freeze({ diagnosticCode, refusalFactsDigest, resolution }),
   });
 }
 
@@ -457,8 +472,8 @@ export function compileTransactionEffectIntentAppend(input: Readonly<{
   const decision = exactActivitySubject(
     input.store,
     current.id,
-    "founder-decision-authenticated",
-    "founder-decision",
+    "director-decision-authenticated",
+    "director-decision",
   );
   return compileAppend({
     store: input.store,
@@ -501,8 +516,8 @@ export function compileTransactionEffectObservationAppend(input: Readonly<{
   const decision = exactActivitySubject(
     input.store,
     current.id,
-    "founder-decision-authenticated",
-    "founder-decision",
+    "director-decision-authenticated",
+    "director-decision",
   );
   assertFoundationTransactionObservationFactsV7({
     operation: current.operation,
@@ -547,7 +562,7 @@ export type CompleteDeliveryActivityInput = Readonly<{
 }>;
 
 export function compileDeliveryActivityCompletionAppend(
-  input: CompleteDeliveryActivityInput,
+  input: Omit<CompleteDeliveryActivityInput, "store"> & Readonly<{ store: ControlActivityReadView }>,
 ): ControlRecordStoreAppend {
   const current = activity(input.store, input.activityId);
   const recovery: DeliveryRecoveryObligation | null = current.recovery;

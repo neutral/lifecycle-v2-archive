@@ -83,7 +83,7 @@ export function ownerId(value: unknown, label: string): string {
 
 export function knowledgeId(value: unknown, label: string): string {
   const result = text(value, label, 160);
-  if (!/^(?:behavior|assurance|blueprint|description|check)(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/u.test(result)) {
+  if (!/^(?:behavior|assurance|blueprint|description|check|discipline)(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/u.test(result)) {
     throw new LifecycleError({ code: "foundation.value.knowledge_id", message: `${label} is not a valid Knowledge identity` });
   }
   return result;

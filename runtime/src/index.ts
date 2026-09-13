@@ -26,6 +26,7 @@ export {
   type FoundationCliDispatch,
   type FoundationCliOutputFormat,
 } from "./foundation/cli.js";
+export type { FoundationAuthorityCredential } from "./foundation/repository/authority.js";
 export {
   FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7,
   FOUNDATION_RETIRED_CONFIGURATION_ENVIRONMENT_V7,
@@ -33,6 +34,30 @@ export {
   type FoundationInstalledRuntimeConfigurationV7,
   type ResolveFoundationInstalledRuntimeConfigurationV7Options,
 } from "./foundation/installed-configuration-v7.js";
+export {
+  createFoundationInvocationPrivateAuthorizationRuntimeV1,
+  digestFoundationInvocationPrivateAuthorizationSemanticInputV1,
+  type FoundationInvocationPrivateAuthorizationClaimV1,
+  type FoundationInvocationPrivateAuthorizationExpectationV1,
+  type FoundationInvocationPrivateAuthorizationInputV1,
+  type FoundationInvocationPrivateAuthorizationRuntimeV1,
+  type FoundationInvocationPrivateDeliveryLocatorV1,
+} from "./foundation/invocation-private-authorization-v1.js";
+export {
+  FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_CHALLENGE_MAXIMUM_BYTES,
+  FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MAXIMUM_BYTES,
+  FOUNDATION_INVOCATION_PRIVATE_AUTHORIZATION_SECRET_MINIMUM_BYTES,
+  createFoundationInvocationPrivateAuthorizationHandoffResultV1,
+  foundationInvocationPrivateAuthorizationSocketPathV1,
+  parseFoundationInvocationPrivateAuthorizationChallengeV1,
+  preflightFoundationInvocationPrivateAuthorizationV1,
+  sendFoundationInvocationPrivateAuthorizationV1,
+  startFoundationInvocationPrivateAuthorizationChannelServerV1,
+  isFoundationInvocationPrivateAuthorizationObservationUnavailableV1,
+  type FoundationInvocationPrivateAuthorizationChallengeV1,
+  type FoundationInvocationPrivateAuthorizationChannelServerV1,
+  type FoundationInvocationPrivateAuthorizationHandoffResultV1,
+} from "./foundation/invocation-private-authorization-channel-v1.js";
 export { createFoundationCommandCheckBinding } from "./foundation/repository/contract.js";
 export type {
   FoundationCheckBinding,

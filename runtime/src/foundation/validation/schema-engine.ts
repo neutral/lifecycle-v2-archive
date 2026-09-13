@@ -9,7 +9,9 @@ import {
 import { compareCodePoints } from "./ordering.js";
 import type { FoundationDiagnostic } from "./result.js";
 
-export const FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID = "urn:lifecycle:schema:knowledge-record:v1";
+export const FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID = "urn:lifecycle:schema:knowledge-record:v2";
+export const FOUNDATION_DISCIPLINE_REGISTRY_SCHEMA_ID = "urn:lifecycle:schema:discipline-registry:v1";
+export const FOUNDATION_DISCIPLINE_PACK_SCHEMA_ID = "urn:lifecycle:schema:discipline-pack:v1";
 
 export type FoundationSchemaEngineIdentity = Readonly<{
   implementation: "ajv";
@@ -105,7 +107,7 @@ export function foundationSchemaIds(): readonly string[] {
 
 /** Exact target-selected schema set owned by the published Repository Contract schema. */
 export function foundationRepositorySchemaIds(): readonly string[] {
-  const carrier = FOUNDATION_GENERATED_SCHEMAS.find(({ id }) => id === "urn:lifecycle:schema:repository-contract:v15");
+  const carrier = FOUNDATION_GENERATED_SCHEMAS.find(({ id }) => id === "urn:lifecycle:schema:repository-contract:v22");
   const root = carrier?.schema;
   const rootProperties = root?.properties;
   const selections = rootProperties !== null && typeof rootProperties === "object" && !Array.isArray(rootProperties)

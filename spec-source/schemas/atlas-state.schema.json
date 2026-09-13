@@ -12,7 +12,7 @@
       "maxItems": 1000000,
       "items": { "$ref": "#/$defs/entry" }
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "entry": {
@@ -20,9 +20,9 @@
       "additionalProperties": false,
       "required": ["path", "mode", "objectId"],
       "properties": {
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
         "mode": { "const": "100644" },
-        "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" }
+        "objectId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" }
       }
     }
   }

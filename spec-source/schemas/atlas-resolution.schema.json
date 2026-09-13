@@ -21,10 +21,10 @@
   "properties": {
     "schema": { "const": "lifecycle.atlas-resolution.v2" },
     "selection": {
-      "description": "The complete exact Atlas 0.7.0 selection fixed by repository contract v15.",
-      "$ref": "urn:lifecycle:schema:repository-contract:v15#/$defs/atlasSelection"
+      "description": "The complete exact Atlas 0.8.0 selection fixed by repository contract v22.",
+      "$ref": "urn:lifecycle:schema:repository-contract:v22#/$defs/atlasSelection"
     },
-    "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "resourceBindings": {
       "description": "Ordered Resource bindings. JSON Schema uniqueItems rejects repeated complete binding values; Resource-id uniqueness and Unicode code-point ordering require semantic validation.",
       "type": "array",
@@ -32,42 +32,42 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/resourceBinding" }
     },
-    "resourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "resourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "processor": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "version", "implementationDigest"],
       "properties": {
         "id": { "const": "atlas-reference-validator" },
-        "version": { "const": "0.7.0" },
+        "version": { "const": "0.8.0" },
         "implementationDigest": {
           "description": "Canonical digest of the exact installed processor file manifest selected for execution, excluding caches and mutable runtime support.",
-          "const": "sha256:94e8a97eda6659327fd6ec34ae2764787326962c0b2bf0eec39a236ca70d0205"
+          "const": "sha256:7432f9d49b9efdc828fbbc573fa32f395def8e201c628d7741ba56b2acf230be"
         }
       }
     },
     "externalValidationResultDigest": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         { "type": "null" }
       ]
     },
     "normalizedModelDigest": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         { "type": "null" }
       ]
     },
     "complete": { "type": "boolean" },
     "valid": { "type": "boolean" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "oneOf": [
     {
       "description": "A complete valid outcome carries both complete external-result and normalized-model identities.",
       "properties": {
-        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "normalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "normalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "complete": { "const": true },
         "valid": { "const": true }
       }
@@ -75,7 +75,7 @@
     {
       "description": "A complete invalid outcome carries the complete external result but no normalized model.",
       "properties": {
-        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "externalValidationResultDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "normalizedModelDigest": { "type": "null" },
         "complete": { "const": true },
         "valid": { "const": false }
@@ -93,19 +93,19 @@
   "$defs": {
     "nullablePath": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
         { "type": "null" }
       ]
     },
     "nullableGitObject": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
         { "type": "null" }
       ]
     },
     "nullableDigest": {
       "oneOf": [
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         { "type": "null" }
       ]
     },
@@ -114,8 +114,8 @@
       "additionalProperties": false,
       "required": ["resourceId", "uri", "path", "mode", "objectId", "byteDigest", "disposition"],
       "properties": {
-        "resourceId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "uri": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "resourceId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "uri": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
         "path": { "$ref": "#/$defs/nullablePath" },
         "mode": { "oneOf": [{ "const": "100644" }, { "type": "null" }] },
         "objectId": { "$ref": "#/$defs/nullableGitObject" },
@@ -127,10 +127,10 @@
           "if": { "properties": { "disposition": { "const": "resolved" } }, "required": ["disposition"] },
           "then": {
             "properties": {
-              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+              "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
               "mode": { "const": "100644" },
-              "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-              "byteDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+              "objectId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+              "byteDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
             }
           }
         },
@@ -141,7 +141,7 @@
           },
           "then": {
             "properties": {
-              "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+              "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
               "mode": { "type": "null" },
               "objectId": { "type": "null" },
               "byteDigest": { "type": "null" }

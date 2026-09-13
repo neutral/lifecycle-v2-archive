@@ -1,0 +1,9 @@
+{
+  "schema": "lifecycle.foundation-runtime-facade.v17",
+  "target": "/work/target",
+  "operation": "delivery.continue",
+  "deliveryId": "delivery-1",
+  "input": {
+    "semanticMarkdown": "# Continue\n\nComplete the exact admitted change.\n"
+  }
+}

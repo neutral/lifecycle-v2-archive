@@ -209,6 +209,7 @@ function fakeStore(input: Readonly<{
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: input.phase === "final" ? reference(boundary) : null,
       candidate: input.phase === "final"
@@ -221,6 +222,7 @@ function fakeStore(input: Readonly<{
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: 1, headDigest: events[0]!.digest }),
     eligibleOperations: Object.freeze([]),
   });
@@ -286,7 +288,7 @@ function successfulObservation(): CheckReceiptObservation {
         "descendant-containment",
         "darwin",
       ]),
-      founderManaged: Object.freeze([]),
+      directorManaged: Object.freeze([]),
     }),
     disposition: "pass",
     resultFacts: Object.freeze([Object.freeze({ name: "exit-code", value: 0 })]),
@@ -305,7 +307,7 @@ function successfulObservation(): CheckReceiptObservation {
         imageDigest: digest("check-execution-image"),
       }),
       inputSet: Object.freeze({
-        profileId: "lifecycle.execution-input-set.v1",
+        profileId: "lifecycle.execution-input-set.v2",
         digest: digest("check-input-set"),
       }),
       specificationDigest: digest("check-execution-specification"),

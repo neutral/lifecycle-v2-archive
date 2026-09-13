@@ -2,462 +2,281 @@
 
 > Status: Non-normative worked example
 
-## Purpose
+## Purpose and assumptions
 
-This example shows how one product obligation moves from repository Knowledge to
-an admitted Delivery, a role-specific Projection, a lower-cost builder attempt,
-independent proof, and founder-authorized acceptance.
+This example follows one bounded parser repair from governing Knowledge through
+retained Candidate work, explicit integration, independent Evidence, and
+conditional publication. It also follows a timed-out Attempt, an inadequate
+harness, and canonical movement through their productive continuations.
 
-The example is explanatory. Stable identifiers and field names illustrate the
-normative contracts but do not replace the JSON fixtures in this publication.
+The subjects and outcomes are hypothetical. The sketches explain relationships;
+they are not complete Lifecycle Documents, executable fixtures, or qualification
+evidence. [Knowledge](../spec/KNOWLEDGE.md),
+[Delivery](../spec/DELIVERY.md), [Attempts](../spec/ATTEMPTS.md), and
+[Evidence](../spec/EVIDENCE.md) own the contracts used here.
 
-## Product situation
+Assume a valid initialized target with complete current Knowledge, Description
+coverage, the selected Atlas, and registered Check Bindings and profiles. The
+existing repository configuration already binds the unit, fuzz, and repository
+Checks to their exact mechanisms. Creating the fuzz harness is permitted
+Candidate work; changing the Repository Contract or its Binding registry is
+not part of this Delivery. The selected capability and context profiles can
+support the work described below.
 
-A repository contains a byte-stream parser used on untrusted uploaded data. The
-parser has unit tests for known formats, but no fuzz harness. A prior incident
-showed an unchecked length field could allocate excessive memory.
+## From an objective to an assessable result
 
-The founder objective is:
+The repository parses untrusted uploaded bytes. Ordinary unit tests cover known
+formats, but an incident showed that an unchecked length field can cause
+excessive allocation. The Director supplies this objective:
 
-> Make the parser safe under arbitrary byte input and add the evidence required
-> to prevent the same class of regression.
+> Repair the parser's length and offset handling and add a reproducible bounded
+> fuzz campaign that can expose regressions in those paths.
 
-The objective is not yet a Work Boundary. It does not identify the relevant
-product behavior, failure limits, implementation boundary, required harness,
-proof modality, exclusions, or acceptance propositions.
+That direction is not yet a Work Boundary. Reconnaissance must connect it to
+current meaning, identify the result's limits, and propose the complete
+obligations and comparison basis the Director will admit.
 
-## Atlas context selection
+The current Knowledge has separate responsibilities:
 
-The complete valid normalized Atlas selects the smallest current semantic
-context by exact Map and Point-record identity:
+| Record | Meaning it owns |
+| --- | --- |
+| `behavior.parser.accept-uploaded-bytes`, revision 3 | Inputs within the upload limit return either a bounded parsed result or a declared parse failure. |
+| `assurance.parser.arbitrary-bytes-safe`, revision 2 | Parsing respects memory and execution limits and avoids crashes, unsafe access, and undeclared exceptions. |
+| `blueprint.parser.entry-boundary`, revision 4 | External upload bytes enter through `Parser.parse`; internal readers do not accept unchecked lengths or offsets. |
+| `description.parser.core`, revision 8 | The parser unit's responsibility, bounds, failure behavior, and exact implementation coverage. |
+| `check.parser.fuzz-arbitrary-bytes`, revision 2 | A selected bounded campaign can expose the declared parser falsifiers under its recorded conditions. |
 
-```text
-atlas/atlas.md
-  -> parser Map and explained Area membership
-  -> exact upload-ingestion Point anchor or context record
-  -> registered Resources for the Behavior, Assurance, Blueprint,
-     Description, and Check Definition owners
-```
+Behavior states what callers receive. Assurance states qualities and limits
+that ordinary successful examples do not establish. Blueprint identifies the
+architectural entrypoint. Description connects those meanings to implementation
+paths. The Check Definition states the proposition its mechanism can support,
+including that a finite campaign cannot establish universal defect absence.
 
-Atlas does not become the owner of those records. The selected Content and
-Reference edges preserve their Resource provenance, while the linked records
-retain their own authority and stable identities.
-
-## Knowledge records
-
-### Behavior
-
-```text
-id: knowledge.behavior.parser.accept-uploaded-bytes
-kind: behavior
-revision: 3
-statement:
-  The upload ingestion path accepts an arbitrary byte sequence and returns
-  either one bounded parsed result or one declared parse failure.
-```
-
-The Behavior owns the admitted functional outcome. It does not claim that the
-parser can never crash or exhaust resources; those are Assurance obligations.
-
-### Assurance
+The graph stores current standard relationships in their declared directions:
 
 ```text
-id: knowledge.assurance.parser.arbitrary-bytes-safe
-kind: assurance
-revision: 2
-statement:
-  For every finite input up to the configured upload limit, parser execution
-  does not panic, access memory unsafely, loop without the declared bound, or
-  allocate beyond the configured parser resource budget.
-falsifiers:
-  - process crash or sanitizer finding
-  - uncaught exception outside the declared parse-failure result
-  - execution beyond the per-input time bound
-  - allocation beyond the parser memory bound
+assurance.parser.arbitrary-bytes-safe
+  constrains -> behavior.parser.accept-uploaded-bytes
+
+blueprint.parser.entry-boundary
+  realizes -> behavior.parser.accept-uploaded-bytes
+
+description.parser.core
+  realizes -> blueprint.parser.entry-boundary
+
+assurance.parser.arbitrary-bytes-safe
+  verified-by -> check.parser.fuzz-arbitrary-bytes
+
+behavior.parser.accept-uploaded-bytes
+  verified-by -> check.parser.focused-units
 ```
 
-The Assurance owns a nonfunctional obligation and explicit falsifiers. It is
-not satisfied merely because ordinary example inputs still parse.
-
-### Blueprint
-
-```text
-id: knowledge.blueprint.parser.entry-boundary
-kind: blueprint
-revision: 4
-statement:
-  Every external upload byte sequence enters parsing through Parser.parse.
-  Format-specific readers remain internal and do not accept unvalidated
-  offsets or lengths directly.
-```
-
-The Blueprint gives the harness a precise architectural target. A fuzz test that
-calls a helper bypassing `Parser.parse` would not exercise the admitted external
-boundary.
-
-### Description
-
-```text
-id: knowledge.description.parser.core
-kind: description
-revision: 8
-covers:
-  - src/parser/index.ts
-  - src/parser/reader.ts
-  - src/parser/errors.ts
-responsibility:
-  Own the parser's byte-boundary validation, bounded reads, resource limits,
-  and declared parse-failure behavior.
-```
-
-The Description is the primary code-adjacent owner for the governed
-implementation units. It explains implementation responsibility but cannot
-weaken the Assurance or redefine the Behavior.
-
-### Check Definition
-
-```text
-id: knowledge.check.parser.fuzz-arbitrary-bytes
-kind: check-definition
-revision: 2
-claim:
-  The sealed parser candidate survives the configured arbitrary-byte campaign
-  without any Assurance falsifier.
-requiredEvidence:
-  - one harness targeting Parser.parse
-  - one reproducible corpus and seed policy
-  - sanitizer or runtime failure detection appropriate to the language
-  - bounded campaign receipt against the sealed candidate
-limitations:
-  A bounded campaign does not prove universal absence of parser defects. It
-  establishes the exact observed campaign and guards known failure classes.
-```
-
-The Check Definition owns what must be falsifiable and what evidence means. It
-is independent from the executable command selected by this repository.
-
-## Relationships
-
-The validated Knowledge graph contains, conceptually:
-
-```text
-behavior parser.accept-uploaded-bytes
-  requires-assurance -> assurance parser.arbitrary-bytes-safe
-
-behavior parser.accept-uploaded-bytes
-  realized-by -> blueprint parser.entry-boundary
-
-blueprint parser.entry-boundary
-  described-by -> description parser.core
-
-assurance parser.arbitrary-bytes-safe
-  checked-by -> check parser.fuzz-arbitrary-bytes
-
-description parser.core
-  describes -> implementation src/parser/*
-```
-
-The `checked-by` relationship does not mean that a command has passed. It means
-the Assurance requires the named Check Definition for the applicable profile.
-
-## Check Binding
-
-The target repository binds the Check Definition to one executable environment:
-
-```text
-binding id: check-binding.parser.fuzz.local-v1
-check: knowledge.check.parser.fuzz-arbitrary-bytes@2
-command:
-  npm run fuzz:parser -- --time=60s --seed-corpus=tests/fuzz/corpus
-capability:
-  filesystem: sealed-candidate-read
-  candidateMutation: forbidden
-  network: none
-timeout: 90s
-environment:
-  node: exact selected toolchain
-  sanitizer: configured JavaScript runtime checks
-```
-
-Changing the command, timeout, corpus location, or environment can create a new
-Binding revision. It does not silently change the Check Definition's claim.
-
-## Reconnaissance Projection
-
-The reconnaissance role receives:
-
-- the founder objective;
-- the relevant exact normalized Atlas Point-record and Resource provenance;
-- the Behavior, Assurance, Blueprint, Description, and Check Definition;
-- repository reality for the parser and existing tests;
-- the registered Check Binding;
-- current implementation ownership;
-- known incident context when it is governed Knowledge; and
-- conflicts, assumptions, or unresolved references.
-
-It does not receive builder write capability. Its job is product judgment and
-boundary preparation.
-
-## Proposed Work Boundary
-
-The resulting Work Boundary includes this meaning:
-
-```text
-selected result:
-  Enforce bounded length and offset handling at Parser.parse and add a
-  meaningful arbitrary-byte fuzz harness and campaign binding for the parser
-  Assurance.
-
-included behavior:
-  - arbitrary finite byte sequences return a parsed result or declared failure
-  - parser resource bounds apply before allocation and slice construction
-  - fuzz harness targets the external Parser.parse boundary
-  - current Description and Check-related repository knowledge are updated
-
-excluded behavior:
-  - redesign of the upload service
-  - support for new file formats
-  - production deployment
-  - external fuzzing service integration
-  - claims of mathematical proof or exhaustive input coverage
-
-assumptions:
-  - Parser.parse is the sole external byte entrypoint
-  - the local runtime can enforce the declared campaign timeout
-
-falsifiers:
-  - another external parser entrypoint exists
-  - required sanitizer capability is unavailable
-  - satisfying the memory bound requires a product tradeoff not currently
-    admitted
-
-required artifacts:
-  - src/parser/index.ts                    code, must change
-  - src/parser/reader.ts                   code, may change
-  - src/parser/_parser.desc.md             description, must change
-  - tests/fuzz/parser-harness.ts           test, must change
-  - tests/fuzz/corpus/*                    test, may change
-  - records/assurance/parser-safety.md     assurance, may change
-  - repository Check Binding carrier      documentation/config, must change
-
-checks:
-  - parser focused unit tests              regression guard
-  - parser fuzz campaign                   postcondition
-  - full repository tests                  regression guard
-
-acceptance propositions:
-  - every external byte sequence reaches validated bounded reads
-  - declared parse failures remain the only ordinary invalid-input result
-  - the harness targets Parser.parse and can reach length/offset handling
-  - the exact registered fuzz campaign passes on the sealed candidate
-  - no required artifact is missing
-  - exclusions remain absent
-  - Description coverage is current
-```
-
-The founder can inspect and refuse this boundary before productive work. The
-builder cannot later replace the fuzz campaign with a few random unit examples
-or broaden the result to a parser redesign.
-
-## Builder Projection
-
-The builder's mandatory core is concise:
-
-```text
-objective and selected result
-explicit exclusions
-assumptions and falsifiers
-obligation ledger
-required artifacts
-exact Check identities and temporal modalities
-material-condition return rules
-```
-
-Its supporting partition contains exact current revisions of the implicated
-Behavior, Assurance, Blueprint, Description, Check Definition, relevant
-incident context, and current parser implementation.
-
-Its reachable index can expose adjacent parser design records and neighboring
-implementation by exact identity. It does not ask the builder to rediscover the
-mandatory chain from the whole repository.
-
-## Agent Attempt
-
-A lower-cost builder can receive an attempt conceptually equivalent to:
-
-```text
-role: builder
-subject:
-  active Work Boundary digest
-  candidate base and current candidate digest
-projection:
-  exact builder Projection digest
-capability:
-  candidate and private tool-state writes
-  repository toolchain subprocesses
-  loopback only when the profile requires it
-  no canonical Git, Control, founder secrets, publication, or deployment
-investment:
-  selected model
-  reasoning effort
-  15-minute initial wall-time allocation
-result contract:
-  completed proposal | correctable gap | material condition | no useful result
-```
-
-Model choice and timeout do not enter product authority. A stronger or cheaper
-model can operate the same semantic and capability subject.
-
-## First invocation outcome
-
-Assume the cheaper model fixes the unchecked allocation and writes a harness,
-but its 15-minute invocation ends before the fuzz campaign completes.
-
-The candidate is retained. Provider events show activity but do not establish
-progress. The agent's final output, if any, is a proposal.
-
-The derived Attempt View reports authenticated facts such as:
-
-```text
-boundary coherent: yes
-candidate preserved: yes
-changed required artifacts:
-  - src/parser/index.ts
-  - tests/fuzz/parser-harness.ts
-missing required artifacts:
-  - src/parser/_parser.desc.md
-checks:
-  focused units: pass against current candidate
-  fuzz campaign: not established
-  full repository tests: not established
-material condition: none authenticated
-eligible action:
-  continue same candidate and Work Boundary
-```
-
-This is enough for a strong outer investor to fund another bounded invocation
-without treating elapsed time or diff size as completion.
-
-## Half-done completion claim
-
-Assume the next builder returns `completed` after running only the focused unit
-tests. It says the fuzz harness is present and the full suite is probably
-unnecessary.
-
-Lifecycle does not accept that judgment.
-
-- the required Description artifact is still absent;
-- the registered fuzz postcondition has no passing receipt;
-- the full regression guard has no passing final receipt; and
-- required acceptance propositions cannot all be supported.
-
-The Process remains correctable. The candidate survives. A cheaper model's
-optimistic completion claim does not lower the gate.
-
-## Meaningful-harness review
-
-Assume the builder later adds the Description and all commands pass, but the
-harness always truncates input to four bytes before calling `Parser.parse`.
-
-The runtime can establish that the file exists and the command passed. The
-independent reviewer still rejects the proposition that the harness can reach
-the length and offset paths implicated by the Assurance.
-
-This demonstrates the evidence separation:
-
-```text
-artifact exists             -> runtime observation
-command passed               -> Check Receipt
-campaign meaning and limits  -> Check Definition
-harness is fit for claim     -> independent review
-result becomes truth         -> founder acceptance and runtime transaction
-```
-
-A green command alone does not make a no-op harness acceptable.
-
-## Material condition
-
-During implementation, the builder may discover a second public parser entry
-point used by streaming uploads. That fact falsifies the Blueprint and the Work
-Boundary assumption.
-
-The correct result is a Material Condition, not silent expansion:
-
-```text
-kind: mandate-falsifier
-detail:
-  StreamingParser.parseChunk is an external byte entrypoint not covered by the
-  admitted boundary or current primary Description.
-affected obligations:
-  - behavior parser.accept-uploaded-bytes
-  - assurance parser.arbitrary-bytes-safe
-  - blueprint parser.entry-boundary
-candidate treatment:
-  preserve exact candidate
-suggested action:
-  revise the complete boundary or close no-ship
-```
-
-A strong model can assess whether to revise the boundary, split the work, or
-terminate. Existing candidate work remains a proposal and can be conserved only
-under an explicitly readmitted mandate.
-
-## Final evidence
-
-For a conforming candidate, the runtime seals one exact candidate tree and
-runs the registered final Checks. The Evidence Packet binds, among other facts:
-
-- Work Boundary and candidate identities;
-- required-artifact inventory;
-- Description coverage result;
-- focused-unit, fuzz-campaign, and full-suite receipts;
-- proof environment and Check Binding identities;
-- independent decision for every acceptance proposition;
-- unresolved uncertainty and evidence limitations; and
-- the exact canonical transaction requested next.
-
-The fuzz receipt states the bounded campaign it observed. It does not claim
-universal proof. Independent review can accept the proposition with that
-limitation because the Work Boundary required a bounded regression campaign,
-not exhaustive verification.
-
-## Acceptance
-
-Founder acceptance authenticates the exact Evidence Packet and candidate
-subject. The runtime revalidates canonical product state, active boundary,
-Knowledge bases, candidate, evidence, lock, and transaction package before
-moving canonical truth.
-
-A changed candidate, Check Binding, Assurance revision, or canonical base
-requires new evidence or authority as defined by the Process. Similarity is not
-subject identity.
-
-## Invalid shortcuts
-
-The following do not satisfy this Delivery:
-
-- telling the agent to "read all relevant specs" without compiling the
-  mandatory Projection;
-- placing the fuzz requirement only in an initial prompt;
-- treating an existing fuzz script name as a Check Definition;
-- letting the builder choose a weaker command after admission;
-- counting changed paths or tool calls as progress;
-- accepting the builder's `completed` disposition without final proof;
-- letting proof mutate the harness until it passes;
-- letting the reviewer edit the candidate it judges;
-- inferring missing Description meaning from code at acceptance; or
-- reusing founder authority after the candidate or Assurance subject changes.
-
-## Result
-
-The example demonstrates the intended division of labor:
-
-```text
-repository Knowledge defines what matters
-Delivery admits one exact result
-Projection makes required context hard to miss
-Agent Attempt grants broad reversible labor, not truth
-runtime establishes artifacts and Check receipts
-fresh review judges claim fitness
-founder authority permits one exact repository transition
-```
+The Description's coverage fields separately name exact files such as
+`src/parser/index.ts`, `src/parser/reader.ts`, and `src/parser/errors.ts`.
+Coverage is not a Knowledge edge or a wildcard assertion. Selecting the Behavior
+can require the incoming Assurance and relevant realizations; an inverse index
+helps traverse those authored edges without creating new ones.
+
+The valid Atlas supplies project orientation and registered Resources through
+exact normalized Map, Point, and Resource identities. It routes to these owners
+without becoming their authority. The Registry can also expose an adopted
+JavaScript testing Discipline through a Work Type. Reconnaissance may select
+that guidance, but Work Type membership neither selects every record nor adds
+an acceptance obligation.
+
+## Proposal, baseline, and admission
+
+The Orientation Projection exposes exact current records, Bindings, profiles,
+implementation ownership, source provenance, and bounded retrieval. The
+reconnaissance Agent receives no Candidate write capability. Its valid semantic
+submission proposes a result; Runtime parsing and compilation supply exact
+identities, references, ordering, and digests.
+
+Call the resulting Work Boundary W1 and its governing Snapshot B. W1 is the
+complete envelope, not just the following mandate summary:
+
+- Repair bounded length and offset handling at `Parser.parse`.
+- Add a harness that reaches the affected paths and a reproducible seed corpus.
+- Update the parser Description with the implemented responsibility and limits.
+- Preserve declared parse failures and existing supported formats.
+- Exclude upload-service redesign, new formats, deployment, external fuzzing
+  services, and claims of exhaustive or mathematical verification.
+
+The required artifact set names exact paths, including
+`src/parser/index.ts`, `src/parser/_parser.desc.md`,
+`tests/fuzz/parser-harness.ts`, and `tests/fuzz/corpus/length-overflow.bin`.
+The complete Boundary also binds each artifact's role and disposition,
+obligations, risks, effects, selected Knowledge and advisory guidance,
+acceptance propositions, exact profiles, and repository basis.
+
+The Check selections have different temporal jobs:
+
+| Check | Modality | Baseline | Final evaluation |
+| --- | --- | --- | --- |
+| Focused parser units | Regression guard | Pass | Pass against the exact Seal |
+| Fuzz campaign | Postcondition | Declared `not-run` | Pass with the required campaign facts |
+| Repository suite | Regression guard | Pass | Pass against the exact Seal |
+
+The registered fuzz mechanism might run
+`npm run fuzz:parser -- --time=60s --seed-corpus=tests/fuzz/corpus` under its
+exact selected environment and timeout. The command is the mechanism; the
+Check Definition owns the proposition and limitations. Changing the command
+would change a bound input, not silently change what an earlier Receipt means.
+
+Runtime finalizes W1 before baseline execution so every baseline Receipt can
+name that exact revision. Proposal readiness requires the complete
+modality-valid set, not an indiscriminate all-pass rule. The postcondition's
+baseline `not-run` does not claim the missing harness already works.
+
+The Director inspects the complete proposal and authenticates admission of W1.
+The observed applied admission makes those same Boundary bytes active. Runtime
+then retains the initialization Candidate Revision C1 and its reconstructible
+Carrier. If admission is interrupted between those durable boundaries, recovery
+finishes that initialization; it does not invent a Candidate or admit a copy of
+W1.
+
+## A timed-out Attempt can still advance the Candidate
+
+A builder receives W1's exact Execution Projection, current Candidate, selected
+capability, and fresh Investment. Its Cell contains an isolated repository on
+the Delivery's stable work branch. Canonical Git administration and Runtime
+custody are outside its inputs. The provider may inspect, edit, run permitted
+local commands, and revise its body-only semantic submission during the Attempt.
+
+Assume the first builder repairs the allocation check and writes a preliminary
+harness, but reaches its time limit before submitting valid semantics. Runtime
+contains the Cell and retrieves its exact bounded output. In this example the
+Product tree is complete and valid, including current Description coverage,
+although the required Description content change is still unfinished.
+
+The outcomes are separate:
+
+| Question | Retained conclusion in this example |
+| --- | --- |
+| How did provider execution end? | Timeout. |
+| Was a valid Agent Work Product submitted? | No. |
+| Can Product output advance the Candidate? | Yes: complete valid bytes are published in a Carrier before C2 is selected. |
+| Can the Attempt Activity finish? | Yes, once output dispositions, Containment, and Runtime-owned Retirement are final. |
+
+C2 therefore survives the unsuccessful invocation. Its exact Carrier, not the
+old Cell or provider session, supplies the next Attempt. The Attempt View can
+show that advancement and the still-unmet obligations. A unit command the
+builder happened to run is not a final Check Receipt, and provider activity is
+not Evidence of readiness.
+
+A later builder can update the Description incrementally. A complete contiguous
+Draft successor above its Current revision can be retained between Attempts
+without governing the Candidate Knowledge Set. Promotion changes the prior
+Current status and successor predecessor bindings coherently under the
+[Knowledge revision rules](../spec/KNOWLEDGE.md#revision-and-supersession).
+Review then receives both admitted and Candidate occurrences. It does not
+confuse the old and new revisions or resolve them by choosing the larger number.
+
+## Integration establishes the result to evaluate
+
+Once Candidate work is ready for assessment, `delivery.integrate` selects one
+exact current canonical parent P and constructs I in a disposable isolated
+repository. The operation receives the expected read generation; the caller
+supplies no parent, merge strategy, Agent semantics, or Investment.
+
+W1's governing Snapshot B, the application parent P, and result I are different
+subjects. Canonical work can have advanced since B without invalidating the
+retained Candidate. Integration assesses whether W1's governing selections
+still apply and validates the proposed P-to-I contribution, including protected
+Atlas and Discipline bytes.
+
+If construction conflicts with a concurrent parser edit, the current Candidate
+remains selected. A correction Attempt receives exact attempted-parent conflict
+context read-only, changes its Candidate under W1, and integrates again. Those
+parent bytes help resolve the conflict; they do not become governing Knowledge
+or grant broader capability.
+
+Assume the successful construction preserves governing applicability. Runtime
+retains the Integration Assessment and its exact successor Candidate. Evaluation
+can now seal that result, run the required final Checks, and compile an
+independent read-only reviewer Projection.
+
+## A green campaign can still leave inadequate support
+
+Suppose the preliminary harness truncates every input to four bytes before
+calling `Parser.parse`. The harness file exists and the registered campaign
+returns a passing outcome, but it cannot reach the length and offset paths
+that motivated the repair.
+
+Runtime observation establishes the artifact and its exact bytes. The Check
+Receipt establishes the bounded execution outcome against the Seal. The
+reviewer judges whether those facts support each admitted proposition and
+rejects the harness-fitness proposition with exact citations. Evidence
+assessment derives the unsatisfied obligation; a successful evaluation Activity
+does not turn the inadequate support into acceptance readiness.
+
+This gap is correctable under W1. Another funded builder fixes the harness and
+retains its successor. Integration provenance is reestablished when required,
+then fresh sealing, final Checks, and review concern the exact revised result.
+A passing Receipt for the prior Seal cannot be silently relabeled as a Check of
+the new one.
+
+The final Packet can support the admitted bounded campaign and architectural
+repair while retaining the Check's finite-coverage limitation. It does not
+claim universal parser safety merely because the original Assurance expresses
+a broader product obligation.
+
+## When the mandate or context needs a response
+
+A different finding can require a Material Condition. Suppose an exact retained
+builder proposal identifies a second public entrypoint outside the selected
+Blueprint and W1's stated assumption. Runtime validates that proposal's source
+and Candidate joins before freezing the Condition. Productive continuation
+pauses; the Agent cannot expand W1 itself.
+
+Revision reconnaissance receives the frozen Candidate read-only, exact
+Condition, active Boundary, and fresh Director rationale. A complete revised
+proposal can include the newly required work, receive fresh modality-valid
+baselines, and become active only through authenticated readmission. Candidate
+identity and bytes remain available throughout. Reaffirmation instead requires
+complete unchanged mandate semantics and an explicit rationale; it is not a
+shortcut that suppresses the finding.
+
+Mandatory-context failure has its own source. If complete required context
+exceeds the selected profile, the compiler's conclusive measurement can produce
+the exact Condition without dispatching an Agent with truncated inputs. When a
+larger registered profile is explicitly permitted, resolution can select it
+and carry that choice through readmission into successful continuation. Reusing
+the inadequate default or merely displaying an eligible resolution operation
+would not demonstrate that the promised route works.
+
+## Conditional acceptance and interrupted settlement
+
+For a supported result, the Packet binds the exact Boundary, Candidate, Seal,
+Integration Assessment, Check and reviewer subjects, applicability judgments,
+obligation ledgers, uncertainty, and selected Evidence rules. Packet retention
+and historical verification recompute support from its exact inputs. They do
+not authenticate the Director or establish fresh physical repository bytes.
+
+The Director separately authenticates acceptance of that exact result over P.
+The transaction retains its exact plan and intent, independently reopens and
+observes the physical subject, requires Evidence verification, and conditionally
+publishes only while canonical still names P. Acceptance performs no merge.
+
+If canonical advances to P2 first, the old result and Packet remain historical
+facts. The attempted effect is conclusively not applied and settles its failed
+Activity and support disposition. Delivery then integrates against a newly
+selected parent, resolves governing changes and readmits when needed, evaluates
+the exact result, and obtains a new Director Decision. The old Decision never
+authorizes a retry over P2.
+
+If the successful publication return is lost instead, recovery reconciles the
+retained exact effect. It can recognize the accepted commit after later forward
+canonical movement when its required identity and ancestry facts are available.
+An indeterminate observation remains exact recovery work; absence of a return
+value is not proof of non-application.
+
+Applied acceptance records exact Candidate treatment and Closure after required
+Containment and Retirement. Store sealing and archive disposition can then
+finish, including after restart, without reopening the terminal Delivery or
+adding an event after Closure. Physical Reclamation may finish later under its
+private owner.
+
+No-ship is another deliberate Director choice when eligible. It truthfully
+terminates the Delivery without publishing Candidate bytes. It is not evidence
+that the productive repair course above succeeded.

@@ -1,10 +1,24 @@
+import { compileFoundationAgentExecutionSelectionV1, parseFoundationAgentExecutionSelectionV1, type FoundationAgentExecutionSelectionV1 } from "../execution/agent-selection-v1.js";
+import {
+  readWorkDelegationExecution,
+  workDelegationAgentSlot,
+  workDelegationRetainedAgentSelectionMatches,
+} from "../control/work-delegation-execution.js";
+import type { WorkDelegationReservation } from "../control/work-delegation.js";
+import { foundationUnallocatedExecutionRefusalV1, foundationExecutionAllocationKeyBindingDigest } from "../execution/backend.js";
+import { compileAgentPreIntentRefusalAppend, compileDeliveryActivityCompletionAppend, type ControlActivityReadView } from "../control/activity.js";
+import { createDeliveryReplay } from "./delivery-reducer.js";
+import { prepareProjectionMaterialConditionV1 } from "../control/material-condition.js";
+import type { FoundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
+import { parseFoundationPreparationBasisBindingV7, type FoundationPreparationBasisBindingV7 } from "./preparation-basis-v7.js";
+import { openFoundationDeliveryGitContextV1 } from "../repository/delivery-git-context.js";
+import { FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1 } from "../repository/delivery-git-context-manifest.js";
 import { readFile } from "node:fs/promises";
 import { FOUNDATION_RUNTIME_PROTOCOL } from "../constants.js";
 import {
   FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1,
   compileFoundationAgentCellInputV1,
   compileFoundationAgentCellSpecificationV1,
-  operateFoundationAgentCellV1,
   type FoundationAgentCellActivityOwnerV1,
   type FoundationAgentCellImmutableEntryV1,
   type FoundationAgentCellImmutableSubjectV1,
@@ -13,7 +27,7 @@ import {
   type FoundationCompiledAgentCellInputV1,
 } from "../attempt/execution-cell-v1.js";
 import type { ProviderInputV4 } from "../attempt/provider-input-v4.js";
-import { verifyProviderInputV4 } from "../attempt/provider-input-v4.js";
+import { verifyProviderInputV4, PROVIDER_INPUT_SEMANTIC_BASIS_PATH } from "../attempt/provider-input-v4.js";
 import {
   openCandidateRevisionCarrier,
 } from "../candidate/carrier-store.js";
@@ -23,6 +37,12 @@ import {
 import {
   candidateRevisionCarrierVerifierFromWorkBoundary,
 } from "../candidate/carrier-binding.js";
+import {
+  candidateOutputRejectionV1,
+  parseCandidateOutputRejectionV1,
+  type FoundationCandidateOutputRejectionV1,
+} from "../candidate/carrier-state-observer.js";
+import { compileFoundationBuilderRepairOutputV1, FOUNDATION_BUILDER_REPAIR_PURPOSES } from "../candidate/repair-output.js";
 import type {
   FoundationPublishedCandidateOutputCarrierV1,
 } from "../candidate/candidate-output-carrier.js";
@@ -36,7 +56,6 @@ import {
   type AgentAttemptExecutionPolicy,
   type AgentAttemptInvestment,
   type AgentAttemptOperation,
-  type AgentAttemptProvider,
   type AgentAttemptRole,
 } from "../control/agent-attempt.js";
 import {
@@ -54,17 +73,21 @@ import {
   prepareCandidateRevisionRetention,
 } from "../control/candidate-revision.js";
 import {
+  compileExecutionReceiptProviderFailureMaterial,
   retainExecutionReceipt,
   type ExecutionReceiptProviderObservation,
+  type ExecutionReceiptRawMaterial,
   type ExecutionReceiptSubmissionDiagnostic,
   type ExecutionReceiptWorkspaceObservation,
 } from "../control/execution-receipt.js";
 import {
   compileAgentActivityOpening,
+  compileDelegatedAgentActivityOpening,
   type CompiledAgentActivityOpening,
-} from "../control/founder-brief.js";
+} from "../control/director-brief.js";
 import {
   compileControlRecordEvent,
+  compileControlRecordRevision,
   controlIdentifier,
   controlTimestamp,
   normalizeSemanticMarkdown,
@@ -80,7 +103,7 @@ import type {
   ControlRecordStoreAppendResult,
 } from "../control/types.js";
 import { FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR } from "../repository/contract.js";
-import type { FoundationInstalledRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
+import type { FoundationProcessRuntimeConfigurationV7 } from "../installed-configuration-v7.js";
 import type { FoundationCompiledProjection } from "../projection/types.js";
 import {
   createFoundationActivityKernelCheckpointAdapterV7,
@@ -114,8 +137,9 @@ import type {
 import {
   parseFoundationExecutionOperationCheckpoint,
 } from "../execution/operation-host.js";
-import type {
-  FoundationExecutionSpecificationV1,
+import {
+  executionObservationEstablishesContainment,
+  type FoundationExecutionSpecificationV1,
 } from "../execution/contracts.js";
 import { reduceDeliveryEvents } from "./delivery-reducer.js";
 import { FoundationError } from "../error.js";
@@ -129,18 +153,18 @@ import {
 import {
   readFoundationAgentSemanticWorkspaceV1,
 } from "../../util/agent-execution-cell-operation-v1.js";
+import { compileFoundationInstalledAgentExecutionPolicyV1 } from "../execution/installed-agent-policy-v1.js";
 import {
   compileFoundationInstalledAgentCellInputsV1,
-  compileFoundationInstalledAgentExecutionPolicyV1,
-  openFoundationInstalledAgentRuntimeV1,
+  selectFoundationInstalledAgentProviderV1,
+  type FoundationInstalledAgentRuntimeOpenerV1,
   type FoundationCompiledInstalledAgentCellInputsV1,
-  type FoundationOpenedInstalledAgentRuntimeV1,
 } from "../execution/installed-agent-runtime-v1.js";
 
 export const FOUNDATION_AGENT_ACTIVITY_V7_PLAN_SCHEMA =
   "lifecycle.delivery-agent-activity-plan.v1" as const;
 export const FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA =
-  "lifecycle.delivery-agent-activity-checkpoint.v2" as const;
+  "lifecycle.delivery-agent-activity-checkpoint.v3" as const;
 
 const MAXIMUM_ACTIVITY_EVENTS = 512;
 const MAXIMUM_JOURNAL_EVENTS = 100_000;
@@ -183,17 +207,18 @@ type WorkspaceFinalization = Readonly<{
 type AgentOperationOpeningFacts = Readonly<{
   agentId: string;
   runtimeId: string;
-  founderId: string;
+  directorId: string;
   submittedAt: string;
   startedAt: string;
-  founderSubmissionRawDigest: Sha256;
-  founderSubmissionRawByteLength: number;
-  founderSemanticDigest: Sha256;
-  founderSemanticByteLength: number;
+  directorSubmissionRawDigest: Sha256;
+  directorSubmissionRawByteLength: number;
+  directorSemanticDigest: Sha256;
+  directorSemanticByteLength: number;
   investment: AgentAttemptInvestment;
 }>;
 
 type AgentOperationPlan = Readonly<{
+  preparationBasis?: FoundationPreparationBasisBindingV7;
   attemptCreatedAt: string;
   preDispatchStateDigest: Sha256;
   projection: Readonly<{
@@ -234,11 +259,13 @@ export type AgentActivityCheckpoint = Readonly<{
   schema: typeof FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA;
   coordinate: AgentCellCoordinateV7 | null;
   execution: FoundationExecutionOperationCheckpointV1 | null;
+  executionSelection: FoundationAgentExecutionSelectionV1 | null;
   attempt: RevisionReference | null;
   seal: RevisionReference | null;
   promotedExecutionPlan: AgentOperationPlan | null;
   finalization: WorkspaceFinalization | null;
   resultCandidate: RevisionReference | null;
+  candidateRejection: FoundationCandidateOutputRejectionV1 | null;
   receipt: RevisionReference | null;
   roleCheckpoint: ControlJsonObject | null;
 }>;
@@ -250,6 +277,7 @@ type AgentOperationSupport = Readonly<{
   stage: FoundationAgentOperationStageV7;
   coordinate: AgentCellCoordinateV7 | null;
   execution: FoundationExecutionOperationCheckpointV1 | null;
+  executionSelection: FoundationAgentExecutionSelectionV1 | null;
   brief: RevisionReference;
   attempt: RevisionReference | null;
   boundary: RevisionReference | null;
@@ -260,6 +288,7 @@ type AgentOperationSupport = Readonly<{
   promotedExecutionPlan: AgentOperationPlan | null;
   finalization: WorkspaceFinalization | null;
   resultCandidate: RevisionReference | null;
+  candidateRejection: FoundationCandidateOutputRejectionV1 | null;
   receipt: RevisionReference | null;
   roleCheckpoint: ControlJsonObject | null;
 }>;
@@ -279,21 +308,25 @@ export type FoundationAgentRoleCheckpointAdapterV7<
   Child
 >;
 
-export type FoundationAgentRoleControlContextV7 = Readonly<{
+type FoundationAgentRoleControlCommonV7 = Readonly<{
   store: ControlRecordStore;
   activityId: string;
-  operation: FoundationAgentOperationV7;
-  role: AgentAttemptRole;
   brief: ControlRecordRevision;
   attempt: ControlRecordRevision;
-  boundary: ControlRecordRevision;
-  attemptedCandidate: ControlRecordRevision;
-  resultCandidate: ControlRecordRevision;
-  seal: ControlRecordRevision | null;
   workProduct: ControlRecordRevision | null;
   receipt: ControlRecordRevision;
   support: FoundationAgentRoleCheckpointAdapterV7;
 }>;
+
+export type FoundationAgentRoleControlContextV7 = FoundationAgentRoleControlCommonV7 & Readonly<{
+  boundary: ControlRecordRevision;
+  attemptedCandidate: ControlRecordRevision;
+  resultCandidate: ControlRecordRevision;
+}> & (
+  | Readonly<{operation:"delivery.continue";role:"builder";seal:null}>
+  | Readonly<{operation:"delivery.evaluate";role:"reviewer";seal:ControlRecordRevision}>
+  | Readonly<{operation:"delivery.revise" | "delivery.reaffirm";role:"reconnaissance";seal:null}>
+);
 
 export type FoundationAgentRoleControlResultV7 = Readonly<{
   outcome: DeliveryActivityOutcome;
@@ -304,20 +337,13 @@ export type FoundationAgentRoleControlFinalizerV7 = (
   input: FoundationAgentRoleControlContextV7,
 ) => Promise<FoundationAgentRoleControlResultV7>;
 
-export type FoundationPreparationAgentRoleControlContextV7 = Readonly<{
-  store: ControlRecordStore;
-  activityId: string;
+export type FoundationPreparationAgentRoleControlContextV7 = FoundationAgentRoleControlCommonV7 & Readonly<{
   operation: "delivery.prepare";
   role: "reconnaissance";
-  brief: ControlRecordRevision;
-  attempt: ControlRecordRevision;
   boundary: null;
   attemptedCandidate: null;
   resultCandidate: null;
   seal: null;
-  workProduct: ControlRecordRevision | null;
-  receipt: ControlRecordRevision;
-  support: FoundationAgentRoleCheckpointAdapterV7;
 }>;
 
 export type FoundationPreparationAgentRoleControlFinalizerV7 = (
@@ -329,14 +355,16 @@ export type FoundationAgentOperationOpeningV7 = Readonly<{
   submittedAt: string;
   startedAt: string;
   attemptCreatedAt: string;
-  founderId: string;
+  directorId: string;
+  reservation?: WorkDelegationReservation;
 }>;
 
 export type FoundationReviewActivityOpeningV7 = Readonly<{
   semanticMarkdown: string;
   submittedAt: string;
   startedAt: string;
-  founderId: string;
+  directorId: string;
+  reservation?: WorkDelegationReservation;
 }>;
 
 export type FoundationReviewActivityOpeningV7Input = Readonly<{
@@ -390,7 +418,7 @@ export type FoundationPreparationAgentOperationPreIntentRevalidatorV7 = (
 
 export type FoundationAgentOperationV7Input = Readonly<{
   store: ControlRecordStore;
-  configuration: FoundationInstalledRuntimeConfigurationV7;
+  configuration: FoundationProcessRuntimeConfigurationV7;
   activityId: string;
   operation: FoundationAgentOperationV7;
   runtimeId: string;
@@ -423,6 +451,7 @@ export type FoundationPreparationAgentOperationV7Input = Readonly<
     | "finalizeRoleControl"
   > & Readonly<{
     operation: "delivery.prepare";
+    preparationBasis: FoundationPreparationBasisBindingV7;
     boundary: null;
     candidate: null;
     seal?: null;
@@ -460,8 +489,7 @@ type FoundationCommonAgentOperationV7Result =
 type AgentOperationOwners = Readonly<{
   now(): string;
   compileInstalled: typeof compileFoundationInstalledAgentCellInputsV1;
-  openInstalled: typeof openFoundationInstalledAgentRuntimeV1;
-  operateCell: typeof operateFoundationAgentCellV1;
+  openInstalled: FoundationInstalledAgentRuntimeOpenerV1;
   compileInput: typeof compileFoundationAgentCellInputV1;
   openCarrier: typeof openCandidateRevisionCarrier;
   readCarrierArtifact(path: string): Promise<Uint8Array>;
@@ -570,28 +598,28 @@ function investmentValue(
 
 function openingValue(value: ControlJsonValue | undefined): AgentOperationOpeningFacts {
   const selected = exactClosedObject(value, [
-    "agentId", "runtimeId", "founderId", "submittedAt", "startedAt",
-    "founderSubmissionRawDigest", "founderSubmissionRawByteLength",
-    "founderSemanticDigest", "founderSemanticByteLength", "investment",
+    "agentId", "runtimeId", "directorId", "submittedAt", "startedAt",
+    "directorSubmissionRawDigest", "directorSubmissionRawByteLength",
+    "directorSemanticDigest", "directorSemanticByteLength", "investment",
   ], "Agent operation opening facts");
   return Object.freeze({
     agentId: controlIdentifier(exactString(selected.agentId, "Agent identity"), "Agent identity"),
     runtimeId: controlIdentifier(exactString(selected.runtimeId, "Runtime identity"), "Runtime identity"),
-    founderId: controlIdentifier(exactString(selected.founderId, "Founder identity"), "Founder identity"),
-    submittedAt: controlTimestamp(exactString(selected.submittedAt, "Founder Brief time"), "Founder Brief time"),
+    directorId: controlIdentifier(exactString(selected.directorId, "Director identity"), "Director identity"),
+    submittedAt: controlTimestamp(exactString(selected.submittedAt, "Director Brief time"), "Director Brief time"),
     startedAt: controlTimestamp(exactString(selected.startedAt, "Activity start time"), "Activity start time"),
-    founderSubmissionRawDigest: exactDigest(
-      selected.founderSubmissionRawDigest,
-      "Founder submission raw digest",
+    directorSubmissionRawDigest: exactDigest(
+      selected.directorSubmissionRawDigest,
+      "Director submission raw digest",
     ),
-    founderSubmissionRawByteLength: nonnegativeInteger(
-      selected.founderSubmissionRawByteLength,
-      "Founder submission byte length",
+    directorSubmissionRawByteLength: nonnegativeInteger(
+      selected.directorSubmissionRawByteLength,
+      "Director submission byte length",
     ),
-    founderSemanticDigest: exactDigest(selected.founderSemanticDigest, "Founder semantic digest"),
-    founderSemanticByteLength: nonnegativeInteger(
-      selected.founderSemanticByteLength,
-      "Founder semantic byte length",
+    directorSemanticDigest: exactDigest(selected.directorSemanticDigest, "Director semantic digest"),
+    directorSemanticByteLength: nonnegativeInteger(
+      selected.directorSemanticByteLength,
+      "Director semantic byte length",
     ),
     investment: investmentValue(selected.investment, "Agent operation Investment"),
   });
@@ -602,6 +630,7 @@ function planValue(value: ControlJsonValue | undefined): AgentOperationPlan {
     "attemptCreatedAt", "preDispatchStateDigest", "projection", "roleSubjectDigest",
     "capabilityProfile", "capabilityDigest", "providerInput", "evidenceSetDigest",
     "propositionSetDigest",
+    ...(value !== null && typeof value === "object" && !Array.isArray(value) && "preparationBasis" in value ? ["preparationBasis"] : []),
   ], "Agent operation plan");
   const projection = exactClosedObject(
     selected.projection,
@@ -623,6 +652,7 @@ function planValue(value: ControlJsonValue | undefined): AgentOperationPlan {
     "citationRegistryDigest", "rootTokenSetDigest",
   ], "Agent operation planned provider input");
   return Object.freeze({
+    ...(selected.preparationBasis === undefined ? {} : { preparationBasis: parseFoundationPreparationBasisBindingV7(exactObject(selected.preparationBasis, "Preparation basis")) }),
     attemptCreatedAt: controlTimestamp(
       exactString(selected.attemptCreatedAt, "Agent Attempt creation time"),
       "Agent Attempt creation time",
@@ -875,14 +905,15 @@ function parseAgentActivityPlan(
     role !== expectedRole(operation) ||
     (operation === "delivery.prepare") !== (boundary === null && attemptedCandidate === null) ||
     (operation !== "delivery.prepare" && (boundary === null || attemptedCandidate === null)) ||
-    (operation === "delivery.evaluate") !== (executionPlan === null)
+    (operation === "delivery.evaluate") !== (executionPlan === null) ||
+    (operation === "delivery.prepare") !== (executionPlan?.preparationBasis !== undefined)
   ) {
     fail("activity-plan", "Agent activity plan does not match its exact operation subjects and role");
   }
   return Object.freeze({
     schema: FOUNDATION_AGENT_ACTIVITY_V7_PLAN_SCHEMA,
     role: role as AgentAttemptRole,
-    brief: referenceValue(selected.brief, "Agent activity Founder Brief"),
+    brief: referenceValue(selected.brief, "Agent activity Director Brief"),
     boundary,
     attemptedCandidate,
     opening: openingValue(selected.opening),
@@ -895,8 +926,8 @@ function parseAgentActivityCheckpoint(
   operation: FoundationCommonAgentOperationV7,
 ): AgentActivityCheckpoint {
   const selected = exactClosedObject(value, [
-    "schema", "coordinate", "execution", "attempt", "seal", "promotedExecutionPlan", "finalization",
-    "resultCandidate", "receipt", "roleCheckpoint",
+    "schema", "coordinate", "execution", "executionSelection", "attempt", "seal", "promotedExecutionPlan", "finalization",
+    "resultCandidate", "candidateRejection", "receipt", "roleCheckpoint",
   ], "Agent activity checkpoint");
   if (selected.schema !== FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA) {
     fail("activity-checkpoint", "Agent activity checkpoint has an unsupported schema");
@@ -919,6 +950,7 @@ function parseAgentActivityCheckpoint(
             ),
           });
         })(),
+    executionSelection: selected.executionSelection === null ? null : parseFoundationAgentExecutionSelectionV1(exactObject(selected.executionSelection,"Agent retained execution selection")),
     execution: selected.execution === null
       ? null
       : (() => {
@@ -943,6 +975,8 @@ function parseAgentActivityCheckpoint(
     resultCandidate: selected.resultCandidate === null
       ? null
       : referenceValue(selected.resultCandidate, "Agent activity result Candidate"),
+    candidateRejection: selected.candidateRejection === null
+      ? null : parseCandidateOutputRejectionV1(selected.candidateRejection),
     receipt: selected.receipt === null
       ? null
       : referenceValue(selected.receipt, "Agent activity Receipt"),
@@ -950,6 +984,11 @@ function parseAgentActivityCheckpoint(
       ? null
       : exactObject(selected.roleCheckpoint, "Role-control recovery checkpoint"),
   });
+  if (result.candidateRejection !== null && (operation !== "delivery.continue" ||
+      result.resultCandidate !== null || result.finalization === null || result.attempt === null)) {
+    fail("activity-checkpoint", "Candidate rejection requires one finalized builder output without a successor");
+  }
+  if ((result.execution !== null || result.attempt !== null) && result.executionSelection === null) fail("activity-checkpoint", "Allocated Agent recovery requires its retained execution selection");
   if ((result.coordinate === null) !== (result.execution === null)) {
     fail("activity-checkpoint", "Agent Cell coordinate and Execution checkpoint must coexist");
   }
@@ -1082,6 +1121,7 @@ function supportFromContext(
     stage: derivedAgentStage(context, checkpointValue),
     coordinate: checkpointValue.coordinate,
     execution: checkpointValue.execution,
+    executionSelection: checkpointValue.executionSelection,
     brief: plan.brief,
     attempt: checkpointValue.attempt,
     boundary: plan.boundary,
@@ -1092,6 +1132,7 @@ function supportFromContext(
     promotedExecutionPlan: checkpointValue.promotedExecutionPlan,
     finalization: checkpointValue.finalization,
     resultCandidate: checkpointValue.resultCandidate,
+    candidateRejection: checkpointValue.candidateRejection,
     receipt: checkpointValue.receipt,
     roleCheckpoint: checkpointValue.roleCheckpoint,
   });
@@ -1136,11 +1177,13 @@ function checkpointPayload(support: AgentOperationSupport): AgentActivityCheckpo
     schema: FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA,
     coordinate: support.coordinate,
     execution: support.execution,
+    executionSelection: support.executionSelection,
     attempt: support.attempt,
     seal: support.seal,
     promotedExecutionPlan: support.promotedExecutionPlan,
     finalization: support.finalization,
     resultCandidate: support.resultCandidate,
+    candidateRejection: support.candidateRejection,
     receipt: support.receipt,
     roleCheckpoint: support.roleCheckpoint,
   });
@@ -1184,8 +1227,10 @@ function operationOwners(options: FoundationAgentOperationV7Options): AgentOpera
     now: options.now ?? (() => new Date().toISOString()),
     compileInstalled:
       options.compileInstalled ?? compileFoundationInstalledAgentCellInputsV1,
-    openInstalled: options.openInstalled ?? openFoundationInstalledAgentRuntimeV1,
-    operateCell: options.operateCell ?? operateFoundationAgentCellV1,
+    openInstalled: options.openInstalled ?? (async () => fail(
+      "execution-backend-unavailable",
+      "Agent execution requires the installed execution owner",
+    )),
     compileInput: options.compileInput ?? compileFoundationAgentCellInputV1,
     openCarrier: options.openCarrier ?? openCandidateRevisionCarrier,
     readCarrierArtifact: options.readCarrierArtifact ?? (async (path) => Uint8Array.from(await readFile(path))),
@@ -1229,7 +1274,7 @@ function retainedPreIntentRefusal(
   }
   const payload = exactClosedObject(
     selected[0]!.payload,
-    ["activityId", "diagnosticCode", "refusalFactsDigest"],
+    ["activityId", "diagnosticCode", "refusalFactsDigest", "resolution"],
     "Agent pre-intent refusal payload",
   );
   if (payload.activityId !== activityId) {
@@ -1328,13 +1373,13 @@ function operationOpeningFacts(
   return Object.freeze({
     agentId: controlIdentifier(input.agentId, "Agent identity"),
     runtimeId: controlIdentifier(input.runtimeId, "Runtime identity"),
-    founderId: controlIdentifier(input.opening.founderId, "Founder identity"),
-    submittedAt: controlTimestamp(input.opening.submittedAt, "Founder Brief time"),
+    directorId: controlIdentifier(input.opening.directorId, "Director identity"),
+    submittedAt: controlTimestamp(input.opening.submittedAt, "Director Brief time"),
     startedAt: controlTimestamp(input.opening.startedAt, "Activity start time"),
-    founderSubmissionRawDigest: opening.rawDigest,
-    founderSubmissionRawByteLength: opening.rawByteLength,
-    founderSemanticDigest: opening.normalizedDigest,
-    founderSemanticByteLength: opening.normalizedByteLength,
+    directorSubmissionRawDigest: opening.rawDigest,
+    directorSubmissionRawByteLength: opening.rawByteLength,
+    directorSemanticDigest: opening.normalizedDigest,
+    directorSemanticByteLength: opening.normalizedByteLength,
     investment: Object.freeze({
       ...input.investment,
       limits: Object.freeze({ ...input.investment.limits }),
@@ -1349,13 +1394,13 @@ function reviewOpeningFacts(
   return Object.freeze({
     agentId: controlIdentifier(input.agentId, "Agent identity"),
     runtimeId: controlIdentifier(input.runtimeId, "Runtime identity"),
-    founderId: controlIdentifier(input.opening.founderId, "Founder identity"),
-    submittedAt: controlTimestamp(input.opening.submittedAt, "Founder Brief time"),
+    directorId: controlIdentifier(input.opening.directorId, "Director identity"),
+    submittedAt: controlTimestamp(input.opening.submittedAt, "Director Brief time"),
     startedAt: controlTimestamp(input.opening.startedAt, "Activity start time"),
-    founderSubmissionRawDigest: opening.rawDigest,
-    founderSubmissionRawByteLength: opening.rawByteLength,
-    founderSemanticDigest: opening.normalizedDigest,
-    founderSemanticByteLength: opening.normalizedByteLength,
+    directorSubmissionRawDigest: opening.rawDigest,
+    directorSubmissionRawByteLength: opening.rawByteLength,
+    directorSemanticDigest: opening.normalizedDigest,
+    directorSemanticByteLength: opening.normalizedByteLength,
     investment: Object.freeze({
       ...input.investment,
       limits: Object.freeze({ ...input.investment.limits }),
@@ -1376,13 +1421,29 @@ function assertReviewActivityOpening(input: FoundationReviewActivityOpeningV7Inp
     state.subjects.activeBoundary === null ||
     !sameReference(state.subjects.activeBoundary, input.boundary) ||
     state.subjects.candidate === null ||
-    !sameReference(state.subjects.candidate, input.candidate) ||
-    state.subjects.seal !== null
-  ) fail("evaluation-opening", "Review opening does not bind the exact unsealed Candidate subjects");
+    !sameReference(state.subjects.candidate, input.candidate)
+  ) fail("evaluation-opening", "Review opening does not bind the exact eligible Candidate subjects");
+  // The reducer permits reevaluation after failed or correctable review. Its
+  // prior Process Seal remains historical; preparation creates this Activity's Seal.
   const { digest: investmentDigest, ...investmentValue } = input.investment;
   if (digestCanonical(investmentValue) !== investmentDigest) {
     fail("investment", "Review opening Investment does not reproduce its exact digest");
   }
+}
+
+function compileRequestedAgentActivityOpening(input: Parameters<typeof compileAgentActivityOpening>[0] & Readonly<{
+  reservation?: WorkDelegationReservation;
+}>): CompiledAgentActivityOpening {
+  if (input.reservation === undefined) return compileAgentActivityOpening(input);
+  if (input.operation !== "delivery.continue" && input.operation !== "delivery.evaluate") {
+    fail("delegation-opening", "A Work Delegation can open only builder or reviewer Agent work");
+  }
+  const opening = compileDelegatedAgentActivityOpening({ ...input, operation: input.operation, reservation: input.reservation });
+  if (opening.revision.createdAt !== input.submittedAt || opening.revision.semanticAuthor.id !== input.directorId ||
+      opening.revision.semanticMarkdown !== normalizeSemanticMarkdown(input.semanticMarkdown)) {
+    fail("delegation-opening", "Delegated work must reuse the original supplied direction and submission time");
+  }
+  return opening;
 }
 
 /**
@@ -1395,15 +1456,16 @@ export function compileFoundationReviewActivityOpeningV7(
   input: FoundationReviewActivityOpeningV7Input,
 ): CompiledFoundationReviewActivityOpeningV7 {
   assertReviewActivityOpening(input);
-  const opening = compileAgentActivityOpening({
+  const opening = compileRequestedAgentActivityOpening({
     store: input.store,
     activityId: input.activityId,
     operation: "delivery.evaluate",
     semanticMarkdown: input.opening.semanticMarkdown,
     submittedAt: input.opening.submittedAt,
     startedAt: input.opening.startedAt,
-    founderId: input.opening.founderId,
+    directorId: input.opening.directorId,
     runtimeId: input.runtimeId,
+    ...(input.opening.reservation === undefined ? {} : { reservation: input.opening.reservation }),
   });
   const plan: AgentActivityPlan = Object.freeze({
     schema: FOUNDATION_AGENT_ACTIVITY_V7_PLAN_SCHEMA,
@@ -1418,11 +1480,13 @@ export function compileFoundationReviewActivityOpeningV7(
     schema: FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA,
     coordinate: null,
     execution: null,
+    executionSelection: null,
     attempt: null,
     seal: null,
     promotedExecutionPlan: null,
     finalization: null,
     resultCandidate: null,
+    candidateRejection: null,
     receipt: null,
     roleCheckpoint: null,
   });
@@ -1451,6 +1515,7 @@ function operationPlan(
   preDispatchStateDigest: Sha256,
 ): AgentOperationPlan {
   return Object.freeze({
+    ...(input.operation === "delivery.prepare" ? { preparationBasis: input.preparationBasis } : {}),
     attemptCreatedAt: controlTimestamp(input.opening.attemptCreatedAt, "Agent Attempt creation time"),
     preDispatchStateDigest,
     projection: Object.freeze({
@@ -1520,9 +1585,9 @@ function assertInput(
   } else {
     const current = activity(input.store, activityId);
     if (current.operation !== operation) fail("activity", "Agent operation differs from its retained activity");
-    const brief = retainedRevision(input.store, retainedSupport.brief, "founder-brief");
+    const brief = retainedRevision(input.store, retainedSupport.brief, "director-brief");
     if (brief.payload.inputProfile !== operation) {
-      fail("brief", "Agent operation support does not bind its exact operation Founder Brief");
+      fail("brief", "Agent operation support does not bind its exact operation Director Brief");
     }
   }
   const state = input.store.state();
@@ -1726,6 +1791,47 @@ function providerOutcome(
     return "completed";
   }
   return terminal.productiveStarted ? "failed" : "not-started";
+}
+
+function candidateSuccessorDisposition(
+  support: AgentOperationSupport,
+  result: FoundationAgentCellOperationResultV1,
+): "promoted" | "not-produced" | "unavailable" | "invalid" | null {
+  if (support.operation !== "delivery.continue") {
+    if (result.candidate.disposition !== "not-applicable" || support.resultCandidate !== null) {
+      fail("candidate", "Only a builder activity can finalize Candidate successor output");
+    }
+    return null;
+  }
+  // Provider completion and semantic submission do not decide Candidate progress.
+  // A valid published Carrier and its retained successor must agree before Receipt creation.
+  if (support.candidateRejection !== null) {
+    if (support.resultCandidate !== null || result.candidate.disposition !== "valid" ||
+        support.candidateRejection.manifestFileDigest !== sha256Bytes(result.candidate.carrier.manifestBytes) ||
+        support.candidateRejection.candidateTree !== result.candidate.carrier.rootTree) {
+      fail("candidate", "Retained Candidate rejection differs from its exact published output");
+    }
+    return "invalid";
+  }
+  switch (result.candidate.disposition) {
+    case "valid":
+      if (support.resultCandidate === null) {
+        fail("candidate", "Valid builder output lacks its durably selected Candidate successor");
+      }
+      return "promoted";
+    case "invalid":
+    case "unavailable":
+      if (support.resultCandidate !== null) {
+        fail("candidate", "Unvalidated builder output cannot select a Candidate successor");
+      }
+      return result.candidate.disposition === "invalid"
+        ? "invalid"
+        : result.receiptFacts.execution.output.availability === "not-produced"
+          ? "not-produced"
+          : "unavailable";
+    case "not-applicable":
+      return fail("candidate", "Builder activity cannot omit its Candidate output disposition");
+  }
 }
 
 function workProductFailureDiagnostic(input: Readonly<{
@@ -1956,7 +2062,7 @@ async function finalizeCellWorkProduct(input: Readonly<{
 }
 
 function candidateStateDigest(candidate: ControlRecordRevision): Sha256 | null {
-  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
+  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
     fail("candidate", "Candidate Revision does not use the current reconstructible payload");
   }
   const state = exactObject(candidate.payload.state, "Candidate state");
@@ -2013,12 +2119,12 @@ function assertSupportInput(
     ((input.seal ?? null) === null) !== (support.seal === null) ||
     (support.seal !== null && !sameReference(support.seal, input.seal!)) ||
     opening.agentId !== input.agentId || opening.runtimeId !== input.runtimeId ||
-    opening.founderId !== input.opening.founderId ||
+    opening.directorId !== input.opening.directorId ||
     opening.submittedAt !== input.opening.submittedAt ||
     opening.startedAt !== input.opening.startedAt ||
     plan.attemptCreatedAt !== input.opening.attemptCreatedAt ||
-    opening.founderSemanticDigest !== sha256Bytes(normalized) ||
-    opening.founderSemanticByteLength !== Buffer.byteLength(normalized, "utf8") ||
+    opening.directorSemanticDigest !== sha256Bytes(normalized) ||
+    opening.directorSemanticByteLength !== Buffer.byteLength(normalized, "utf8") ||
     plan.projection.id !== input.projection.manifest.projectionId ||
     plan.projection.class !== input.projection.manifest.class ||
     plan.projection.class !== expectedProjectionClass(input.operation) ||
@@ -2043,26 +2149,35 @@ function assertSupportInput(
   ) fail("operation-support", "Agent operation inputs do not reproduce retained support");
 
   verifyProviderInputV4(input.providerInput, input.projection);
-  const brief = retainedRevision(input.store, support.brief, "founder-brief");
+  const brief = retainedRevision(input.store, support.brief, "director-brief");
   const submission = exactClosedObject(
     brief.payload.submission,
     ["rawDigest", "rawByteLength", "normalizedByteLength"],
-    "Retained Founder Brief submission",
+    "Retained Director Brief submission",
   );
   const events = allActivityEvents(input.store, input.activityId);
-  const briefEvents = events.filter(({ eventKind }) => eventKind === "founder-brief-submitted");
+  const delegated = readWorkDelegationExecution({ store: input.store, activityId: input.activityId });
+  const briefEvents = delegated.reservation === null
+    ? events.filter(({ eventKind }) => eventKind === "director-brief-submitted")
+    : allJournalEvents(input.store).filter(event => event.eventKind === "director-brief-submitted" &&
+      event.subject?.recordId === brief.recordId && event.subject.revision === brief.revision && event.subject.digest === brief.digest);
+  const expectedScope = delegated.reservation === null ? { kind: "activity", activityId: input.activityId }
+    : { kind: "delegation", delegationId: delegated.reservation.delegation.id,
+        delegationRevision: delegated.reservation.delegation.revision, operation: input.operation };
   const starts = events.filter(({ eventKind }) => eventKind === "activity-started");
   if (
+    canonicalJson(brief.payload.scope) !== canonicalJson(expectedScope) ||
+    (input.opening.reservation !== undefined && canonicalJson(input.opening.reservation) !== canonicalJson(delegated.reservation)) ||
     brief.payload.inputProfile !== input.operation || brief.createdAt !== opening.submittedAt ||
-    brief.semanticAuthor.kind !== "founder" || brief.semanticAuthor.id !== opening.founderId ||
+    brief.semanticAuthor.kind !== "director" || brief.semanticAuthor.id !== opening.directorId ||
     brief.semanticMarkdown !== normalized ||
-    brief.payload.semanticMarkdownDigest !== opening.founderSemanticDigest ||
-    submission.rawDigest !== opening.founderSubmissionRawDigest ||
-    submission.rawByteLength !== opening.founderSubmissionRawByteLength ||
-    submission.normalizedByteLength !== opening.founderSemanticByteLength ||
+    brief.payload.semanticMarkdownDigest !== opening.directorSemanticDigest ||
+    submission.rawDigest !== opening.directorSubmissionRawDigest ||
+    submission.rawByteLength !== opening.directorSubmissionRawByteLength ||
+    submission.normalizedByteLength !== opening.directorSemanticByteLength ||
     briefEvents.length !== 1 || briefEvents[0]!.occurredAt !== opening.submittedAt ||
     starts.length !== 1 || starts[0]!.occurredAt !== opening.startedAt
-  ) fail("opening-binding", "Retained Founder Brief and activity opening differ from their checkpoint");
+  ) fail("opening-binding", "Retained Director Brief and activity opening differ from their checkpoint");
 }
 
 type AgentExecutionPolicySelection = Readonly<{
@@ -2114,36 +2229,32 @@ function immutableEntry(input: Readonly<{
   });
 }
 
-function agentExecutionPolicySelection(): AgentExecutionPolicySelection {
-  const selected = compileFoundationInstalledAgentExecutionPolicyV1();
-  return Object.freeze({
-    executionPolicy: selected.executionPolicy,
-    subjects: Object.freeze(selected.subjects.map(({ id, digest, bytes }) => immutableSubject({
-      kind: "policy",
-      id,
-      digest,
-      bytes,
-    }))),
-  });
+function retainedAgentExecutionPolicies(selection:FoundationAgentExecutionSelectionV1):AgentExecutionPolicySelection {
+  return Object.freeze({executionPolicy:selection.compiled.executionPolicy,
+    subjects:Object.freeze(selection.policySubjects.map(({id,digest,value}) => immutableSubject({kind:"policy",id,digest,bytes:canonicalBytes(value)})))});
 }
 
-function installedProviderSelection(
-  configuration: FoundationInstalledRuntimeConfigurationV7,
-): AgentAttemptProvider {
-  const selected = configuration.execution?.image.agentProvider;
-  if (selected === undefined) {
-    fail(
-      "execution-backend-unavailable",
-      "Agent execution requires one installed Execution Image with Agent provider support",
-    );
+function selectAgentExecution(input:Readonly<{request:FoundationCommonAgentOperationV7Input;owners:AgentOperationOwners}>):FoundationAgentExecutionSelectionV1 {
+  const policies = compileFoundationInstalledAgentExecutionPolicyV1();
+  const execution = input.request.configuration.execution;
+  if (execution === undefined) fail("execution-backend-unavailable","Agent execution requires one installed Execution Image with Agent provider support");
+  const compiled = input.owners.compileInstalled({configuration:input.request.configuration,
+    provider:selectFoundationInstalledAgentProviderV1(input.request.configuration),investment:input.request.investment,executionPolicy:policies.executionPolicy});
+  return compileFoundationAgentExecutionSelectionV1({compiled,image:execution.image,
+    providerDescriptor:FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR as unknown as ControlJsonObject,policies});
+}
+
+function assertDelegatedAgentExecution(input: Readonly<{
+  request: FoundationCommonAgentOperationV7Input;
+  selection: FoundationAgentExecutionSelectionV1;
+}>): void {
+  const binding = readWorkDelegationExecution({ store: input.request.store, activityId: input.request.activityId });
+  const slot = workDelegationAgentSlot(binding, expectedRole(input.request.operation));
+  if (slot !== null && !workDelegationRetainedAgentSelectionMatches(slot, {
+    selection: input.selection, investment: input.request.investment,
+  })) {
+    fail("delegation-execution-selection", "Agent execution differs from its exact reserved resources; restore that selection before continuing");
   }
-  return Object.freeze({
-    descriptorId: FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.id,
-    descriptorDigest: FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.digest,
-    executableIdentityClass:
-      FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.provider.executableIdentityClass,
-    installedIdentityDigest: selected.executableIdentity,
-  });
 }
 
 type CandidateCellInput = Readonly<{
@@ -2164,7 +2275,7 @@ async function candidateCellInput(input: Readonly<{
     input.support.attemptedCandidate,
     "candidate-revision",
   );
-  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
+  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
     fail("candidate", "Agent input Candidate is not reconstructible Carrier-backed state");
   }
   const carrierReference = exactClosedObject(
@@ -2200,8 +2311,14 @@ async function candidateCellInput(input: Readonly<{
   if (exactString(state.tree, "Candidate tree") !== opened.manifest.rootTree) {
     fail("candidate-carrier", "Candidate state and Carrier root tree differ");
   }
+  const gitContext = await openFoundationDeliveryGitContextV1({
+    machineHome: input.request.configuration.machineHome, repository: input.request.targetRepository,
+    store: input.request.store, candidate,
+  });
+  const gitContextDigest = sha256Bytes(gitContext.manifestBytes);
   return Object.freeze({
     subjects: Object.freeze([
+      immutableSubject({ kind: "delivery-git-context", id: `${candidate.recordId}.git-context`, revision: candidate.revision, digest: gitContextDigest, bytes: gitContext.manifestBytes }),
       immutableSubject({
         kind: "candidate-revision",
         id: candidate.recordId,
@@ -2222,6 +2339,8 @@ async function candidateCellInput(input: Readonly<{
       }),
     ]),
     entries: Object.freeze([
+      immutableEntry({ path: FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.manifest, purpose: "operation-input", mediaType: "application/json", modeClass: "regular", sourceSubjectDigest: gitContextDigest, bytes: gitContext.manifestBytes }),
+      immutableEntry({ path: FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.artifact, purpose: "operation-input", mediaType: "application/octet-stream", modeClass: "regular", sourceSubjectDigest: gitContextDigest, bytes: gitContext.artifactBytes }),
       immutableEntry({
         path: FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateManifestPath,
         purpose: "operation-input",
@@ -2250,7 +2369,7 @@ async function compileAgentCellInput(input: Readonly<{
   policies: AgentExecutionPolicySelection;
 }>): Promise<FoundationCompiledAgentCellInputV1> {
   const plan = retainedOperationPlan(input.support);
-  const brief = retainedRevision(input.request.store, input.support.brief, "founder-brief");
+  const brief = retainedRevision(input.request.store, input.support.brief, "director-brief");
   const candidate = await candidateCellInput(input);
   const roleBriefBytes = Uint8Array.from(Buffer.from(input.request.providerInput.roleBrief.markdown, "utf8"));
   const templateBytes = Uint8Array.from(Buffer.from(
@@ -2268,6 +2387,16 @@ async function compileAgentCellInput(input: Readonly<{
         bytes: content.bytes,
       });
     }
+    if (content.path === PROVIDER_INPUT_SEMANTIC_BASIS_PATH) {
+      return immutableEntry({
+        path: content.path,
+        purpose: "operation-input",
+        mediaType: "application/json",
+        modeClass: "regular",
+        sourceSubjectDigest: plan.roleSubjectDigest,
+        bytes: content.bytes,
+      });
+    }
     return immutableEntry({
       path: content.path,
       purpose: "projection",
@@ -2277,10 +2406,9 @@ async function compileAgentCellInput(input: Readonly<{
       bytes: content.bytes,
     });
   });
-  const execution = input.request.configuration.execution;
-  if (execution === undefined) {
-    fail("execution-backend-unavailable", "Agent execution is not installed");
-  }
+  const selection = input.support.executionSelection;
+  if (selection === null) fail("execution-selection","Agent Input Set requires its retained execution selection");
+  const execution = {image:selection.image};
   const subjects = Object.freeze([
     immutableSubject({
       kind: "projection",
@@ -2295,7 +2423,7 @@ async function compileAgentCellInput(input: Readonly<{
       bytes: canonicalBytes(input.request.roleSubject),
     }),
     immutableSubject({
-      kind: "founder-direction",
+      kind: "director-direction",
       id: brief.recordId,
       revision: brief.revision,
       digest: brief.digest,
@@ -2325,9 +2453,9 @@ async function compileAgentCellInput(input: Readonly<{
     }),
     immutableSubject({
       kind: "provider-descriptor",
-      id: FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.id,
-      digest: FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR.digest,
-      bytes: canonicalBytes(FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR),
+      id: input.installed.installed.provider.descriptorId,
+      digest: input.installed.installed.provider.descriptorDigest,
+      bytes: canonicalBytes(selection.providerDescriptor),
     }),
     immutableSubject({
       kind: "investment",
@@ -2389,14 +2517,26 @@ async function compileAgentCellOperation(input: Readonly<{
   owners: AgentOperationOwners;
 }>): Promise<CompiledAgentCellOperation> {
   const plan = retainedOperationPlan(input.support);
-  const policies = agentExecutionPolicySelection();
-  const provider = installedProviderSelection(input.request.configuration);
-  const installed = input.owners.compileInstalled({
-    configuration: input.request.configuration,
-    provider,
-    investment: input.request.investment,
-    executionPolicy: policies.executionPolicy,
+  const selection = input.support.executionSelection;
+  if (selection === null) fail("execution-selection","Agent execution requires one retained selection before allocation");
+  assertDelegatedAgentExecution({ request: input.request, selection });
+  const policies = retainedAgentExecutionPolicies(selection);
+  const installed = selection.compiled;
+  const validationBasis = createAgentWorkProductValidationBasis({
+    role: input.support.role,
+    templateDigest: plan.providerInput.templateDigest,
+    parserProfileId: FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID,
+    parserProfileDigest: agentWorkProductParserProfileDigest(),
+    compilerProfileId: FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID,
+    compilerProfileDigest: agentWorkProductCompilerProfileDigest(),
+    citationRegistryDigest: plan.providerInput.citationRegistryDigest,
+    citationRegistry: input.request.providerInput.citationRegistry,
+    propositionSetDigest: plan.propositionSetDigest,
+    propositionSet: input.request.propositionSet,
   });
+  if (canonicalJson(validationBasis) !== canonicalJson(input.request.providerInput.validationBasis)) {
+    fail("semantic-basis-binding", "Provider-visible semantic basis differs from the exact retained Attempt inputs");
+  }
   const compiledInput = await compileAgentCellInput({
     ...input,
     installed,
@@ -2435,7 +2575,7 @@ async function compileAgentCellOperation(input: Readonly<{
         imageDigest: installed.installed.image.imageDigest,
       }),
       inputSet: Object.freeze({
-        profileId: "lifecycle.execution-input-set.v1" as const,
+        profileId: "lifecycle.execution-input-set.v2" as const,
         digest: compiledInput.inputSet.digest,
       }),
     }),
@@ -2457,8 +2597,11 @@ async function compileAgentCellOperation(input: Readonly<{
       propositionSetDigest: plan.propositionSetDigest,
     }),
     executionPolicy: installed.executionPolicy,
-    adjacentFilePurposes: Object.freeze([]),
-    brief: Object.freeze({ kind: "founder-brief", ...input.support.brief }),
+    adjacentFilePurposes: Object.freeze([
+      "raw-provider-output",
+      ...(input.support.role === "builder" ? FOUNDATION_BUILDER_REPAIR_PURPOSES : []),
+    ]),
+    brief: Object.freeze({ kind: "director-brief", ...input.support.brief }),
     boundary: input.support.boundary === null
       ? null
       : Object.freeze({ kind: "work-boundary", ...input.support.boundary }),
@@ -2475,18 +2618,6 @@ async function compileAgentCellOperation(input: Readonly<{
     attempt,
     compiledInput,
     installed: installed.installed,
-  });
-  const validationBasis = createAgentWorkProductValidationBasis({
-    role: input.support.role,
-    templateDigest: plan.providerInput.templateDigest,
-    parserProfileId: FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID,
-    parserProfileDigest: agentWorkProductParserProfileDigest(),
-    compilerProfileId: FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID,
-    compilerProfileDigest: agentWorkProductCompilerProfileDigest(),
-    citationRegistryDigest: plan.providerInput.citationRegistryDigest,
-    citationRegistry: input.request.providerInput.citationRegistry,
-    propositionSetDigest: plan.propositionSetDigest,
-    propositionSet: input.request.propositionSet,
   });
   return Object.freeze({
     policies,
@@ -2588,7 +2719,6 @@ function createAgentCellActivityOwner(input: Readonly<{
   context: FoundationActivityKernelContextV7<AgentActivityPlan, AgentActivityCheckpoint>;
   adapter: AgentKernelAdapter;
   compiled: CompiledAgentCellOperation;
-  opened: FoundationOpenedInstalledAgentRuntimeV1;
 }>): FoundationAgentCellActivityOwnerV1 {
   const specification = input.compiled.specification;
   const executableIdentity = input.compiled.installed.installed.provider.installedIdentityDigest;
@@ -2617,7 +2747,7 @@ function createAgentCellActivityOwner(input: Readonly<{
       parse: (value: ControlJsonObject) => parseFoundationExecutionOperationCheckpoint({
         value,
         specification,
-        backend: input.opened.runtime.backend,
+        backendProfile: input.compiled.installed.installed.profile,
       }),
     }),
     assertContext(context, checkpoint) {
@@ -2797,6 +2927,7 @@ async function retainBuilderCandidate(input: Readonly<{
       repository: input.request.targetRepository,
       store: input.request.store,
       boundary: input.request.boundary,
+      candidate: input.request.candidate,
       predecessor: Object.freeze({ candidateDigest: predecessorDigest }),
     }),
     boundary: Object.freeze({ kind: "work-boundary", ...reference(input.request.boundary) }),
@@ -2858,7 +2989,7 @@ async function revalidateAgentCellPreIntent(input: Readonly<{
   const common = Object.freeze({
     store: input.request.store,
     activityId: input.request.activityId,
-    brief: retainedRevision(input.request.store, support.brief, "founder-brief"),
+    brief: retainedRevision(input.request.store, support.brief, "director-brief"),
     projection: input.request.projection,
   });
   if (input.request.operation === "delivery.prepare") {
@@ -2899,25 +3030,29 @@ async function operateCompiledAgentCell(input: Readonly<{
   support: AgentOperationSupport;
   compiled: CompiledAgentCellOperation;
 }>): Promise<FoundationAgentCellOperationResultV1> {
+  if (input.support.executionSelection === null) fail("execution-selection","Agent execution lost its selected Image resource");
+  assertDelegatedAgentExecution({ request: input.request, selection: input.support.executionSelection });
   const opened = await input.owners.openInstalled({
-    configuration: input.request.configuration,
     installed: input.compiled.installed.installed,
+    image:input.support.executionSelection.image,
+    investment: Object.freeze({
+      model: input.request.investment.model,
+      reasoning: input.request.investment.reasoning,
+    }),
     now: input.owners.now,
   });
   try {
     if (canonicalJson(opened.installed) !== canonicalJson(input.compiled.installed.installed)) {
       fail("installed-substitution", "Opened Agent runtime selected another installed Cell");
     }
-    opened.registerInput(input.compiled.input);
     const activityOwner = createAgentCellActivityOwner({
       request: input.request,
       support: input.support,
       context: input.context,
       adapter: input.adapter,
       compiled: input.compiled,
-      opened,
     });
-    const result = await input.owners.operateCell({
+    const result = await opened.operate({
       store: input.request.store,
       activityId: input.request.activityId,
       attempt: input.compiled.attempt,
@@ -2958,7 +3093,6 @@ async function operateCompiledAgentCell(input: Readonly<{
           disposition: validation.status === "valid" ? "valid" as const : "invalid" as const,
         });
       },
-      runtime: opened.runtime,
     });
     if (
       canonicalJson(result.specification) !== canonicalJson(input.compiled.specification) ||
@@ -3025,7 +3159,15 @@ function assertTerminalPreIntentRefusal(
     !result.preIntentRefused || support.stage !== "pre-intent-refused" ||
     support.attempt !== null || execution === null || execution.handle === null ||
     execution.dispatchAuthorityConsumedAt !== null ||
-    execution.containmentRequestedAt === null || execution.observation === null ||
+    execution.observation === null ||
+    (execution.containmentRequestedAt === null && (
+      execution.observation.allocationState !== "absent" ||
+      execution.observation.dispatchState !== "not-observed" ||
+      execution.observation.processState !== "not-observed" ||
+      execution.observation.terminal !== null ||
+      execution.observation.output.disposition !== "not-produced" ||
+      !executionObservationEstablishesContainment(execution.observation, false)
+    )) ||
     execution.containment === null || execution.output === null || execution.retirement === null ||
     execution.output.validation !== "not-applicable" ||
     execution.retirement.dispatchAuthorityConsumed !== false ||
@@ -3053,6 +3195,18 @@ function assertTerminalPreIntentRefusal(
       "Agent refusal did not reach its exact contained, retired, reclamation-bound Cell checkpoint",
     );
   }
+}
+
+function hasOnlyUnallocatedExecution(support: AgentOperationSupport): boolean {
+  const execution = support.execution;
+  return support.attempt === null && support.executionSelection !== null &&
+    support.coordinate !== null && execution !== null &&
+    support.coordinate.effectDigest === execution.specificationDigest &&
+    execution.handle === null && execution.dispatchAuthorityConsumedAt === null &&
+    execution.containmentRequestedAt === null && execution.observation === null &&
+    execution.containment === null && execution.terminalCompletion === null &&
+    execution.output === null && execution.retirement === null &&
+    support.finalization === null && support.receipt === null && support.roleCheckpoint === null;
 }
 
 function controlResults(
@@ -3109,28 +3263,71 @@ async function advance(input: Readonly<{
     });
     throw new FoundationError(
       refusal.diagnosticCode,
-      "Agent activity was abandoned at its retained pre-intent revalidation refusal",
+      "Agent activity was abandoned at its retained pre-intent refusal",
       { retryable: true, observedFacts: { refusalFactsDigest: refusal.refusalFactsDigest } },
     );
   };
   assertSupportInput(input.request, support);
+  // A lost refusal/completion response resumes the retained subjectless event,
+  // never another allocation attempt or a replacement execution selection.
+  if (support.stage === "pre-intent-refused" && hasOnlyUnallocatedExecution(support)) {
+    finishRefusal();
+  }
   let cellResult: FoundationAgentCellOperationResultV1 | null = null;
   let compiled: CompiledAgentCellOperation | null = null;
   if (support.stage !== "receipt-retained") {
+    if (support.executionSelection === null) {
+      if (support.execution !== null || support.attempt !== null) fail("execution-selection","Recovery cannot replace a missing allocated execution selection");
+      const executionSelection = selectAgentExecution({ request: input.request, owners: input.owners });
+      assertDelegatedAgentExecution({ request: input.request, selection: executionSelection });
+      const nextSupport = Object.freeze({...support,executionSelection});
+      kernelContext = adapter.commit({mode:"support-only",expected:kernelContext.coordinate,checkpoint:checkpointPayload(nextSupport)}).context;
+      support = supportFromContext(kernelContext);
+    }
     compiled = await compileAgentCellOperation({
       request: input.request,
       support,
       owners: input.owners,
     });
     assertRetainedAttempt(store, support, compiled);
-    cellResult = await operateCompiledAgentCell({
-      request: input.request,
-      owners: input.owners,
-      adapter,
-      context: kernelContext,
-      support,
-      compiled,
-    });
+    try {
+      cellResult = await operateCompiledAgentCell({
+        request: input.request,
+        owners: input.owners,
+        adapter,
+        context: kernelContext,
+        support,
+        compiled,
+      });
+    } catch (error) {
+      const refusal = foundationUnallocatedExecutionRefusalV1(error);
+      if (refusal === null) throw error;
+      kernelContext = adapter.current();
+      support = supportFromContext(kernelContext);
+      if (support.stage !== "activity-opened" || !hasOnlyUnallocatedExecution(support) ||
+          support.execution!.specificationDigest !== compiled.specification.digest ||
+          refusal.specificationDigest !== compiled.specification.digest ||
+          refusal.allocationKeyDigest !== foundationExecutionAllocationKeyBindingDigest(support.execution!.allocationKey)) {
+        throw error;
+      }
+      const retained = commitMilestone({
+        adapter,
+        context: kernelContext,
+        support,
+        append: compileAgentPreIntentRefusalAppend({
+          store,
+          activityId: input.request.activityId,
+          runtimeId: support.opening.runtimeId,
+          refusedAt: sampleTime(store, input.owners, "Unallocated image refusal time"),
+          diagnosticCode: refusal.diagnosticCode,
+          refusalFactsDigest: refusal.refusalFactsDigest,
+          resolution: "none",
+        }),
+      });
+      kernelContext = retained.context;
+      support = retained.support;
+      return finishRefusal();
+    }
     kernelContext = adapter.current();
     support = supportFromContext(kernelContext);
     if (cellResult.preIntentRefused) {
@@ -3201,21 +3398,32 @@ async function advance(input: Readonly<{
   if (
     cellResult !== null && support.stage === "workspace-observed" &&
     input.request.operation === "delivery.continue" &&
-    cellResult.candidate.disposition === "valid"
+    cellResult.candidate.disposition === "valid" && support.candidateRejection === null
   ) {
-    if (cellResult.candidate.carrier === null) {
-      fail("candidate", "Valid Agent Cell Candidate output lacks its exact published Carrier");
+    try {
+      const candidate = await retainBuilderCandidate({
+        request: input.request,
+        owners: input.owners,
+        support,
+        adapter,
+        context: kernelContext,
+        carrier: cellResult.candidate.carrier,
+      });
+      kernelContext = candidate.context;
+      support = supportFromContext(candidate.context);
+    } catch (error) {
+      const rejected = candidateOutputRejectionV1(error);
+      if (rejected === null) throw error;
+      if (input.request.candidate === null ||
+          rejected.manifestFileDigest !== sha256Bytes(cellResult.candidate.carrier.manifestBytes) ||
+          rejected.candidateTree !== cellResult.candidate.carrier.rootTree ||
+          rejected.applicationBaseCommit !== candidateBaseCommit(input.request.candidate)) {
+        fail("candidate", "Candidate owner rejection substituted its exact attempted subjects");
+      }
+      const retained = replaceSupport(adapter, kernelContext, Object.freeze({ ...support, candidateRejection: rejected }));
+      kernelContext = retained.context;
+      support = retained.support;
     }
-    const candidate = await retainBuilderCandidate({
-      request: input.request,
-      owners: input.owners,
-      support,
-      adapter,
-      context: kernelContext,
-      carrier: cellResult.candidate.carrier,
-    });
-    kernelContext = candidate.context;
-    support = supportFromContext(candidate.context);
   }
 
   if (
@@ -3228,17 +3436,6 @@ async function advance(input: Readonly<{
     const provider = cellResult.receiptFacts.provider;
     if (provider === null) {
       fail("provider-terminal-observation", "Receipt finalization lacks trusted provider facts");
-    }
-    let candidateSuccessorDisposition:
-      "promoted" | "not-produced" | "unavailable" | "invalid" | null = null;
-    if (input.request.operation === "delivery.continue") {
-      candidateSuccessorDisposition = support.resultCandidate !== null
-        ? "promoted"
-        : cellResult.candidate.disposition === "invalid"
-          ? "invalid"
-          : cellResult.receiptFacts.execution.output.availability === "not-produced"
-            ? "not-produced"
-            : "unavailable";
     }
     const existing = optionalSubject(
       store,
@@ -3253,7 +3450,30 @@ async function advance(input: Readonly<{
       submissionTrigger: support.finalization.submissionTrigger,
       execution: cellResult.receiptFacts.execution,
       workspace: support.finalization.workspace,
-      candidateSuccessorDisposition,
+      candidateSuccessorDisposition: candidateSuccessorDisposition(support, cellResult),
+      rawMaterials: (() => {
+        const materials: ExecutionReceiptRawMaterial[] = [];
+        if (cellResult.providerFailureDiagnostic.disposition === "available") {
+          materials.push(compileExecutionReceiptProviderFailureMaterial({
+            store, bytes: cellResult.providerFailureDiagnostic.bytes,
+            createdAt: support.execution!.retirement!.retiredAt,
+          }));
+        } else if (cellResult.providerFailureDiagnostic.disposition === "invalid") {
+          materials.push(Object.freeze({ availability: "not-retained" as const,
+            purpose: "raw-provider-output" }));
+        }
+        if (support.candidateRejection !== null) {
+          if (input.request.boundary === null || input.request.candidate === null || cellResult.candidate.disposition !== "valid") {
+            fail("candidate", "Retained repair output lost its exact builder input");
+          }
+          materials.push(...compileFoundationBuilderRepairOutputV1({ store, attempt: retainedRevision(store, retainedAttemptReference(support), "agent-attempt"),
+            boundary: input.request.boundary, candidate: input.request.candidate,
+            rejection: support.candidateRejection, manifestBytes: cellResult.candidate.carrier.manifestBytes,
+            createdAt: support.execution!.retirement!.retiredAt,
+          }));
+        }
+        return Object.freeze(materials);
+      })(),
       containment: cellResult.receiptFacts.containment,
       retirement: cellResult.receiptFacts.retirement,
       runtime: runtimeCoordinates(support.opening.runtimeId, input.request.operation),
@@ -3298,7 +3518,7 @@ async function advance(input: Readonly<{
   const commonFinalization = Object.freeze({
     store,
     activityId: input.request.activityId,
-    brief: retainedRevision(store, support.brief, "founder-brief"),
+    brief: retainedRevision(store, support.brief, "director-brief"),
     attempt: retainedRevision(store, retainedAttemptReference(support), "agent-attempt"),
     workProduct,
     receipt: retainedRevision(store, support.receipt, "execution-receipt"),
@@ -3318,17 +3538,23 @@ async function advance(input: Readonly<{
         if (support.boundary === null || attemptedCandidate === null || resultCandidate === null) {
           fail("operation-support", "Admitted role finalization lost its Boundary or Candidate subject");
         }
-        return input.request.finalizeRoleControl(Object.freeze({
+        const admitted = Object.freeze({
           ...commonFinalization,
-          operation: input.request.operation,
-          role: support.role,
           boundary: retainedRevision(store, support.boundary, "work-boundary"),
-          attemptedCandidate,
-          resultCandidate,
-          seal: support.seal === null
-            ? null
-            : retainedRevision(store, support.seal, "candidate-seal"),
-        }));
+          attemptedCandidate, resultCandidate,
+        });
+        if (input.request.operation === "delivery.evaluate") {
+          if (support.role !== "reviewer" || support.seal === null) fail("operation-support", "Review finalization lost its exact role or Seal");
+          return input.request.finalizeRoleControl(Object.freeze({...admitted,
+            operation:"delivery.evaluate",role:"reviewer",seal:retainedRevision(store,support.seal,"candidate-seal")}));
+        }
+        if (support.seal !== null) fail("operation-support", "Non-review finalization cannot select an Attempt Seal");
+        if (input.request.operation === "delivery.continue") {
+          if (support.role !== "builder") fail("operation-support", "Candidate finalization lost its builder role");
+          return input.request.finalizeRoleControl(Object.freeze({...admitted,operation:"delivery.continue",role:"builder",seal:null}));
+        }
+        if (support.role !== "reconnaissance") fail("operation-support", "Boundary resolution lost its reconnaissance role");
+        return input.request.finalizeRoleControl(Object.freeze({...admitted,operation:input.request.operation,role:"reconnaissance",seal:null}));
       })();
   refreshRoleSupport();
   if (support.roleCheckpoint !== null) {
@@ -3498,23 +3724,29 @@ export async function operateFoundationAgentActivityV7(
   input: FoundationCommonAgentOperationV7Input,
   options: FoundationAgentOperationV7Options = {},
 ): Promise<FoundationCommonAgentOperationV7Result> {
+  openFoundationAgentActivityV7(input);
+  return await advance({ request: input, owners: operationOwners(options), context: readAgentContext(input.store, input.activityId, input.operation) });
+}
+
+/** Retain an Agent opening without allocating or advancing execution. */
+export function openFoundationAgentActivityV7(input: FoundationCommonAgentOperationV7Input): void {
   if (input.operation === "delivery.evaluate") {
     fail(
       "evaluation-opening",
       "Evaluation must open before sealing and promote that same support after final Checks",
     );
   }
-  const owners = operationOwners(options);
   const role = assertInput(input);
-  const opening = compileAgentActivityOpening({
+  const opening = compileRequestedAgentActivityOpening({
     store: input.store,
     activityId: input.activityId,
     operation: input.operation,
     semanticMarkdown: input.opening.semanticMarkdown,
     submittedAt: input.opening.submittedAt,
     startedAt: input.opening.startedAt,
-    founderId: input.opening.founderId,
+    directorId: input.opening.directorId,
     runtimeId: input.runtimeId,
+    ...(input.opening.reservation === undefined ? {} : { reservation: input.opening.reservation }),
   });
   const plan = operationPlan(input, prospectivePreDispatchStateDigest(input.store, opening));
   const openingFacts = operationOpeningFacts(input, opening);
@@ -3531,15 +3763,17 @@ export async function operateFoundationAgentActivityV7(
     schema: FOUNDATION_AGENT_ACTIVITY_V7_CHECKPOINT_SCHEMA,
     coordinate: null,
     execution: null,
+    executionSelection: null,
     attempt: null,
     seal: input.seal === undefined || input.seal === null ? null : reference(input.seal),
     promotedExecutionPlan: null,
     finalization: null,
     resultCandidate: null,
+    candidateRejection: null,
     receipt: null,
     roleCheckpoint: null,
   });
-  const context = openFoundationActivityKernelV7({
+  openFoundationActivityKernelV7({
     store: input.store,
     activityId: input.activityId,
     definition: definitionFor(input.operation),
@@ -3550,8 +3784,17 @@ export async function operateFoundationAgentActivityV7(
   if (digestCanonical(input.store.state()) !== plan.preDispatchStateDigest) {
     fail("opening-state", "Atomic Agent opening does not reproduce its frozen reducer coordinate");
   }
-  return await advance({ request: input, owners, context });
 }
+
+/** Continue a staged preparation opening without manufacturing a recovery invocation. */
+export async function advanceFoundationPreparationAgentActivityV7(input: FoundationPreparationAgentOperationV7Input, options: FoundationAgentOperationV7Options = {}): Promise<FoundationPreparationAgentOperationV7Result> {
+  const context = readAgentContext(input.store, input.activityId, input.operation);
+  assertInput(input, supportFromContext(context));
+  const result = await advance({ request: input, owners: operationOwners(options), context });
+  if (result.operation !== "delivery.prepare") fail("operation", "Preparation returned another operation");
+  return result;
+}
+
 
 /** Resume only the exact retained Agent operation; this path has no redispatch primitive. */
 export function recoverFoundationAgentActivityV7(
@@ -3588,5 +3831,106 @@ export async function recoverFoundationAgentActivityV7(
       status: "settled" as const,
       value: await advance({ request: input, owners, context: retained }),
     }),
+  });
+}
+
+/** Conclude a measured reviewer refusal only after prior Check child custody is clear. */
+export function settleFoundationUnallocatedBuilderV7(input: Readonly<{
+  store: ControlRecordStore;
+  activityId: string;
+  runtimeId: string;
+  opening: FoundationAgentOperationOpeningV7;
+  refusal: FoundationMandatoryProjectionRefusalV1;
+  now(): string;
+}>): never {
+  // Reuse the actual reducer and append compilers over the prospective course.
+  // No Activity or private execution support becomes observable before the one commit.
+  const events: ControlRecordEvent[] = [];
+  const revisions = new Map<string, ControlRecordRevision>();
+  const getRevision = (id: string, revision: number) => revisions.get(`${id}\0${revision}`) ?? input.store.getRevision(id, revision);
+  const replay = createDeliveryReplay(({ recordId, revision }) => getRevision(recordId, revision));
+  const head = input.store.state().journal;
+  while (events.length < head.eventCount) {
+    const page = input.store.listEvents(events.at(-1)?.sequence ?? 0, Math.min(1_000, head.eventCount - events.length));
+    if (page.length === 0) fail("pre-intent-refusal", "Builder refusal cannot reopen its exact Journal prefix");
+    for (const event of page) { replay.append(event); events.push(event); }
+  }
+  if (replay.finish().journal.headDigest !== head.headDigest) fail("pre-intent-refusal", "Builder refusal Journal prefix changed");
+  const view: ControlActivityReadView = { identity: input.store.identity, state: () => replay.finish(), getRevision,
+    listEvents: (after = 0, limit = 1_000) => events.filter(({ sequence }) => sequence > after).slice(0, limit) };
+  const appends: ControlRecordStoreAppend[] = [];
+  const eventFor = (append: ControlRecordStoreAppend) => compileControlRecordEvent({ storeId: input.store.identity.storeId,
+    processId: input.store.identity.processId, sequence: events.length + 1, predecessorDigest: events.at(-1)?.digest ?? null, event: append.event });
+  const preview = (append: ControlRecordStoreAppend) => {
+    if (append.revision != null) {
+      const revision = compileControlRecordRevision(input.store.identity.processId, append.revision);
+      revisions.set(`${revision.recordId}\0${revision.revision}`, revision);
+    }
+    const event = eventFor(append);
+    replay.append(event); events.push(event); appends.push(append);
+  };
+  const opening = compileRequestedAgentActivityOpening({ store: input.store, activityId: input.activityId, operation: "delivery.continue",
+    runtimeId: input.runtimeId, directorId: input.opening.directorId, semanticMarkdown: input.opening.semanticMarkdown,
+    submittedAt: input.opening.submittedAt, startedAt: input.opening.startedAt,
+    ...(input.opening.reservation === undefined ? {} : { reservation: input.opening.reservation }) });
+  for (const append of opening.appends) preview(append);
+  const refusedAt = controlTimestamp(input.now(), "Builder compilation refusal time");
+  const refusal = compileAgentPreIntentRefusalAppend({ store: view, activityId: input.activityId, runtimeId: input.runtimeId,
+    refusedAt, diagnosticCode: input.refusal.error.code, refusalFactsDigest: input.refusal.refusalFactsDigest, resolution: "projection-condition-required" });
+  const condition = prepareProjectionMaterialConditionV1({ store: view, activityId: input.activityId, runtimeId: input.runtimeId,
+    frozenAt: refusedAt, refusal: input.refusal, refusalEvent: eventFor(refusal) });
+  preview(refusal);
+  preview(condition.append);
+  preview(compileDeliveryActivityCompletionAppend({ store: view, activityId: input.activityId, runtimeId: input.runtimeId,
+    outcome: "abandoned", completedAt: controlTimestamp(input.now(), "Builder refusal completion time") }));
+  input.store.appendBatch(Object.freeze(appends));
+  throw new FoundationError(input.refusal.error.code, "Builder compilation was refused and its exact Material Condition requires boundary resolution", {
+    operationalStateChanged: true, observedFacts: { refusalFactsDigest: input.refusal.refusalFactsDigest },
+  });
+}
+
+/** Conclude a measured reviewer refusal only after prior Check child custody is clear. */
+export function settleFoundationUnallocatedReviewV7(input: Readonly<{
+  store: ControlRecordStore;
+  activityId: string;
+  runtimeId: string;
+  refusal: FoundationMandatoryProjectionRefusalV1 | null;
+  now(): string;
+}>): never {
+  const context = readAgentContext(input.store, input.activityId, "delivery.evaluate");
+  const support = supportFromContext(context);
+  if (support.plan !== null || support.attempt !== null || support.execution !== null ||
+      support.roleCheckpoint !== null || support.receipt !== null ||
+      support.opening.runtimeId !== input.runtimeId) {
+    fail("pre-intent-refusal", "Unallocated review settlement requires no Agent execution and no outstanding Check child custody");
+  }
+  if (support.stage === "evaluation-opened") {
+    if (input.refusal === null) fail("pre-intent-refusal", "Fresh review settlement requires the exact measured compiler refusal");
+    const refusedAt = controlTimestamp(input.now(), "Reviewer compilation refusal time");
+    const append = compileAgentPreIntentRefusalAppend({
+      store: input.store, activityId: input.activityId, runtimeId: input.runtimeId, refusedAt,
+      diagnosticCode: input.refusal.error.code, refusalFactsDigest: input.refusal.refusalFactsDigest, resolution: "projection-condition-required",
+    });
+    const state = input.store.state();
+    const refusalEvent = compileControlRecordEvent({
+      storeId: input.store.identity.storeId, processId: input.store.identity.processId,
+      sequence: state.journal.eventCount + 1, predecessorDigest: state.journal.headDigest,
+      event: append.event,
+    });
+    const condition = prepareProjectionMaterialConditionV1({
+      store: input.store, activityId: input.activityId, runtimeId: input.runtimeId,
+      refusal: input.refusal, refusalEvent, frozenAt: refusedAt,
+    });
+    input.store.appendBatch(Object.freeze([append, condition.append]));
+  } else if (support.stage !== "pre-intent-refused" || input.store.state().subjects.materialCondition === null) {
+    fail("pre-intent-refusal", "Review refusal continuation lacks its exact frozen compilation Condition");
+  }
+  const refusal = retainedPreIntentRefusal(input.store, input.activityId);
+  finishFoundationActivityKernelV7({
+    store: input.store, activityId: input.activityId, runtimeId: input.runtimeId,
+    definition: definitionFor("delivery.evaluate"), outcome: "abandoned", sampleCompletedAt: input.now,
+  });
+  throw new FoundationError(refusal.diagnosticCode, "Reviewer compilation was refused and its exact Material Condition requires boundary resolution", {
+    observedFacts: { refusalFactsDigest: refusal.refusalFactsDigest },
   });
 }

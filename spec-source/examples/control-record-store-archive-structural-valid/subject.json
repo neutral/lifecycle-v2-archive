@@ -1,7 +1,7 @@
 {
   "schema": "lifecycle.control-record-store-archive.v1",
   "store": {
-    "schema": "lifecycle.control-record-store.v1",
+    "schema": "lifecycle.control-record-store.v2",
     "storeId": "store.delivery.demo",
     "targetId": "target.demo",
     "processKind": "delivery",

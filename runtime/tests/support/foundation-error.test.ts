@@ -17,7 +17,7 @@ test("Foundation error JSON preserves current schema diagnostics without rejecte
   let failure: FoundationError | null = null;
   try {
     assertFoundationSchema(
-      "urn:lifecycle:schema:repository-contract:v15",
+      "urn:lifecycle:schema:repository-contract:v22",
       { $schema: REJECTED_RATIONALE },
       "foundation-error-current-schema",
     );
@@ -42,7 +42,7 @@ test("Foundation error JSON preserves current schema diagnostics without rejecte
     const params = diagnostic.facts.params as Readonly<{ allowedValue?: unknown }>;
     return diagnostic.pointer === "/$schema" &&
       diagnostic.facts.keyword === "const" &&
-      params.allowedValue === "lifecycle.repository.v15";
+      params.allowedValue === "lifecycle.repository.v22";
   }));
   assert.equal(serialized.includes(REJECTED_RATIONALE), false);
 

@@ -51,7 +51,7 @@ import type {
   FoundationRepositorySnapshotBasis,
 } from "./types.js";
 
-const REPOSITORY_PROFILE = "repository-v7" as const;
+const REPOSITORY_PROFILE = "repository-v9" as const;
 const STAGES = ["repository-epoch", "repository-contract", "control", "product-state", "atlas", "knowledge", "repository-snapshot"] as const;
 const MAXIMUM_DIAGNOSTIC_PATHS = 256;
 
@@ -138,7 +138,7 @@ function assertSupportConfiguration(support: FoundationRepositoryValidationSuppo
   for (const [id, descriptor] of Object.entries(support.providerDescriptors)) {
     if (
       id !== descriptor.id ||
-      descriptor.schema !== "lifecycle.provider-descriptor.v6" ||
+      descriptor.schema !== "lifecycle.provider-descriptor.v7" ||
       descriptor.adapter.protocol !== FOUNDATION_PROVIDER_PROTOCOL ||
       validRange(descriptor.provider.compatibleVersion) === null ||
       selfDigest(descriptor.adapter, "implementationDigest") !== descriptor.adapter.implementationDigest ||
@@ -146,7 +146,7 @@ function assertSupportConfiguration(support: FoundationRepositoryValidationSuppo
     ) {
       throw new FoundationError("foundation.repository.support", `Provider Descriptor support entry ${id || "<empty>"} is invalid`);
     }
-    assertFoundationSchema("urn:lifecycle:schema:provider-descriptor:v6", descriptor, `installed-provider:${id}`);
+    assertFoundationSchema("urn:lifecycle:schema:provider-descriptor:v7", descriptor, `installed-provider:${id}`);
   }
   for (const [kind, values] of [["Capability", support.capabilityProfiles], ["Projection", support.projectionProfiles]] as const) {
     for (const [id, digest] of Object.entries(values)) {
@@ -211,19 +211,19 @@ function validateContractSelection(
   if (
     canonicalJson(contract.selections.schemas) !== canonicalJson(FOUNDATION_REPOSITORY_SCHEMA_SELECTION) ||
     canonicalJson(contract.selections.profiles) !== canonicalJson(FOUNDATION_REPOSITORY_PROFILE_SELECTION) ||
-    contract.selections.controlStore !== "lifecycle.control-record-store.v1" ||
-    contract.selections.controlLifecycleProfile !== "foundation-delivery-control-lifecycle-v4" ||
-    contract.selections.controlRecordRevision !== "lifecycle.control-record-revision.v1" ||
-    contract.selections.controlRecordEvent !== "lifecycle.control-record-event.v2" ||
+    contract.selections.controlStore !== "lifecycle.control-record-store.v2" ||
+    contract.selections.controlLifecycleProfile !== "foundation-delivery-control-lifecycle-v7" ||
+    contract.selections.controlRecordRevision !== "lifecycle.control-record-revision.v2" ||
+    contract.selections.controlRecordEvent !== "lifecycle.control-record-event.v6" ||
     contract.selections.controlReferencedFile !== "lifecycle.control-record-file.v1" ||
     contract.selections.controlStoreSeal !== "lifecycle.control-record-store-seal.v1" ||
     contract.selections.controlStoreArchive !== "lifecycle.control-record-store-archive.v1" ||
-    contract.selections.deliveryReduction !== "lifecycle.delivery-reduction.v2" ||
+    contract.selections.deliveryReduction !== "lifecycle.delivery-reduction.v5" ||
     contract.selections.candidateRevisionCarrierManifest !== "lifecycle.candidate-revision-carrier-manifest.v1" ||
     contract.selections.executionBackendProfile !== "lifecycle.execution-backend-profile.docker-local.v1" ||
     contract.selections.executionCellRunner !== "lifecycle.execution-cell-runner.v1" ||
     contract.selections.executionSpecification !== "lifecycle.execution-specification.v1" ||
-    contract.selections.executionInputSet !== "lifecycle.execution-input-set.v1" ||
+    contract.selections.executionInputSet !== "lifecycle.execution-input-set.v2" ||
     contract.selections.executionImage !== "lifecycle.execution-image.v1" ||
     contract.selections.executionObservation !== "lifecycle.execution-observation.v1" ||
     contract.selections.executionOutputManifest !== "lifecycle.execution-output-manifest.v1" ||
@@ -234,19 +234,19 @@ function validateContractSelection(
       expected: {
         schemas: FOUNDATION_REPOSITORY_SCHEMA_SELECTION,
         profiles: FOUNDATION_REPOSITORY_PROFILE_SELECTION,
-        controlStore: "lifecycle.control-record-store.v1",
-        controlLifecycleProfile: "foundation-delivery-control-lifecycle-v4",
-        controlRecordRevision: "lifecycle.control-record-revision.v1",
-        controlRecordEvent: "lifecycle.control-record-event.v2",
+        controlStore: "lifecycle.control-record-store.v2",
+        controlLifecycleProfile: "foundation-delivery-control-lifecycle-v7",
+        controlRecordRevision: "lifecycle.control-record-revision.v2",
+        controlRecordEvent: "lifecycle.control-record-event.v6",
         controlReferencedFile: "lifecycle.control-record-file.v1",
         controlStoreSeal: "lifecycle.control-record-store-seal.v1",
         controlStoreArchive: "lifecycle.control-record-store-archive.v1",
-        deliveryReduction: "lifecycle.delivery-reduction.v2",
+        deliveryReduction: "lifecycle.delivery-reduction.v5",
         candidateRevisionCarrierManifest: "lifecycle.candidate-revision-carrier-manifest.v1",
         executionBackendProfile: "lifecycle.execution-backend-profile.docker-local.v1",
         executionCellRunner: "lifecycle.execution-cell-runner.v1",
         executionSpecification: "lifecycle.execution-specification.v1",
-        executionInputSet: "lifecycle.execution-input-set.v1",
+        executionInputSet: "lifecycle.execution-input-set.v2",
         executionImage: "lifecycle.execution-image.v1",
         executionObservation: "lifecycle.execution-observation.v1",
         executionOutputManifest: "lifecycle.execution-output-manifest.v1",
@@ -297,7 +297,7 @@ function validateNoTrackedControl(
     collector,
     "control",
     "lifecycle.repository.epoch-mixed",
-    "Repository v15 forbids repository-visible Delivery Control; Control Record Stores remain off HEAD in runtime custody",
+    "Repository v22 forbids repository-visible Delivery Control; Control Record Stores remain off HEAD in runtime custody",
     pathFacts(paths),
   );
 }
@@ -503,7 +503,7 @@ function validateKnowledgeBasis(
   const validation = knowledge.validation;
   const manifest = knowledge.manifest;
   const facts: Record<string, unknown> = {};
-  if (validation.profile !== "knowledge-set-v1") facts.profile = { actual: validation.profile, expected: "knowledge-set-v1" };
+  if (validation.profile !== "knowledge-set-v2") facts.profile = { actual: validation.profile, expected: "knowledge-set-v2" };
   const expectedImplementation = foundationValidationImplementation(
     loaded.contract.selections.profiles,
     loaded.contract.selections.extensions,
@@ -533,7 +533,7 @@ function validateKnowledgeBasis(
   }
   if (!validation.complete || !validation.valid) facts.outcome = { complete: validation.complete, valid: validation.valid, validationDigest: validation.digest };
   if (validation.digest !== validationResultDigest(validation)) facts.validationDigest = { actual: validation.digest, expected: validationResultDigest(validation) };
-  if (manifest.schema !== "lifecycle.knowledge-set.v1" || manifest.profile !== "knowledge-set-v1") facts.manifestKind = { actualSchema: manifest.schema, actualProfile: manifest.profile };
+  if (manifest.schema !== "lifecycle.knowledge-set.v2" || manifest.profile !== "knowledge-set-v2") facts.manifestKind = { actualSchema: manifest.schema, actualProfile: manifest.profile };
   if (!manifest.complete || !manifest.valid) facts.manifestOutcome = { complete: manifest.complete, valid: manifest.valid };
   if (!compiledKnowledgeManifestMatches(knowledge)) facts.manifestDigest = { actual: manifest.digest, expected: compiledKnowledgeManifestDigest(knowledge) };
   if (validation.subject.digest !== manifest.digest) facts.subjectDigest = { actual: validation.subject.digest, expected: manifest.digest };
@@ -729,7 +729,7 @@ function addTypedFailure(
   return stage;
 }
 
-/** Compose exact loading, Knowledge compilation, snapshot binding, and repository-v7 validation for one path. */
+/** Compose exact loading, Knowledge compilation, snapshot binding, and repository-v9 validation for one path. */
 export async function validateRepository(
   path: string,
   options: Readonly<{ observedAt?: string }> = {},

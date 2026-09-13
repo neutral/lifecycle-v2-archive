@@ -21,6 +21,8 @@ const regularPaths = [
   "bin/codex",
   "bin/codex-code-mode-host",
   "bin/execution-cell-runner",
+  "bin/lifecycle",
+  "runtime-package.tgz",
   "codex-package.json",
   "codex-path/rg",
   "codex-resources/bwrap",
@@ -28,7 +30,7 @@ const regularPaths = [
   "runner-contract.private.json",
 ];
 const executablePaths = new Set(regularPaths.filter((path) =>
-  path !== "codex-package.json" && path !== "runner-contract.private.json"));
+  path !== "codex-package.json" && path !== "runner-contract.private.json" && path !== "runtime-package.tgz"));
 
 function digest(bytes) {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -95,11 +97,20 @@ test("inventory rejects changed, extra, and substituted retained paths", async (
       await rm(value.root, { recursive: true, force: true });
     }
   });
+  await context.test("substituted Runtime package", async () => {
+    const value = await fixture();
+    try {
+      await chmod(join(value.root, "runtime-package.tgz"), 0o644);
+      await writeFile(join(value.root, "runtime-package.tgz"), "another Runtime package\n");
+      await chmod(join(value.root, "runtime-package.tgz"), 0o444);
+      await assert.rejects(verify(value), /retained filesystem tree differs/u);
+    } finally { await rm(value.root, { recursive: true, force: true }); }
+  });
   await context.test("extra file", async () => {
     const value = await fixture();
     try {
       await writeFile(join(value.root, "extra"), "extra\n");
-      await assert.rejects(verify(value), /fixed Codex, runner, and contract inventory/u);
+      await assert.rejects(verify(value), /fixed Codex, runner, contract, and Runtime package inventory/u);
     } finally {
       await rm(value.root, { recursive: true, force: true });
     }
@@ -122,25 +133,26 @@ test("checked inventories are canonical, platform-specific, and lock-bound", asy
     const value = JSON.parse(bytes.toString("utf8"));
     assert.equal(value.schema, "lifecycle.execution-image-tool-inventory.private.v1");
     assert.deepEqual(value.platform, { architecture, os: "linux" });
-    assert.equal(value.codexPackage.version, "0.151.0");
-    assert.equal(value.entries.length, 9);
+    assert.equal(value.codexPackage.version, "0.153.4");
+    assert.equal(value.entries.length, 11);
+    assert.equal(value.entries.find(({ path }) => path === "/opt/lifecycle/runtime-package.tgz")?.role, "runtime-authoring");
     assert.equal(bytes.at(-1), 0x0a);
     assert.deepEqual(value.entries.map((entry) => entry.path),
       [...value.entries.map((entry) => entry.path)].sort());
   }
 });
 
-test("Docker build consumes only locked inputs and tracked runner source", async () => {
+test("Docker build uses npm lockfiles and tracked runner source", async () => {
   const [dockerfile, dockerignore] = await Promise.all([
     readFile(join(executionImageRoot, "Dockerfile.agent-cell"), "utf8"),
-    readFile(resolve(executionImageRoot, "../.dockerignore"), "utf8"),
+    readFile(resolve(executionImageRoot, "Dockerfile.agent-cell.dockerignore"), "utf8"),
   ]);
   assert.doesNotMatch(dockerfile, /npm install(?:\s|\\)/u);
   assert.match(dockerfile, /npm ci --ignore-scripts/u);
-  assert.match(dockerfile, /COPY src\/util\/execution-cell-runner-v1\.ts/u);
+  assert.match(dockerfile, /COPY runtime\/src\/util\/execution-cell-runner-v1\.ts/u);
   assert.doesNotMatch(dockerfile, /COPY dist\//u);
-  assert.equal(dockerfile.match(/test "\$\(node --version\)" = "v24\.14\.0"/gu)?.length, 3);
+  assert.equal(dockerfile.match(/test "\$\(node --version\)" = "v24\.14\.0"/gu)?.length, 4);
   assert.match(dockerfile, /\^\[0-9\]\[A-Za-z0-9\.\+:~-\]\{0,159\}\$/u);
-  assert.match(dockerignore, /!src\/util\/execution-cell-runner-v1\.ts/u);
+  assert.match(dockerignore, /!runtime\/\*\*/u);
   assert.doesNotMatch(dockerignore, /!dist\//u);
 });

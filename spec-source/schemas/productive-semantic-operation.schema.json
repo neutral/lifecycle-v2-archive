@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:productive-semantic-operation:v1",
+  "title": "Lifecycle Productive Semantic Operation Request v1",
+  "description": "Exact public v15 request carrier for one productive semantic mutation over an existing Delivery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "target", "operation", "deliveryId", "input"],
+  "properties": {
+    "schema": { "const": "lifecycle.foundation-runtime-facade.v17" },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[^\\u0000]+$"
+    },
+    "operation": {
+      "enum": ["delivery.continue", "delivery.evaluate", "delivery.revise", "delivery.reaffirm"]
+    },
+    "deliveryId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semanticMarkdown", "expectedGeneration"],
+      "properties": {
+        "semanticMarkdown": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "expectedGeneration": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    }
+  }
+}

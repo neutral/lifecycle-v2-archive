@@ -4,7 +4,7 @@
 
 ## Purpose
 
-This document defines the Foundation rc.10 provider-neutral Agent Attempt
+This document defines the Foundation rc.17 provider-neutral Agent Attempt
 contract. It separates Process authority, projected context, caller-funded
 Investment, capability, disposable execution, Agent-authored semantics,
 Candidate successor promotion, and deterministic Process continuation.
@@ -44,38 +44,48 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 and **MAY** are normative only when they appear in uppercase. Their meanings
 follow BCP 14.
 
-## Foundation rc.10 Cut
+## Foundation rc.17 Cut
 
-Foundation rc.10 selects:
+Foundation rc.17 selects:
 
-- qualification revision `lifecycle.foundation.1.0.0-rc.10`;
-- repository contract `lifecycle.repository.v15`;
-- runtime protocol `lifecycle.runtime.foundation.v10`;
-- interface protocol `lifecycle.interface.foundation.v10`; and
-- provider adapter coordinate `lifecycle.provider-adapter.v6`.
+- qualification revision `lifecycle.foundation.1.0.0-rc.17`;
+- repository contract `lifecycle.repository.v22`;
+- runtime protocol `lifecycle.runtime.foundation.v17`;
+- interface protocol `lifecycle.interface.foundation.v17`; and
+- provider adapter coordinate `lifecycle.provider-adapter.v7`.
 
-The normative `codex-exec-standard-v6` Provider Descriptor selects
-`openai-codex-cli` compatibility range `>=0.151.0 <0.152.0`. The current
-production Agent Execution Image selects the exact tool version `0.151.0`.
+The normative `codex-exec-standard-v7` Provider Descriptor selects
+`openai-codex-cli` compatibility range `>=0.153.4 <0.154.0`. The current
+Agent Execution Image selects the exact tool version `0.153.4`.
 The compatible range describes the adapter contract; it does not authorize a
-mutable image, an ambient executable, or another 0.151.x image that has not
-been independently identified and qualified. Codex 0.150.x is outside the
-rc.10 selection and MUST be refused before provider dispatch. It is not a
-runtime predecessor and has no migration or continuation path.
+mutable image, an ambient executable, or another 0.153.x image that has not
+been independently identified and qualified. Versions outside this range,
+including Codex `0.151.0`, MUST be refused before provider dispatch. This
+selection does not substitute resources for an Attempt already frozen under
+different exact inputs; see [Provider Evolution](EVOLUTION.md#provider-evolution).
 
 Unsupported or mixed-generation Attempt carriers have no standing, migration,
 recovery, or compatibility meaning.
 
-Foundation rc.10 has exactly three Agent roles:
+Every dispatched Agent Attempt acts as the Worker in the
+[Director–Worker pair](AUTHORITY.md#operating-roles). Foundation rc.17 has
+exactly three Worker assignments, selected by the existing `role` field:
 
 - `reconnaissance`;
 - `builder`; and
 - `reviewer`.
 
+These are execution assignments within the Worker role. The Director can be a
+human or an agent and supplies the bound Director Brief. A human can contribute
+as a Worker at another work level; this Agent Attempt contract still dispatches
+the selected software provider through its exact Execution Backend and does not
+define a human-provider execution route.
+
 The Agent edits one governed body-only Markdown workspace over any number of
 provider turns allowed by the Attempt. It can inspect and correct the same
-draft before finishing. Foundation rc.10 exposes no provider-invoked live
-semantic validator, and the Cell cannot claim provisional validity. Provider
+draft before finishing. The selected local draft assistance profile can inspect
+that draft against an exact immutable basis without establishing submission
+validity, authority, or currentness. Provider
 terminal text is not the semantic submission. After Execution Containment, the
 runtime independently retrieves, observes, validates, and compiles a valid
 final submission into one
@@ -89,11 +99,12 @@ fold and exact retained revisions.
 
 The hard-cut compatibility and refusal rules are owned by
 [Control](CONTROL.md). A predecessor provider, execution, or whole-document
-contract cannot be interpreted as a Foundation rc.10 Attempt.
+contract cannot be interpreted as a Foundation rc.17 Attempt.
 
-This cut adds no Control record family, Journal event, Delivery state, or
-public operation. Foundation retains twelve Control record families,
-twenty-two Journal event types, and the nine public Delivery operations.
+The Attempt adapter does not define an additional Control record family,
+Journal event, Delivery state, or public operation. Foundation retains fourteen
+Control record families,
+twenty-five Journal event types, and the ten public Delivery operations.
 Delivery is the sole Process. An Execution Cell is private Runtime mechanism,
 not a Cell workflow, public job, operator retry surface, or parallel state
 machine.
@@ -118,7 +129,7 @@ does not own:
 The runtime physically produces every retained Attempt-family revision. The
 Agent is semantic author only for its Agent Work Product. That Work Product has
 `agent-proposed` authority until an owning runtime observer, Evidence compiler,
-or Founder-authenticated decision establishes a different fact under its own
+or Director-authenticated decision establishes a different fact under its own
 contract.
 
 ## Agent Attempt Record
@@ -134,13 +145,13 @@ The typed Attempt payload binds at least:
 - exact target, Delivery, activity, Attempt, invocation, and role identities;
 - selected Delivery operation and pre-dispatch reducer coordinate;
 - exact repository observation and Projection;
-- the exact activity Founder Brief plus the active Work Boundary, Candidate
+- the exact activity Director Brief plus the active Work Boundary, Candidate
   Revision, Candidate Seal, or other role subjects required by that role;
 - selected Capability Profile, Execution Backend Profile, Execution Image,
   and exact Execution Input Set digest;
 - caller-funded Investment and hard limits;
 - Provider Descriptor, its selected executable-identity class, the exact
-  installed executable identity resolved before intent, and adapter-v6
+  installed executable identity resolved before intent, and adapter-v7
   compatibility;
 - exact Role Brief, semantic-body template, parser, and Work Product Compiler
   profiles;
@@ -155,6 +166,12 @@ The relationship set is governed by the closed registry in
 relationship from validated subjects; a caller or Agent cannot supply an
 opaque digest as a substitute.
 
+The full resolved effective execution selection is private retained operation
+support under [Execution](EXECUTION.md#retained-execution-selection), established
+before allocation. Recovery reuses it through observation and Retirement even
+when installed defaults change. Public identity bindings do not substitute for
+retaining the exact selected resource description and policy bodies.
+
 The Runtime first compiles the exact immutable Input Set and prearms one Cell
 with `allocate(specification, allocationKey)` under
 [Execution](EXECUTION.md#deterministic-allocation). Allocation cannot start
@@ -162,11 +179,12 @@ productive work. The Runtime then revalidates the exact Process head,
 operation, Projection, subject, Candidate Revision and Carrier, capability,
 provider installation, Investment, and applicable repository epoch at the last
 pre-Attempt and pre-intent boundary. Reconnaissance uses the exact current epoch
-selected for a proposed Boundary. Builder and reviewer execution use the active
-Boundary's historical admitted epoch and Atlas snapshot while requiring the
-canonical branch to remain at that exact commit and tree and the authoritative
-target checkout to remain completely clean. The Runtime does not resolve a
-live Atlas for those operations.
+selected for a proposed Boundary. Builder and reviewer execution retain the
+active Boundary's historical admitted epoch and Atlas snapshot. Integrated
+Candidate context additionally binds the exact retained application parent,
+and reviewer context preserves its separate Knowledge occurrence. Canonical
+movement does not replace those subjects or prevent historical work. The
+Runtime does not resolve a live Atlas for those operations.
 
 Success finalizes the Attempt, `agent-attempt-prepared`, provider effect
 intent, permanent dispatch-authority consumption, and the exact
@@ -180,6 +198,10 @@ submission even when the provider otherwise returns cleanly.
 
 ## Standard Roles
 
+The following standard `role` values select a Worker assignment and its exact
+capability and return contract. They do not change the Director counterpart or
+authorize the Worker to take over that Director's reserved decisions.
+
 ### Reconnaissance
 
 Reconnaissance performs read-only product judgment support. It operates for:
@@ -188,9 +210,11 @@ Reconnaissance performs read-only product judgment support. It operates for:
 - `delivery.revise` after one frozen Material Condition; or
 - `delivery.reaffirm` after one frozen Material Condition.
 
-An initial preparation Attempt binds one complete fresh Founder Brief and the
-current Orientation Projection. The Founder supplies every instruction needed
-for that preparation. The runtime MUST NOT silently add a prior Brief, agent
+An initial preparation Attempt binds one complete fresh Director Brief and the
+current Orientation Projection. The Director supplies complete direction for
+that preparation; the Worker gathers and checks supporting information within
+its projected sources and capability. The runtime MUST NOT silently add a prior
+Brief, agent
 summary, Work Product, interface transcript, provider conversation, or cached
 prompt. Earlier successful proposals remain Process history and currentness is
 reducer-derived, but they are not implicit input to the fresh Attempt.
@@ -198,7 +222,7 @@ Interruption, abandonment, or invalid semantics cannot displace the prior
 reducer-selected proposal. Only a newly finalized Work Boundary revision can
 become the next admission subject.
 
-A boundary-resolution Attempt binds one fresh boundary-resolution Founder
+A boundary-resolution Attempt binds one fresh boundary-resolution Director
 Brief, the exact active Work Boundary, frozen Material Condition, current
 Candidate Revision, selected resolution operation, and current Orientation
 Projection. The runtime derives that subject; the Agent cannot select a
@@ -264,12 +288,18 @@ receives the exact Candidate Seal, sealed Candidate Revision, active Work
 Boundary, required Check Receipts, evaluation propositions, and reviewer
 Projection.
 
+Its Work Product also supplies the exact mandate and original-baseline
+applicability judgments defined by [Evidence](EVIDENCE.md#integration-applicability-review).
+The Attempt and Projection bind the exact integration parent/result; the Agent
+does not author replacement subject coordinates. Every required baseline Receipt
+is covered exactly once and retains its original observation subject.
+
 Its Work Product supplies one judgment for every proposition, exact supporting
 citations, limitations, missing-obligation findings, uncertainty, and any
 mandate excess. When those semantics establish that correction would exceed
 the admitted mandate, it also supplies one typed Material Condition proposal
 using the shared closed class vocabulary. It MUST NOT supply an aggregate
-acceptance, completeness bit, Evidence readiness, Process freeze, or Founder
+acceptance, completeness bit, Evidence readiness, Process freeze, or Director
 decision. The runtime derives proposition coverage, independence, any
 Process-frozen Material Condition, Evidence readiness, and the Evidence Packet.
 
@@ -285,11 +315,18 @@ semantic input and selectable policy choices only where the owning operation
 permits them. It does not restate repository, Work Boundary, Candidate, Seal,
 Evidence, Projection, or reducer facts.
 
-Every role binds the exact fresh Founder Brief finalized for its activity. In
-addition:
+Every role binds the exact Director Brief selected for its activity: a fresh
+activity-scoped Brief for a manual request, or the original delegation-scoped
+standing Brief for an explicitly delegated builder or reviewer pass. Director
+Brief payload v2 distinguishes those scopes; Runtime-composed context MUST NOT
+be recorded as newly Director-authored input. In addition:
 
 - reconnaissance binds the initial preparation subject or one exact
-  boundary-resolution subject and an Orientation Projection;
+  boundary-resolution subject and an Orientation Projection. Initial
+  preparation has no Candidate input; boundary resolution receives the exact
+  frozen Candidate and its Carrier/Git context as read-only input under
+  [Execution](EXECUTION.md#execution-input-set), with no Candidate write or
+  export capability;
 - builder binds the active Work Boundary, exact current Candidate Revision,
   immutable Candidate base, repository epoch, and Execution Projection; and
 - reviewer binds the active Work Boundary, exact Candidate Revision and Seal,
@@ -308,7 +345,7 @@ caller-supplied digest, path, provider statement, or latest-row query is not a
 subject binding.
 
 The Attempt citation registry is the sole semantic citation namespace. Each
-entry binds an exact identifier, kind, logical digest, locator class, and
+entry binds an exact identifier, kind, subject digest, locator class, and
 authority class selected from the frozen Projection or role subject. An Agent
 uses only the local identifier. The Work Product Compiler resolves the full
 reference and preserves its original authority.
@@ -395,14 +432,33 @@ caller proposition-set digest or let the reviewer omit a proposition.
 `citationRegistryDigest` is the canonical-value digest of one
 `lifecycle.attempt-citation-registry.v3` object containing the complete
 `items` array exposed to the Agent. Each item has exactly `id`, `kind`,
-`digest`, `locator`, and `authorityClass`. Items are ordered by `id`, and
-identities are unique across Knowledge, source, Projection, Candidate,
-Evidence, and boundary entries.
+`digest`, `locator`, `authorityClass`, and `knowledgeIdentity`. Items are
+ordered by `id`, and identities are unique across Knowledge, source,
+Projection, Candidate, Evidence, and boundary entries. `knowledgeIdentity` is
+the enduring record identifier for a Knowledge entry and null for every other
+kind; it does not select a revision or supply citation authority.
+
+A Knowledge entry's `id` selects the basis-qualified Projection occurrence and
+its `digest` is the exact source digest. An unqualified record-identity alias
+is permitted only when all occurrences select one exact source digest.
+Different admitted and Candidate source bytes require qualified citations.
+The compact private semantic-validation basis retains each citation's `id`,
+`kind`, and `knowledgeIdentity` under its exact registry digest. A Claim's
+optional Knowledge identities require supporting citations whose frozen facts
+map to those enduring identities. Claim identity selection cannot replace the
+citation that identifies the exact occurrence and bytes.
 
 The Work Product Compiler copies kind, digest, locator, and authority from that
 registry. It orders resolved Work Product citations by their compiler-assigned
 global identity. Agent source order, an Agent-authored locator, or a similarly
 named item cannot select or disambiguate a citation.
+
+When Boundary finalization selects a Knowledge fact, its supporting retained
+Knowledge citation must identify that fact's exact source bytes. The selected
+fact supplies the enduring record identity and revision. A basis-qualified
+citation handle is not that enduring identity, and the semantic digest cannot
+replace the source digest in this comparison. The earlier compiler binding to
+the frozen registry remains required.
 
 ## Capability Profile
 
@@ -432,7 +488,7 @@ MUST enforce that separation or report the Attempt unsupported before dispatch.
 
 A builder SHOULD receive broad reversible capability inside a narrow admitted
 Candidate-output boundary. Canonical Git state, Control, Runtime custody,
-Founder authority material, other Deliveries, and undeclared effects remain
+Director authority material, other Deliveries, and undeclared effects remain
 outside its write grants. Reconnaissance and reviewer roles receive no
 Candidate write capability.
 
@@ -453,6 +509,12 @@ Attempt. It can select:
 - cost and accounting labels; and
 - a bounded rationale classification.
 
+Output limits cover the complete retained Output, including a Candidate export
+when the operation produces one. Semantic-only work and Candidate-producing
+work may therefore receive different bounded allocations. A larger Projection
+profile is not an Output allocation. The selected Backend must realize the
+retained limits; recovery cannot replace them with current defaults.
+
 Investment is nonauthoritative. A stronger model, longer time, larger context,
 or higher spend cannot widen the Work Boundary, change the Projection, grant
 capability, excuse a Material Condition, waive Evidence, establish progress, or
@@ -463,6 +525,43 @@ running invocation solely because resources have already been spent. A later
 invocation can use a different provider or model while binding the same current
 Candidate and Work Boundary.
 
+### Delegated Investment
+
+An explicit [Work Delegation](ATTEMPT_VIEW.md#work-delegation) can select finite
+resources for several useful passes under one exact admission. Its resource
+body is Director-supplied and nonauthoritative. The Runtime compiles the selected
+provider, model and per-invocation limits with its exact installed Backend and
+Image selection. A retained delegation or Investment MUST NOT follow changed
+installation defaults. Selecting different resources requires a fresh explicit
+delegation revision; recovery keeps its retained selection.
+
+Each delegated Activity MUST reserve its complete conservative resource charge
+atomically with opening and recovery support, before any execution allocation.
+The reservation includes every possible Check Cell and the reviewer Cell for an
+evaluation, including Checks that run before the reviewer Attempt is prepared.
+Its immutable slots bind the exact Agent selection or the selected Check use,
+Definition revision and source/semantic digests, Binding, Backend, Image and
+effective limits. A Check Definition is Knowledge, not a Control reference.
+The exact Check selection ID distinguishes separately selected uses.
+
+Every allocated Agent or Check execution MUST bind its owning reservation and
+one exact slot. One slot cannot fund another independently dispatched execution.
+Exact recovery neither charges twice nor allocates a replacement slot. A skipped
+or authorized non-executed Check retains its truthful disposition; conservative
+charging does not establish that its Cell ran. The Journal retains all charges
+after Activity support is disposed, across restarts, delegation replacement and
+readmission. The selected profile charges full reservations without automatic
+refunds; observed usage is separate.
+
+Delegated builder and reviewer Attempts MUST retain the original exact standing
+Director Brief reference selected by the delegation. A fresh Runtime Role Brief
+and context supply current governing subjects and correction findings with
+Runtime provenance. The Runtime MUST NOT manufacture a new Director Brief from
+that composition or treat an Agent recommendation as Director input. Manual
+passes continue to use fresh Director-supplied input. Delegation never removes
+the requirement for a fresh immutable Investment, input compilation, exact
+pre-effect checks, containment and retirement for each Attempt.
+
 ## Provider Input
 
 Before dispatch, the Runtime compiles one bounded provider input from exact
@@ -471,16 +570,28 @@ materializes that Input Set and initializes one governed semantic workspace
 inside the Cell. The read-only provider input contains only:
 
 - the runtime-authored body-only Role Brief, including a quoted rendering of
-  the exact normalized Founder Brief as bounded direction for this invocation;
-  and
+  the exact normalized Director Brief as bounded direction for this invocation
+  and the concise [operating roles](AUTHORITY.md#operating-roles) guidance;
 - one exact file for every projected Tier-2 source and every allowed mounted
-  Tier-3 source.
+  Tier-3 source; and
+- one compact immutable semantic authoring basis under the selected local draft
+  assistance profile.
 
-The complete Projection, attention core, role subject, Attempt, Founder Brief
+The Role Brief MUST identify the current actor as Worker, name its exact
+`reconnaissance`, `builder`, or `reviewer` assignment, and identify its counterpart
+as the Director who supplied the bound Director Brief. It MUST preserve the
+Director's ownership of that direction while instructing the Worker to gather
+the support needed to proceed, complete authorized work, and return useful
+results and unresolved decisions. Its guidance MUST NOT add a human approval
+step, infer a broader assignment, or disclose authority credentials.
+
+The complete Projection, attention core, role subject, Attempt, Director Brief
 identity and Control envelope, runtime identities, capabilities, and digest
-coordinates remain typed runtime values. They are not serialized into
-provider-visible JSON or retained Control revision envelopes. Only the
-normalized semantic body of the exact activity Founder Brief is rendered as
+coordinates remain typed runtime values. The sole bounded JSON exception is
+the compact semantic authoring basis defined below; it exposes only selected
+profile, digest, citation-identity, and proposition-identity facts, not full
+Control values, source locators, authority, or a live Runtime connection. Only the
+normalized semantic body of the exact activity Director Brief is rendered as
 readable direction. The selected role template initializes the separate
 governed `semantic.md` workspace and is not duplicated as a read-only input
 file.
@@ -490,8 +601,9 @@ Control and not IPC among Runtime functions. The Attempt payload binds the
 logical inventory and exact Role Brief, template, Projection, subject,
 Capability Profile, and Execution Input Set coordinates. Provider-visible
 files MUST contain no Control front matter, authority secret, unrelated target
-data, ambient provider history, Runtime recovery state, Runtime identity or
-digest field, or writable canonical path.
+data, ambient provider history, Runtime recovery state, or writable canonical
+path. Runtime identity and digest fields are prohibited except the exact compact
+authoring-basis fields defined by the selected profile.
 
 ### Content inventory and input-material digest
 
@@ -499,6 +611,7 @@ The standard provider-visible package layout is:
 
 ```text
 role-brief.md                          exact readable Role Brief
+semantic-basis.json                    exact compact immutable authoring basis
 sources/<ordinal>-<semantic-handle>.* exact projected source bytes
 ```
 
@@ -516,7 +629,7 @@ no-digest-member subject:
 
 ```json
 {
-  "schema": "lifecycle.agent-input-content-inventory.v6",
+  "schema": "lifecycle.agent-input-content-inventory.v8",
   "entries": [
     {
       "path": "<normalized relative path>",
@@ -535,23 +648,25 @@ stable; a caller cannot supply them.
 
 ```json
 {
-  "schema": "lifecycle.agent-input-material.v6",
-  "layoutProfileId": "lifecycle.agent-provider-input.standard-v6",
+  "schema": "lifecycle.agent-input-material.v8",
+  "layoutProfileId": "lifecycle.agent-provider-input.standard-v8",
   "projectionDigest": "sha256:...",
   "roleSubjectDigest": "sha256:...",
-  "founderDirectionDigest": "sha256:...",
+  "directorDirectionDigest": "sha256:...",
   "roleBriefDigest": "sha256:...",
   "semanticTemplateDigest": "sha256:...",
-  "contentInventoryDigest": "sha256:..."
+  "validationBasisDigest": "sha256:...",
+  "contentInventoryDigest": "sha256:...",
+  "rootTokenSetDigest": "sha256:..."
 }
 ```
 
-The Projection, role subject, normalized Founder direction, Role Brief,
-semantic template, and inventory are complete before the Agent Attempt
+The Projection, role subject, normalized Director direction, Role Brief,
+semantic template, compact validation basis, and inventory are complete before the Agent Attempt
 revision exists. The Role Brief MUST NOT contain an Attempt or
 invocation identity, a Control Record Revision reference, an operational
 digest, or derived protocol mechanics. It MAY quote the normalized semantic
-body of the exact activity Founder Brief. That quotation cannot create or
+body of the exact activity Director Brief. That quotation cannot create or
 widen a Work Boundary, capability, eligible operation, or authority fact.
 
 ### Execution Input Set and materialization
@@ -642,11 +757,32 @@ layout, and supported section order are not semantic. A token-shaped metadata
 value may be written bare or as one sole code span. Empty placeholder text and
 the predecessor `None.` marker are invalid rather than semantic values.
 
+The reconnaissance Work Boundary proposal can contain zero or more repeatable
+`Selected work type` metadata values. Each value names one exact Work Type in
+the projected Discipline Registry. `Selected Knowledge` remains the sole list
+that selects Knowledge and can include exact Discipline identities. A Work
+Type neither expands that list nor makes every grouped Discipline record
+required, and direct Discipline selection without a Work Type is valid. The v4
+parser retains the Work Type identities separately so the Work Boundary
+compiler can preserve this lightweight discovery context.
+
 Each semantic Citation contains one Attempt-local subject identifier and one
 or more local Claim handles. The Agent does not supply citation kind, locator,
 digest, authority, global identity, or order. Reviewer `Review` contains
 proposition judgments, overall uncertainty, mandate excess, limitations, and
 missing obligations; it has no aggregate completeness or acceptance field.
+
+A complete or partial reviewer body includes exactly one
+`### Mandate Applicability: <local-handle>` block with `Disposition`, one or
+more `Citation` handles, and a nonempty rationale. It includes one
+`### Baseline Applicability: <local-handle>` block per required original
+baseline Receipt, with the same fields and an exact `Receipt` identity.
+Disposition values and the every-and-only Receipt requirement are owned by
+[Evidence](EVIDENCE.md#integration-applicability-review). The parser injects
+anchors, normalizes block order, and binds each fragment digest as for other
+review judgments. `requires-readmission` mandate applicability or
+`insufficient` baseline applicability requires the corresponding proposed
+Material Condition; indeterminate applicability cannot establish readiness.
 
 For every compiled reviewer judgment, the runtime resolves its cited local
 handles and derives both the exact global Citation identities and the sorted
@@ -665,24 +801,82 @@ operational observations. They cannot replace, complete, or repair the
 workspace body. A provider adapter MUST NOT ask the Agent to repeat the body in
 its terminal message.
 
-### No invocation-local semantic validation
+### Local draft assistance
 
-Foundation rc.10 does not expose a provider-invoked semantic validator. The
-Role Brief, provider-visible Input Set, Cell runner, and provider environment
-MUST NOT advertise or supply a validation command, callback, endpoint, token,
-or live validity response. A Cell may materialize and collect the governed
-`semantic.md` file, but it cannot claim that a provisional draft is valid.
+Provider Adapter v7 selects `lifecycle.local-draft-assistance.v1`. Its supported
+Lifecycle executable MAY be present in the Execution Image and on an operator's
+host. Software availability grants no Store, canonical repository, Backend,
+credential, network, edit, or Director authority capability.
 
-The Agent may inspect and revise the same draft throughout its funded
-invocation. Only after Execution Containment may the Runtime independently
-retrieve the exact Output Carrier, reopen the final workspace, and run the
-Attempt-selected parser and compiler basis. A malformed or semantically invalid
-final draft creates no Agent Work Product and receives only the bounded durable
-submission diagnostic defined below. A later correction requires a fresh
-reducer-eligible Attempt; no authoring transcript or live verdict becomes
-continuity.
+The profile provides three read-only local observations through `lifecycle
+draft`: discovery of installed authoring forms, Knowledge source parsing and
+local revision-chain inspection, and semantic draft inspection. Every file
+selection MUST be explicit, bounded, and observed as stable regular bytes
+without following descendant links. The command MUST NOT discover a target,
+scan for credentials, open a Control Store, resolve current operation eligibility,
+invoke a Backend or provider, or mutate the selected files. Knowledge inspection
+MUST use the existing Knowledge parsing, canonicalization, digest, and local
+revision owners under the explicitly supplied workspace's public repository
+parsing policy. It MUST state that selected-file inspection is not complete
+Knowledge Set validity, relationship closure, or Candidate validity.
+
+The semantic route MUST use the Attempt-selected parser and shared semantic
+compiler against `lifecycle.agent-work-product-validation-basis.v1`. Runtime
+constructs this exact compact basis from the role, installed body/template,
+parser and compiler identities and digests, complete frozen citation registry,
+and exact reviewer proposition set. It contains only role/profile coordinates,
+registry and proposition-set digests, sorted unique citation identities and kinds
+with their enduring Knowledge identity or null, sorted unique proposition
+identities, and its canonical self-digest. It contains no source locator,
+repository path, full retained subject, credential, callback, or capability.
+At most 16,384 citation facts and 4,096 proposition identities are permitted.
+The canonical UTF-8 basis is bounded at 8 MiB; the semantic draft retains its
+existing 1 MiB parser bound. Missing, malformed, substituted, or mismatched
+basis/profile input MUST fail closed without inventing missing facts.
+
+The provider input v8 inventory includes exactly one read-only
+`semantic-basis.json`. Its bytes participate in the content inventory, and its
+self-digest participates as `validationBasisDigest` in the input-material
+subject. In the Execution Input Set it is one non-executable `application/json`
+`operation-input` member bound to the exact role-subject digest. Before dispatch,
+Runtime MUST regenerate the basis from the retained invocation inputs and
+require exact equality. The selected runner exposes only this named member,
+the Role Brief, and projected sources in the read-only provider input root;
+other operation inputs remain private. The Role Brief advertises the installed
+local command and this exact basis path.
+
+A local semantic observation binds the exact source-byte digest, successfully
+validated basis digest, and checked scope. It may report a safe diagnostic code,
+phase, bounded line, typed local handle, subject identity, and up to 32 matching
+citation handles already present in that basis. It MUST NOT echo authored prose,
+source excerpts, private locators, provider messages, or credentials. Correction
+advice explains the selected grammar or existing semantic rule; it MUST NOT
+rewrite the draft, invent a supported claim, or substitute a semantic judgment.
+A successful result means only `valid-for-checked-scope` against the supplied
+bytes and basis. On the host, the command does not authenticate a caller-supplied
+basis or establish its currentness. In the Cell, immutable Input Set custody
+supplies the exact basis; the local observation still grants no authority.
+
+The Agent may inspect, correct, and re-inspect the same draft within the funded
+invocation. These observations are not Control revisions, Journal events,
+Evidence, continuation state, or submission triggers. The profile exposes no
+host validator endpoint, callback, token, socket, or live Store service.
+After Containment, Runtime MUST independently retrieve the exact Output Carrier,
+reopen its final workspace, and run the frozen parser/compiler basis again.
+No local success, transcript, or Cell validity claim can replace that operation.
+An invalid final draft creates no Work Product and receives only the bounded
+durable submission diagnostic below. Correction after the Attempt closes still
+requires a fresh reducer-eligible Attempt.
 
 ## Semantic Parsing and Work Product Compilation
+
+The Agent authors meaning in a mutable workspace; downstream Runtime owners
+need one stable, typed interpretation with exact references. Parsing closes
+that language boundary. Compilation then supplies the bindings and canonical
+representation that the Agent does not own. Keeping these steps distinct lets
+Runtime reject malformed submission without blaming the Agent for a later
+compiler invariant failure, and retain semantic equivalence without pretending
+that different submitted byte layouts were identical.
 
 After Execution Containment and a valid submission trigger, the Runtime reads
 the exact workspace member from the independently validated Output Carrier. It
@@ -704,7 +898,7 @@ The parser MUST:
 
 ### Workspace-byte and parse-result digests
 
-Provider adapter v6 separates four byte and value subjects that a terminal
+Provider Adapter v7 separates four byte and value subjects that a terminal
 output contract previously risked conflating:
 
 - `workspaceRawDigest` is SHA-256 over the exact bounded `semantic.md` bytes
@@ -773,15 +967,15 @@ retained Attempt inputs. It:
 3. assigns deterministic global identities to local semantic objects;
 4. normalizes paths and scalar sets, rejects conflicts, and orders set-like
    values under the selected profile;
-5. renders one canonical semantic Markdown body under the selected v2 body
+5. renders one canonical semantic Markdown body under the selected v4 body
    profile, with exact section, metadata, item, anchor, and blank-line order;
 6. derives only mechanics and exact facts owned by the compiler; and
 7. submits one immutable `agent-work-product` revision and its finalization
    event through the Control Store.
 
 The installed parser profile is exactly
-`lifecycle.agent-work-product-parser.v2` and the installed compiler profile is
-exactly `lifecycle.agent-work-product-compiler.v2`. The Attempt binds both
+`lifecycle.agent-work-product-parser.v4` and the installed compiler profile is
+exactly `lifecycle.agent-work-product-compiler.v4`. The Attempt binds both
 profile identities and digests plus the role-specific template identity and
 digest. A similarly shaped body parsed under another profile is not an
 Agent Work Product for that Attempt.
@@ -864,7 +1058,7 @@ The typed payload retains this runtime-derived semantic-body binding:
 
 ```json
 {
-  "profileId": "lifecycle.agent-work-product-body.<role>.v2",
+  "profileId": "lifecycle.agent-work-product-body.<role>.v4",
   "digest": "sha256:...",
   "fragments": [
     {
@@ -931,9 +1125,9 @@ collapses only exact duplicates permitted by the owning profile, rejects a
 conflicting duplicate, and never uses SQLite row order, filesystem enumeration,
 object insertion order, or provider event order as canonical order.
 
-## Provider Adapter v6
+## Provider Adapter v7
 
-A conforming `lifecycle.provider-adapter.v6` adapter MUST:
+A conforming `lifecycle.provider-adapter.v7` adapter MUST:
 
 - resolve and verify its exact Provider Descriptor and installation identity;
 - consume only the exact Provider Input and Capability Profile selected by the
@@ -967,18 +1161,18 @@ redispatch an Attempt, or treat a provider resume token as continuity.
 
 `codex exec` is the first expected provider integration. Its provider service
 channel is Runtime infrastructure, not general Agent network capability. It
-has no special product, Process, Evidence, or Founder authority.
+has no special product, Process, Evidence, or Director authority.
 
-The Foundation `codex-exec-standard-v6` claim is limited to the exact selected
-compatibility range `>=0.151.0 <0.152.0`; the installed production Image for
-this revision contains Codex `0.151.0`. The Runtime MUST compare the Image tool
+The Foundation `codex-exec-standard-v7` claim is limited to the exact selected
+compatibility range `>=0.153.4 <0.154.0`; the selected Image for
+this revision contains Codex `0.153.4`. The Runtime MUST compare the Image tool
 inventory version to the Descriptor before allocating an Attempt Cell and MUST
 classify Codex 0.150.x or any other incompatible version as unsupported before
 dispatch.
 
 ## Provider Events and Operational Material
 
-Provider events can help a human observe tool calls, messages, resource use,
+Provider events can help a caller observe tool calls, messages, resource use,
 Candidate motion, and provider health while the Attempt runs. They are not
 Control Record Events and MUST NOT:
 
@@ -1038,16 +1232,26 @@ MUST have:
 The Candidate Revision, its exact Carrier publication, its relationships, the
 event, and the operation-support replacement become visible together or not at
 all. A crash cannot expose a Candidate Revision whose Carrier is absent or a
-Carrier selected by no finalized Candidate Revision. A published but unselected
-content-addressed object is unreferenced private material eligible for later
-Reclamation, not a Candidate Revision.
+Candidate selection without its finalized revision. Publication of a Carrier
+alone does not select a Candidate. A Carrier can instead be explicitly retained
+for Receipt-bound repair under the rules below. A published object referenced
+by neither owner remains unreferenced private material eligible for later
+Reclamation.
 
-Provider outcome, Work Product outcome, and successor outcome are independent.
-A timeout, cancellation, forced termination, provider failure, or missing Work
-Product can still have disposition `promoted` when exact valid output was
-already produced and survived containment. A successful provider completion or
-valid Work Product can have `not-produced`, `unavailable`, or `invalid` output.
-Neither branch changes the provider or Work Product observation.
+Three owners answer different questions about the same Attempt. Provider
+observation says how execution ended. Semantic parsing and compilation say
+whether the Agent submitted a valid Work Product. Candidate validation and
+retention say whether exact Product output can advance the Candidate. None of
+these conclusions supplies the other two.
+
+For example, a timed-out builder can leave no valid Work Product but complete
+valid Product bytes. After Containment, retrieval, validation, and Carrier
+publication, a promoted successor preserves those bytes for the next Attempt.
+The Receipt still records timeout and absent or invalid semantics. Conversely,
+a successful provider with a valid Work Product can leave invalid Product
+Knowledge: the prior Candidate remains current, and the exact rejected output
+may support the repair route below. An Attempt's cost or unsuccessful outcome
+therefore does not decide whether its useful work survives.
 
 An unchanged valid output MAY be `promoted`. Its successor reuses the exact
 input Carrier, records `contentDisposition: unchanged`, and binds the builder
@@ -1070,6 +1274,36 @@ Candidate state remains reversible and noncanonical. A Work Product claim of
 completion, a zero provider exit, successful output promotion, or unchanged
 content is not Evidence or acceptance.
 
+### Rejected Product output and repair
+
+A complete, structurally verified Product tree can fail Candidate rules without
+becoming unavailable bytes. Only the Candidate owner's conclusive observation
+of the exact Carrier and application base can settle that result as `invalid`.
+Its typed rejection binds the manifest digest, tree, application-base commit,
+and exact failure-facts digest, with a bounded public explanation. Complete
+invalid Knowledge may supply its first structured diagnostic and full
+Validation Result digest. An incomplete tree or Knowledge observation, failed
+source read, or generic exception cannot establish this rejection. Recovery
+retains the exact rejection once observed rather than repeatedly attempting the
+same invalid successor.
+
+When that complete rejected Product Carrier is available, the builder Receipt
+retains the exact repair selection defined by
+[Control](CONTROL.md#builder-repair-output). It creates no Candidate Revision
+and gives no authority to malformed or Draft Knowledge. Provider/semantic
+output channels, credentials and private execution material are not Product
+repair bytes. Unmappable or incomplete output still cannot supply a repair
+selection.
+
+The next builder uses that selected material read-only under
+[Projection](PROJECTION.md#rejected-product-repair), with the current valid
+Candidate as its writable basis. The selection can survive byte-identical
+readmission through an unchanged-mandate reaffirmation so a permitted larger
+Projection can make repair possible. A new ordinary Candidate successor,
+integration result or changed mandate ends that repair selection. Missing exact
+selected bytes remain an availability failure; the compiler cannot silently
+omit them and pretend the rejected work never existed.
+
 ## Execution Receipt
 
 Every terminal Agent Attempt produces one immutable `execution-receipt`
@@ -1086,11 +1320,14 @@ successor only when one was promoted; otherwise it is absent. The input remains
 directly and exactly bound by the Receipt payload and the observed Attempt. A
 reviewer Receipt references the exact sealed input Revision it observed. A
 reconnaissance Receipt has no Candidate relationship or Candidate payload.
+For boundary resolution, its observed Attempt and Input Set retain the frozen
+Candidate input binding; that input does not become a Candidate observation
+or successor output of reconnaissance.
 
 Its typed payload records at least:
 
 - exact provider effect intent and observation correspondence;
-- Provider Descriptor, installed adapter-v6 identity, model, Investment,
+- Provider Descriptor, installed adapter-v7 identity, model, Investment,
   Capability Profile, and expected and directly observed executable identities;
 - Execution Backend Profile, Execution Image, Execution Specification, and
   Execution Input Set identities and digests;
@@ -1142,7 +1379,7 @@ forced termination, provider failure, capability refusal, security stop, or
 runtime failure. Its terminal stage is exactly `preflight`, `compatibility`,
 `dispatch`, `running`, `result-validation`, or `evaluated`; the no-effect
 branch is Runtime-derived from the exact direct Execution Observation, and
-every other branch is copied from the closed provider-adapter-v6 observation
+every other branch is copied from the closed provider-adapter-v7 observation
 rather than inferred from provider text. Exceptions and provider-specific
 messages are not terminal classifiers.
 An observed executable identity that is null or differs from the exact identity
@@ -1176,8 +1413,8 @@ workspace failure-facts digest. This durable diagnostic identifies the failure
 class without retaining draft excerpts, line text, local handles, physical
 locations, provider messages, or suggested replacement semantics. A successful
 submission and an unavailable workspace have no retained submission diagnostic.
-There is no invocation-local correction response or authoring transcript to
-copy into the Receipt.
+Local advisory correction responses and authoring transcripts MUST NOT be
+copied into the Receipt or treated as durable submission diagnostics.
 
 ## Event Order and Attempt Lifecycle
 
@@ -1211,7 +1448,7 @@ execution facts, not new Journal event types. The existing
 `provider-effect-intended` milestone is the durable one-time dispatch boundary.
 The optional `candidate-revision-observed` event is emitted only as part of
 atomic successor promotion; no-successor dispositions live in the Receipt.
-The Journal therefore remains the same closed set of twenty-two events.
+The Journal therefore remains the same closed set of twenty-five events.
 
 The Attempt View is computed after the exact Receipt and any optional successor
 are durable. It is not appended as another record or event.
@@ -1255,7 +1492,7 @@ That checkpoint is the activity-bound
 `lifecycle.control-record-operation-support.v1` row in the same Delivery
 Control Record Store. Its compare-and-swap generation and payload digest make
 each recovery update exact while keeping it outside the Journal and logical
-inventory. The Founder may inspect it through a bounded Runtime operation while
+inventory. The Director may inspect it through a bounded Runtime operation while
 it is retained; agents, provider adapters, and interfaces cannot mutate it. The
 Runtime removes the row only when the Activity has no remaining recovery
 purpose. Support creation and activity opening, Attempt plus intent and
@@ -1309,10 +1546,9 @@ the prior model.
 
 - the active Work Boundary remains exact and coherent;
 - the current Candidate Revision and complete immutable Revision Carrier are
-  available, valid, and bound to the admitted base;
+  available, valid, and bound to its immutable application base;
 - the admitted historical repository and Knowledge subjects remain loadable and
-  exact, the canonical branch still names the admitted commit and tree, and the
-  authoritative target checkout is completely clean;
+  exact, together with the current Candidate's retained application parent;
 - no Process-frozen Material Condition blocks productive work;
 - required capability is available; and
 - the reducer exposes `delivery.continue` for the current event head.
@@ -1323,10 +1559,9 @@ one immutable Input Set. The Backend creates a fresh Cell; it does not reopen a
 prior workspace or provider session. Provider interruption, context exhaustion,
 and failed commands do not by themselves change the mandate. A failed
 evaluation can return the same Candidate to correction. A material mandate
-problem follows revise or reaffirm and distinct readmission. Any canonical or
-authoritative-worktree movement is a branch-lease violation and prevents the
-Attempt. It is not adopted as a new context or mandate; exact restoration or
-no-ship is required.
+problem follows revise or reaffirm and distinct readmission. Canonical movement
+alone does not prevent the Attempt. Explicit integration and required context-
+change readmission own a new application parent or governing context.
 
 A provider-native resume token, conversation, workspace, or cached session
 cannot supply cross-Attempt continuity. Candidate Revision Carriers and Control
@@ -1391,7 +1626,7 @@ An Agent Attempt does not:
 - make an Agent author protocol mechanics;
 - treat activity, elapsed time, changed paths, or a completion claim as proof;
 - turn provider events into a development log;
-- merge Work Product, Receipt, Candidate Revision, Evidence, or Founder
+- merge Work Product, Receipt, Candidate Revision, Evidence, or Director
   authority;
 - use provider history as Process continuity;
 - expose a Cell workflow, Execution Handle, backend retry, public Reclamation state,

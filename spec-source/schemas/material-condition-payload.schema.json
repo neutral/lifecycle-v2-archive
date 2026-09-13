@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:material-condition-payload:v1",
-  "title": "Lifecycle Material Condition Payload v1",
+  "$id": "urn:lifecycle:schema:material-condition-payload:v4",
+  "title": "Lifecycle Material Condition Payload v4",
   "description": "Runtime-derived fact that the active mandate can no longer govern productive Candidate work honestly.",
   "type": "object",
   "additionalProperties": false,
@@ -16,8 +16,12 @@
     "limitations"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.material-condition-payload.v1" },
-    "profileId": { "const": "lifecycle.material-condition.foundation-v1" },
+    "schema": {
+      "const": "lifecycle.material-condition-payload.v4"
+    },
+    "profileId": {
+      "const": "lifecycle.material-condition.foundation-v3"
+    },
     "conditionClass": {
       "enum": [
         "meaning-ambiguity",
@@ -27,45 +31,358 @@
         "risk-change",
         "architecture-conflict",
         "assurance-conflict",
-        "founder-tradeoff",
+        "director-tradeoff",
         "missing-authority",
         "missing-required-source",
         "required-capability-unavailable",
         "projection-closure-exceeded",
-        "no-honest-route"
+        "no-honest-route",
+        "integration-context-change"
       ]
     },
-    "source": { "$ref": "#/$defs/agentProposalSource" },
-    "observedFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "blocking": { "const": true },
+    "source": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/agentProposalSource"
+        },
+        {
+          "$ref": "#/$defs/integrationAssessmentSource"
+        },
+        {
+          "$ref": "#/$defs/projectionCompilationSource"
+        }
+      ]
+    },
+    "observedFactsDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "blocking": {
+      "const": true
+    },
     "ruleSet": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "digest", "implementationId", "implementationDigest"],
+      "required": [
+        "id",
+        "digest",
+        "implementationId",
+        "implementationDigest"
+      ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "implementationId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "implementationDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "limitations": {
       "type": "array",
       "maxItems": 128,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine"
+      }
     }
   },
   "$defs": {
     "agentProposalSource": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "conditionId", "fragmentDigest"],
+      "required": [
+        "kind",
+        "conditionId",
+        "fragmentDigest"
+      ],
       "properties": {
-        "kind": { "const": "agent-proposal" },
-        "conditionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "fragmentDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "kind": {
+          "const": "agent-proposal"
+        },
+        "conditionId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "fragmentDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
+      }
+    },
+    "integrationAssessmentSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "integration-assessment"
+        }
+      }
+    },
+    "projectionCompilationSource": {
+      "description": "Exact owned mandatory-size refusal before builder or reviewer allocation. The Control course binds the frozen Candidate and governing Boundary; only evaluation additionally binds its exact Seal.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "requestDigest",
+        "profile",
+        "compiler",
+        "measurement",
+        "refusalFactsDigest"
+      ],
+      "properties": {
+        "kind": {
+          "const": "projection-compilation"
+        },
+        "requestDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        },
+        "refusalFactsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "measurement": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "mandatoryItems",
+                "mandatoryBytes",
+                "sourceBytes",
+                "maximumMandatoryItems",
+                "maximumMandatoryBytes",
+                "maximumItemBytes",
+                "maximumSourceBytes",
+                "oversized"
+              ],
+              "properties": {
+                "mandatoryItems": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "mandatoryBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "sourceBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maximumMandatoryItems": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maximumMandatoryBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maximumItemBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maximumSourceBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "oversized": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "count",
+                    "digest",
+                    "witness"
+                  ],
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000
+                    },
+                    "digest": {
+                      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+                    },
+                    "witness": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "bytes"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[!-~]{1,512}$"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "kind": {
+                  "const": "complete-closure"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "category",
+                "id",
+                "locator",
+                "objectId",
+                "observedBytes",
+                "maximumItemBytes"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "mandatory-item"
+                },
+                "category": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "locator": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "objectId": {
+                  "type": "string",
+                  "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                },
+                "observedBytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "maximumItemBytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              }
+            }
+          ]
+        },
+        "compiler": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "digest": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
+          }
+        }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "conditionClass": {
+            "const": "integration-context-change"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "$ref": "#/$defs/integrationAssessmentSource"
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "conditionClass": {
+              "const": "projection-closure-exceeded"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "source": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/agentProposalSource"
+                },
+                {
+                  "$ref": "#/$defs/projectionCompilationSource"
+                }
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/agentProposalSource"
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -63,7 +64,7 @@ test("compiled Foundation facade initializes, validates, and detects canonical d
       implementationRoots: [],
       stage: true,
     },
-  }, { authoritySecret: AUTHORITY_SECRET });
+  }, { authorityCredential: receiveFoundationAuthorityCredential(AUTHORITY_SECRET, "initialize") });
 
   assert.equal(initialized.status, "completed");
   assert.equal(initialized.targetId, "qualification-target");
@@ -82,18 +83,18 @@ test("compiled Foundation facade initializes, validates, and detects canonical d
     selections: Record<string, unknown>;
     provider: { protocol: string; defaultDescriptorId: string; defaultDescriptorDigest: string };
   };
-  assert.equal(contract.$schema, "lifecycle.repository.v15");
-  assert.equal(contract.schemaVersion, 15);
-  assert.equal(contract.specification.revision, "lifecycle.foundation.1.0.0-rc.10");
-  assert.equal(contract.runtime.compatible, "lifecycle.runtime.foundation.v10");
-  assert.equal(contract.runtime.interface, "lifecycle.interface.foundation.v10");
+  assert.equal(contract.$schema, "lifecycle.repository.v22");
+  assert.equal(contract.schemaVersion, 22);
+  assert.equal(contract.specification.revision, "lifecycle.foundation.1.0.0-rc.17");
+  assert.equal(contract.runtime.compatible, "lifecycle.runtime.foundation.v17");
+  assert.equal(contract.runtime.interface, "lifecycle.interface.foundation.v17");
   assert.equal(Object.hasOwn(contract.runtime, "protocol"), false);
   assert.equal(Object.hasOwn(contract.selections, "interfaceProtocol"), false);
-  assert.equal(contract.provider.protocol, "lifecycle.provider-adapter.v6");
-  assert.equal(contract.provider.defaultDescriptorId, "codex-exec-standard-v6");
+  assert.equal(contract.provider.protocol, "lifecycle.provider-adapter.v7");
+  assert.equal(contract.provider.defaultDescriptorId, "codex-exec-standard-v7");
   assert.equal(
     contract.provider.defaultDescriptorDigest,
-    "sha256:2e7d6aa152145518c6ce35b561384eb9f0e49dd2736ea019f18d47d5f095fc9e",
+    "sha256:4bcb41216dad08468d53d7208909d3417415c6f5b7b1078da72285650a92d021",
   );
   assert.deepEqual(
     (await git(target.root, ["diff", "--cached", "--name-only"])).stdout.trim().split("\n").filter(Boolean).sort(),
@@ -103,6 +104,8 @@ test("compiled Foundation facade initializes, validates, and detects canonical d
       "records/behavior/.gitkeep",
       "records/blueprint/.gitkeep",
       "records/checks/.gitkeep",
+      "records/disciplines/.gitkeep",
+      "records/disciplines/registry.json",
     ],
   );
   await assert.rejects(readdir(join(target.root, "records", "control")), /ENOENT/u);
@@ -162,7 +165,7 @@ test("compiled Foundation facade refuses predecessor Control before authority cr
       input: {
         targetId: "must-not-exist",
       },
-    }, { authoritySecret: AUTHORITY_SECRET }),
+    }, { authorityCredential: receiveFoundationAuthorityCredential(AUTHORITY_SECRET, "initialize") }),
     (error: unknown) => error instanceof Error && "code" in error && error.code === "lifecycle.repository.predecessor-unsupported",
   );
   await assert.rejects(readFile(join(target.root, ".lifecycle", "repository.json")), /ENOENT/u);
@@ -185,7 +188,7 @@ test("compiled Foundation facade rejects target-contained and Git-contained mach
         input: {
           targetId: `qualification-machine-home-${placement}`,
         },
-      }, { authoritySecret: AUTHORITY_SECRET }),
+      }, { authorityCredential: receiveFoundationAuthorityCredential(AUTHORITY_SECRET, "initialize") }),
       (error: unknown) => error instanceof Error && "code" in error && error.code === "lifecycle.repository.machine-home-isolation",
     );
 
@@ -215,7 +218,7 @@ test("compiled Foundation initialization rolls back a post-contract staging faul
   await writeFile(indexLock, "qualification fault\n", "utf8");
   try {
     await assert.rejects(
-      runtime.execute(request, { authoritySecret: AUTHORITY_SECRET }),
+      runtime.execute(request, { authorityCredential: receiveFoundationAuthorityCredential(AUTHORITY_SECRET, "initialize") }),
       (error: unknown) => error instanceof Error
         && (!('code' in error) || error.code !== "lifecycle.repository.initialization-recovery"),
     );
@@ -230,7 +233,7 @@ test("compiled Foundation initialization rolls back a post-contract staging faul
   assert.deepEqual(await readdir(target.home), []);
   assert.equal((await git(target.root, ["status", "--short"])).stdout, "");
 
-  const initialized = await runtime.execute(request, { authoritySecret: AUTHORITY_SECRET });
+  const initialized = await runtime.execute(request, { authorityCredential: receiveFoundationAuthorityCredential(AUTHORITY_SECRET, "initialize") });
   assert.equal(initialized.status, "completed");
   const contract = JSON.parse(await readFile(join(target.root, ".lifecycle", "repository.json"), "utf8")) as {
     authority: { keyId: string };

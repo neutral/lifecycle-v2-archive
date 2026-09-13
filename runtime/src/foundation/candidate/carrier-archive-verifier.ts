@@ -13,6 +13,7 @@ import {
 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import { openCandidateRevisionCarrier } from "./carrier-store.js";
+import { readFoundationBuilderRepairOutputV1 } from "./repair-output.js";
 import {
   FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_MEDIA_TYPE,
   FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE,
@@ -57,12 +58,12 @@ function object(value: ControlJsonValue | undefined, label: string): ControlJson
   return value as ControlJsonObject;
 }
 
-function candidateRevisions(store: ControlRecordStore): readonly ControlRecordRevision[] {
+function candidateRevisions(store: ControlRecordStore, recordKind = "candidate-revision"): readonly ControlRecordRevision[] {
   const current: ControlRecordRevision[] = [];
   let afterRecordId: string | null = null;
   for (;;) {
     const page = store.listCurrentRevisions({
-      recordKinds: Object.freeze(["candidate-revision"]),
+      recordKinds: Object.freeze([recordKind]),
       afterRecordId,
       limit: 1_000,
     });
@@ -84,8 +85,8 @@ function candidateRevisions(store: ControlRecordStore): readonly ControlRecordRe
         limit: 1_000,
       });
       for (const revision of page) {
-        if (revision.recordKind !== "candidate-revision") {
-          fail("Candidate revision inventory contains another Control family", revision);
+        if (revision.recordKind !== recordKind) {
+          fail("Carrier-selecting revision inventory contains another Control family", revision);
         }
         revisions.push(revision);
       }
@@ -206,11 +207,22 @@ export async function verifyCandidateCarriersForStoreArchive(input: Readonly<{
       rootTree: opened.manifest.rootTree,
     }));
   }
+  const repairs = [];
+  for (const receipt of candidateRevisions(input.store, "execution-receipt")) {
+    const repair = await readFoundationBuilderRepairOutputV1({ store: input.store, receipt });
+    if (repair === null) continue;
+    const opened = await openCandidateRevisionCarrier({ machineHome: input.machineHome, manifestBytes: repair.manifestBytes });
+    if (opened.manifest.rootTree !== repair.descriptor.rejection.candidateTree) fail("Retained repair Carrier does not reproduce its exact rejected tree", receipt);
+    repairs.push(Object.freeze({ receipt: { id: receipt.recordId, revision: receipt.revision, digest: receipt.digest },
+      descriptorDigest: repair.descriptor.digest, manifestFileDigest: repair.descriptor.carrierManifest.digest,
+      manifestDigest: opened.manifest.digest, artifactDigest: opened.manifest.carrierArtifact.digest, rootTree: opened.manifest.rootTree }));
+  }
   return Object.freeze({
     candidateRevisionCount: verified.length,
     carrierReferenceSetDigest: digestCanonical({
       schema: "lifecycle.candidate-carrier-archive-verification-set.private.v1",
       candidates: Object.freeze(verified),
+      repairs: Object.freeze(repairs),
     }),
   });
 }

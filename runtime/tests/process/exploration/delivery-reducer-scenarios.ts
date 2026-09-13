@@ -5,9 +5,13 @@ import type {
 } from "./bounded-explorer.js";
 import {
   admissionOracle,
+  integrationOracle,
   deliveryInvariants,
   noShipOracle,
   preparationOracle,
+  preIntentRefusalOracle,
+  projectionRefusalOracle,
+  builderProjectionRefusalOracle,
   recoveryProgressionModels,
   recoveryProgressionOracle,
   routeOpeningModels,
@@ -18,6 +22,8 @@ import {
 import {
   EventChain,
   admitSuccessful,
+  integrateSuccessful,
+  integrationAssessmentFacts,
   attemptFacts,
   boundaryFacts,
   candidateRevisionV2Payload,
@@ -36,7 +42,10 @@ import type {
   ControlRecordEventSubject,
   ControlRecordRelationship,
 } from "../../../src/foundation/control/types.js";
-import type { Sha256 } from "../../../src/foundation/validation/canonical.js";
+import { digestCanonical, type Sha256 } from "../../../src/foundation/validation/canonical.js";
+import { deliveryProperties } from "./delivery-properties.js";
+import { continuationFindings, continuationModel, type DeliveryContinuationGoal } from "./delivery-continuation-oracle.js";
+import { workDelegationFindings, workDelegationOracle } from "./delivery-work-delegation-oracle.js";
 
 function explicitFacts(
   recordKind: string,
@@ -82,6 +91,7 @@ export function observeDeliverySystem(system: EventChain, seedEventCount = 0) {
   const eventKinds = system.events.map(({ eventKind }) => eventKind);
   return Object.freeze({
     ...normalizedState,
+    delegation: state.delegation,
     normalizedState,
     normalizedSemantic: semanticState(normalizedState),
     journal: Object.freeze({ ...state.journal }),
@@ -197,10 +207,10 @@ export function buildPreparationRecoveryScenario(): DeliveryScenario {
 
   system.append("delivery-created", {});
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.prepare" });
 
@@ -222,7 +232,7 @@ function admissionDecisionFacts(
   prepared: ReturnType<typeof prepareSuccessful>,
 ): RevisionFacts {
   return explicitFacts(
-    "founder-decision",
+    "director-decision",
     { decision: "admit" },
     [
       relationship("selects-boundary", "work-boundary", prepared.boundary),
@@ -258,13 +268,13 @@ export function buildInitialAdmissionScenario(): DeliveryScenario {
       chain.append("activity-recovery-recorded", {
         activityId,
         kind: "finalization",
-        resumesAt: "founder-decision-authenticated",
+        resumesAt: "director-decision-authenticated",
         exactEffectDigest: null,
       });
     },
     authenticate: (chain: EventChain) => {
       chain.append(
-        "founder-decision-authenticated",
+        "director-decision-authenticated",
         { activityId },
         decision,
         admissionDecisionFacts(prepared),
@@ -409,7 +419,7 @@ function seedActiveDelivery(suffix: string): ActiveDeliverySeed {
     system,
     boundary: prepared.boundary,
     baselineReceipt: prepared.baselineReceipt,
-    candidate: admitted.candidate,
+    candidate: integrateSuccessful(system, prepared.boundary, admitted.candidate).candidate,
   });
 }
 
@@ -457,6 +467,7 @@ function materialConditionEvent(input: Readonly<{
 function appendContinueThroughReceipt(
   active: ActiveDeliverySeed,
   suffix: string,
+  proposal: "progress" | "material-condition" = "material-condition",
 ): Readonly<{
   activityId: string;
   attempt: ControlRecordEventSubject;
@@ -473,10 +484,10 @@ function appendContinueThroughReceipt(
   const candidate = subject(active.candidate.recordId, active.candidate.revision + 1);
   const receipt = subject(`receipt-${suffix}`);
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.continue" });
   system.append(
@@ -500,7 +511,7 @@ function appendContinueThroughReceipt(
     { activityId },
     workProduct,
     explicitFacts("agent-work-product", {
-      roleSemantics: Object.freeze({ role: "builder", proposal: "material-condition" }),
+      roleSemantics: Object.freeze({ role: "builder", proposal }),
     }),
   );
   system.append(
@@ -567,10 +578,10 @@ function resolvePausedBoundary(
   const proposedBoundary = subject(paused.boundary.recordId, paused.boundary.revision + 1);
   const proposedBaselineReceipt = subject(`baseline-${suffix}`);
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.reaffirm" });
   system.append(
@@ -645,10 +656,10 @@ function appendEvaluationThroughReceipt(
   const reviewWorkProduct = subject(`review-work-product-${suffix}`);
   const reviewReceipt = subject(`review-receipt-${suffix}`);
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.evaluate" });
   system.append(
@@ -763,10 +774,10 @@ function finishFailedEvaluation(
   const providerEffect = effect(`provider-${suffix}`);
   const receipt = subject(`review-receipt-${suffix}`);
   active.system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   active.system.append("activity-started", { activityId, operation: "delivery.evaluate" });
   active.system.append(
@@ -829,10 +840,10 @@ function finishAccepted(decisionReady: DecisionReadySeed, suffix: string): Event
     operation: "delivery.accept",
   });
   decisionReady.system.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
-    explicitFacts("founder-decision", { decision: "accept" }, [
+    explicitFacts("director-decision", { decision: "accept" }, [
       relationship("selects-boundary", "work-boundary", decisionReady.boundary),
       relationship("selects-candidate", "candidate-revision", decisionReady.candidate),
       relationship("selects-seal", "candidate-seal", decisionReady.seal),
@@ -854,7 +865,7 @@ function finishAccepted(decisionReady: DecisionReadySeed, suffix: string): Event
     { activityId },
     subject(`closure-${suffix}`),
     explicitFacts("closure", closurePayload("accepted", "integrated"), [
-      relationship("closes-with", "founder-decision", decision),
+      relationship("closes-with", "director-decision", decision),
       relationship("governed-by", "work-boundary", decisionReady.boundary),
       relationship("accepts-candidate", "candidate-revision", decisionReady.candidate),
       relationship("accepts-evidence", "evidence-packet", decisionReady.evidence),
@@ -874,7 +885,7 @@ type NoShipSeed = Readonly<{
 }>;
 
 function noShipDecisionFacts(seed: NoShipSeed): RevisionFacts {
-  return explicitFacts("founder-decision", { decision: "no-ship" }, [
+  return explicitFacts("director-decision", { decision: "no-ship" }, [
     ...(seed.boundary === null
       ? []
       : [relationship("selects-boundary", "work-boundary", seed.boundary)]),
@@ -896,17 +907,17 @@ function seedNoCandidateNoShip(): NoShipSeed {
   const brief = subject("brief-exploration-no-candidate");
   system.append("delivery-created", {});
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: preparationActivityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", {
     activityId: preparationActivityId,
     operation: "delivery.prepare",
   });
   system.append("agent-pre-intent-refused", {
-    activityId: preparationActivityId,
+ resolution: "none",    activityId: preparationActivityId,
     diagnosticCode: "lifecycle.repository.epoch-moved",
     refusalFactsDigest: effect("exploration-pre-intent-refusal"),
   });
@@ -946,11 +957,11 @@ function seedProposedBoundaryNoShip(): NoShipSeed {
   const transactionEffect = effect("exploration-proposed-boundary-no-ship");
   system.append("activity-started", { activityId, operation: "delivery.no-ship" });
   system.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     explicitFacts(
-      "founder-decision",
+      "director-decision",
       { decision: "no-ship" },
       [relationship("selects-boundary", "work-boundary", prepared.boundary)],
     ),
@@ -992,11 +1003,11 @@ function seedCandidatePresentNoShip(): NoShipSeed {
   const transactionEffect = effect("exploration-candidate-no-ship");
   system.append("activity-started", { activityId, operation: "delivery.no-ship" });
   system.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     explicitFacts(
-      "founder-decision",
+      "director-decision",
       { decision: "no-ship" },
       [
         relationship("selects-boundary", "work-boundary", prepared.boundary),
@@ -1035,10 +1046,10 @@ function seedNoShipFromCandidateOrigin(input: Readonly<{
     operation: "delivery.no-ship",
   });
   input.active.system.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
-    explicitFacts("founder-decision", { decision: "no-ship" }, [
+    explicitFacts("director-decision", { decision: "no-ship" }, [
       relationship("selects-boundary", "work-boundary", input.boundary),
       ...(input.condition === undefined
         ? []
@@ -1129,7 +1140,7 @@ function noShipCommands(
     authenticate: (chain: EventChain) => {
       const seeded = selected(chain);
       chain.append(
-        "founder-decision-authenticated",
+        "director-decision-authenticated",
         { activityId: seeded.activityId },
         seeded.decision,
         noShipDecisionFacts(seeded),
@@ -1223,7 +1234,7 @@ function noShipCommands(
           "closure",
           closurePayload("no-ship", candidate === null ? "not-created" : "abandoned"),
           [
-            relationship("closes-with", "founder-decision", decision),
+            relationship("closes-with", "director-decision", decision),
             ...(boundary === null
               ? []
               : [relationship("governed-by", "work-boundary", boundary)]),
@@ -1306,6 +1317,7 @@ export function buildCandidatePresentNoShipScenario(): DeliveryScenario {
         model: Object.freeze({
           ...oracle.initialModel,
           originStanding: "boundary-paused" as const,
+          candidateIntegrated: true,
           boundaryKind: "active" as const,
           effectDigest: boundaryPaused.transactionEffect,
         }),
@@ -1316,6 +1328,7 @@ export function buildCandidatePresentNoShipScenario(): DeliveryScenario {
         model: Object.freeze({
           ...oracle.initialModel,
           originStanding: "awaiting-readmission" as const,
+          candidateIntegrated: true,
           boundaryKind: "active-and-proposed" as const,
           effectDigest: awaitingReadmission.transactionEffect,
         }),
@@ -1326,6 +1339,7 @@ export function buildCandidatePresentNoShipScenario(): DeliveryScenario {
         model: Object.freeze({
           ...oracle.initialModel,
           originStanding: "decision-ready" as const,
+          candidateIntegrated: true,
           boundaryKind: "active" as const,
           effectDigest: decisionReady.transactionEffect,
         }),
@@ -1350,6 +1364,9 @@ const ROUTE_ACTIVITY_FACTS = Object.freeze({
     activityId: "route-start-continue",
     operation: "delivery.continue",
     agent: true,
+  }),
+  "start-integrate": Object.freeze({
+    activityId: "route-start-integrate", operation: "delivery.integrate", agent: false,
   }),
   "start-evaluate": Object.freeze({
     activityId: "route-start-evaluate",
@@ -1382,10 +1399,10 @@ function planRouteAgentBriefs(system: EventChain, suffix: string): void {
   for (const { activityId, agent } of Object.values(ROUTE_ACTIVITY_FACTS)) {
     if (!agent) continue;
     system.append(
-      "founder-brief-submitted",
+      "director-brief-submitted",
       { activityId },
       subject(`brief-${activityId}-${suffix}`),
-      explicitFacts("founder-brief"),
+      explicitFacts("director-brief"),
     );
   }
 }
@@ -1398,14 +1415,14 @@ function seedFailedPreparationForRoute(suffix: string): EventChain {
   const activityId = `prepare-${suffix}`;
   system.append("delivery-created", {});
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     subject(`brief-${suffix}`),
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.prepare" });
   system.append("agent-pre-intent-refused", {
-    activityId,
+ resolution: "none",    activityId,
     diagnosticCode: "lifecycle.repository.epoch-moved",
     refusalFactsDigest: effect(`pre-intent-refusal-${suffix}`),
   });
@@ -1588,10 +1605,10 @@ function startContinueAttempt(
   const attempt = subject(`attempt-${suffix}`);
   const providerEffect = effect(`provider-${suffix}`);
   active.system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   active.system.append("activity-started", {
     activityId,
@@ -1659,10 +1676,10 @@ function seedPreparationProgression(
   const boundary = subject(`boundary-${suffix}`);
   system.append("delivery-created", {});
   system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     brief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   system.append("activity-started", { activityId, operation: "delivery.prepare" });
   system.append(
@@ -1774,10 +1791,10 @@ function buildRecoveryProgressionSeeds(): readonly RecoveryProgressionSeed[] {
   const candidateSealBrief = subject("brief-progression-candidate-seal");
   const candidateSeal = subject("seal-progression-candidate-seal");
   candidateSealActive.system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: candidateSealActivityId },
     candidateSealBrief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   candidateSealActive.system.append("activity-started", {
     activityId: candidateSealActivityId,
@@ -1791,10 +1808,10 @@ function buildRecoveryProgressionSeeds(): readonly RecoveryProgressionSeed[] {
   const evaluationChecksReceipt = subject("final-check-progression-evaluation-checks");
   const evaluationChecksAttempt = subject("attempt-progression-evaluation-checks");
   evaluationChecksActive.system.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: evaluationChecksActivityId },
     evaluationChecksBrief,
-    explicitFacts("founder-brief"),
+    explicitFacts("director-brief"),
   );
   evaluationChecksActive.system.append("activity-started", {
     activityId: evaluationChecksActivityId,
@@ -2034,10 +2051,433 @@ export function buildRecoveryProgressionScenario(): DeliveryScenario {
 export function buildDeliveryScenarios(): readonly DeliveryScenario[] {
   return Object.freeze([
     buildPreparationRecoveryScenario(),
+    buildPreIntentRefusalRecoveryScenario(),
     buildInitialAdmissionScenario(),
+    buildIntegrationScenario(),
+    buildWorkDelegationScenario(),
     buildNoCandidateNoShipScenario(),
     buildCandidatePresentNoShipScenario(),
     buildRouteOpeningScenario(),
     buildRecoveryProgressionScenario(),
+    buildProjectionRefusalScenario(),
+    buildProjectionRefusalScenario("delivery.continue"),
+    ...buildDeliveryContinuationScenarios(),
   ]);
+}
+
+export function buildWorkDelegationScenario(): DeliveryScenario {
+  const system = new EventChain({ storeId: "store-bounded-delegation", processId: "delivery-bounded-delegation" });
+  system.append("delivery-created", {});
+  const prepared = prepareSuccessful(system, { suffix: "delegation" });
+  const admitted = admitSuccessful(system, prepared, { suffix: "delegation" });
+  const delegation = subject("delegation-bounded");
+  const selectedReference = { id: delegation.recordId, revision: delegation.revision, digest: delegation.digest };
+  const reference = (kind: string, selected: ControlRecordEventSubject) =>
+    ({ kind, id: selected.recordId, revision: selected.revision, digest: selected.digest });
+  // Exact normative fixed-policy bytes. The adapter uses canonicalization only;
+  // the independent oracle does not import or consult the production policy.
+  const policy = {
+    id: "lifecycle.work-delegation.standard-v1",
+    operations: ["delivery.continue", "delivery.evaluate", "delivery.integrate"],
+    accounting: "delivery-lifetime-delegated-reservations-no-refunds",
+    stop: "finish-reserved-operation", authority: "no-mandate-or-terminal-decision",
+    continuation: "fresh-eligible-useful-work-after-settlement",
+    maximumCellWallTimeMs: 86400000, maximumSlots: 4097,
+  };
+  const stop = {
+    schema: "lifecycle.work-delegation-stop-request.v1",
+    storeId: system.storeId, processId: system.processId,
+    delegation: reference("work-delegation", delegation),
+    requestedBy: "foundation-runtime", requestedAt: system.occurredAt,
+  };
+  const commands = bindCommands(workDelegationOracle, {
+    set: (chain) => { chain.append("work-delegation-set", {}, delegation, {
+      recordKind: "work-delegation",
+      payload: {
+        schema: "lifecycle.work-delegation.v2",
+        boundary: reference("work-boundary", admitted.boundary),
+        admission: reference("director-decision", admitted.decision), replaces: null,
+        policy: { id: policy.id, digest: digestCanonical(policy) },
+        allowedOperations: ["delivery.integrate"],
+        directions: { continue: null, evaluate: null },
+        agentSelections: { builder: null, reviewer: null },
+        ceilings: { operations: 1, agentAttempts: 0, reservedCellWallTimeMs: 0 },
+        expiresAt: null, stopPolicy: "finish-reserved-operation",
+      },
+      relationships: [relationship("uses-boundary", "work-boundary", admitted.boundary),
+        relationship("uses-admission", "director-decision", admitted.decision)],
+    }); },
+    stop: (chain) => { chain.append("work-delegation-stopped", {
+      requestDigest: digestCanonical(stop), requestedAt: stop.requestedAt, requestedBy: stop.requestedBy,
+    }, delegation, { recordKind: "work-delegation" }); },
+  });
+  const scenario = scenarioWithSeeds(workDelegationOracle,
+    [{ id: "admitted-settled-no-permission", system, model: workDelegationOracle.initialModel }], commands);
+  return Object.freeze({ ...scenario,
+    invariants: (input) => [...scenario.invariants(input),
+      ...workDelegationFindings(input.model, input.observation.delegation, selectedReference)],
+  });
+}
+
+export function buildIntegrationScenario(): DeliveryScenario {
+  const system = new EventChain({ storeId: "store-exact-integration", processId: "delivery-exact-integration" });
+  system.append("delivery-created", {});
+  const prepared = prepareSuccessful(system, { suffix: "integration" });
+  const admitted = admitSuccessful(system, prepared, { suffix: "integration" });
+  const activityId = "integration-generated";
+  const assessment = subject("assessment-generated");
+  const candidate = subject(admitted.candidate.recordId, admitted.candidate.revision + 1);
+  const parentCommit = "c".repeat(40);
+  const contextFacts = integrationAssessmentFacts(admitted.boundary, admitted.candidate, "constructed", true, parentCommit);
+  const assess = (outcome: "constructed" | "conflicted" | "invalid", contextChanged = false, wrongSource = false) => (chain: EventChain) => {
+    chain.append("integration-assessed", { activityId }, assessment,
+      integrationAssessmentFacts(admitted.boundary, wrongSource ? subject("wrong-source") : admitted.candidate, outcome, contextChanged, parentCommit));
+  };
+  const select = (fault?: "parent" | "source" | "boundary" | "observation") => (chain: EventChain) => {
+    chain.append("candidate-revision-observed", { activityId }, candidate, {
+      recordKind: "candidate-revision", payload: { ...candidateRevisionV2Payload("integration-successor"), candidateBaseCommit: fault === "parent" ? "d".repeat(40) : parentCommit,
+        ...(fault === "observation" ? { observer: { implementationId: "substituted-observer", implementationDigest: effect("substituted-observer") } } : {}) },
+      relationships: [relationship("governed-by", "work-boundary", fault === "boundary" ? subject("wrong-boundary") : admitted.boundary),
+        relationship("revises", "candidate-revision", fault === "source" ? subject("wrong-source") : admitted.candidate),
+        relationship("integrated-from", "integration-assessment", assessment)],
+    });
+  };
+  const commands = bindCommands(integrationOracle, {
+    start: (chain) => { chain.append("activity-started", { activityId, operation: "delivery.integrate" }); },
+    "assess-clean": assess("constructed"), "assess-context": assess("constructed", true),
+    "assess-conflict": assess("conflicted"), "assess-invalid": assess("invalid"), "assess-wrong-source": assess("constructed", false, true),
+    candidate: select(), "candidate-wrong-parent": select("parent"), "candidate-wrong-source": select("source"), "candidate-wrong-boundary": select("boundary"),
+    "candidate-wrong-observation": select("observation"),
+    condition: (chain) => {
+      const observedFactsDigest = digestCanonical(contextFacts.payload!.contextualApplicability);
+      chain.append("material-condition-frozen", { activityId, sourceKind: "integration-assessment", observedFactsDigest }, subject("integration-condition"), {
+        recordKind: "material-condition", payload: { conditionClass: "integration-context-change", source: { kind: "integration-assessment" }, observedFactsDigest },
+        relationships: [relationship("reported-by", "integration-assessment", assessment), relationship("freezes", "candidate-revision", candidate),
+          relationship("governed-by", "work-boundary", admitted.boundary)],
+      });
+    },
+    complete: (chain) => { chain.append("activity-completed", { activityId, outcome: "completed" }); },
+  });
+  return scenario(integrationOracle, "initial-candidate-before-integration", system, commands);
+}
+
+export function buildPreIntentRefusalRecoveryScenario(): DeliveryScenario {
+  const system = new EventChain({
+    storeId: "store-pre-intent-refusal-recovery",
+    processId: "delivery-pre-intent-refusal-recovery",
+  });
+  const activityId = "prepare-pre-intent-refusal-recovery";
+  const brief = subject("brief-pre-intent-refusal-recovery");
+  const attempt = subject("attempt-pre-intent-refusal-recovery");
+  const effectDigest = effect("pre-intent-refusal-recovery");
+  const oracle: DeliveryOracle = Object.freeze({
+    ...preIntentRefusalOracle,
+    initialModel: Object.freeze({ ...preIntentRefusalOracle.initialModel, effectDigest }),
+  });
+  system.append("delivery-created", {});
+  system.append("director-brief-submitted", { activityId }, brief, explicitFacts("director-brief"));
+  system.append("activity-started", { activityId, operation: "delivery.prepare" });
+  const refusal = Object.freeze({
+    activityId,
+    resolution: "none",
+    diagnosticCode: "lifecycle.agent-execution-cell-v1.pre-intent-contained",
+    refusalFactsDigest: effect("contained-pre-intent-refusal"),
+  });
+  const commands = bindCommands(oracle, {
+    recover: (chain) => {
+      const contains = (kind: string) => chain.events.some((event) =>
+        event.eventKind === kind && event.payload.activityId === activityId);
+      const intended = contains("provider-effect-intended");
+      chain.append("activity-recovery-recorded", {
+        activityId,
+        kind: intended ? "provider" : "finalization",
+        resumesAt: intended ? "provider-effect-observed" : contains("agent-pre-intent-refused")
+          ? "activity-completed" : contains("agent-attempt-prepared")
+            ? "provider-effect-intended" : "agent-attempt-prepared",
+        exactEffectDigest: intended ? effectDigest : null,
+      });
+    },
+    "recover-wrong-step": (chain) => {
+      chain.append("activity-recovery-recorded", {
+        activityId, kind: "finalization", resumesAt: "work-product-observation", exactEffectDigest: null,
+      });
+    },
+    "refuse-none": (chain) => { chain.append("agent-pre-intent-refused", refusal); },
+    "refuse-with-subject": (chain) => { chain.append("agent-pre-intent-refused", refusal, brief); },
+    "prepare-attempt": (chain) => {
+      chain.append("agent-attempt-prepared", { activityId }, attempt, attemptFacts(brief));
+    },
+    "intend-provider": (chain) => {
+      chain.append("provider-effect-intended", { activityId, effectDigest }, attempt, attemptFacts(brief));
+    },
+    "complete-abandoned": (chain) => { chain.append("activity-completed", { activityId, outcome: "abandoned" }); },
+    "complete-failed": (chain) => { chain.append("activity-completed", { activityId, outcome: "failed" }); },
+    "complete-success": (chain) => { chain.append("activity-completed", { activityId, outcome: "completed" }); },
+  });
+  return scenario(oracle, "opened-preparation-with-no-attempt-or-intent", system, commands);
+}
+
+export function buildProjectionRefusalScenario(operation: "delivery.continue" | "delivery.evaluate" = "delivery.evaluate"): DeliveryScenario {
+  const reviewer = operation === "delivery.evaluate";
+  const oracle = reviewer ? projectionRefusalOracle : builderProjectionRefusalOracle;
+  const active = seedActiveDelivery("projection-refusal");
+  const { system, boundary, candidate } = active;
+  const activityId = "evaluation-projection-refusal";
+  const seal = subject("seal-projection-refusal");
+  const brief = subject("brief-projection-refusal");
+  const factsDigest = effect("measured-projection-refusal");
+  system.append("director-brief-submitted", { activityId }, brief, explicitFacts("director-brief"));
+  system.append("activity-started", { activityId, operation });
+  if (reviewer) {
+    system.append("candidate-sealed", { activityId }, seal, explicitFacts("candidate-seal", {}, [
+    relationship("seals", "candidate-revision", candidate), relationship("governed-by", "work-boundary", boundary),
+  ]));
+  system.append("check-receipt-recorded", { activityId }, subject("final-check-projection-refusal"),
+    checkFacts("final", "regression-guard", "pass", relationship("checks-seal", "candidate-seal", seal)));
+  }
+  const freeze = (fault?: "candidate" | "facts") => (chain: EventChain) => {
+    const refusal = [...chain.events].reverse().find((event) => event.eventKind === "agent-pre-intent-refused");
+    const source = { kind: "projection-compilation", requestDigest: effect("projection-request"),
+      profile: { id: "projection.bounded", digest: effect("projection-profile") },
+      mandatoryFacts: { mandatoryItems: 2, mandatoryBytes: 300, sourceBytes: 0,
+        maximumMandatoryItems: 1, maximumMandatoryBytes: 200, maximumItemBytes: 200, maximumSourceBytes: 200, oversized: [] },
+      refusalFactsDigest: factsDigest };
+    const target = fault === "candidate" ? subject("wrong-projection-candidate") : candidate;
+    const relationships = [relationship("governed-by", "work-boundary", boundary),
+      relationship("freezes", "candidate-revision", target), ...(reviewer ? [relationship("observed-in", "candidate-seal", seal)] : [])];
+    // The adapter constructs the declared wire facts; the independent oracle
+    // above decides legality without importing their production owner.
+    const observedFactsDigest = fault === "facts" ? effect("wrong-projection-facts") : digestCanonical({
+      schema: "lifecycle.projection-condition-observed-facts.v1", activityId,
+      boundary: relationships[0]!.target, candidate: relationships[1]!.target, seal: reviewer ? relationships[2]!.target : null,
+      refusalEvent: { sequence: refusal?.sequence ?? 1, digest: refusal?.digest ?? effect("absent-refusal") }, source,
+    });
+    chain.append("material-condition-frozen", { activityId, sourceKind: "projection-compilation", observedFactsDigest },
+      subject("projection-condition"), explicitFacts("material-condition", {
+        conditionClass: "projection-closure-exceeded", source, observedFactsDigest,
+      }, relationships));
+  };
+  const commands = bindCommands(oracle, {
+    refuse: (chain) => { chain.append("agent-pre-intent-refused", { resolution: "projection-condition-required", activityId,
+      diagnosticCode: "lifecycle.projection.mandatory-too-large", refusalFactsDigest: factsDigest }); },
+    freeze: freeze(), "freeze-wrong-candidate": freeze("candidate"), "freeze-wrong-facts": freeze("facts"),
+    complete: (chain) => { chain.append("activity-completed", { activityId, outcome: "abandoned" }); },
+    recover: (chain) => {
+      const frozen = chain.events.some((event) => event.eventKind === "material-condition-frozen" && event.payload.activityId === activityId);
+      const refused = chain.events.some((event) => event.eventKind === "agent-pre-intent-refused" && event.payload.activityId === activityId);
+      chain.append("activity-recovery-recorded", { activityId, kind: "finalization", exactEffectDigest: null,
+        resumesAt: frozen ? "activity-completed" : refused ? "activity-finalization" : reviewer ? "evaluation-checks" : "agent-attempt-prepared" });
+    },
+  });
+  return scenario(oracle, reviewer ? "sealed-result-before-reviewer-allocation" : "candidate-before-builder-allocation", system, commands);
+}
+
+type ContinuationCourse = Readonly<{
+  id: string;
+  system: EventChain;
+  goal: DeliveryContinuationGoal;
+  prefixes: readonly Readonly<{ id: string; eventCount: number }>[];
+}>;
+
+export type DeliveryContinuationScenario = DeliveryScenario & Readonly<{
+  continuation: Readonly<{
+    course: string;
+    prefix: string;
+    retainedEventCount: number;
+    responseCount: number;
+    goal: DeliveryContinuationGoal;
+  }>;
+}>;
+
+function exactGoalSubject(selected: ControlRecordEventSubject) {
+  return Object.freeze({ id: selected.recordId, revision: selected.revision, digest: selected.digest });
+}
+
+function appendReadmission(resolved: AwaitingReadmissionSeed, suffix: string): ActiveDeliverySeed {
+  const { system } = resolved;
+  const activityId = `readmit-${suffix}`;
+  const decision = subject(`decision-${activityId}`);
+  const transactionEffect = effect(activityId);
+  const candidate = subject(resolved.candidate.recordId, resolved.candidate.revision + 1);
+  const retainedCandidate = system.resolveRevision(resolved.candidate);
+  if (retainedCandidate === null) throw new TypeError("Readmission fixture lost its exact continuing Candidate");
+  system.append("activity-started", { activityId, operation: "delivery.admit" });
+  system.append("director-decision-authenticated", { activityId }, decision, explicitFacts("director-decision", {
+    decision: "readmit",
+  }, [
+    relationship("selects-boundary", "work-boundary", resolved.proposedBoundary),
+    relationship("selects-baseline-receipt", "check-receipt", resolved.proposedBaselineReceipt),
+    relationship("continues-from-boundary", "work-boundary", resolved.boundary),
+    relationship("resolves", "material-condition", resolved.condition),
+    relationship("selects-candidate", "candidate-revision", resolved.candidate),
+  ]));
+  system.append("transaction-effect-intended", { activityId, effectDigest: transactionEffect }, decision);
+  system.append("transaction-effect-observed", { activityId, effectDigest: transactionEffect, outcome: "applied" }, decision);
+  system.append("candidate-revision-observed", { activityId }, candidate, explicitFacts("candidate-revision",
+    { ...retainedCandidate.payload, observation: "readmission-rebind" }, [
+      relationship("revises", "candidate-revision", resolved.candidate),
+      relationship("governed-by", "work-boundary", resolved.proposedBoundary),
+    ]));
+  system.append("activity-completed", { activityId, outcome: "completed" });
+  return Object.freeze({ system, boundary: resolved.proposedBoundary,
+    baselineReceipt: resolved.proposedBaselineReceipt, candidate });
+}
+
+/** An authored finite response course, not an implementation-selected route. */
+function finishProductiveContinuation(active: ActiveDeliverySeed, suffix: string) {
+  const corrected = appendContinueThroughReceipt(active, `correction-${suffix}`, "progress");
+  active.system.append("activity-completed", { activityId: corrected.activityId, outcome: "completed" });
+  const integrated = integrateSuccessful(active.system, active.boundary, corrected.candidate);
+  const evaluated = finishDecisionReady(appendEvaluationThroughReceipt({ ...active, candidate: integrated.candidate },
+    `renewed-${suffix}`), `renewed-${suffix}`);
+  return Object.freeze({
+    goal: Object.freeze({ boundary: exactGoalSubject(active.boundary), assessment: exactGoalSubject(integrated.assessment), candidate: exactGoalSubject(integrated.candidate),
+      seal: exactGoalSubject(evaluated.seal), evidence: exactGoalSubject(evaluated.evidence) }),
+    correctionActivityId: corrected.activityId,
+    integrationActivityId: `integrate-${corrected.candidate.recordId}-${corrected.candidate.revision}`,
+  });
+}
+
+function eventCoordinate(system: EventChain, eventKind: string, activityId: string): number {
+  const matching = system.events.filter((event) => event.eventKind === eventKind && event.payload.activityId === activityId);
+  if (matching.length !== 1) throw new TypeError(`Continuation must name one ${eventKind} for ${activityId}`);
+  return matching[0]!.sequence;
+}
+
+function refusalContinuationCourse(operation: "delivery.continue" | "delivery.evaluate"): ContinuationCourse {
+  const id = operation === "delivery.continue" ? "builder-refusal-readmission" : "reviewer-refusal-readmission";
+  const opening = buildProjectionRefusalScenario(operation);
+  const system = opening.seeds[0]!.system.fork();
+  const retained = system.events.length;
+  // These three declared responses reuse the mechanical fixture for the exact
+  // owner-issued refusal; no Runtime eligibility chooses or skips a response.
+  for (const commandId of ["refuse", "freeze", "complete"]) {
+    opening.commands.find(({ id: command }) => command === commandId)!.apply(system, []);
+  }
+  const paused: PausedDeliverySeed = {
+    system, boundary: subject("boundary-projection-refusal-base"),
+    baselineReceipt: subject("baseline-check-projection-refusal-base"),
+    candidate: subject("candidate-projection-refusal-base", 2), condition: subject("projection-condition"),
+  };
+  const resolved = resolvePausedBoundary(paused, id);
+  const readmitted = appendReadmission(resolved, id);
+  const completed = finishProductiveContinuation(readmitted, id);
+  return Object.freeze({ id, system, goal: completed.goal, prefixes: Object.freeze([
+    { id: "unallocated-opening", eventCount: retained },
+    { id: "lost-return-after-required-refusal", eventCount: retained + 1 },
+    { id: "lost-return-after-condition", eventCount: retained + 2 },
+    { id: "lost-return-after-resolution", eventCount: eventCoordinate(system, "work-boundary-finalized", `reaffirm-${id}`) },
+    { id: "lost-return-after-applied-readmission", eventCount: eventCoordinate(system, "transaction-effect-observed", `readmit-${id}`) },
+    { id: "lost-return-after-correction-intent", eventCount: eventCoordinate(system, "provider-effect-intended", completed.correctionActivityId) },
+    { id: "lost-return-after-evidence", eventCount: eventCoordinate(system, "evidence-packet-finalized", `evaluate-renewed-${id}`) },
+  ]) });
+}
+
+function failedProviderContinuationCourse(): ContinuationCourse {
+  const id = "failed-provider-retained-candidate";
+  const active = seedActiveDelivery(id);
+  const { system } = active;
+  const started = startContinueAttempt(active, id);
+  appendProviderIntent(system, started);
+  const retained = system.events.length;
+  appendProviderObservation(system, started, "failed");
+  system.append("agent-work-product-abandoned", { activityId: started.activityId }, started.attempt);
+  const candidate = subject(active.candidate.recordId, active.candidate.revision + 1);
+  system.append("candidate-revision-observed", { activityId: started.activityId }, candidate, explicitFacts("candidate-revision",
+    candidateRevisionV2Payload("builder-successor"), [
+      relationship("revises", "candidate-revision", active.candidate),
+      relationship("governed-by", "work-boundary", active.boundary),
+      relationship("result-of", "agent-attempt", started.attempt),
+    ]));
+  system.append("execution-receipt-recorded", { activityId: started.activityId }, subject(`receipt-${id}`), explicitFacts("execution-receipt"));
+  system.append("activity-completed", { activityId: started.activityId, outcome: "failed" });
+  const completed = finishProductiveContinuation({ ...active, candidate }, id);
+  return Object.freeze({ id, system, goal: completed.goal, prefixes: Object.freeze([
+    { id: "pending-provider-observation", eventCount: retained },
+    { id: "lost-return-after-failed-provider", eventCount: retained + 1 },
+    { id: "lost-return-after-retained-candidate", eventCount: retained + 3 },
+    { id: "lost-return-after-correction-intent", eventCount: eventCoordinate(system, "provider-effect-intended", completed.correctionActivityId) },
+    { id: "lost-return-after-evidence", eventCount: eventCoordinate(system, "evidence-packet-finalized", `evaluate-renewed-${id}`) },
+  ]) });
+}
+
+function conflictedIntegrationContinuationCourse(): ContinuationCourse {
+  const id = "conflicted-assessment-correction";
+  const active = seedActiveDelivery(id);
+  const { system } = active;
+  const activityId = `failed-integrate-${id}`;
+  system.append("activity-started", { activityId, operation: "delivery.integrate" });
+  const retained = system.events.length;
+  system.append("integration-assessed", { activityId }, subject(`failed-assessment-${id}`),
+    integrationAssessmentFacts(active.boundary, active.candidate, "conflicted"));
+  system.append("activity-completed", { activityId, outcome: "completed" });
+  const completed = finishProductiveContinuation(active, id);
+  return Object.freeze({ id, system, goal: completed.goal, prefixes: Object.freeze([
+    { id: "pending-conflict-assessment", eventCount: retained },
+    { id: "lost-return-after-conflicted-assessment", eventCount: retained + 1 },
+    { id: "lost-return-after-correction-intent", eventCount: eventCoordinate(system, "provider-effect-intended", completed.correctionActivityId) },
+    { id: "lost-return-after-integration-candidate", eventCount: eventCoordinate(system, "candidate-revision-observed", completed.integrationActivityId) },
+    { id: "lost-return-after-evidence", eventCount: eventCoordinate(system, "evidence-packet-finalized", `evaluate-renewed-${id}`) },
+  ]) });
+}
+
+function retainedPrefix(course: ContinuationCourse, eventCount: number): EventChain {
+  const prefix = new EventChain({ storeId: course.system.storeId, processId: course.system.processId,
+    occurredAt: course.system.occurredAt });
+  for (const event of course.system.events.slice(0, eventCount)) {
+    const revision = event.subject === null ? null : course.system.resolveRevision(event.subject);
+    prefix.append(event.eventKind, event.payload, event.subject, revision ?? {});
+  }
+  return prefix;
+}
+
+/**
+ * Each retained prefix gets its own scenario and required goal. Aggregate phase
+ * coverage cannot let a successful prefix discharge a different obligation.
+ * A lost return is represented by replaying that exact prefix with no cached
+ * reducer result, then supplying only its remaining responses. It is not a
+ * process crash, Control Store, provider dispatch or physical-custody test.
+ */
+export function buildDeliveryContinuationScenarios(): readonly DeliveryContinuationScenario[] {
+  const courses = [failedProviderContinuationCourse(), conflictedIntegrationContinuationCourse(),
+    refusalContinuationCourse("delivery.continue"), refusalContinuationCourse("delivery.evaluate")];
+  return Object.freeze(courses.flatMap((course) => course.prefixes.map((prefix) => {
+    const responses = course.system.events.slice(prefix.eventCount);
+    const responseCount = responses.length;
+    if (responseCount === 0) throw new TypeError("A continuation seed must retain an unfinished obligation");
+    const id = `delivery-continuation/${course.id}/${prefix.id}`;
+    const system = retainedPrefix(course, prefix.eventCount);
+    return Object.freeze({
+      id,
+      clauses: Object.freeze([deliveryProperties.boundedContinuation, deliveryProperties.nonterminalProgress]),
+      bounds: Object.freeze({ maxDepth: responseCount, maxNodes: responseCount + 1, maxTransitions: responseCount }),
+      requiredCoverage: Object.freeze({ phases: Object.freeze(["productive-goal"]),
+        acceptedCommands: Object.freeze(["supply-next-response"]),
+        eventKinds: Object.freeze([...new Set(course.system.events.map(({ eventKind }) => eventKind))]),
+        generatedEventKinds: Object.freeze([...new Set(responses.map(({ eventKind }) => eventKind))]) }),
+      seeds: Object.freeze([{ id: prefix.id, system, model: continuationModel(0, responseCount) }]),
+      commands: Object.freeze([{
+        id: "supply-next-response",
+        expectation(model: DeliveryOracleModel) {
+          const completed = Number(model.phase.slice("response-".length));
+          if (!Number.isSafeInteger(completed) || completed < 0 || completed >= responseCount) {
+            throw new TypeError("Continuation response requested outside its exact finite horizon");
+          }
+          return Object.freeze({ kind: "accepted" as const, next: continuationModel(completed + 1, responseCount) });
+        },
+        apply(chain: EventChain, trace: readonly string[]) {
+          const event = responses[trace.length - 1];
+          if (event === undefined) throw new TypeError("Continuation has no response at this coordinate");
+          const revision = event.subject === null ? null : course.system.resolveRevision(event.subject);
+          chain.append(event.eventKind, event.payload, event.subject, revision ?? {});
+        },
+      }]),
+      observe: (chain: EventChain) => observeDeliverySystem(chain, prefix.eventCount),
+      invariants: ({ model, observation, trace }: Readonly<{ model: DeliveryOracleModel; observation: DeliverySystemObservation; trace: readonly string[] }>) =>
+        continuationFindings({ model, observation, completedResponses: trace.length,
+          expectedEventKinds: course.system.events.slice(0, prefix.eventCount + trace.length).map(({ eventKind }) => eventKind), goal: course.goal }),
+      fingerprint: fingerprintDeliverySystem,
+      continuation: Object.freeze({ course: course.id, prefix: prefix.id, retainedEventCount: prefix.eventCount, responseCount, goal: course.goal }),
+    });
+  })));
 }

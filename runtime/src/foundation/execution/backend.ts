@@ -21,6 +21,41 @@ declare const executionHandleBrand: unique symbol;
 
 const MAXIMUM_BACKEND_RECLAMATION_BINDING_BYTES = 64 * 1024;
 
+type FoundationUnallocatedExecutionRefusalV1 = Readonly<{
+  specificationDigest: Sha256;
+  allocationKeyDigest: Sha256;
+  diagnosticCode: string;
+  refusalFactsDigest: Sha256;
+}>;
+const unallocatedExecutionRefusals = new WeakMap<FoundationError, FoundationUnallocatedExecutionRefusalV1>();
+
+/** Backend-owner attestation after complete direct absence of its allocation resources. */
+export function witnessFoundationUnallocatedExecutionRefusalV1(input: Readonly<{
+  error: FoundationError;
+  specification: FoundationExecutionSpecificationV1;
+  allocationKey: FoundationExecutionAllocationKey;
+  refusalFactsDigest: Sha256;
+}>): void {
+  if (input.error.retryable || input.error.repositoryChanged !== false || input.error.operationalStateChanged !== false ||
+      !/^sha256:[a-f0-9]{64}$/u.test(input.refusalFactsDigest)) {
+    throw new FoundationError("lifecycle.execution.unallocated-refusal", "Execution absence requires one conclusive exact Backend observation");
+  }
+  unallocatedExecutionRefusals.set(input.error, Object.freeze({
+    specificationDigest: input.specification.digest,
+    allocationKeyDigest: foundationExecutionAllocationKeyBindingDigest(input.allocationKey),
+    diagnosticCode: input.error.code,
+    refusalFactsDigest: input.refusalFactsDigest,
+  }));
+}
+
+/** Consume the exact Backend-issued witness once; a diagnostic code is not a witness. */
+export function foundationUnallocatedExecutionRefusalV1(error: unknown): FoundationUnallocatedExecutionRefusalV1 | null {
+  if (!(error instanceof FoundationError)) return null;
+  const refusal = unallocatedExecutionRefusals.get(error) ?? null;
+  unallocatedExecutionRefusals.delete(error);
+  return refusal;
+}
+
 /** Private 256-bit allocation identity. It must never enter public facts. */
 export type FoundationExecutionAllocationKey = string & {
   readonly [allocationKeyBrand]: true;

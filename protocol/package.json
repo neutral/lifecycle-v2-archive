@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "Lifecycle Foundation presentation-neutral interface protocol.",
-  "license": "CC0-1.0 OR 0BSD",
   "type": "module",
   "main": "./dist/src/foundation.js",
   "types": "./dist/src/foundation.d.ts",
@@ -35,5 +34,6 @@
   "bundledDependencies": [
     "@noble/hashes",
     "zod"
-  ]
+  ],
+  "license": "CC0-1.0 OR 0BSD"
 }

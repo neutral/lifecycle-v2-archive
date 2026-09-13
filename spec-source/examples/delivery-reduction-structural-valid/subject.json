@@ -1,5 +1,5 @@
 {
-  "schema": "lifecycle.delivery-reduction.v2",
+  "schema": "lifecycle.delivery-reduction.v5",
   "storeId": "store.delivery.demo",
   "processId": "delivery.demo",
   "standing": "framing",
@@ -13,7 +13,8 @@
     "materialCondition": null,
     "seal": null,
     "evidence": null,
-    "closure": null
+    "closure": null,
+    "integrationAssessment": null
   },
   "journal": {
     "eventCount": 1,
@@ -26,5 +27,16 @@
     "sealSubjectDigest": null,
     "archiveManifestDigest": null
   },
-  "eligibleOperations": ["delivery.prepare"]
+  "eligibleOperations": [
+    "delivery.prepare"
+  ],
+  "delegation": {
+    "admission": null,
+    "current": null,
+    "charged": {
+      "operations": 0,
+      "agentAttempts": 0,
+      "reservedCellWallTimeMs": 0
+    }
+  }
 }

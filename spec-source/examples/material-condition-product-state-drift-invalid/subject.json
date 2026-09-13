@@ -1,6 +1,6 @@
 {
-  "schema": "lifecycle.material-condition-payload.v1",
-  "profileId": "lifecycle.material-condition.foundation-v1",
+  "schema": "lifecycle.material-condition-payload.v4",
+  "profileId": "lifecycle.material-condition.foundation-v3",
   "conditionClass": "incompatible-product-state-drift",
   "source": {
     "kind": "agent-proposal",

@@ -4,6 +4,9 @@ import {
 } from "../constants.js";
 import { createDeliveryActivityId } from "../control/activity.js";
 import type { AgentAttemptInvestment } from "../control/agent-attempt.js";
+import type { WorkBoundaryKnowledgeFact } from "../control/work-boundary.js";
+import { compileDelegatedAgentActivityOpening } from "../control/director-brief.js";
+import type { WorkDelegationReservation } from "../control/work-delegation.js";
 import { controlIdentifier, controlTimestamp } from "../control/model.js";
 import type { ControlRecordStore } from "../control/store.js";
 import type {
@@ -20,7 +23,7 @@ import type {
 } from "../repository/types.js";
 import type { Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
-import type { FoundationCheckCellRuntimeV1 } from "../check/execution-cell-v1.js";
+import type { FoundationCheckCellOperatorV1 } from "../check/execution-cell-v1.js";
 import {
   compileFoundationReviewActivityOpeningV7,
   createFoundationAgentRoleCheckpointAdapterV7,
@@ -41,9 +44,10 @@ type RevisionReference = Readonly<{
   digest: Sha256;
 }>;
 
-type FinalCheckSelection = Readonly<{
+export type FinalCheckSelection = Readonly<{
   id: string;
   definitionId: string;
+  definition: WorkBoundaryKnowledgeFact;
   bindingId: string;
   binding: FoundationCheckBinding;
 }>;
@@ -62,7 +66,7 @@ export type FoundationEvaluationPreparationV7Options = Readonly<{
   operateCheck?: typeof operateFoundationCheckV7;
   checkOperation?: FoundationOperateCheckV7Options;
   /** @internal Exact installed execution composition for sealed Checks. */
-  checkCellRuntime?: FoundationCheckCellRuntimeV1;
+  checkCellOperator?: FoundationCheckCellOperatorV1;
 }>;
 
 export type FoundationEvaluationPreparationV7Input = Readonly<{
@@ -71,10 +75,11 @@ export type FoundationEvaluationPreparationV7Input = Readonly<{
   store: ControlRecordStore;
   contract: FoundationRepositoryContract;
   semanticMarkdown: string;
-  founderId: string;
+  directorId: string;
   agentId: string;
   investment: AgentAttemptInvestment;
   runtimeId: string;
+  reservation?: WorkDelegationReservation;
 }>;
 
 export type FoundationEvaluationPreparationRecoveryV7Input = Readonly<{
@@ -182,7 +187,7 @@ function currentRevision(
 
 function candidateBase(candidate: ControlRecordRevision): string {
   if (
-    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2" ||
+    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3" ||
     candidate.payload.state === null || Array.isArray(candidate.payload.state) ||
     typeof candidate.payload.state !== "object"
   ) {
@@ -215,7 +220,8 @@ function assertContractBasis(
   }
 }
 
-function finalCheckSelections(
+/** The same exact final-Check selection feeds reservation and actual evaluation. */
+export function finalCheckSelections(
   boundary: ControlRecordRevision,
   contract: FoundationRepositoryContract,
 ): readonly FinalCheckSelection[] {
@@ -233,6 +239,12 @@ function finalCheckSelections(
       string(definition.id, "Work Boundary Check Definition identity"),
       "Work Boundary Check Definition identity",
     );
+    if (typeof definition.revision !== "number" || !Number.isSafeInteger(definition.revision) || definition.revision < 1) {
+      fail("check-selection", "A final Check requires its exact positive Definition revision");
+    }
+    const definitionReference = Object.freeze({ id: definitionId, revision: definition.revision,
+      sourceDigest: digest(definition.sourceDigest, "Check Definition source digest"),
+      semanticDigest: digest(definition.semanticDigest, "Check Definition semantic digest") });
     const bindings = array(check.bindings, "Work Boundary Check Bindings");
     if (bindings.length !== 1) {
       fail(
@@ -258,7 +270,7 @@ function finalCheckSelections(
     ) {
       fail("check-binding", `Final Check selection ${id} does not bind one exact registered mechanism`);
     }
-    selections.push(Object.freeze({ id, definitionId, bindingId, binding }));
+    selections.push(Object.freeze({ id, definitionId, definition: definitionReference, bindingId, binding }));
   }
   if (selections.length < 1) fail("final-checks", "Evaluation requires at least one final Check selection");
   return Object.freeze(selections.sort((left, right) => compareCodePoints(left.id, right.id)));
@@ -395,7 +407,7 @@ async function resume(input: Readonly<{
   runtimeId: string;
   owners: EvaluationPreparationOwners;
   checkOperation: FoundationOperateCheckV7Options;
-  checkCellRuntime?: FoundationCheckCellRuntimeV1;
+  checkCellOperator?: FoundationCheckCellOperatorV1;
 }>): Promise<FoundationEvaluationPreparationV7Result> {
   const activityId = controlIdentifier(input.activityId, "Evaluation activity identity");
   let currentActivity = activity(input.store, activityId);
@@ -495,7 +507,7 @@ async function resume(input: Readonly<{
       binding: selection.binding,
       runtimeId: input.runtimeId,
       support: checkSupport,
-      cellRuntime: input.checkCellRuntime,
+      cellOperator: input.checkCellOperator,
     }, input.checkOperation);
     if (
       revision.recordKind !== "check-receipt" || revision.payload.phase !== "final" ||
@@ -542,9 +554,14 @@ export async function prepareDeliveryEvaluationV7(
   assertContractBasis(input.store, input.contract, boundary);
   finalCheckSelections(boundary, input.contract);
   candidateBase(candidate);
-  const activityId = controlIdentifier(selected.createActivityId(), "Evaluation activity identity");
-  const submittedAt = sampleTime(selected, "Evaluation Founder Brief time");
+  const activityId = controlIdentifier(input.reservation !== undefined && options.createActivityId === undefined
+    ? input.reservation.activityId : selected.createActivityId(), "Evaluation activity identity");
+  const freshSubmittedAt = input.reservation === undefined ? sampleTime(selected, "Evaluation Director Brief time") : null;
   const startedAt = sampleTime(selected, "Evaluation activity start time");
+  const standing = input.reservation === undefined ? null : compileDelegatedAgentActivityOpening({
+    store: input.store, activityId, operation: "delivery.evaluate", reservation: input.reservation, startedAt, runtimeId: input.runtimeId,
+  });
+  const submittedAt = standing?.revision.createdAt ?? freshSubmittedAt!;
   const opening = compileFoundationReviewActivityOpeningV7({
     store: input.store,
     activityId,
@@ -554,7 +571,8 @@ export async function prepareDeliveryEvaluationV7(
       semanticMarkdown: input.semanticMarkdown,
       submittedAt,
       startedAt,
-      founderId: input.founderId,
+      directorId: input.directorId,
+      ...(input.reservation === undefined ? {} : { reservation: input.reservation }),
     }),
     boundary,
     candidate,
@@ -566,7 +584,7 @@ export async function prepareDeliveryEvaluationV7(
     activityId,
     owners: selected,
     checkOperation: options.checkOperation ?? Object.freeze({}),
-    checkCellRuntime: options.checkCellRuntime,
+    checkCellOperator: options.checkCellOperator,
   });
 }
 
@@ -579,6 +597,6 @@ export async function recoverDeliveryEvaluationPreparationV7(
     ...input,
     owners: owners(options),
     checkOperation: options.checkOperation ?? Object.freeze({}),
-    checkCellRuntime: options.checkCellRuntime,
+    checkCellOperator: options.checkCellOperator,
   });
 }

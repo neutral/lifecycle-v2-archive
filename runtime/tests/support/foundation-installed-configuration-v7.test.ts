@@ -16,8 +16,10 @@ import { FoundationError } from "../../src/foundation/error.js";
 import {
   FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7,
   resolveFoundationInstalledMachineCustodyV7,
+  resolveFoundationInstalledReadInvestmentV7,
   resolveFoundationInstalledRepositoryInitializationV7,
   resolveFoundationInstalledRuntimeConfigurationV7,
+  selectFoundationProcessRuntimeConfigurationV7,
 } from "../../src/foundation/installed-configuration-v7.js";
 import {
   FOUNDATION_GENERATED_PUBLICATION_DIGEST,
@@ -84,6 +86,16 @@ test("v7 resolves one immutable installed configuration without an optional Exec
       publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
     });
     assert(Object.isFrozen(configuration));
+    assert.deepEqual(resolveFoundationInstalledReadInvestmentV7({ environment: value.environment }), {
+      model: configuration.model,
+      reasoning: configuration.reasoning,
+    });
+    const processConfiguration = selectFoundationProcessRuntimeConfigurationV7(configuration);
+    assert.equal("codexHome" in processConfiguration, false);
+    assert.equal("execution" in processConfiguration, false);
+    assert.equal(processConfiguration.machineHome, configuration.machineHome);
+    assert.equal(processConfiguration.model, configuration.model);
+    assert.equal(processConfiguration.reasoning, configuration.reasoning);
     assert.notEqual(configuration.codexHome, value.environment.CODEX_HOME);
     const reopened = await resolveFoundationInstalledRuntimeConfigurationV7({
       environment: value.environment,
@@ -122,6 +134,53 @@ test("v7 resolves machine custody without consulting provider or retired configu
   } finally {
     await rm(value.root, { recursive: true, force: true });
   }
+});
+
+test("read Investment observes only exact configured model and reasoning without execution custody", () => {
+  const names = FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7;
+  const selected: NodeJS.ProcessEnv = {
+    [names.model]: "gpt-5.6-sol",
+    [names.reasoning]: "high",
+  };
+  const accessed: string[] = [];
+  const environment = new Proxy(selected, {
+    get(target, key) {
+      assert.equal(typeof key, "string");
+      assert.ok(key === names.model || key === names.reasoning,
+        "read preview must not consult machine paths, provider homes, Docker, images or retired settings");
+      accessed.push(key);
+      return target[key];
+    },
+    ownKeys() { throw new Error("read preview must not enumerate ambient environment"); },
+  });
+  const result = resolveFoundationInstalledReadInvestmentV7({ environment });
+  assert.deepEqual(result, { model: "gpt-5.6-sol", reasoning: "high" });
+  assert.deepEqual(accessed, [names.model, names.reasoning]);
+  assert(Object.isFrozen(result));
+});
+
+test("unavailable read Investment never fabricates or partially returns configured choices", () => {
+  const names = FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7;
+  const selected = { [names.model]: "gpt-5.6-sol", [names.reasoning]: "high" };
+  for (const name of [names.model, names.reasoning]) {
+    for (const value of [undefined, "", " model", "model name", "high\n", "high\r", "high\0", "high\u2028", "x".repeat(161)]) {
+      assert.equal(resolveFoundationInstalledReadInvestmentV7({
+        environment: { ...selected, [name]: value },
+      }), null);
+    }
+    const exactBound = "x".repeat(160);
+    assert.deepEqual(resolveFoundationInstalledReadInvestmentV7({
+      environment: { ...selected, [name]: exactBound },
+    }), {
+      model: name === names.model ? exactBound : selected[names.model],
+      reasoning: name === names.reasoning ? exactBound : selected[names.reasoning],
+    });
+  }
+  assert.equal(resolveFoundationInstalledReadInvestmentV7({ environment: {} }), null);
+  const unavailable = new Error("environment observation unavailable");
+  assert.throws(() => resolveFoundationInstalledReadInvestmentV7({
+    environment: new Proxy({}, { get() { throw unavailable; } }),
+  }), error => error === unavailable, "unknown observation errors remain errors");
 });
 
 test("v7 refuses missing, malformed, and retired installed environment", async () => {
@@ -204,6 +263,20 @@ test("v7 resolves the complete installed Docker execution selection and refuses 
     assert.equal(configuration.execution!.image.configurationDigest,
       executionValues.LIFECYCLE_EXECUTION_IMAGE_DIGEST);
     assert.equal(configuration.execution!.image.nonRootUser, "65532:65532");
+    const processConfiguration = selectFoundationProcessRuntimeConfigurationV7(configuration);
+    assert.deepEqual(Object.keys(processConfiguration).sort(), [
+      "execution", "installationId", "machineHome", "model", "publicationDigest",
+      "reasoning", "specificationRevision",
+    ]);
+    assert.deepEqual(Object.keys(processConfiguration.execution!), ["image"]);
+    assert.deepEqual(Object.keys(processConfiguration.execution!.image).sort(), [
+      "configurationDigest", "imageDigest", "imageId", "immutableReference", "nonRootUser", "platform", "runnerContractDigest", "runnerContractId",
+      "runnerImplementationDigest", "toolInventoryDigest",
+    ]);
+    assert.equal(processConfiguration.execution!.image.imageDigest, configuration.execution!.image.imageDigest);
+    assert(Object.isFrozen(processConfiguration));
+    assert(Object.isFrozen(processConfiguration.execution));
+    assert(Object.isFrozen(processConfiguration.execution!.image));
 
     for (const name of Object.keys(executionValues)) {
       const partial: NodeJS.ProcessEnv = { ...environment };
@@ -236,7 +309,7 @@ test("v7 binds the optional Agent provider to the installed Execution Image as o
         "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionToolInventoryDigest]:
         "sha256:4444444444444444444444444444444444444444444444444444444444444444",
-      [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexVersion]: "0.151.0",
+      [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexVersion]: "0.153.4",
       [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexExecutableIdentity]:
         "sha256:5555555555555555555555555555555555555555555555555555555555555555",
       [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionAgentAdapterImplementationDigest]:
@@ -244,12 +317,16 @@ test("v7 binds the optional Agent provider to the installed Execution Image as o
     };
     const configuration = await resolveFoundationInstalledRuntimeConfigurationV7({ environment });
     assert.deepEqual(configuration.execution?.image.agentProvider, {
-      codexVersion: "0.151.0",
+      codexVersion: "0.153.4",
       executableIdentity:
         "sha256:5555555555555555555555555555555555555555555555555555555555555555",
       adapterImplementationDigest:
         "sha256:6666666666666666666666666666666666666666666666666666666666666666",
     });
+    const processConfiguration = selectFoundationProcessRuntimeConfigurationV7(configuration);
+    assert.deepEqual(processConfiguration.execution!.image.agentProvider, configuration.execution!.image.agentProvider);
+    assert.notEqual(processConfiguration.execution!.image.agentProvider, configuration.execution!.image.agentProvider);
+    assert(Object.isFrozen(processConfiguration.execution!.image.agentProvider));
 
     for (const name of [
       FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexVersion,
@@ -267,7 +344,7 @@ test("v7 binds the optional Agent provider to the installed Execution Image as o
     await assert.rejects(resolveFoundationInstalledRuntimeConfigurationV7({
       environment: {
         ...value.environment,
-        [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexVersion]: "0.151.0",
+        [FOUNDATION_INSTALLED_CONFIGURATION_ENVIRONMENT_V7.executionCodexVersion]: "0.153.4",
       },
     }), configurationCode("environment"));
   } finally {

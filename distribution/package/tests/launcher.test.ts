@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
   chmod,
+  link,
   mkdir,
   mkdtemp,
   readFile,
@@ -19,6 +20,7 @@ import test from "node:test";
 import {
   assertDistributionHostPlatform,
   dockerTerminalArguments,
+  prepareDraftInvocation,
   prepareRuntimeInvocation,
   runDistributionLauncher,
 } from "../src/launcher.js";
@@ -48,6 +50,142 @@ test("runtime invocation maps target and explicit input without changing the com
     ]);
   } finally {
     await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("local draft maps only explicit read-only files without target or Git custody", async () => {
+  const root = await (await import("node:fs/promises")).realpath(await mkdtemp(join(tmpdir(), "lifecycle-draft-paths-")));
+  try {
+    const workspace = join(root, "workspace");
+    await mkdir(join(workspace, "records"), { recursive: true });
+    await mkdir(join(workspace, ".lifecycle"));
+    await writeFile(join(workspace, ".lifecycle/repository.json"), "{}\n");
+    await writeFile(join(workspace, "records/selected.md"), "selected\n");
+    await writeFile(join(workspace, "records/unselected.md"), "unselected\n");
+    const basis = join(root, "basis.json");
+    await writeFile(basis, "{}\n");
+    const knowledge = prepareDraftInvocation(["draft", "knowledge", workspace, "records/selected.md", "--format", "json"], root);
+    assert.equal(knowledge.target, null);
+    assert.deepEqual(knowledge.arguments, ["draft", "knowledge", "/lifecycle-draft/workspace", "records/selected.md", "--format", "json"]);
+    assert.deepEqual(knowledge.mounts, [
+      { source: join(workspace, "records/selected.md"), target: "/lifecycle-draft/workspace/records/selected.md", readOnly: true },
+      { source: join(workspace, ".lifecycle/repository.json"), target: "/lifecycle-draft/workspace/.lifecycle/repository.json", readOnly: true },
+    ]);
+    const semantic = prepareDraftInvocation(["draft", "semantic", workspace, "records/selected.md", "--basis", basis], root);
+    assert.deepEqual(semantic.mounts.map(({ source }) => source), [join(workspace, "records/selected.md"), basis]);
+    assert.deepEqual(semantic.arguments, ["draft", "semantic", "/lifecycle-draft/workspace", "records/selected.md", "--basis", "/lifecycle-draft/semantic-basis.json"]);
+    for (const args of [["draft", "forms"], ["draft", "forms", "knowledge"], ["help", "draft"], ["draft", "knowledge", "--help"]]) {
+      assert.deepEqual(prepareDraftInvocation(args, "/unavailable"), { arguments: args, mounts: [], target: null });
+    }
+    assert.throws(() => prepareDraftInvocation(["draft", "knowledge", workspace, "../basis.json"], root), /normalized paths/u);
+    assert.throws(() => prepareDraftInvocation(["draft", "semantic", workspace, "records/selected.md", "--basis", "basis.json"], root), /absolute file/u);
+    assert.throws(() => prepareDraftInvocation(["draft", "knowledge", workspace, ...Array.from({ length: 1025 }, () => "records/selected.md")], root), /at most 1024/u);
+    await symlink(join(workspace, "records/selected.md"), join(workspace, "records/linked.md"));
+    assert.throws(() => prepareDraftInvocation(["draft", "knowledge", workspace, "records/linked.md"], root), /regular file/u);
+    await chmod(join(workspace, "records/selected.md"), 0o755);
+    assert.throws(() => prepareDraftInvocation(["draft", "knowledge", workspace, "records/selected.md"], root), /non-executable/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("installed draft uses only the exact Runtime Image and disposable read-only support", async () => {
+  const root = await (await import("node:fs/promises")).realpath(await mkdtemp(join(tmpdir(), "lifecycle-draft-launch-")));
+  const server = createServer();
+  try {
+    const socket = join(root, "docker.sock");
+    await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(socket, resolve); });
+    const log = join(root, "docker-log.jsonl");
+    const docker = join(root, "docker.mjs");
+    const manifest = createDistributionManifestFromSelection(distributionSelectionFixture());
+    const runtime = manifest.images.runtime;
+    const runtimePlatform = runtime.platforms[0]!;
+    const workspace = join(root, "workspace");
+    await mkdir(join(workspace, ".lifecycle"), { recursive: true });
+    await mkdir(join(workspace, "records"));
+    await writeFile(join(workspace, ".lifecycle/repository.json"), "{}\n");
+    await writeFile(join(workspace, "records/selected.md"), "original selected bytes\n");
+    await writeFile(join(workspace, "records/unselected.md"), "not selected\n");
+    const replacement = join(root, "replacement.md");
+    await writeFile(replacement, "redirected bytes\n");
+    const changeSource = join(root, "change-source");
+    const snapshotLog = join(root, "snapshot.json");
+    await writeFile(docker, `#!/usr/bin/env node
+import { appendFileSync, existsSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+appendFileSync(${JSON.stringify(log)}, JSON.stringify({ args, home: process.env.HOME, config: process.env.DOCKER_CONFIG, machine: process.env.LIFECYCLE_MACHINE_HOME }) + "\\n");
+if (args[2] === "version") {
+  if (existsSync(${JSON.stringify(changeSource)})) {
+    rmSync(${JSON.stringify(join(workspace, "records/selected.md"))});
+    symlinkSync(${JSON.stringify(replacement)}, ${JSON.stringify(join(workspace, "records/selected.md"))});
+  }
+  process.stdout.write(JSON.stringify({ ApiVersion: "1.48" }));
+}
+else if (args[2] === "info") process.stdout.write(JSON.stringify({ Architecture: "amd64", OSType: "linux" }));
+else if (args[2] === "image" && args[4] === ${JSON.stringify(`${runtime.repository}@${runtime.indexDigest}`)}) process.stdout.write(JSON.stringify({
+  Id: ${JSON.stringify(runtimePlatform.configurationDigest)}, Os: "linux", Architecture: "amd64",
+  RepoDigests: [${JSON.stringify(`${runtime.repository}@${runtime.indexDigest}`)}],
+  Config: { Labels: {
+    "org.opencontainers.image.revision": ${JSON.stringify(manifest.distribution.sourceRevision)},
+    "org.opencontainers.image.version": "1.0.0",
+    "io.lifecycle.runtime-image.qualification-revision": ${JSON.stringify(manifest.coordinates.qualificationRevision)},
+    "io.lifecycle.runtime-image.runtime-invocation-protocol": "lifecycle.runtime-invocation.private.v1"
+  } }
+}));
+else if (args[2] === "run") {
+  if (args.includes("--mount")) {
+    const mounted = args[args.indexOf("--mount") + 1];
+    const source = mounted.split(",").find((part) => part.startsWith("src=")).slice(4);
+    writeFileSync(${JSON.stringify(snapshotLog)}, JSON.stringify({
+      mounted, source,
+      selected: readFileSync(source + "/workspace/records/selected.md", "utf8"),
+      files: readdirSync(source + "/workspace/records"),
+      contract: readFileSync(source + "/workspace/.lifecycle/repository.json", "utf8"),
+    }));
+  }
+  process.exit(17);
+}
+else process.exit(91);
+`);
+    await chmod(docker, 0o755);
+    // This route must not open, repair, or create the selected machine home.
+    const absentMachine = join(root, "absent-machine");
+    assert.equal(await runDistributionLauncher("lifecycle", ["draft", "forms", "builder", "--format", "json"], manifest, {
+      PATH: process.env.PATH,
+      LIFECYCLE_DISTRIBUTION_DOCKER_PATH: docker,
+      LIFECYCLE_DISTRIBUTION_DOCKER_HOST: `unix://${socket}`,
+      LIFECYCLE_MACHINE_HOME: absentMachine,
+    }), 17);
+    const observations = (await readFile(log, "utf8")).trim().split("\n").map((line) => JSON.parse(line) as { args: string[]; home: string; config: string; machine?: string });
+    assert.deepEqual(observations.map(({ args }) => args[2]), ["version", "info", "image", "run"]);
+    const run = observations.at(-1)!;
+    assert.equal(run.machine, undefined);
+    assert.equal(run.args.includes("--mount"), false);
+    assert.equal(run.args[run.args.indexOf("--network") + 1], "none");
+    assert.equal(run.args[run.args.indexOf("--entrypoint") + 1], "/opt/lifecycle/bin/lifecycle");
+    assert.deepEqual(run.args.slice(-6), [`${runtime.repository}@${runtime.indexDigest}`, "draft", "forms", "builder", "--format", "json"]);
+    assert.equal(run.args.includes("--read-only"), true);
+    assert.equal(run.args.includes("--rm"), true);
+    await assert.rejects(stat(absentMachine), { code: "ENOENT" });
+    await assert.rejects(stat(run.home), { code: "ENOENT" });
+    await assert.rejects(stat(run.config), { code: "ENOENT" });
+    await writeFile(changeSource, "replace the selected path during Docker inspection\n");
+    assert.equal(await runDistributionLauncher("lifecycle", ["draft", "knowledge", workspace, "records/selected.md"], manifest, {
+      PATH: process.env.PATH,
+      LIFECYCLE_DISTRIBUTION_DOCKER_PATH: docker,
+      LIFECYCLE_DISTRIBUTION_DOCKER_HOST: `unix://${socket}`,
+      LIFECYCLE_MACHINE_HOME: absentMachine,
+    }), 17);
+    const snapshot = JSON.parse(await readFile(snapshotLog, "utf8")) as { mounted: string; source: string; selected: string; files: string[]; contract: string };
+    assert.equal(snapshot.selected, "original selected bytes\n", "Docker must read the stable snapshot, not the redirected host pathname");
+    assert.deepEqual(snapshot.files, ["selected.md"]);
+    assert.equal(snapshot.contract, "{}\n");
+    assert.match(snapshot.mounted, /readonly/u);
+    await assert.rejects(stat(snapshot.source), { code: "ENOENT" });
+    await assert.rejects(stat(absentMachine), { code: "ENOENT" });
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(root, { recursive: true, force: true });
   }
 });
 
@@ -87,14 +225,10 @@ test("help never selects or mounts an implicit target", () => {
     mounts: [],
     target: null,
   });
-  assert.deepEqual(prepareRuntimeInvocation("lifecycle-tui", ["--help"], "/unavailable"), {
-    arguments: ["--help"],
-    mounts: [],
-    target: null,
-  });
+
 });
 
-test("linked-worktree mounts require an exact reverse Git topology", async () => {
+test("CLI refuses linked targets instead of mounting shared Git administration", async () => {
   const root = await (async () => {
     const value = await mkdtemp(join(tmpdir(), "lifecycle-launcher-worktree-"));
     return (await import("node:fs/promises")).realpath(value);
@@ -108,23 +242,66 @@ test("linked-worktree mounts require an exact reverse Git topology", async () =>
     await writeFile(join(target, ".git"), `gitdir: ${administration}\n`);
     await writeFile(join(administration, "gitdir"), `${join(target, ".git")}\n`);
     await writeFile(join(administration, "commondir"), "../..\n");
-    const prepared = prepareRuntimeInvocation("lifecycle", ["validate", target], root);
-    assert.deepEqual(prepared.mounts.map(({ source }) => source), [target, administration, common]);
-
-    await writeFile(join(administration, "gitdir"), `${join(root, "other", ".git")}\n`);
-    assert.throws(
-      () => prepareRuntimeInvocation("lifecycle", ["validate", target], root),
-      /does not bind back to the selected worktree/u,
-    );
+    for (const command of ["lifecycle"] as const) {
+      const arguments_ = ["validate", target];
+      assert.throws(
+        () => prepareRuntimeInvocation(command, arguments_, root),
+        /requires independent local Git metadata at \.git/u,
+      );
+    }
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
-test("TUI receives a TTY only when both terminal streams are TTYs", () => {
-  assert.deepEqual(dockerTerminalArguments("lifecycle", true, true), ["--interactive"]);
-  assert.deepEqual(dockerTerminalArguments("lifecycle-tui", true, false), ["--interactive"]);
-  assert.deepEqual(dockerTerminalArguments("lifecycle-tui", true, true), ["--interactive", "--tty"]);
+test("launcher target preflight refuses alternates and selected-ref indirection", async () => {
+  const root = await (await import("node:fs/promises")).realpath(
+    await mkdtemp(join(tmpdir(), "lifecycle-launcher-independent-")),
+  );
+  try {
+    const target = join(root, "target");
+    await mkdir(join(target, ".git/objects/info"), { recursive: true });
+    const prepare = () => prepareRuntimeInvocation("lifecycle", ["validate", target], root);
+    assert.deepEqual(prepare().mounts.map(({ source }) => source), [target]);
+    await mkdir(join(target, ".git/worktrees"));
+    assert.deepEqual(prepare().mounts.map(({ source }) => source), [target]);
+    await mkdir(join(target, ".git/worktrees/linked"));
+    assert.throws(prepare, /cannot share Git administration with registered linked worktrees/u);
+    await rm(join(target, ".git/worktrees/linked"), { recursive: true });
+    for (const name of ["alternates", "http-alternates"]) {
+      const marker = join(target, ".git/objects/info", name);
+      await writeFile(marker, "");
+      assert.throws(prepare, /cannot use linked worktrees or alternate Git object stores/u);
+      await rm(marker);
+    }
+    await writeFile(join(target, ".git/commondir"), ".\n");
+    assert.throws(prepare, /cannot use linked worktrees or alternate Git object stores/u);
+    await rm(join(target, ".git/commondir"));
+    await mkdir(join(target, ".git/refs/heads"), { recursive: true });
+    await writeFile(join(target, ".git/HEAD"), "ref: refs/heads/main\n");
+    const sharedRef = join(root, "shared-ref");
+    await writeFile(sharedRef, `${"a".repeat(40)}\n`);
+    await symlink(sharedRef, join(target, ".git/refs/heads/main"));
+    assert.throws(prepare, /requires independent local Git metadata at \.git\/refs\/heads\/main/u);
+    await rm(join(target, ".git/refs/heads/main"));
+    await link(sharedRef, join(target, ".git/refs/heads/main"));
+    assert.throws(prepare, /requires independent local Git metadata at \.git\/refs\/heads\/main/u);
+    await rm(join(target, ".git/refs/heads/main"));
+    await writeFile(join(target, ".git/refs/heads/main"), `${"a".repeat(40)}\n`);
+    await writeFile(sharedRef, "ref: refs/heads/main\n");
+    await symlink(sharedRef, join(target, ".git/refs/heads/alias"));
+    await writeFile(join(target, ".git/HEAD"), "ref: refs/heads/alias\n");
+    assert.throws(prepare, /requires independent local Git metadata at \.git\/refs\/heads\/alias/u);
+    await rm(join(target, ".git/refs/heads/alias"));
+    await writeFile(join(target, ".git/refs/heads/alias"), "ref: refs/heads/main\n");
+    assert.deepEqual(prepare().mounts.map(({ source }) => source), [target]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("CLI forwards stdin without allocating a TTY", () => {
+  assert.deepEqual(dockerTerminalArguments(), ["--interactive"]);
 });
 
 test("setup creates exact private support and launch cleans stale and current invocation support", async () => {
@@ -167,7 +344,8 @@ if (args[2] === "version") {
       "io.lifecycle.runtime-invocation.private.v1.protocol": "lifecycle.runtime-invocation.private.v1",
       "io.lifecycle.runtime-invocation.private.v1.invocation-id": ${JSON.stringify(staleInvocation)},
       "io.lifecycle.runtime-invocation.private.v1.state-root-digest": "STATE_ROOT_DIGEST",
-      "io.lifecycle.runtime-invocation.private.v1.source-revision": ${JSON.stringify("0".repeat(40))}
+      "io.lifecycle.runtime-invocation.private.v1.source-revision": ${JSON.stringify("0".repeat(40))},
+      "io.lifecycle.runtime-invocation.private.v1.role": "command-runtime"
     } },
     State: { Running: false }
   }));
@@ -187,7 +365,7 @@ if (args[2] === "version") {
     Config: { User: "65532:65532", Labels: {
       "org.opencontainers.image.revision": ${JSON.stringify(manifest.distribution.sourceRevision)},
       "org.opencontainers.image.version": "1.0.0",
-      "io.lifecycle.execution-image.v1.qualification-revision": "lifecycle.foundation.1.0.0-rc.10",
+      "io.lifecycle.execution-image.v1.qualification-revision": "lifecycle.foundation.1.0.0-rc.17",
       "io.lifecycle.execution-image.v1.image-id": ${JSON.stringify(execution.imageId)},
       "io.lifecycle.execution-image.v1.runner-contract-id": ${JSON.stringify(execution.runnerContractId)},
       "io.lifecycle.execution-image.v1.runner-contract-digest": ${JSON.stringify(execution.runnerContractDigest)},
@@ -203,7 +381,7 @@ if (args[2] === "version") {
     Config: { Labels: {
       "org.opencontainers.image.revision": ${JSON.stringify(manifest.distribution.sourceRevision)},
       "org.opencontainers.image.version": "1.0.0",
-      "io.lifecycle.runtime-image.qualification-revision": "lifecycle.foundation.1.0.0-rc.10",
+      "io.lifecycle.runtime-image.qualification-revision": "lifecycle.foundation.1.0.0-rc.17",
       "io.lifecycle.runtime-image.runtime-invocation-protocol": "lifecycle.runtime-invocation.private.v1"
     } }
   }));
@@ -290,6 +468,9 @@ if (args[2] === "version") {
     assert.ok(entries.some((args) => args.includes("stop") && args.includes(staleId)));
     assert.ok(!entries.some((args) => args.includes("rm") && args.includes("--force")));
     assert.ok(run.some((value: string) => value.includes("/tmp:rw,nosuid,nodev,noexec,size=536870912")));
+    assert.ok(run.some((value: string) => value.includes(
+      "/var/lib/lifecycle/distribution/invocations:rw,nosuid,nodev,noexec,size=1048576",
+    )));
     assert.ok(run.includes(`type=bind,src=${socket},dst=/run/lifecycle/docker.sock`));
 
     // A failed stop with the exact container still present requires a forced
@@ -409,8 +590,8 @@ setInterval(() => {}, 1_000);
   }
 });
 
-test("published bins gate Node before dynamically importing product code", async () => {
-  for (const name of ["lifecycle.mjs", "lifecycle-tui.mjs"]) {
+test("CLI bin gates Node before dynamically importing product code", async () => {
+  for (const name of ["lifecycle.mjs"]) {
     const bin = new URL(`../../bin/${name}`, import.meta.url);
     const source = await readFile(bin, "utf8");
     assert.notEqual((await stat(bin)).mode & 0o111, 0);

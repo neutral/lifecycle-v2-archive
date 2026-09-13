@@ -6,7 +6,7 @@ import type {
   FoundationLoadedRepositoryEpoch,
   FoundationRepositoryContract,
 } from "../repository/types.js";
-import { canonicalJson, selfDigest } from "../validation/canonical.js";
+import { canonicalJson, digestCanonical, selfDigest, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import {
   DiagnosticCollector,
@@ -18,12 +18,18 @@ import { bindingIndex, resolveKnowledgeBindings } from "./bindings.js";
 import { detectKnowledgeConflicts } from "./conflicts.js";
 import { buildDescriptionCoverage } from "./coverage.js";
 import { expectedKnowledgeKind, parseKnowledgeRecord } from "./records.js";
+import { buildRevisionIndexes, compareKnowledgeRecords as compareRecords } from "./revisions.js";
 import { buildRelationshipEdges, relationshipIndexes, validateRelationshipGraph } from "./relationships.js";
 import { sourceResolutionIndex, validateKnowledgeSources } from "./sources.js";
+import {
+  createEmptyDisciplineRegistry,
+  parseDisciplineRegistry,
+  validateDisciplineRegistryRecords,
+} from "./discipline-registry.js";
 import type {
   FoundationCoverageEntry,
+  FoundationDisciplineRegistry,
   FoundationKnowledgeIndex,
-  FoundationKnowledgeKind,
   FoundationKnowledgeRecord,
   FoundationKnowledgeSet,
   FoundationKnowledgeSetManifest,
@@ -32,13 +38,6 @@ import type {
 } from "./types.js";
 
 const STAGES = ["discovery", "records", "revision", "sources", "relationships", "coverage", "bindings", "conflicts", "manifest"] as const;
-const KIND_ORDER: Readonly<Record<FoundationKnowledgeKind, number>> = Object.freeze({
-  behavior: 0,
-  assurance: 1,
-  blueprint: 2,
-  description: 3,
-  check: 4,
-});
 type KnowledgeRepositoryView = Readonly<{
   repository: string;
   contract: FoundationRepositoryContract;
@@ -52,6 +51,50 @@ type KnowledgeRepositoryView = Readonly<{
   atlasNormalizedModelDigest: FoundationLoadedRepositoryEpoch["atlas"]["resolution"]["normalizedModelDigest"];
   atlasResourceBindingsDigest: FoundationLoadedRepositoryEpoch["atlas"]["resolution"]["resourceBindingsDigest"];
 }>;
+
+type KnowledgeCompilationWitness = Readonly<{
+  epoch: FoundationLoadedRepositoryEpoch;
+  epochDigest: Sha256;
+  carrierDigest: Sha256;
+  result: FoundationKnowledgeSetResult;
+}>;
+
+const compiledKnowledge = new WeakMap<FoundationKnowledgeSet, KnowledgeCompilationWitness>();
+
+function compilationEpochDigest(input: FoundationLoadedRepositoryEpoch): Sha256 {
+  return digestCanonical({ repository: exactRepositoryView(input), epoch: input.epoch });
+}
+
+function compilationCarrierDigest(knowledge: FoundationKnowledgeSet): Sha256 {
+  // Map indexes are derived lookup machinery, not the canonical compiler
+  // artifact used by snapshot binding. Every canonical field remains bound.
+  const { index: _index, ...carrier } = knowledge;
+  return digestCanonical(carrier);
+}
+
+/**
+ * Consume one compiler-owned result for the exact loaded epoch and artifact.
+ * Copies, restored carriers, later observations, or changed values use the
+ * caller's ordinary recompilation path. This witness grants no currentness.
+ */
+export function consumeFoundationKnowledgeCompilation(
+  input: FoundationLoadedRepositoryEpoch,
+  knowledge: FoundationKnowledgeSet,
+): FoundationKnowledgeSetResult | null {
+  const witness = compiledKnowledge.get(knowledge);
+  if (witness === undefined || witness.epoch !== input) return null;
+  compiledKnowledge.delete(knowledge);
+  try {
+    return witness.epochDigest === compilationEpochDigest(input) &&
+        witness.carrierDigest === compilationCarrierDigest(knowledge)
+      ? witness.result
+      : null;
+  } catch {
+    // A changed or noncanonical caller value cannot turn memoization into an
+    // acceptance path or introduce a new diagnostic ahead of its owner.
+    return null;
+  }
+}
 
 function asDiagnostic(error: unknown, path: string | null): Omit<FoundationDiagnostic, "severity" | "pointer" | "related" | "facts"> & { facts: Record<string, unknown> } {
   if (error instanceof FoundationError) {
@@ -105,17 +148,6 @@ function addRecordFailure(collector: DiagnosticCollector, error: unknown, path: 
   collector.add({ stage: "records", ...diagnostic });
 }
 
-function recordIdentityRevision(record: FoundationKnowledgeRecord): string {
-  return `${record.frontMatter.id}@${record.frontMatter.revision}`;
-}
-
-function compareRecords(left: FoundationKnowledgeRecord, right: FoundationKnowledgeRecord): number {
-  return KIND_ORDER[left.frontMatter.kind] - KIND_ORDER[right.frontMatter.kind] ||
-    compareCodePoints(left.frontMatter.id, right.frontMatter.id) ||
-    left.frontMatter.revision - right.frontMatter.revision ||
-    compareCodePoints(left.path, right.path);
-}
-
 function exactRepositoryView(input: FoundationLoadedRepositoryEpoch): KnowledgeRepositoryView {
   return Object.freeze({
     repository: input.repository,
@@ -129,123 +161,6 @@ function exactRepositoryView(input: FoundationLoadedRepositoryEpoch): KnowledgeR
     atlasResolutionDigest: input.atlas.resolution.digest,
     atlasNormalizedModelDigest: input.atlas.resolution.normalizedModelDigest,
     atlasResourceBindingsDigest: input.atlas.resolution.resourceBindingsDigest,
-  });
-}
-
-function buildRevisionIndexes(options: {
-  records: readonly FoundationKnowledgeRecord[];
-  collector: DiagnosticCollector;
-}): Readonly<{
-  byIdentityRevision: ReadonlyMap<string, FoundationKnowledgeRecord>;
-  revisionsByIdentity: ReadonlyMap<string, readonly FoundationKnowledgeRecord[]>;
-  currentByIdentity: ReadonlyMap<string, FoundationKnowledgeRecord>;
-  currentRecords: readonly FoundationKnowledgeRecord[];
-  historicalRecords: readonly FoundationKnowledgeRecord[];
-}> {
-  const byIdentityRevision = new Map<string, FoundationKnowledgeRecord>();
-  const revisionsByIdentity = new Map<string, FoundationKnowledgeRecord[]>();
-
-  for (const record of options.records) {
-    const key = recordIdentityRevision(record);
-    const prior = byIdentityRevision.get(key);
-    if (prior !== undefined) {
-      options.collector.add({
-        stage: "revision",
-        code: "lifecycle.knowledge.id-duplicate",
-        message: `Knowledge revision ${key} is declared more than once`,
-        path: record.path,
-        related: [prior.path],
-      });
-      continue;
-    }
-    byIdentityRevision.set(key, record);
-    const values = revisionsByIdentity.get(record.frontMatter.id) ?? [];
-    values.push(record);
-    revisionsByIdentity.set(record.frontMatter.id, values);
-  }
-
-  const currentByIdentity = new Map<string, FoundationKnowledgeRecord>();
-  for (const [identity, revisions] of [...revisionsByIdentity].sort(([left], [right]) => compareCodePoints(left, right))) {
-    revisions.sort((left, right) => left.frontMatter.revision - right.frontMatter.revision || compareCodePoints(left.path, right.path));
-    for (let index = 0; index < revisions.length; index += 1) {
-      const record = revisions[index]!;
-      const expectedRevision = index + 1;
-      if (record.frontMatter.revision !== expectedRevision) {
-        options.collector.add({
-          stage: "revision",
-          code: "lifecycle.knowledge.revision-gap",
-          message: `${identity} expected revision ${expectedRevision} but found ${record.frontMatter.revision}`,
-          path: record.path,
-          facts: { expectedRevision, actualRevision: record.frontMatter.revision },
-        });
-      }
-      const previous = index === 0 ? undefined : revisions[index - 1];
-      if (previous !== undefined) {
-        const supersedes = record.frontMatter.supersedes;
-        if (supersedes === null || supersedes.id !== identity || supersedes.revision !== previous.frontMatter.revision ||
-            supersedes.sourceDigest !== previous.sourceDigest || supersedes.semanticDigest !== previous.semanticDigest) {
-          options.collector.add({
-            stage: "revision",
-            code: "lifecycle.knowledge.supersession-invalid",
-            message: `${identity} revision ${record.frontMatter.revision} does not bind the exact preceding revision`,
-            path: record.path,
-            related: [previous.path],
-            facts: {
-              expectedRevision: previous.frontMatter.revision,
-              expectedSourceDigest: previous.sourceDigest,
-              expectedSemanticDigest: previous.semanticDigest,
-            },
-          });
-        }
-        if (record.frontMatter.status === "current" && previous.frontMatter.status !== "superseded") {
-          options.collector.add({
-            stage: "revision",
-            code: "lifecycle.knowledge.supersession-invalid",
-            message: `${identity} prior revision ${previous.frontMatter.revision} must be superseded when revision ${record.frontMatter.revision} becomes current`,
-            path: previous.path,
-            related: [record.path],
-            facts: { priorStatus: previous.frontMatter.status },
-          });
-        }
-      }
-    }
-    const currents = revisions.filter((record) => record.frontMatter.status === "current");
-    if (currents.length > 1) {
-      for (const record of currents) {
-        options.collector.add({
-          stage: "revision",
-          code: "lifecycle.knowledge.current-duplicate",
-          message: `${identity} has ${currents.length} current revisions`,
-          path: record.path,
-          related: currents.filter((entry) => entry !== record).map((entry) => entry.path),
-        });
-      }
-    } else if (currents.length === 1) {
-      const current = currents[0]!;
-      currentByIdentity.set(identity, current);
-      if (current !== revisions.at(-1)) {
-        options.collector.add({
-          stage: "revision",
-          code: "lifecycle.knowledge.current-not-latest",
-          message: `${identity} current revision is not the latest revision`,
-          path: current.path,
-          related: [revisions.at(-1)!.path],
-        });
-      }
-    }
-  }
-
-  const currentRecords = [...currentByIdentity.values()].sort((left, right) => compareCodePoints(left.frontMatter.id, right.frontMatter.id));
-  const currentKeys = new Set(currentRecords.map(recordIdentityRevision));
-  const historicalRecords = options.records.filter((record) => !currentKeys.has(recordIdentityRevision(record)))
-    .sort(compareRecords);
-  return Object.freeze({
-    byIdentityRevision,
-    revisionsByIdentity: new Map([...revisionsByIdentity].sort(([left], [right]) => compareCodePoints(left, right))
-      .map(([key, values]) => [key, Object.freeze(values)])),
-    currentByIdentity,
-    currentRecords: Object.freeze(currentRecords),
-    historicalRecords: Object.freeze(historicalRecords),
   });
 }
 
@@ -273,13 +188,14 @@ function buildManifest(options: {
   coverage: readonly FoundationCoverageEntry[];
   exemptions: FoundationKnowledgeSet["exemptions"];
   bindings: FoundationKnowledgeSet["bindings"];
+  disciplineRegistry: FoundationDisciplineRegistry;
   complete: boolean;
   valid: boolean;
 }): FoundationKnowledgeSetManifest {
   const base: Omit<FoundationKnowledgeSetManifest, "digest"> = {
-    schema: "lifecycle.knowledge-set.v1",
+    schema: "lifecycle.knowledge-set.v2",
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     repository: Object.freeze({
       targetId: options.repository.contract.targetId,
       commit: options.repository.commit,
@@ -292,6 +208,7 @@ function buildManifest(options: {
       atlasNormalizedModelDigest: options.repository.atlasNormalizedModelDigest,
       atlasResourceBindingsDigest: options.repository.atlasResourceBindingsDigest,
     }),
+    disciplineRegistry: options.disciplineRegistry,
     records: Object.freeze(options.records.map((record) => Object.freeze({
       kind: record.frontMatter.kind,
       id: record.frontMatter.id,
@@ -325,6 +242,7 @@ function buildManifest(options: {
 
 export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoch): Promise<FoundationKnowledgeSetResult> {
   const repository = exactRepositoryView(input);
+  const epochDigest = compilationEpochDigest(input);
   const collector = new DiagnosticCollector();
   const limits = repository.contract.knowledge.limits;
   const candidates = repository.treeEntries
@@ -353,9 +271,20 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
   let recordsComplete = true;
   let recordBytes = 0;
   for (const entry of candidates.slice(0, limits.maximumRecords)) {
+    if (entry.type !== "blob") {
+      addRecordFailure(collector, new FoundationError("lifecycle.knowledge.file-kind", `${entry.path} must be one regular Git blob`), entry.path);
+      continue;
+    }
+    let bytes: Buffer;
     try {
-      if (entry.type !== "blob") throw new FoundationError("lifecycle.knowledge.file-kind", `${entry.path} must be one regular Git blob`);
-      const bytes = await objectBlobBytes(repository.repository, entry.objectId, limits.maximumFileBytes);
+      bytes = await objectBlobBytes(repository.repository, entry.objectId, limits.maximumFileBytes);
+    } catch (error) {
+      // An unread blob is unavailable observation, not conclusive malformed bytes.
+      recordsComplete = false;
+      addRecordFailure(collector, error, entry.path);
+      continue;
+    }
+    try {
       if (recordBytes + bytes.byteLength > limits.maximumTotalRecordBytes) {
         recordsComplete = false;
         collector.add({
@@ -377,12 +306,33 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
 
   const frozenRecords = Object.freeze(records);
   const revisions = buildRevisionIndexes({ records: frozenRecords, collector });
+  let disciplineRegistry = createEmptyDisciplineRegistry();
+  let registryComplete = true;
+  const registryPath = repository.contract.knowledge.roots.disciplineRegistry;
+  const registryEntry = repository.treeEntries.find((entry) => entry.path === registryPath);
+  try {
+    if (registryEntry === undefined || registryEntry.type !== "blob" || registryEntry.mode !== "100644") {
+      throw new FoundationError(
+        "lifecycle.discipline.registry-missing",
+        `Repository requires one tracked non-executable Discipline registry at ${registryPath}`,
+      );
+    }
+    disciplineRegistry = parseDisciplineRegistry(
+      await objectBlobBytes(repository.repository, registryEntry.objectId, limits.maximumFileBytes),
+      repository.contract,
+    );
+    validateDisciplineRegistryRecords(disciplineRegistry, revisions.currentRecords);
+  } catch (error) {
+    registryComplete = false;
+    addRecordFailure(collector, error, registryPath);
+  }
   const sourceResult = await validateKnowledgeSources({
     repository: repository.repository,
     commit: repository.commit,
     contract: repository.contract,
     treeEntries: repository.treeEntries,
     records: frozenRecords,
+    disciplineRegistry,
     collector,
   });
   const relationships = buildRelationshipEdges({
@@ -408,7 +358,7 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
   });
   const conflicts = detectKnowledgeConflicts({ currentRecords: revisions.currentRecords, currentByIdentity: revisions.currentByIdentity, collector });
 
-  const prerequisiteComplete = discoveryComplete && recordsComplete;
+  const prerequisiteComplete = discoveryComplete && recordsComplete && registryComplete;
   const complete = prerequisiteComplete && sourceResult.complete && graph.complete;
   const valid = complete && !collector.diagnostics.some((diagnostic) => diagnostic.severity === "error");
   const manifest = buildManifest({
@@ -420,11 +370,12 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
     coverage: coverageResult.coverage,
     exemptions: coverageResult.exemptions,
     bindings,
+    disciplineRegistry,
     complete,
     valid,
   });
   const validation = collector.result({
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     subjectKind: "repository-knowledge",
     subjectId: repository.contract.targetId,
     subjectDigest: manifest.digest,
@@ -437,7 +388,7 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
     stages: STAGES.map((id) => ({
       id,
       complete: id === "discovery" ? discoveryComplete :
-        id === "records" ? recordsComplete :
+        id === "records" ? recordsComplete && registryComplete :
           id === "sources" ? prerequisiteComplete && sourceResult.complete :
             id === "relationships" ? prerequisiteComplete && graph.complete :
               id === "revision" ? prerequisiteComplete : complete,
@@ -447,6 +398,8 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
       observedCandidateRecords: candidates.length,
       observedParsedRecords: records.length,
       observedRecordBytes: recordBytes,
+      observedDisciplineAdoptions: disciplineRegistry.adoptions.length,
+      observedDisciplineWorkTypes: disciplineRegistry.workTypes.length,
       observedRelationships: relationships.length,
       observedGovernedCoverage: coverageResult.coverage.length,
       observedSources: sourceResult.observedCount,
@@ -486,6 +439,7 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
     records: frozenRecords,
     currentRecords: revisions.currentRecords,
     historicalRecords: revisions.historicalRecords,
+    disciplineRegistry,
     relationships,
     coverage: coverageResult.coverage,
     exemptions: coverageResult.exemptions,
@@ -496,11 +450,20 @@ export async function validateKnowledgeSet(input: FoundationLoadedRepositoryEpoc
     manifest,
     index,
   });
-  return Object.freeze({
+  const result: FoundationKnowledgeSetResult = Object.freeze({
     validation,
     observation,
     knowledgeSet: validation.complete && validation.valid ? observation : null,
   });
+  if (result.knowledgeSet !== null) {
+    compiledKnowledge.set(result.knowledgeSet, Object.freeze({
+      epoch: input,
+      epochDigest,
+      carrierDigest: compilationCarrierDigest(result.knowledgeSet),
+      result,
+    }));
+  }
+  return result;
 }
 
 export async function loadKnowledgeSet(input: FoundationLoadedRepositoryEpoch): Promise<FoundationKnowledgeSet> {

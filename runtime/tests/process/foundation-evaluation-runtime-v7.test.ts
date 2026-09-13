@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { FoundationError } from "../../src/foundation/error.js";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
 import type { ControlRecordStore } from "../../src/foundation/control/store.js";
 import {
@@ -37,7 +38,9 @@ function revision(kind: DeliveryControlRecordKind, id: string): ControlRecordRev
     semanticAuthority: "runtime-derived",
     createdAt: CREATED,
     semanticMarkdown: `# ${kind}\n`,
-    payload: validDeliveryControlPayload(kind),
+    payload: kind === "director-brief"
+      ? { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: ACTIVITY } }
+      : validDeliveryControlPayload(kind),
     relationships: Object.freeze([]),
   });
 }
@@ -49,7 +52,7 @@ function configuration(): FoundationInstalledRuntimeConfigurationV7 {
     codexHome: "/tmp/evaluation-runtime-machine/codex-home",
     model: "gpt-evaluation-runtime",
     reasoning: "high",
-    specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
+    specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
     publicationDigest: sha256Bytes("evaluation-runtime-publication"),
   });
 }
@@ -58,7 +61,7 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
   const boundary = revision("work-boundary", "work-boundary-evaluation-runtime");
   const candidate = revision("candidate-revision", "candidate-evaluation-runtime");
   const seal = revision("candidate-seal", "candidate-seal-evaluation-runtime");
-  const brief = revision("founder-brief", "founder-brief-evaluation-runtime");
+  const brief = revision("director-brief", "director-brief-evaluation-runtime");
   const attempt = revision("agent-attempt", "agent-attempt-evaluation-runtime");
   const retained = new Map([boundary, candidate, seal, brief, attempt].map((value) => [
     `${value.recordId}\0${value.revision}`,
@@ -86,13 +89,13 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
     opening: Object.freeze({
       agentId: "agent:evaluation-runtime-v7",
       runtimeId: RUNTIME,
-      founderId: "founder:evaluation-runtime-v7",
+      directorId: "director:evaluation-runtime-v7",
       submittedAt: CREATED,
       startedAt: "2026-08-29T22:00:01.000Z",
-      founderSubmissionRawDigest: sha256Bytes("# Evaluate\n"),
-      founderSubmissionRawByteLength: 11,
-      founderSemanticDigest: sha256Bytes("# Evaluate\n"),
-      founderSemanticByteLength: 11,
+      directorSubmissionRawDigest: sha256Bytes("# Evaluate\n"),
+      directorSubmissionRawByteLength: 11,
+      directorSemanticDigest: sha256Bytes("# Evaluate\n"),
+      directorSemanticByteLength: 11,
       investment: Object.freeze({
         id: "investment-evaluation-runtime",
         model: configuration().model,
@@ -134,6 +137,7 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
       candidateCondition: "sealed-under-evaluation" as const,
       activities: Object.freeze([]),
       subjects: Object.freeze({
+        integrationAssessment: null,
         proposedBoundary: null,
         activeBoundary: ref(boundary),
         candidate: ref(candidate),
@@ -142,6 +146,7 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
         evidence: null,
         closure: null,
       }),
+      delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
       journal: Object.freeze({ eventCount: 1, headDigest: sha256Bytes("evaluation-head") }),
       eligibleOperations: Object.freeze([]),
     }),
@@ -211,7 +216,11 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
     roleSubject: Object.freeze({ schema: "review-role-subject" }),
     capabilityProfile: Object.freeze({ id: "capability", digest: sha256Bytes("capability") }),
     providerCapability: Object.freeze({ candidateWrites: false }),
-    providerInput: Object.freeze({ role: "reviewer", operation: "delivery.evaluate" }),
+    providerInput: Object.freeze({
+      role: "reviewer",
+      operation: "delivery.evaluate",
+      contents: Object.freeze([]),
+    }),
     evidenceSet: Object.freeze({ subject: Object.freeze({}), digest: sha256Bytes("evidence-set") }),
     propositionSet: Object.freeze({ subject: Object.freeze({}), digest: sha256Bytes("propositions") }),
     investment,
@@ -220,7 +229,7 @@ function fixture(stage: "evaluation-opened" | "activity-opened") {
     opening: Object.freeze({
       agentId: "agent:evaluation-runtime-v7",
       runtimeId: RUNTIME,
-      founderId: "founder:evaluation-runtime-v7",
+      directorId: "director:evaluation-runtime-v7",
       submittedAt: CREATED,
       startedAt: "2026-08-29T22:00:01.000Z",
     }),
@@ -360,6 +369,34 @@ test("promoted evaluation recovery skips preparation and promotion and preserves
   ]);
 });
 
+test("review pre-intent rejects substituted Evidence while exact Seal and Projection remain unchanged", async () => {
+  const value = fixture("evaluation-opened");
+  const calls: string[] = [];
+  const baseOptions = runtimeOptions(value, calls);
+  const options: FoundationEvaluationRuntimeV7Options = Object.freeze({
+    ...baseOptions,
+    owners: Object.freeze({
+      ...baseOptions.owners,
+      compileRetained: async () => Object.freeze({
+        ...value.retainedContext,
+        evidenceSet: Object.freeze({
+          ...value.retainedContext.evidenceSet,
+          digest: sha256Bytes("substituted-evidence-set"),
+        }),
+      }) as never,
+    }),
+  });
+  await assert.rejects(recoverDeliveryEvaluationV7({
+    target: "/tmp/evaluation-runtime-target",
+    store: value.store,
+    contract: Object.freeze({ targetId: TARGET }) as never,
+    configuration: configuration(),
+    activityId: ACTIVITY,
+    runtimeId: RUNTIME,
+  }, options), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.evaluation-runtime-v7.pre-intent-drift");
+});
+
 test("fresh evaluation fixes activity identity and Investment before preparation", async () => {
   const value = fixture("evaluation-opened");
   const calls: string[] = [];
@@ -386,7 +423,7 @@ test("fresh evaluation fixes activity identity and Investment before preparation
     contract: Object.freeze({ targetId: TARGET }) as never,
     configuration: configuration(),
     semanticMarkdown: "# Evaluate\n",
-    founderId: "founder:evaluation-runtime-v7",
+    directorId: "director:evaluation-runtime-v7",
     agentId: "agent:evaluation-runtime-v7",
     runtimeId: RUNTIME,
   }, Object.freeze({ ...options, createActivityId: () => ACTIVITY }));
@@ -394,3 +431,20 @@ test("fresh evaluation fixes activity identity and Investment before preparation
   assert.equal(calls[0], "prepare");
   assert.equal(calls.includes("recover-preparation"), false);
 });
+
+for (const failure of [new Error("required resource unavailable"), new FoundationError("lifecycle.projection.mandatory-too-large", "unclassified diagnostic")]) {
+  test(`unclassified reviewer compilation failure preserves recovery: ${failure.message}`, async () => {
+    const value = fixture("evaluation-opened");
+    const calls: string[] = [];
+    const options = runtimeOptions(value, calls);
+    await assert.rejects(recoverDeliveryEvaluationV7({
+      target: "/tmp/evaluation-runtime-target", store: value.store,
+      contract: Object.freeze({ targetId: TARGET }) as never, configuration: configuration(),
+      activityId: ACTIVITY, runtimeId: RUNTIME,
+    }, { ...options, owners: { ...options.owners,
+      compileUnpromoted: async () => { throw failure; },
+    } }), (error) => error === failure);
+    assert.equal(calls.includes("promote"), false);
+    assert.equal(calls.includes("advance"), false);
+  });
+}

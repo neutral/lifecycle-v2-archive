@@ -1,3 +1,6 @@
+import { foundationMandatoryProjectionRefusalV1, type FoundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
+import { foundationProjectionConditionObservedFactsDigestV1 } from "./projection-condition-facts.js";
+import { reviewRequiresMandateResolutionV1 } from "../evidence/review-classification-v1.js";
 import { FoundationError } from "../error.js";
 import {
   digestCanonical,
@@ -11,6 +14,8 @@ import {
   controlTimestamp,
 } from "./model.js";
 import { assertDeliveryControlRecordPayload } from "./payload-registry.js";
+import { parseFoundationIntegrationAssessmentPayloadV1 } from "./integration-assessment.js";
+import { assertBuilderExecutionReceiptCandidateSubjects } from "./execution-receipt.js";
 import type { ControlRecordStore } from "./store.js";
 import type {
   ControlJsonObject,
@@ -19,6 +24,7 @@ import type {
   ControlRecordRelationship,
   ControlRecordRelationshipTarget,
   ControlRecordRevision,
+  ControlRecordStoreAppend,
 } from "./types.js";
 
 export const MATERIAL_CONDITION_CLASSES = Object.freeze([
@@ -29,26 +35,38 @@ export const MATERIAL_CONDITION_CLASSES = Object.freeze([
   "risk-change",
   "architecture-conflict",
   "assurance-conflict",
-  "founder-tradeoff",
+  "director-tradeoff",
   "missing-authority",
   "missing-required-source",
   "required-capability-unavailable",
   "projection-closure-exceeded",
   "no-honest-route",
+  "integration-context-change",
 ] as const);
 
 export type MaterialConditionClass = typeof MATERIAL_CONDITION_CLASSES[number];
 
 const MATERIAL_CONDITION_RULE_SET = Object.freeze({
-  schema: "lifecycle.material-condition-rule-set.v1",
-  id: "lifecycle.material-condition-freeze-rules.v1",
+  schema: "lifecycle.material-condition-rule-set.v3",
+  id: "lifecycle.material-condition-freeze-rules.v3",
   sources: Object.freeze([
+    Object.freeze({
+      kind: "projection-compilation", roles: Object.freeze(["builder", "reviewer"]), operations: Object.freeze(["delivery.continue", "delivery.evaluate"]),
+      resolution: "projection-condition-required", allocation: "absent",
+      measurements: Object.freeze(["complete-closure", "mandatory-item"]),
+    }),
+    Object.freeze({
+      kind: "integration-assessment",
+      recordKind: "integration-assessment",
+      disposition: "requires-readmission",
+      candidateObservation: "integration-successor",
+    }),
     Object.freeze({
       kind: "agent-proposal",
       recordKind: "agent-work-product",
       roles: Object.freeze(["builder", "reviewer"]),
       conditionCount: 1,
-      founderJudgmentRequired: true,
+      directorJudgmentRequired: true,
     }),
   ]),
   joins: Object.freeze([
@@ -77,7 +95,7 @@ type SourceCondition = Readonly<{
   statement: string;
   falsifiedMandateIds: readonly string[];
   knowledgeIds: readonly string[];
-  founderJudgmentRequired: true;
+  directorJudgmentRequired: true;
   fragmentDigest: Sha256;
 }>;
 
@@ -216,7 +234,7 @@ function oneActivityEvent(
 }
 
 function retainedCurrentSubject(
-  store: ControlRecordStore,
+  store: Pick<ControlRecordStore, "getRevision">,
   expectedKind: string,
   value: Readonly<{ id: string; revision: number; digest: Sha256 }> | null,
   label: string,
@@ -242,7 +260,7 @@ function exactConditionClass(
 }
 
 function sourceCondition(workProduct: ControlRecordRevision): SourceCondition {
-  if (workProduct.payload.schema !== "lifecycle.agent-work-product-payload.v2") {
+  if (workProduct.payload.schema !== "lifecycle.agent-work-product-payload.v5") {
     fail("work-product", "Material Condition source is not a current Agent Work Product");
   }
   const sourceRole = string(workProduct.payload.role, "Source Work Product role");
@@ -261,9 +279,14 @@ function sourceCondition(workProduct: ControlRecordRevision): SourceCondition {
     const missing = stringArray(semantics.missingObligationIds, "Reviewer missing-obligation identities");
     const judgments = semantics.judgments;
     if (!Array.isArray(judgments)) fail("work-product", "Reviewer judgments are not one exact array");
-    const materialFinding = semantics.mandateExcess === true || missing.length > 0 ||
-      uncertainty.level === "material" || judgments.some((value) =>
-        object(value, "Reviewer judgment").uncertainty === "material");
+    const applicability = semantics.baselineApplicability;
+    if (!Array.isArray(applicability)) fail("work-product", "Reviewer baseline applicability is not one exact array");
+    const materialFinding = reviewRequiresMandateResolutionV1({
+      mandateApplicability: object(semantics.mandateApplicability, "Reviewer mandate applicability"),
+      baselineApplicability: applicability.map((value) => object(value, "Reviewer baseline applicability")),
+      mandateExcess: semantics.mandateExcess === true, missingObligationIds: missing,
+      overallUncertainty: uncertainty.level, judgments: judgments.map((value) => ({uncertainty:object(value, "Reviewer judgment").uncertainty})),
+    });
     if (!materialFinding) {
       fail("work-product", "Reviewer Material Condition lacks one exact material review finding");
     }
@@ -272,8 +295,8 @@ function sourceCondition(workProduct: ControlRecordRevision): SourceCondition {
     fail("work-product", "Source Work Product must contain exactly one Material Condition proposal");
   }
   const condition = object(semantics.conditions[0], "Agent Material Condition proposal");
-  if (condition.founderJudgmentRequired !== true) {
-    fail("work-product", "A Process-frozen Material Condition must require Founder judgment");
+  if (condition.directorJudgmentRequired !== true) {
+    fail("work-product", "A Process-frozen Material Condition must require Director judgment");
   }
   const id = controlIdentifier(string(condition.id, "Source Material Condition identity"), "Source Material Condition identity");
   const conditionClass = exactConditionClass(string(
@@ -309,7 +332,7 @@ function sourceCondition(workProduct: ControlRecordRevision): SourceCondition {
     statement,
     falsifiedMandateIds,
     knowledgeIds,
-    founderJudgmentRequired: true,
+    directorJudgmentRequired: true,
     fragmentDigest,
   });
 }
@@ -386,7 +409,7 @@ function normalizedLimitations(
 }
 
 function recordIdentity(
-  store: ControlRecordStore,
+  store: Pick<ControlRecordStore, "identity">,
   sourceIdentity: string,
   observedFactsDigest: Sha256,
 ): string {
@@ -401,7 +424,7 @@ function recordIdentity(
   return `material-condition-${suffix}`;
 }
 
-function eventIdentity(store: ControlRecordStore, recordId: string): string {
+function eventIdentity(store: Pick<ControlRecordStore, "identity">, recordId: string): string {
   const suffix = digestCanonical({
     eventKind: "material-condition-frozen",
     storeId: store.identity.storeId,
@@ -431,7 +454,7 @@ function semanticMarkdown(input: Readonly<{
     `- Active Work Boundary: ${input.boundary.recordId} revision ${input.boundary.revision}`,
     `- Current Candidate Revision: ${input.candidate.recordId} revision ${input.candidate.revision}`,
     "",
-    "The installed rule freezes productive work until Founder-governed boundary resolution.",
+    "The installed rule freezes productive work until Director-governed boundary resolution.",
     "",
     "## Agent proposal",
     "",
@@ -494,10 +517,10 @@ export function retainMaterialCondition(input: Readonly<{
     state.subjects.candidate,
     "Current Candidate Revision",
   );
-  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v4") {
+  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v6") {
     fail("boundary", "Active Work Boundary payload schema is not current");
   }
-  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
+  if (candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
     fail("candidate", "Current Candidate Revision payload schema is not current");
   }
 
@@ -528,13 +551,19 @@ export function retainMaterialCondition(input: Readonly<{
   const attemptedCandidate = relationshipTarget(attempt, "uses-candidate", "candidate-revision");
   let candidateEvent: ControlRecordEvent | null = null;
   if (expectedRole === "builder") {
-    candidateEvent = oneActivityEvent(events, activityId, "candidate-revision-observed");
-    const observedCandidate = retainedEventSubject(input.store, candidateEvent, "candidate-revision");
-    if (!sameReference(exactReference(candidate), exactReference(observedCandidate))) {
-      fail("currentness", "Builder activity did not observe the exact current Candidate Revision");
-    }
-    if (!sameReference(relationshipTarget(candidate, "revises", "candidate-revision"), attemptedCandidate)) {
-      fail("relationship", "Current Candidate Revision does not advance the exact attempted Candidate");
+    const disposition = assertBuilderExecutionReceiptCandidateSubjects({ receipt,
+      inputCandidate: retainedTarget(input.store, attemptedCandidate, "Builder input Candidate"), resultCandidate: candidate });
+    if (disposition === "promoted") {
+      candidateEvent = oneActivityEvent(events, activityId, "candidate-revision-observed");
+      const observedCandidate = retainedEventSubject(input.store, candidateEvent, "candidate-revision");
+      if (!sameReference(exactReference(candidate), exactReference(observedCandidate))) {
+        fail("currentness", "Builder activity did not observe the exact current Candidate Revision");
+      }
+      if (!sameReference(relationshipTarget(candidate, "revises", "candidate-revision"), attemptedCandidate)) {
+        fail("relationship", "Current Candidate Revision does not advance the exact attempted Candidate");
+      }
+    } else if (events.some((event) => event.eventKind === "candidate-revision-observed" && event.payload.activityId === activityId)) {
+      fail("journal", "Builder without a promoted successor cannot retain a Candidate observation event");
     }
   } else {
     const candidateEvents = events.filter((event) =>
@@ -578,14 +607,7 @@ export function retainMaterialCondition(input: Readonly<{
     fail("relationship", "Execution Receipt does not observe the exact source Work Product");
   }
   const observedCandidate = relationshipTargets(receipt, "observes-candidate", "candidate-revision");
-  if (expectedRole === "builder") {
-    if (
-      observedCandidate.length !== 1 || !sameReference(observedCandidate[0]!, exactReference(candidate)) ||
-      candidateBinding.successorDisposition !== "promoted"
-    ) {
-      fail("relationship", "Builder Execution Receipt does not observe the exact promoted Candidate successor");
-    }
-  } else if (observedCandidate.length !== 0 || candidateBinding.successor !== null) {
+  if (expectedRole === "reviewer" && (observedCandidate.length !== 0 || candidateBinding.successor !== null)) {
     fail("relationship", "Reviewer Execution Receipt cannot observe a Candidate successor");
   }
 
@@ -604,8 +626,8 @@ export function retainMaterialCondition(input: Readonly<{
     sourceCondition: condition,
   }));
   const payload: ControlJsonObject = Object.freeze({
-    schema: "lifecycle.material-condition-payload.v1",
-    profileId: "lifecycle.material-condition.foundation-v1",
+    schema: "lifecycle.material-condition-payload.v4",
+    profileId: "lifecycle.material-condition.foundation-v3",
     conditionClass: condition.conditionClass,
     source: Object.freeze({
       kind: "agent-proposal",
@@ -668,4 +690,161 @@ export function retainMaterialCondition(input: Readonly<{
   });
   if (retained.revision === null) fail("retention", "Material Condition revision was not retained");
   return Object.freeze({ revision: retained.revision, event: retained.event });
+}
+
+/** Prepare the freeze beside a constructed Candidate, for one ordered atomic file commit. */
+export function prepareIntegrationMaterialConditionV1(input: Readonly<{
+  store: ControlRecordStore;
+  activityId: string;
+  assessment: ControlRecordRevision;
+  candidate: ControlRecordRevision;
+  runtime: RuntimeCoordinates;
+  frozenAt: string;
+  runtimeId: string;
+}>): Readonly<{ append: ControlRecordStoreAppend; revision: ControlRecordRevision }> {
+  const activityId = controlIdentifier(input.activityId, "Integration Condition Activity");
+  const frozenAt = controlTimestamp(input.frozenAt, "Integration Condition time");
+  const assessment = retainedTarget(input.store, exactReference(input.assessment), "Integration Assessment");
+  const payload = parseFoundationIntegrationAssessmentPayloadV1(assessment.payload);
+  if (payload.outcome !== "constructed" || payload.contextualApplicability.disposition !== "requires-readmission") {
+    fail("integration", "Only a constructed integration with changed governing context can freeze its successor");
+  }
+  const state = input.store.state();
+  const activity = state.activities.find(({ id }) => id === activityId);
+  if (activity?.operation !== "delivery.integrate" || activity.stage !== "finalizing" ||
+    activity.recovery?.resumesAt !== "candidate-revision-observed" || state.subjects.materialCondition !== null) {
+    fail("integration", "Integration Condition must be planned at the exact pending successor boundary");
+  }
+  const boundary = retainedCurrentSubject(input.store, "work-boundary", state.subjects.activeBoundary, "Integration governing Boundary");
+  const source = retainedCurrentSubject(input.store, "candidate-revision", state.subjects.candidate, "Integration source Candidate");
+  const candidate = input.candidate;
+  assertDeliveryControlRecordPolicy(candidate);
+  assertDeliveryControlRecordPayload(candidate);
+  if (candidate.processId !== input.store.identity.processId || candidate.recordKind !== "candidate-revision" ||
+    candidate.payload.observation !== "integration-successor" || candidate.payload.candidateBaseCommit !== payload.canonicalParent.commit ||
+    candidate.recordId !== source.recordId || candidate.revision !== source.revision + 1 ||
+    !sameReference(relationshipTarget(candidate, "integrated-from", "integration-assessment"), exactReference(assessment)) ||
+    !sameReference(relationshipTarget(candidate, "revises", "candidate-revision"), exactReference(source)) ||
+    !sameReference(relationshipTarget(candidate, "governed-by", "work-boundary"), exactReference(boundary)) ||
+    !sameReference(relationshipTarget(assessment, "integrates", "candidate-revision"), exactReference(source)) ||
+    !sameReference(relationshipTarget(assessment, "governed-by", "work-boundary"), exactReference(boundary))) {
+    fail("integration", "Integration Condition cannot substitute its assessed source, successor, parent, or mandate");
+  }
+  const observedFactsDigest = digestCanonical(payload.contextualApplicability);
+  const recordId = recordIdentity(input.store, activityId, observedFactsDigest);
+  const proposed = Object.freeze({
+    recordId, recordKind: "material-condition", revision: 1,
+    producer: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }),
+    semanticAuthor: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }),
+    semanticAuthority: "runtime-derived" as const,
+    createdAt: frozenAt,
+    semanticMarkdown: ["# Integration context requires readmission", "", `The constructed Candidate uses canonical parent ${payload.canonicalParent.commit}.`,
+      `Changed governing subjects: ${payload.contextualApplicability.changes.map(({ subject }) => subject).join(", ")}.`, ""].join("\n"),
+    payload: Object.freeze({
+      schema: "lifecycle.material-condition-payload.v4", profileId: "lifecycle.material-condition.foundation-v3",
+      conditionClass: "integration-context-change", source: Object.freeze({ kind: "integration-assessment" }),
+      observedFactsDigest, blocking: true,
+      ruleSet: Object.freeze({ id: MATERIAL_CONDITION_RULE_SET_ID, digest: MATERIAL_CONDITION_RULE_SET_DIGEST,
+        implementationId: input.runtime.implementationId, implementationDigest: input.runtime.implementationDigest }),
+      limitations: Object.freeze([]),
+    }),
+    relationships: Object.freeze([
+      Object.freeze({ relation: "reported-by", target: exactReference(assessment) }),
+      Object.freeze({ relation: "freezes", target: exactReference(candidate) }),
+      Object.freeze({ relation: "governed-by", target: exactReference(boundary) }),
+    ]),
+  });
+  const revision = compileControlRecordRevision(input.store.identity.processId, proposed);
+  assertDeliveryControlRecordPolicy(revision);
+  assertDeliveryControlRecordPayload(revision);
+  return Object.freeze({ revision, append: Object.freeze({ revision: proposed, event: Object.freeze({
+    eventId: eventIdentity(input.store, recordId), eventKind: "material-condition-frozen", occurredAt: frozenAt,
+    actor: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }),
+    subject: Object.freeze({ recordId, revision: revision.revision, digest: revision.digest }),
+    payload: Object.freeze({ sourceKind: "integration-assessment", activityId, observedFactsDigest }),
+  }) }) });
+}
+
+/** Freeze only a complete measured compiler refusal after the exact subjectless event. */
+export function prepareProjectionMaterialConditionV1(input: Readonly<{
+  store: Pick<ControlRecordStore, "identity" | "state" | "getRevision">;
+  activityId: string;
+  refusal: FoundationMandatoryProjectionRefusalV1;
+  refusalEvent: ControlRecordEvent;
+  frozenAt: string;
+  runtimeId: string;
+}>): Readonly<{ append: ControlRecordStoreAppend; revision: ControlRecordRevision }> {
+  const activityId = controlIdentifier(input.activityId, "Projection Condition Activity");
+  const frozenAt = controlTimestamp(input.frozenAt, "Projection Condition time");
+  if (foundationMandatoryProjectionRefusalV1(input.refusal.error) !== input.refusal) {
+    fail("source", "Projection Condition requires the compiler's complete measured refusal");
+  }
+  const state = input.store.state();
+  const activity = state.activities.find(({ id }) => id === activityId);
+  const reviewer = activity?.operation === "delivery.evaluate";
+  if (activity === undefined || (!reviewer && activity.operation !== "delivery.continue") ||
+      activity.stage !== (reviewer ? "finalizing" : "started") ||
+      activity.recovery?.resumesAt !== (reviewer ? "evaluation-checks" : "agent-attempt-prepared") || state.subjects.materialCondition !== null) {
+    fail("currentness", "Projection Condition requires an unallocated builder or reviewer at its exact refusal boundary");
+  }
+  const boundary = retainedCurrentSubject(input.store, "work-boundary", state.subjects.activeBoundary, "Projection governing Boundary");
+  const candidate = retainedCurrentSubject(input.store, "candidate-revision", state.subjects.candidate, "Projection frozen Candidate");
+  const seal = reviewer ? retainedCurrentSubject(input.store, "candidate-seal", state.subjects.seal, "Projection evaluation Seal") : null;
+  const request = input.refusal.request;
+  if (request.class !== "execution" || request.role !== (reviewer ? "reviewer" : "builder") || request.target.id !== input.store.identity.targetId ||
+      !sameReference(request.subject.workBoundary, exactReference(boundary)) || request.subject.candidate === null ||
+      !sameReference(request.subject.candidate.revision, exactReference(candidate)) ||
+      (seal === null ? request.subject.candidate.seal !== null : request.subject.candidate.seal === null ||
+        !sameReference(request.subject.candidate.seal, exactReference(seal)))) {
+    fail("source", "Projection Condition must bind the exact role request for this Work Boundary, Candidate, and any evaluation Seal");
+  }
+  const refusalEvent = input.refusalEvent;
+  if (refusalEvent.eventKind !== "agent-pre-intent-refused" || refusalEvent.payload.activityId !== activityId ||
+      refusalEvent.sequence !== state.journal.eventCount + 1 || refusalEvent.predecessorDigest !== state.journal.headDigest) {
+    fail("source", "Projection refusal must immediately follow the exact current Journal head");
+  }
+  if (refusalEvent.subject !== null || refusalEvent.payload.resolution !== "projection-condition-required" || refusalEvent.payload.diagnosticCode !== "lifecycle.projection.mandatory-too-large" ||
+      refusalEvent.payload.refusalFactsDigest !== input.refusal.refusalFactsDigest) {
+    fail("source", "Projection refusal event does not bind the compiler's measured facts");
+  }
+  const source: ControlJsonObject = Object.freeze({
+    kind: "projection-compilation", requestDigest: input.refusal.requestDigest,
+    profile: Object.freeze({ id: input.refusal.profile.id, digest: input.refusal.profile.digest }),
+    compiler: input.refusal.compiler,
+    measurement: input.refusal.measurement,
+    refusalFactsDigest: input.refusal.refusalFactsDigest,
+  });
+  const observedFactsDigest = foundationProjectionConditionObservedFactsDigestV1({
+    activityId, boundary: exactReference(boundary), candidate: exactReference(candidate), seal: seal === null ? null : exactReference(seal),
+    refusalEvent: Object.freeze({ sequence: refusalEvent.sequence, digest: refusalEvent.digest }), source,
+  });
+  const recordId = recordIdentity(input.store, activityId, observedFactsDigest);
+  const proposed = Object.freeze({
+    recordId, recordKind: "material-condition", revision: 1,
+    producer: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }),
+    semanticAuthor: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }), semanticAuthority: "runtime-derived" as const,
+    createdAt: frozenAt,
+    semanticMarkdown: ["# Mandatory context exceeds its admitted profile", "", `The measured ${reviewer ? "reviewer" : "builder"} context cannot fit the selected mandatory limits. No Agent Cell or Attempt was allocated. Revise or reaffirm the complete mandate before readmission.`, ""].join("\n"),
+    payload: Object.freeze({
+      schema: "lifecycle.material-condition-payload.v4", profileId: "lifecycle.material-condition.foundation-v3",
+      conditionClass: "projection-closure-exceeded", source, observedFactsDigest, blocking: true,
+      ruleSet: Object.freeze({ id: MATERIAL_CONDITION_RULE_SET_ID, digest: MATERIAL_CONDITION_RULE_SET_DIGEST,
+        implementationId: input.refusal.compiler.id, implementationDigest: input.refusal.compiler.digest }),
+      limitations: Object.freeze([]),
+    }),
+    relationships: Object.freeze([
+      Object.freeze({ relation: "freezes", target: exactReference(candidate) }),
+      Object.freeze({ relation: "governed-by", target: exactReference(boundary) }),
+      ...(seal === null ? [] : [Object.freeze({ relation: "observed-in", target: exactReference(seal) })]),
+    ]),
+  });
+  const revision = compileControlRecordRevision(input.store.identity.processId, proposed);
+  assertDeliveryControlRecordPolicy(revision);
+  assertDeliveryControlRecordPayload(revision);
+  return Object.freeze({ revision, append: Object.freeze({ revision: proposed, event: Object.freeze({
+    eventId: eventIdentity(input.store, recordId), eventKind: "material-condition-frozen", occurredAt: frozenAt,
+    actor: Object.freeze({ kind: "runtime" as const, id: input.runtimeId }),
+    subject: Object.freeze({ recordId, revision: revision.revision, digest: revision.digest }),
+    payload: Object.freeze({ sourceKind: "projection-compilation", activityId, observedFactsDigest }),
+  }) }) });
 }

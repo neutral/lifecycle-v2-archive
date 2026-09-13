@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:context-inspection-selector:v3",
+  "title": "Lifecycle Context Inspection Selector v3",
+  "description": "Closed nine-kind selector union for retained-provenance Knowledge, Code, Atlas and Source reads, plus full-generation Authorization Review.",
+  "oneOf": [
+    { "$ref": "#/$defs/knowledgeIndex" },
+    { "$ref": "#/$defs/knowledgeRecord" },
+    { "$ref": "#/$defs/codeIndex" },
+    { "$ref": "#/$defs/codeFile" },
+    { "$ref": "#/$defs/atlasOverview" },
+    { "$ref": "#/$defs/atlasPoint" },
+    { "$ref": "#/$defs/atlasResource" },
+    { "$ref": "#/$defs/source" },
+    { "$ref": "#/$defs/authorizationReview" }
+  ],
+  "$defs": {
+    "cursor": {
+      "oneOf": [
+        { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//)(?!.*[?#])(?!.*%(?:2[fF]|5[cC]))[^\\u0000]+$",
+      "$comment": "Structural length is in Unicode code points; semantic interface validation additionally requires Unicode scalar values and at most 4096 UTF-8 bytes."
+    },
+    "knowledgeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+    },
+    "workBoundaryReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "work-boundary" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "inspectionOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "digest"],
+      "properties": {
+        "sequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "inspectionBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "reference"],
+      "properties": {
+        "role": {
+          "enum": ["proposed", "active"]
+        },
+        "reference": { "$ref": "#/$defs/workBoundaryReference" }
+      }
+    },
+    "candidateReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "candidate-revision" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "sealReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "candidate-seal" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "targetId", "storeId", "processId", "origin", "boundary", "digest"],
+      "properties": {
+        "schema": { "const": "lifecycle.context-selection.v1" },
+        "targetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "storeId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "processId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "origin": { "$ref": "#/$defs/inspectionOrigin" },
+        "boundary": { "$ref": "#/$defs/inspectionBoundary" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      },
+      "$comment": "Semantic validation reproduces the self-digest and selected Boundary role/reference from the exact retained Journal origin; provenance is not current operation currency."
+    },
+    "codeSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "targetId", "storeId", "processId", "origin", "subject", "boundary", "candidate", "seal", "digest"],
+      "properties": {
+        "schema": { "const": "lifecycle.code-selection.v1" },
+        "targetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "storeId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "processId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "origin": { "$ref": "#/$defs/inspectionOrigin" },
+        "subject": {
+          "enum": ["candidate", "decision"]
+        },
+        "boundary": {
+          "oneOf": [
+            { "$ref": "#/$defs/workBoundaryReference" },
+            { "type": "null" }
+          ]
+        },
+        "candidate": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateReference" },
+            { "type": "null" }
+          ]
+        },
+        "seal": {
+          "oneOf": [
+            { "$ref": "#/$defs/sealReference" },
+            { "type": "null" }
+          ]
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "candidate": { "type": "object" }
+            },
+            "required": ["candidate"]
+          },
+          "then": {
+            "properties": {
+              "boundary": { "type": "object" }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "subject": { "const": "candidate" }
+                },
+                "required": ["subject"]
+              },
+              {
+                "properties": {
+                  "candidate": { "type": "null" }
+                },
+                "required": ["candidate"]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "seal": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "knowledgeReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "status", "revision", "path", "sourceDigest", "semanticDigest"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+        },
+        "kind": { "enum": ["behavior", "assurance", "blueprint", "description", "check", "discipline"] },
+        "status": { "enum": ["draft", "current", "superseded", "retired"] },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "path": { "$ref": "#/$defs/repositoryRelativePath" },
+        "sourceDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "semanticDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "knowledgeIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "context", "afterCursor", "limit"],
+      "properties": {
+        "kind": { "const": "knowledge-index" },
+        "context": { "$ref": "#/$defs/context" },
+        "afterCursor": { "$ref": "#/$defs/cursor" },
+        "limit": { "$ref": "#/$defs/limit" }
+      }
+    },
+    "knowledgeRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "context", "reference"],
+      "properties": {
+        "kind": { "const": "knowledge-record" },
+        "context": { "$ref": "#/$defs/context" },
+        "reference": { "$ref": "#/$defs/knowledgeReference" }
+      }
+    },
+    "codeIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "selection", "subject", "afterCursor", "limit"],
+      "properties": {
+        "kind": { "const": "code-index" },
+        "selection": { "$ref": "#/$defs/codeSelection" },
+        "subject": {
+          "enum": ["candidate", "decision"]
+        },
+        "afterCursor": { "$ref": "#/$defs/cursor" },
+        "limit": { "$ref": "#/$defs/limit" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subject": { "const": "candidate" }
+            }
+          },
+          "then": {
+            "properties": {
+              "selection": {
+                "properties": {
+                  "subject": { "const": "candidate" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subject": { "const": "decision" }
+            }
+          },
+          "then": {
+            "properties": {
+              "selection": {
+                "properties": {
+                  "subject": { "const": "decision" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "codeFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "selection", "subject", "fileCursor", "maximumDiffBytes"],
+      "properties": {
+        "kind": { "const": "code-file" },
+        "selection": { "$ref": "#/$defs/codeSelection" },
+        "subject": {
+          "enum": ["candidate", "decision"]
+        },
+        "fileCursor": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "maximumDiffBytes": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 262144
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subject": { "const": "candidate" }
+            }
+          },
+          "then": {
+            "properties": {
+              "selection": {
+                "properties": {
+                  "subject": { "const": "candidate" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subject": { "const": "decision" }
+            }
+          },
+          "then": {
+            "properties": {
+              "selection": {
+                "properties": {
+                  "subject": { "const": "decision" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "atlasOverview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "context", "afterMapCursor", "mapLimit", "afterPointCursor", "pointLimit", "afterResourceCursor", "resourceLimit"],
+      "properties": {
+        "kind": { "const": "atlas-overview" },
+        "context": { "$ref": "#/$defs/context" },
+        "afterMapCursor": { "$ref": "#/$defs/cursor" },
+        "mapLimit": { "$ref": "#/$defs/limit" },
+        "afterPointCursor": { "$ref": "#/$defs/cursor" },
+        "pointLimit": { "$ref": "#/$defs/limit" },
+        "afterResourceCursor": { "$ref": "#/$defs/cursor" },
+        "resourceLimit": { "$ref": "#/$defs/limit" }
+      }
+    },
+    "atlasPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "context", "pointCursor", "afterRecordCursor", "recordLimit", "afterRelationCursor", "relationLimit"],
+      "properties": {
+        "kind": { "const": "atlas-point" },
+        "context": { "$ref": "#/$defs/context" },
+        "pointCursor": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "afterRecordCursor": { "$ref": "#/$defs/cursor" },
+        "recordLimit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "afterRelationCursor": { "$ref": "#/$defs/cursor" },
+        "relationLimit": { "$ref": "#/$defs/limit" }
+      }
+    },
+    "atlasResourceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "atlasResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "context", "resourceId"],
+      "properties": {
+        "kind": { "const": "atlas-resource" },
+        "context": { "$ref": "#/$defs/context" },
+        "resourceId": { "$ref": "#/$defs/atlasResourceId" }
+      }
+    },
+    "sourceSubject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "revision", "digest"],
+          "properties": {
+            "kind": { "const": "knowledge-record" },
+            "id": { "$ref": "#/$defs/knowledgeId" },
+            "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "digest"],
+          "properties": {
+            "kind": { "const": "atlas-point" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "digest"],
+          "properties": {
+            "kind": { "const": "atlas-resource" },
+            "id": { "$ref": "#/$defs/atlasResourceId" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "digest"],
+          "properties": {
+            "kind": { "const": "repository-blob" },
+            "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "revision", "digest"],
+          "properties": {
+            "kind": { "const": "candidate-revision" },
+            "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+            "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+            "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "selection", "basisDigest", "sourceKind", "subject", "label", "path", "mediaType", "contentDigest", "byteLength", "digest"],
+      "properties": {
+        "schema": { "const": "lifecycle.source-reference.v2" },
+        "selection": {
+          "oneOf": [
+            { "$ref": "#/$defs/context" },
+            { "$ref": "#/$defs/codeSelection" }
+          ]
+        },
+        "basisDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "sourceKind": {
+          "enum": ["knowledge-body", "atlas-body", "atlas-resource", "canonical-blob", "candidate-blob"]
+        },
+        "subject": { "$ref": "#/$defs/sourceSubject" },
+        "label": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "path": { "$ref": "#/$defs/repositoryRelativePath" },
+        "mediaType": {
+          "enum": ["markdown", "plain", "json"]
+        },
+        "contentDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "sourceKind": {
+                "enum": ["canonical-blob", "candidate-blob"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selection": {
+                "allOf": [
+                  { "$ref": "#/$defs/codeSelection" },
+                  {
+                    "properties": {
+                      "boundary": { "$ref": "#/$defs/workBoundaryReference" },
+                      "candidate": { "$ref": "#/$defs/candidateReference" }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "subject": { "const": "decision" }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "seal": { "$ref": "#/$defs/sealReference" }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "selection": { "$ref": "#/$defs/context" }
+            }
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference", "startByte", "maximumBytes"],
+      "properties": {
+        "kind": { "const": "source" },
+        "reference": { "$ref": "#/$defs/sourceReference" },
+        "startByte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        },
+        "maximumBytes": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 262144
+        }
+      }
+    },
+    "authorizationReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "expectedGeneration", "operation", "input"],
+      "properties": {
+        "kind": { "const": "authorization-review" },
+        "expectedGeneration": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "operation": { "enum": ["delivery.admit", "delivery.accept", "delivery.no-ship"] },
+        "input": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["semanticMarkdown"],
+              "properties": {
+                "semanticMarkdown": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1048576,
+                  "pattern": "^[^\\u0000]*$"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "delivery.no-ship" } }, "required": ["operation"] },
+          "then": { "properties": { "input": { "type": "object" } } },
+          "else": { "properties": { "input": { "type": "null" } } }
+        }
+      ]
+    }
+  }
+}

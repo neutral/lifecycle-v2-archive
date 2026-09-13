@@ -17,7 +17,11 @@ compiler silently omits.
 
 ## Projection Classes
 
-Lifecycle defines two projection classes.
+The two Projection classes support different decisions. Orientation makes the
+registered choices and their exact retrieval routes available before a complete
+proposal is selected. Execution supplies the mandatory closure already selected
+by an admitted Work Boundary. Both preserve provenance and bounds, but an
+Orientation discovery entry is not automatically an Execution requirement.
 
 ### Orientation Projection
 
@@ -25,13 +29,15 @@ An Orientation Projection supports each independently funded Delivery
 reconnaissance turn before a Work Boundary exists and the read-only
 reconnaissance used to resolve one frozen Material Condition. It binds:
 
-- the Founder objective;
+- the Director objective;
 - exact repository, Product State, raw Atlas State, complete valid Atlas
   Resolution, normalized-model, repository-contract, and specification bases;
 - an exact semantically selected Atlas index preserving Map, Area, Point
   anchor/context, Resource, Check, publication-profile, and source provenance;
 - the current Knowledge observation index, summaries, owners, relationships, and
   validation conditions;
+- the Discipline Registry, Work Type groupings, and adopted Discipline
+  summaries;
 - repository implementation roots and Description coverage index;
 - registered Check Bindings and capability profiles; and
 - a bounded exact retrieval surface.
@@ -62,20 +68,27 @@ The reconnaissance agent performs product judgment and proposes the exact roots
 for a Work Boundary. Every selected root and material source MUST be cited by
 stable identity and digest in that proposal.
 
-For every fresh preparation, the Founder objective is one complete
+Work Types and Discipline tags help reconnaissance find useful guidance. They
+do not select records. Reconnaissance can propose any exact adopted Discipline
+record, with or without naming a Work Type, and Director admission remains the
+selection boundary.
+
+For every fresh preparation, the Director objective is one complete
 self-contained Brief supplied for that Delivery. The compiler MUST NOT inject
-another Delivery's Founder Brief, Work Boundary, Attempt View, interface
+another Delivery's Director Brief, Work Boundary, Attempt View, interface
 transcript, agent summary, or provider conversation into the Projection. The
 exact fresh Brief and current repository epoch define the request.
 
 For revision or reaffirmation, the Process derives the exact Orientation
 objective from the selected operation, complete active Work Boundary, frozen
-Material Condition, and Founder rationale. The corresponding Agent Attempt
+Material Condition, and Director rationale. The corresponding Agent Attempt
 separately binds the fresh Investment's eligible-operation identity and the
 `working` Process-state digest. The Orientation request and result still contain
 no Work Boundary or Candidate field: their public subject is the derived
 objective and digest, while Process state and the condition preserve the active
-frozen basis.
+frozen basis. This Projection subject is distinct from the Execution Input Set:
+initial preparation materializes no Candidate, while resolution materializes
+the exact frozen Candidate read-only under [Execution](EXECUTION.md).
 
 ### Execution Projection
 
@@ -84,19 +97,24 @@ work after a Work Boundary has been admitted. It compiles the complete mandatory
 Knowledge Closure selected by the boundary and role. Relevance is no longer a
 provider search problem.
 
-Its repository request is reconstructed from the active Boundary's exact
-historical admitted commit and tree. Its Atlas State, Resolution, normalized
-model, Resource bindings, and selected source bytes are therefore the admitted
-Atlas snapshot. Before compilation, the runtime proves that the canonical
-branch still names that exact commit and tree and the authoritative target
-checkout is completely clean. Execution compilation MUST NOT resolve, compare,
-or silently refresh from a live Atlas. A different repository or Atlas epoch is
-eligible only for a fresh Delivery after Closure.
+Its governing repository request is reconstructed from the active Boundary's
+exact historical Snapshot, including its Atlas and bound Resources. The current
+Candidate and explicit integration parent are separately bound subjects.
+Execution compilation MUST NOT silently replace governing context with live
+Atlas or require canonical HEAD to remain at that historical epoch. A context-
+change resolution uses the exact retained integration parent to propose its
+successor Boundary; authenticated readmission makes that selection active.
 
 Its attention core carries the exact selected Capability Profile as
 `{"profileId":<identity>,"profileDigest":<digest>}`. The summary beside that
 binding is explanatory only. A later Agent Attempt MUST bind the same profile
 identity and digest.
+
+It also carries a compact Discipline notice: the selected Work Type ids and
+each selected Discipline identity, title, summary, target path, revision, and
+digests. The complete selected Discipline bodies are mounted as mandatory
+material for builder and reviewer roles. They remain `discipline-guidance`, not
+Product Knowledge authority.
 
 An Execution Projection MUST fail closed when mandatory closure is unresolved,
 conflicting, stale, or larger than the selected complete profile. It MUST NOT
@@ -108,7 +126,7 @@ A projection request conforms to
 [`projection-request.schema.json`](../schemas/projection-request.schema.json) and
 contains:
 
-- `schema`, exactly `lifecycle.projection-request.v4`;
+- `schema`, exactly `lifecycle.projection-request.v5`;
 - `class`, `role`, and `specificationRevision`;
 - exact target identity and repository generation;
 - for every class, exact commit, tree, Git object format, Product State,
@@ -117,16 +135,16 @@ contains:
   loaded repository epoch;
 - for Orientation, the deterministic Knowledge observation manifest and
   validation-result digests; it does not cite a Repository Snapshot,
-  `repository-v7` result, or usable Knowledge Set as authority;
+  `repository-v9` result, or usable Knowledge Set as authority;
 - for Execution, the complete valid Knowledge Set, Repository Snapshot, and
-  successful `repository-v7` result digests;
+  successful `repository-v9` result digests;
 - Atlas root, entrypoint, immutable specification and processor contract
   revisions, bound Atlas State, Atlas Resolution, and normalized-model digests,
   bound repository-local Resource-input digest, and complete valid resolution
   state;
 - the selected Projection Profile identity, self-digest, and all seven numeric
   bounds;
-- for Orientation, the exact Founder objective and its UTF-8 byte digest;
+- for Orientation, the exact Director objective and its UTF-8 byte digest;
 - for Execution, the exact active Work Boundary Control reference containing
   kind, identity, revision, and digest, but not the revision body;
 - for builder and reviewer roles, the exact Candidate base, current Candidate
@@ -139,6 +157,21 @@ contains:
 - external-local and network retrieval disposition, any exact caller authority
   subject, and every authorized external immutable source revision; and
 - the request digest.
+
+The Orientation `subject.objective` is nonempty text without NUL whose exact
+UTF-8 encoding is at most 1,048,576 bytes. This semantic-text bound replaces the
+generic short-text bound for this field only. It applies to the complete fresh
+Director objective or complete Process-derived boundary-resolution objective,
+including the governing facts and Director rationale. The parser MUST enforce
+the byte bound for multibyte text as well as ASCII. A character-count schema
+constraint alone does not establish it.
+
+The complete objective remains in the attention core and participates in
+`counts.coreBytes` and the selected mandatory-byte budget. The larger field
+bound does not enlarge any Projection Profile or exclude context from its
+accounting. A request or complete Projection that exceeds its respective bound
+MUST fail closed before Agent execution; the Runtime MUST NOT truncate the
+objective, omit governing facts, or expand the selected profile automatically.
 
 The request digest is the canonical-value self-digest with only its top-level
 `digest` field omitted. After request validation and compiler selection, the
@@ -156,7 +189,7 @@ The repository-epoch
 digest is the canonical-value digest of exactly
 `targetId`, `commit`, `tree`, `objectFormat`, `contractDigest`,
 `productStateDigest`, and `atlasStateDigest`. It identifies loaded bytes and
-does not assert that `repository-v7` or a Knowledge Set is complete or valid.
+does not assert that `repository-v9` or a Knowledge Set is complete or valid.
 `knowledgeObservationDigest` always identifies the deterministic observation
 manifest, including partial readable records, relationships, coverage,
 Bindings, source dispositions, and conditions. `knowledgeSetDigest` identifies
@@ -164,6 +197,13 @@ only a complete valid usable Knowledge Set; it is null for an incomplete or
 invalid Orientation observation and non-null for every Execution request and
 result. `knowledgeValidationDigest` binds the exact validation result for the
 observation.
+
+Each execution Candidate coordinate has required nullable `integration`. Before
+integration it is null; after integration it binds the exact Assessment reference,
+source Candidate reference, and full `canonicalParent` Snapshot. Both Projection
+Request v5 and Knowledge Projection v6 retain that value. Reviewer Projection
+requires it and validates it against the current Candidate lineage. Ordinary
+builder successors inherit the origin through their exact ancestry.
 
 For every reviewer Projection, these three Knowledge fields remain the admitted
 canonical authority basis. The reviewer request separately binds the complete
@@ -174,15 +214,22 @@ Knowledge; a compiler MUST validate both exact identities and MUST NOT replace
 the Projection basis with the sealed Candidate identity or require the two
 digests to be equal.
 
-An Orientation request has role `reconnaissance`, uses
-`orientation-standard-v1`, and contains no Work Boundary or Candidate field.
-For initial preparation its objective is the complete newly supplied Founder
+An Orientation request has role `reconnaissance`, uses the exact registered
+`orientation-standard-v1` or implementation-owned `orientation-large-v1`
+selection, and contains no Work Boundary or Candidate field. The Repository
+Contract's `defaults.orientationProjectionProfileId` explicitly selects the
+profile before compilation; initialization continues to select the standard
+profile. A size refusal MUST NOT trigger automatic profile expansion or removal
+of mandatory material. The selected profile identity, all seven bounds, and
+digest remain bound by the exact Request and Projection, including boundary
+resolution and retained recovery.
+For initial preparation its objective is the complete newly supplied Director
 Brief; no prior Attempt View, interface transcript, or provider session is an
 input.
 For boundary resolution, the Process-derived objective carries the exact
-operation, active-boundary, frozen-condition, and Founder-rationale facts while
+operation, active-boundary, frozen-condition, and Director-rationale facts while
 the Agent Attempt binds the `working` Process state and fresh Investment. An
-exact retained copy of that Founder rationale, not an Agent restatement, is
+exact retained copy of that Director rationale, not an Agent restatement, is
 bound into the runtime-finalized successor Work Boundary revision after a
 complete boundary-resolution invocation. An
 Orientation request can bind an incomplete or invalid repository observation
@@ -190,10 +237,12 @@ because exposing the exact
 missing coverage, unresolved source, relationship, and Binding conditions is
 its purpose. Its deterministic Knowledge observation and validation result
 remain exact and the compiler carries those conditions without claiming a
-usable Snapshot, `repository-v7` result, or Knowledge Set. An Execution request
+usable Snapshot, `repository-v9` result, or Knowledge Set. An Execution request
 has role `builder` or `reviewer` and uses `execution-standard-v1` or
-`execution-large-v1`. A builder request binds a current unsealed Candidate and
-no Seal. A reviewer request binds the current Candidate Seal Control revision
+`execution-large-v1`. A builder request binds the eligible current Candidate
+and no Attempt Seal. A prior Process Seal may remain current during correction
+until Candidate advancement clears its current joins. A reviewer request binds
+the current Candidate Seal Control revision
 reference. The compiler MUST validate the separately supplied Seal revision,
 resolve the request reference to that exact revision, and verify that the
 Seal's `seals` and `governed-by` relationships, the related Candidate Revision,
@@ -246,6 +295,14 @@ closure did not complete.
 
 ## Context Tiers
 
+The tiers distinguish immediate direction, required supporting material, and
+available neighboring context. They are not degrees of authority. A selected
+Discipline is mandatory to deliver because the Boundary chose it, but its
+advice remains optional to follow. A required Assurance remains authoritative
+whether the adapter renders it directly or supplies its exact bytes through a
+read-only mount. Reachable material can inform an Agent claim without becoming
+a governing source.
+
 ### Tier 1: attention core
 
 The attention core is compact, presentation-neutral data that every fresh
@@ -254,6 +311,7 @@ invocation for the role receives directly. For an admitted Delivery it contains:
 - objective and selected meaning;
 - included and excluded outcomes;
 - assumptions and falsifiers;
+- selected Work Types and concise selected Discipline handles;
 - exact obligation ledger;
 - required artifacts and Description coverage expectations;
 - product effects and risks;
@@ -333,10 +391,18 @@ one normalized unit in `atlas`; when that Resource is selected and has one
 resolved repository-local binding, its exact blob bytes are a distinct
 Atlas-authority `sources` item. The source item binds a stable identity derived
 from the Atlas and Resource ids, the resolved object revision, and the Resource
-binding byte digest. It exposes only immutable Projection-bundle bytes, never an
+binding byte digest. Distinct admitted and integration-parent source occurrences
+MUST have distinct item and citation identities even when the owner and exact
+bytes match. It exposes only immutable Projection-bundle bytes, never an
 ambient repository locator. An item appears in exactly one semantic array.
 Together with `atlas`, these arrays are the complete mandatory item set; the
 category arrays do not duplicate one another.
+
+A selected Discipline is a `mandatory` Knowledge item so the agent reliably
+receives the exact guidance that the Work Boundary selected. Its authority is
+`discipline-guidance`, never `product-knowledge`. Mandatory delivery means
+available in the Projection; it does not mean mandatory compliance and creates
+no Check, obligation, proposition, or Evidence entry by itself.
 
 Every `sources` item carries one authority and additionally carries one exact
 semantic identity with `class`, `subjectId`, `subjectDigest`, and
@@ -429,6 +495,8 @@ Foundation Projection requests define no such selector.
 Roots include:
 
 - every Knowledge identity explicitly selected by the Work Boundary;
+- every Discipline identity in the Work Boundary's Discipline selection,
+  which MUST be the exact Discipline subset of selected Knowledge;
 - every Knowledge identity referenced by an obligation;
 - every Check Definition selected by a Work Boundary Check;
 - every Knowledge identity referenced by an acceptance proposition;
@@ -440,11 +508,34 @@ Roots include:
 A free-text objective, tag, filename similarity, embedding score, or model guess
 MUST NOT create or remove a mandatory root.
 
+A required Artifact describes a final Product obligation. A future Knowledge
+Artifact path that is absent from the exact repository tree supplies no current
+Knowledge root. A valid Draft, Superseded, or Retired occurrence likewise does not become
+governing Knowledge merely because its path is a required Artifact. Existing
+Current Knowledge and explicitly selected identities retain their ordinary
+closure requirements; missing selected Knowledge or a present invalid Artifact
+is not excused as future work. Candidate validation and sealing later establish
+the Artifact's required final disposition. This distinction grants no additional
+write capability.
+
+A required implementation Artifact scope with no exact Git node or governed
+implementation descendants can select its exact Current primary tree
+Description before the first file exists. The compiler also considers ordinary
+applicable primary owners and refuses ambiguous ownership. It projects the
+Description, not an invented directory blob. Once descendants exist, each
+governed regular file must resolve through the ordinary coverage rules.
+
 The exact boundary-local mandate direction may source an Obligation, but it is
 already exactly bound inside the active Work Boundary selected by an
-authenticated Founder Decision. It therefore creates no Knowledge-closure root
+authenticated Director Decision. It therefore creates no Knowledge-closure root
 and no mounted source item. The compiler accepts no other boundary-local
 fragment as an Obligation source.
+
+Named Work Types MUST resolve in the bound Discipline Registry but do not add
+all members to mandatory closure. Direct exact Discipline selection without a
+Work Type is valid. The selected Registry and adoption bindings come from the
+same admitted epoch as the Boundary; recovery never consults an ambient Pack
+or current work router.
 
 ### 3. Traverse universal relationships
 
@@ -496,7 +587,8 @@ meaning.
 
 Mandatory items are ordered by:
 
-1. authority kind order: Behavior, Assurance, Blueprint, Description, Check;
+1. authority kind order: Behavior, Assurance, Blueprint, Description, Check,
+   Discipline;
 2. stable record identifier;
 3. revision number;
 4. source path or URI code-point order.
@@ -543,6 +635,7 @@ provider session identifiers.
 Reconnaissance uses an Orientation Projection. It receives:
 
 - the complete current Knowledge index;
+- the exact Discipline Registry and Work Type groupings;
 - concise current-record summaries and relationship indexes;
 - the exact normalized Atlas root and semantically selected Map, Point-record,
   and Resource context with full provenance;
@@ -582,6 +675,74 @@ material as observation rather than authority. When unprojected material appears
 to change selected meaning, scope, effect, risk, architecture, or assurance, the
 builder returns a Material Condition instead of silently widening the closure.
 
+The builder receives each exact selected Discipline in full, with its
+`discipline-guidance` authority and compact selection notice. Advisory guidance
+cannot replace Product Knowledge or expand the edit window; the complete
+Discipline root remains outside Candidate changes.
+
+#### Failed integration correction
+
+A conflict says the attempted construction could not advance the Candidate; it
+does not say the builder's work is lost. Useful correction requires the exact
+parent bytes that conflicted with that work, while the active Work Boundary
+continues to govern. This is why the following input is a bounded read-only
+correction selection rather than a new Knowledge basis or write grant.
+
+A builder also receives correction context when the latest Integration
+Assessment is conflicted or invalid under its current governing Work Boundary
+and the Assessment's source Candidate is the current Candidate or an exact
+ancestor through ordinary builder revisions. A successful later Assessment or
+a different governing Boundary expires this selection. Correction context does
+not assert that the failed result became a Candidate or changed its application
+base.
+
+The compiler reopens the Assessment's exact attempted parent Snapshot. It binds
+the complete Assessment and its source Candidate, then mounts a complete
+path-disposition description for every retained conflict path: file, directory,
+or absent, including a blocking ancestor when present. A directory lists all
+exact sorted descendant paths. Only entries equal to or below conflict paths,
+and blocking ancestor entries, supply parent bytes. Descriptors preserve exact
+human paths and bind each fixed-size source reference to its path and digest.
+An invalid Assessment without conflicts supplies its exact diagnostics and an
+explicit empty path description; it does not claim a complete physical diagnosis.
+
+These mandatory read-only inputs enter source inventories, Projection digests,
+and provider input digests under the selected complete profile. The attempted
+parent does not become governing Knowledge or grant Capability. Independent
+Candidate ancestry and exact Snapshot validation refuse a substituted parent,
+source Candidate, or governing Boundary. Successive correction Attempts keep
+this context only while the exact ancestry and latest-Assessment test holds.
+
+#### Rejected Product repair
+
+A builder selects the latest completed invalid-output Receipt carrying the exact
+repair pair defined by [Control](CONTROL.md#builder-repair-output), while its
+original input Candidate and governing Boundary remain the selected basis.
+A later completed builder without a new repair pair does not revoke that
+material while Product state and the governing mandate remain unchanged.
+The Runtime may carry that selection through a contiguous chain of
+`readmission-rebind` revisions only when their Candidate state and Carrier bytes
+are identical and each corresponding Boundary is an exact unchanged-mandate
+reaffirmation. The Work Boundary owner supplies that semantic comparison;
+Projection MUST NOT implement another definition of unchanged mandate. Original
+subjects remain repair provenance and the current Boundary alone governs.
+
+The compiler structurally reopens the rejected Carrier and the selected valid
+Candidate. It supplies the bounded rejection explanation, complete ordered
+Candidate-to-rejected-tree difference inventory, exact changed Product bytes,
+and explicit deleted-path dispositions in a separate read-only repair namespace.
+It binds their sources in the Projection and provider Input Set. It MUST NOT
+parse the rejected Knowledge into governing context or initialize the writable
+workspace from rejected output. The builder decides which observations to use
+and must produce a complete valid next Candidate under its current Boundary.
+
+The ordinary mandatory count, byte, item and source bounds apply. A measured
+impossible repair closure follows the builder Material Condition route; an
+unavailable or substituted selected Carrier does not become an optional omission.
+An ordinary builder or integration successor, changed semantic mandate,
+unrelated Boundary or contradictory ancestry cannot carry the prior selection
+forward as though it described the current writable input.
+
 ### Reviewer
 
 A reviewer request is valid only after Candidate sealing has produced the
@@ -599,6 +760,11 @@ reviewer receives the same authority closure as the builder plus:
 - every acceptance proposition and required evidence mapping; and
 - builder claims clearly separated from runtime-authenticated facts.
 
+The reviewer receives the same selected Discipline guidance as the builder.
+Review can mention useful adherence or a material mismatch, but Discipline
+alone never creates an acceptance failure. A requirement that must gate
+acceptance must already exist in an authoritative obligation or proposition.
+
 The compiler validates Candidate Knowledge and Description coverage from the
 sealed Candidate observation, not from the base Knowledge Set. Every sealed
 changed governed path is an additional coverage root. The result's Projection
@@ -608,6 +774,29 @@ NOT require those two Knowledge Set digests to be equal. The result's exact
 Binding items carry the registered Binding body, all declared `checkIds`, and a
 separate `compatibleCheckIds` resolution for this Projection; their identities
 and digests MUST equal the corresponding Orientation Binding index entries.
+
+Governing, integration-parent, and Candidate Knowledge closures remain basis-
+qualified collections. Parent Knowledge comes from the exact retained Snapshot;
+its occurrence identity MUST remain distinct from admitted and result identity,
+including when all three contain equal bytes. Citation subject validation and
+exact retrieval preserve that basis. Upstream B→P changes are visible context,
+not Delivery-authored changes. Reviewer inputs include exact original baselines
+and all mandatory applicability subjects under
+[Evidence](EVIDENCE.md#integration-applicability-review).
+The compiler MUST preserve every basis occurrence of a shared Knowledge identity,
+including when they have equal source bytes. Different revision numbers or
+source digests between bases MUST NOT be treated as a conflict by themselves
+or reconciled by choosing one. Occurrences with the same source digest must
+agree on enduring identity, revision, semantic digest, and kind; a discrepancy
+is inconsistent metadata, not a legitimate change between bases. Each Set
+still independently validates its own relationships, supersession, and conflict
+rules.
+
+A changed Description is Knowledge even when its path is under an
+implementation root or selected as a required documentation artifact.
+Reviewer coverage applies to governed implementation
+artifacts, not recursively to the Description record itself. Changed Knowledge
+enters the Candidate Knowledge closure through its owning record rules.
 
 The reviewer MUST NOT receive unretained builder reasoning or provider session
 history as evidence. A summary can orient review but cannot substitute for the
@@ -655,6 +844,25 @@ selected profile supplies the tighter operative bounds.
 An implementation can expose larger implementation-owned profiles, but it MUST
 identify all seven bounds and MUST NOT present a partial profile as a standard
 complete profile.
+
+The current Foundation implementation additionally registers
+`orientation-large-v1`: 512 mandatory items, 8 MiB mandatory bytes, 1 MiB per
+item, 4096 reachable items, 32 MiB reachable bytes, 8 MiB source bytes, and 32
+relationship edges. This optional Repository Contract entry has its own exact
+identity and digest. Selecting it is explicit Director-directed canonical
+configuration; it does not change any standard profile, grant capability,
+create authority, or relax complete mandatory closure. Unknown Orientation
+profiles and altered bounds under this identity are invalid. Preparation and
+boundary resolution use their exact selected repository basis; retained
+operations reopen the original Request rather than consulting changed defaults.
+
+The closed Request and Projection schemas admit this bounded implementation
+selection. Its fixture and implementation checks establish exact selection and
+refusal behavior, not operated qualification or a publication status transition.
+Existing Foundation v22 targets retain their identities and standard defaults;
+they can register and explicitly select this profile under the current exact
+Draft publication. This addition supplies no predecessor interpretation or
+implicit migration.
 
 An implementation that cannot support the mandatory bytes of a standard profile
 returns `complete: false`; it does not claim a valid smaller projection.
@@ -756,26 +964,36 @@ cache identity.
 For every dispatched Agent Attempt, the runtime binds one complete validated
 Projection to one exact role subject and deterministically compiles:
 
-- one concise body-only Role Brief that quotes the exact normalized fresh
-  Founder direction and explains the assignment, role, projected source
-  handles, effective capability, and workspace behavior in readable Markdown;
+- one concise body-only Role Brief that quotes the exact normalized selected
+  Director Brief and explains the Worker role, its technical assignment, its
+  Director counterpart, projected source handles, effective capability, and
+  workspace behavior in readable Markdown under the
+  [operating-roles contract](AUTHORITY.md#operating-roles);
   and
 - one versioned semantic-workspace template selected for that role, including
   the only allowed dispositions, sections, typed proposal fields, and
   local-handle grammar.
 
-The complete Projection, role subject, Founder Brief Control identity and
+The complete Projection, role subject, Director Brief Control identity and
 envelope, admitted Work Boundary when present, Candidate coordinate when
 present, Capability Profile, Investment, and planned Attempt remain typed
 runtime values. The Role Brief renders only the meaning an Agent needs; it has
 no Control front matter, global identity, digest, envelope, or canonical
-binding. Its quoted Founder direction, exact Role Brief bytes, template, and
+binding. Its quoted Director direction, exact Role Brief bytes, template, and
 typed runtime coordinates enter the pre-Attempt input-material digest. The
 runtime uses the template to initialize the governed `semantic.md` workspace;
 it does not expose a second read-only template file. These inputs are immutable
 for the invocation. A Role Brief is explanatory input and cannot add Knowledge,
 authority, capability, or an eligible operation not already present in the
 typed runtime values.
+
+The technical assignment comes from the exact Projection `role`; the Director
+counterpart is the supplier of the bound Director Brief. The compiler MUST NOT
+infer that either role is human, invent a counterpart identity, or create a
+human approval dependency. It renders the concise operating guidance into the
+existing Role Brief without adding a new Process, Control family, or authority
+selection. A manually requested Attempt quotes its fresh activity direction;
+a delegated pass quotes its exact original standing direction.
 
 The Role Brief, exact projected source files, and governed workspace are the
 provider-facing contract. The Agent MUST NOT receive or reproduce a Control
@@ -833,7 +1051,7 @@ The compiler and resolver MUST:
   inputs;
 - reject symlinks, submodules, executable replacements, path escapes, encoded
   separators, NUL values, and case-folded aliases where prohibited;
-- keep Founder credentials, provider credentials, ephemeral runtime state, and
+- keep Director credentials, provider credentials, ephemeral runtime state, and
   unrelated target data out of Projection content;
 - deny external retrieval by default;
 - enforce explicit schemes, hosts, networks, timeouts, size limits, redirects,
@@ -852,10 +1070,12 @@ A compiler reserves these codes:
 | Code | Condition |
 | --- | --- |
 | `lifecycle.projection.request-invalid` | Projection Request shape, semantics, or self-digest is invalid. |
-| `lifecycle.projection.basis-mismatch` | Request bases do not identify one coherent repository epoch. |
+| `lifecycle.projection.basis-mismatch` | Request bases do not identify one coherent operation subject, including separately bound admitted and sealed Candidate bases for review. |
 | `lifecycle.projection.profile-mismatch` | Class, role, profile identity, self-digest, or selected bounds disagree. |
 | `lifecycle.projection.index-invalid` | An explicit Orientation index is incomplete, incorrectly ordered, or digest-invalid. |
 | `lifecycle.projection.knowledge-invalid` | The bound Knowledge Set is incomplete or invalid for the requested profile. |
+| `lifecycle.projection.discipline-invalid` | Discipline discovery or selected guidance disagrees with its exact Registry, Work Types, selected record bytes, or advisory authority. |
+
 | `lifecycle.projection.boundary-invalid` | The Work Boundary is invalid, stale, or unsupported. |
 | `lifecycle.projection.root-unresolved` | A mandatory selected or Obligation-source identity does not resolve to its one exact current or boundary-local subject. |
 | `lifecycle.projection.relationship-unresolved` | Mandatory relationship closure cannot resolve. |
@@ -863,6 +1083,7 @@ A compiler reserves these codes:
 | `lifecycle.projection.description-ambiguous` | A governed implementation path has several primary Descriptions. |
 | `lifecycle.projection.check-binding-missing` | An included Check has no compatible binding. |
 | `lifecycle.projection.check-binding-mismatch` | Candidate and base closure resolve incompatible exact bytes for one Binding identity. |
+| `lifecycle.projection.citation-identity-conflict` | Knowledge occurrences sharing an exact source digest disagree on enduring identity, revision, semantic digest, or kind. Different source digests across admitted and Candidate bases do not cause this diagnostic. |
 | `lifecycle.projection.authority-conflict` | Applicable current sources conflict materially. |
 | `lifecycle.projection.source-inaccessible` | Required source context is not available under current authority. |
 | `lifecycle.projection.source-stale` | A required source does not bind the exact current record revision or declared digest. |

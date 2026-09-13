@@ -1,0 +1,42 @@
+{
+  "kind": "source",
+  "reference": {
+    "schema": "lifecycle.source-reference.v2",
+    "basisDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "sourceKind": "knowledge-body",
+    "subject": {
+      "kind": "knowledge-record",
+      "id": "behavior.checkout",
+      "revision": 1,
+      "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "label": "Checkout behavior",
+    "path": "records/behavior/checkout.md",
+    "mediaType": "markdown",
+    "contentDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "byteLength": 1024,
+    "digest": "sha256:d20e67c5f808fa669937aea7a635ca0978c915f55a9ed8478dab086952562a09",
+    "selection": {
+      "schema": "lifecycle.context-selection.v1",
+      "targetId": "target.one",
+      "storeId": "store.one",
+      "processId": "delivery.one",
+      "origin": {
+        "sequence": 1,
+        "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "boundary": {
+        "role": "active",
+        "reference": {
+          "kind": "work-boundary",
+          "id": "boundary.one",
+          "revision": 1,
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "digest": "sha256:864c83d540661e1807938dfae31b14404b7ac12bf8f5ab91c72c60c94ba46afe"
+    }
+  },
+  "startByte": 0,
+  "maximumBytes": 262144
+}

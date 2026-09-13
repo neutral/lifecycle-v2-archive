@@ -21,18 +21,18 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.release-notes.v1" },
-    "releaseNotesId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "releaseNotesId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "specificationId": { "const": "lifecycle" },
-    "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "previousPublication": {
       "oneOf": [
         { "$ref": "#/$defs/publicationCoordinate" },
         { "type": "null" }
       ]
     },
-    "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+    "summary": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
     "changes": {
       "type": "array",
       "minItems": 1,
@@ -48,36 +48,36 @@
     "knownLimitations": {
       "type": "array",
       "maxItems": 1024,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" }
     },
     "operatorActions": {
       "type": "array",
       "maxItems": 1024,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" }
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "idSet": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
     },
     "pathSet": {
       "type": "array",
       "maxItems": 4096,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" }
     },
     "publicationCoordinate": {
       "type": "object",
       "additionalProperties": false,
       "required": ["specificationVersion", "specificationRevision", "publicationDigest"],
       "properties": {
-        "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "change": {
@@ -94,17 +94,17 @@
         "securityEffect"
       ],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "classification": {
           "type": "string",
           "enum": ["initial", "editorial", "additive", "breaking", "security-correction"]
         },
-        "summary": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "summary": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
         "owners": { "$ref": "#/$defs/pathSet" },
         "schemas": { "$ref": "#/$defs/idSet" },
         "profiles": { "$ref": "#/$defs/idSet" },
-        "compatibilityEffect": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "securityEffect": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" }
+        "compatibilityEffect": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "securityEffect": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" }
       }
     },
     "hardCut": {
@@ -121,16 +121,16 @@
       ],
       "properties": {
         "treatment": { "type": "string", "enum": ["migration-bearing", "fresh-project-only"] },
-        "lastAcceptedPredecessorCoordinate": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "lastAcceptedPredecessorCoordinate": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
         "firstAcceptedSuccessorCoordinate": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
             { "type": "null" }
           ]
         },
-        "activeAttemptTreatment": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "historicalRecordTreatment": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "unsupportedStateTreatment": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "activeAttemptTreatment": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "historicalRecordTreatment": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "unsupportedStateTreatment": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
         "fixtureIds": { "$ref": "#/$defs/idSet" }
       }
     }

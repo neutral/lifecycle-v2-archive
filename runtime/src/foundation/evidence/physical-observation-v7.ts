@@ -21,6 +21,7 @@ import type {
   FoundationEvaluationPhysicalObservationV7,
 } from "../process/evaluation-finalization-v7.js";
 import type { FoundationReviewerProjectionObservation } from "../projection/execution.js";
+import { resolveFoundationEvidenceObservationSubjectV7, type FoundationEvidenceSubjectObservationV7 } from "./verifier-v7.js";
 import {
   pathWithin,
   productStateRole,
@@ -127,7 +128,7 @@ type ExactSubjects = Readonly<{
   boundary: ControlRecordRevision;
   candidate: ControlRecordRevision;
   seal: ControlRecordRevision;
-  candidateObservation: "initialization" | "builder-successor" | "readmission-rebind";
+  candidateObservation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor";
   state: CandidateAvailableState;
   artifacts: readonly BoundaryArtifact[];
   predecessorCandidateDigest: Sha256 | null;
@@ -225,7 +226,7 @@ function oneRelationship(
 
 function candidateState(candidate: ControlRecordRevision): CandidateAvailableState {
   if (
-    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v2"
+    candidate.payload.schema !== "lifecycle.candidate-revision-payload.v3"
   ) fail("candidate", "Physical Evidence requires one exact reconstructible Candidate Revision");
   const value = object(candidate.payload.state, "Candidate Revision state");
   const tree = string(value.tree, "Candidate tree");
@@ -276,7 +277,8 @@ function candidateObservation(
   if (
     observation !== "initialization" &&
     observation !== "builder-successor" &&
-    observation !== "readmission-rebind"
+    observation !== "readmission-rebind" &&
+    observation !== "integration-successor"
   ) fail("candidate", "Candidate Revision has an unknown observation kind");
   return observation;
 }
@@ -315,7 +317,7 @@ function candidateCarrierManifestReference(
 }
 
 function boundaryArtifacts(boundary: ControlRecordRevision): readonly BoundaryArtifact[] {
-  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v4") {
+  if (boundary.payload.schema !== "lifecycle.work-boundary-payload.v6") {
     fail("boundary", "Physical Evidence requires one Foundation Work Boundary");
   }
   const mandate = object(boundary.payload.mandate, "Work Boundary mandate");
@@ -452,14 +454,15 @@ async function withRetainedCarrierRepository<T>(input: Readonly<{
     repository: input.physical.targetRepository,
     store: input.store,
     boundary: input.subjects.boundary,
+    candidate: input.subjects.candidate,
   });
-  if (canonicalJson(admitted.contract) !== canonicalJson(input.physical.contract)) {
+  if (canonicalJson(admitted.governing.contract) !== canonicalJson(input.physical.contract)) {
     fail("contract", "Evidence contract does not reproduce the admitted Work Boundary context");
   }
   if (
     input.subjects.candidate.payload.candidateBaseCommit !== admitted.epoch.commit
   ) {
-    fail("candidate", "Sealed Candidate immutable base differs from its admitted context");
+    fail("candidate", "Sealed Candidate immutable base differs from its application context");
   }
   return await withCandidateRevisionCarrierStateRepository({
     machineHome: input.physical.machineHome,
@@ -611,7 +614,7 @@ async function artifactObservations(input: Readonly<{
         })))
       : null;
     const record = knowledgeRole(artifact.role)
-      ? input.material.knowledge.currentRecords.find(({ path }) => path === artifact.path)
+      ? input.material.knowledge.records.find(({ path }) => path === artifact.path)
       : undefined;
     const schemaValidation = knowledgeRole(artifact.role)
       ? record === undefined ? "invalid" as const : "valid" as const
@@ -620,12 +623,6 @@ async function artifactObservations(input: Readonly<{
       ? record?.frontMatter.kind === artifact.role ? "valid" as const : "invalid" as const
       : "not-required" as const;
     const change = artifactChange(artifact, before, after, changed);
-    const supportedArtifact = fileKind === "file" || fileKind === "directory";
-    const requiredChange = !artifact.mustChange || change === "added" || change === "modified";
-    const state = existence === "present" && supportedArtifact && requiredChange &&
-        schemaValidation !== "invalid" && semanticValidation !== "invalid"
-      ? "satisfied" as const
-      : "failed" as const;
     values.push(Object.freeze({
       artifactId: artifact.id,
       fileKind,
@@ -636,7 +633,6 @@ async function artifactObservations(input: Readonly<{
       schemaValidation,
       semanticValidation,
       limitationIds: Object.freeze([]),
-      state,
     }));
   }
   return Object.freeze(values.sort((left, right) => compareCodePoints(left.artifactId, right.artifactId)));
@@ -714,9 +710,6 @@ function descriptionObservations(input: Readonly<{
       descriptionChange,
       exclusionChange: "none",
       obligationIds: Object.freeze(obligationIds),
-      state: ownership === "exact"
-        ? "satisfied"
-        : ownership === "excluded" ? "not-applicable" : "failed",
     });
   });
   return Object.freeze(values.sort((left, right) => compareCodePoints(left.path, right.path)));
@@ -839,7 +832,8 @@ export async function observeFoundationReviewerProjectionCandidateV7(
  * reopens surrounding that compilation and cannot be supplied by Agent prose.
  */
 export async function observeFoundationEvaluationEvidenceV7(
-  input: FoundationEvaluationObservationContextV7 & FoundationEvaluationPhysicalObservationOwnerV7Input,
+  input: Pick<FoundationEvaluationObservationContextV7, "store" | "boundary" | "candidate" | "seal"> &
+    FoundationEvaluationPhysicalObservationOwnerV7Input,
 ): Promise<FoundationEvaluationPhysicalObservationV7> {
   try {
     const headBefore = input.store.state().journal.headDigest;
@@ -884,6 +878,24 @@ export async function observeFoundationEvaluationEvidenceV7(
   } catch (error) {
     publicFailure("evaluation", error);
   }
+}
+
+/** Return independently observed facts bound by this owner to their exact subject. */
+export async function observeFoundationAcceptanceEvidenceV7(
+  input: Parameters<typeof observeFoundationEvaluationEvidenceV7>[0],
+): Promise<FoundationEvidenceSubjectObservationV7> {
+  const reference = (revision: ControlRecordRevision) => Object.freeze({
+    id: revision.recordId,
+    revision: revision.revision,
+    digest: revision.digest,
+  });
+  const subject = resolveFoundationEvidenceObservationSubjectV7({store:input.store,subjects:{
+    boundary: reference(input.boundary),
+    candidate: reference(input.candidate),
+    seal: reference(input.seal),
+  }});
+  const facts = await observeFoundationEvaluationEvidenceV7(input);
+  return Object.freeze({ subject, facts });
 }
 
 /** Bind the exact Carrier Store and admitted repository context to Evidence. */

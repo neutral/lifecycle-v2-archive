@@ -6,14 +6,16 @@ import type {
 } from "./types.js";
 
 export const DELIVERY_CONTROL_RECORD_KINDS = Object.freeze([
-  "founder-brief",
+  "director-brief",
+  "work-delegation",
   "agent-attempt",
   "agent-work-product",
   "execution-receipt",
   "candidate-revision",
+  "integration-assessment",
   "work-boundary",
   "material-condition",
-  "founder-decision",
+  "director-decision",
   "candidate-seal",
   "check-receipt",
   "evidence-packet",
@@ -28,7 +30,7 @@ export type ControlRecordEditWindow =
   | "provider-active"
   | "before-authentication";
 
-export type ControlRecordEditor = "none" | "founder" | "assigned-agent";
+export type ControlRecordEditor = "none" | "director" | "assigned-agent";
 
 export type ControlRecordRelationshipPolicy = Readonly<{
   relation: string;
@@ -55,19 +57,38 @@ export type ControlRecordKindPolicy = Readonly<{
 const MANY = null;
 
 const POLICIES = Object.freeze({
-  "founder-brief": Object.freeze({
-    kind: "founder-brief",
-    payloadSchemaId: "urn:lifecycle:schema:founder-brief-payload:v1",
+  "director-brief": Object.freeze({
+    kind: "director-brief",
+    payloadSchemaId: "urn:lifecycle:schema:director-brief-payload:v2",
     dossier: "frame",
     producer: "runtime",
-    semanticAuthor: "founder",
-    semanticAuthority: "founder-supplied",
-    editor: "founder",
+    semanticAuthor: "director",
+    semanticAuthority: "director-supplied",
+    editor: "director",
     editWindow: "before-activity",
     revisionMode: "single",
-    finalizationEvent: "founder-brief-submitted",
+    finalizationEvent: "director-brief-submitted",
     retention: "archive-with-delivery",
     relationships: Object.freeze([]),
+  }),
+  "work-delegation": Object.freeze({
+    kind: "work-delegation",
+    payloadSchemaId: "urn:lifecycle:schema:work-delegation-payload:v2",
+    dossier: "attempt",
+    producer: "runtime",
+    semanticAuthor: "director",
+    semanticAuthority: "director-supplied",
+    editor: "director",
+    editWindow: "before-activity",
+    revisionMode: "successive",
+    finalizationEvent: "work-delegation-set",
+    retention: "archive-with-delivery",
+    relationships: Object.freeze([
+      { relation: "uses-boundary", targetKinds: ["work-boundary"], minimum: 1, maximum: 1 },
+      { relation: "uses-admission", targetKinds: ["director-decision"], minimum: 1, maximum: 1 },
+      { relation: "uses-brief", targetKinds: ["director-brief"], minimum: 0, maximum: 2 },
+      { relation: "revises", targetKinds: ["work-delegation"], minimum: 0, maximum: 1 },
+    ]),
   }),
   "agent-attempt": Object.freeze({
     kind: "agent-attempt",
@@ -82,7 +103,7 @@ const POLICIES = Object.freeze({
     finalizationEvent: "agent-attempt-prepared",
     retention: "archive-with-delivery",
     relationships: Object.freeze([
-      { relation: "uses-brief", targetKinds: ["founder-brief"], minimum: 1, maximum: 1 },
+      { relation: "uses-brief", targetKinds: ["director-brief"], minimum: 1, maximum: 1 },
       { relation: "uses-boundary", targetKinds: ["work-boundary"], minimum: 0, maximum: 1 },
       { relation: "uses-candidate", targetKinds: ["candidate-revision"], minimum: 0, maximum: 1 },
       { relation: "uses-seal", targetKinds: ["candidate-seal"], minimum: 0, maximum: 1 },
@@ -90,7 +111,7 @@ const POLICIES = Object.freeze({
   }),
   "agent-work-product": Object.freeze({
     kind: "agent-work-product",
-    payloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v2",
+    payloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v5",
     dossier: "attempt",
     producer: "runtime",
     semanticAuthor: "agent",
@@ -124,7 +145,7 @@ const POLICIES = Object.freeze({
   }),
   "candidate-revision": Object.freeze({
     kind: "candidate-revision",
-    payloadSchemaId: "urn:lifecycle:schema:candidate-revision-payload:v2",
+    payloadSchemaId: "urn:lifecycle:schema:candidate-revision-payload:v3",
     dossier: "candidate",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -138,11 +159,29 @@ const POLICIES = Object.freeze({
       { relation: "revises", targetKinds: ["candidate-revision"], minimum: 0, maximum: 1 },
       { relation: "governed-by", targetKinds: ["work-boundary"], minimum: 1, maximum: 1 },
       { relation: "result-of", targetKinds: ["agent-attempt"], minimum: 0, maximum: 1 },
+      { relation: "integrated-from", targetKinds: ["integration-assessment"], minimum: 0, maximum: 1 },
+    ]),
+  }),
+  "integration-assessment": Object.freeze({
+    kind: "integration-assessment",
+    payloadSchemaId: "urn:lifecycle:schema:integration-assessment-payload:v1",
+    dossier: "candidate",
+    producer: "runtime",
+    semanticAuthor: "runtime",
+    semanticAuthority: "runtime-observed",
+    editor: "none",
+    editWindow: "none",
+    revisionMode: "single",
+    finalizationEvent: "integration-assessed",
+    retention: "archive-with-delivery",
+    relationships: Object.freeze([
+      { relation: "governed-by", targetKinds: ["work-boundary"], minimum: 1, maximum: 1 },
+      { relation: "integrates", targetKinds: ["candidate-revision"], minimum: 1, maximum: 1 },
     ]),
   }),
   "work-boundary": Object.freeze({
     kind: "work-boundary",
-    payloadSchemaId: "urn:lifecycle:schema:work-boundary-payload:v4",
+    payloadSchemaId: "urn:lifecycle:schema:work-boundary-payload:v6",
     dossier: "boundary",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -153,7 +192,7 @@ const POLICIES = Object.freeze({
     finalizationEvent: "work-boundary-finalized",
     retention: "archive-with-delivery",
     relationships: Object.freeze([
-      { relation: "uses-brief", targetKinds: ["founder-brief"], minimum: 1, maximum: 1 },
+      { relation: "uses-brief", targetKinds: ["director-brief"], minimum: 1, maximum: 1 },
       { relation: "proposed-from", targetKinds: ["agent-work-product"], minimum: 1, maximum: 1 },
       { relation: "revises", targetKinds: ["work-boundary"], minimum: 0, maximum: 1 },
       { relation: "resolves", targetKinds: ["material-condition"], minimum: 0, maximum: 1 },
@@ -161,7 +200,7 @@ const POLICIES = Object.freeze({
   }),
   "material-condition": Object.freeze({
     kind: "material-condition",
-    payloadSchemaId: "urn:lifecycle:schema:material-condition-payload:v1",
+    payloadSchemaId: "urn:lifecycle:schema:material-condition-payload:v4",
     dossier: "boundary",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -172,23 +211,23 @@ const POLICIES = Object.freeze({
     finalizationEvent: "material-condition-frozen",
     retention: "archive-with-delivery",
     relationships: Object.freeze([
-      { relation: "reported-by", targetKinds: ["agent-work-product"], minimum: 1, maximum: 1 },
-      { relation: "observed-in", targetKinds: ["execution-receipt"], minimum: 1, maximum: 1 },
+      { relation: "reported-by", targetKinds: ["agent-work-product", "integration-assessment"], minimum: 0, maximum: 1 },
+      { relation: "observed-in", targetKinds: ["execution-receipt", "candidate-seal"], minimum: 0, maximum: 1 },
       { relation: "freezes", targetKinds: ["candidate-revision"], minimum: 1, maximum: 1 },
       { relation: "governed-by", targetKinds: ["work-boundary"], minimum: 1, maximum: 1 },
     ]),
   }),
-  "founder-decision": Object.freeze({
-    kind: "founder-decision",
-    payloadSchemaId: "urn:lifecycle:schema:founder-decision-payload:v4",
+  "director-decision": Object.freeze({
+    kind: "director-decision",
+    payloadSchemaId: "urn:lifecycle:schema:director-decision-payload:v5",
     dossier: "decision",
     producer: "runtime",
-    semanticAuthor: "founder",
-    semanticAuthority: "founder-authenticated",
-    editor: "founder",
+    semanticAuthor: "director",
+    semanticAuthority: "director-authenticated",
+    editor: "director",
     editWindow: "before-authentication",
     revisionMode: "single",
-    finalizationEvent: "founder-decision-authenticated",
+    finalizationEvent: "director-decision-authenticated",
     retention: "archive-with-delivery",
     relationships: Object.freeze([
       { relation: "selects-boundary", targetKinds: ["work-boundary"], minimum: 0, maximum: 1 },
@@ -219,7 +258,7 @@ const POLICIES = Object.freeze({
   }),
   "check-receipt": Object.freeze({
     kind: "check-receipt",
-    payloadSchemaId: "urn:lifecycle:schema:check-receipt-payload:v2",
+    payloadSchemaId: "urn:lifecycle:schema:check-receipt-payload:v3",
     dossier: "evidence",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -236,7 +275,7 @@ const POLICIES = Object.freeze({
   }),
   "evidence-packet": Object.freeze({
     kind: "evidence-packet",
-    payloadSchemaId: "urn:lifecycle:schema:evidence-packet-payload:v1",
+    payloadSchemaId: "urn:lifecycle:schema:evidence-packet-payload:v2",
     dossier: "evidence",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -257,7 +296,7 @@ const POLICIES = Object.freeze({
   }),
   "closure": Object.freeze({
     kind: "closure",
-    payloadSchemaId: "urn:lifecycle:schema:closure-payload:v4",
+    payloadSchemaId: "urn:lifecycle:schema:closure-payload:v6",
     dossier: "closure",
     producer: "runtime",
     semanticAuthor: "runtime",
@@ -268,7 +307,7 @@ const POLICIES = Object.freeze({
     finalizationEvent: "closure-recorded",
     retention: "archive-with-delivery",
     relationships: Object.freeze([
-      { relation: "closes-with", targetKinds: ["founder-decision"], minimum: 1, maximum: 1 },
+      { relation: "closes-with", targetKinds: ["director-decision"], minimum: 1, maximum: 1 },
       { relation: "governed-by", targetKinds: ["work-boundary"], minimum: 0, maximum: 1 },
       { relation: "accepts-candidate", targetKinds: ["candidate-revision"], minimum: 0, maximum: 1 },
       { relation: "accepts-evidence", targetKinds: ["evidence-packet"], minimum: 0, maximum: 1 },
@@ -316,6 +355,21 @@ export function assertDeliveryControlRecordPolicy(revision: ControlRecordRevisio
       "lifecycle.control-record-policy.revision",
       `${revision.recordKind} is a single-revision Control family`,
     );
+  }
+  if (revision.recordKind === "material-condition") {
+    const source = revision.payload.source;
+    const sourceKind = source !== null && typeof source === "object" && "kind" in source ? source.kind : undefined;
+    const reported = revision.relationships.filter(({ relation }) => relation === "reported-by");
+    const observed = revision.relationships.filter(({ relation }) => relation === "observed-in");
+    const valid = sourceKind === "projection-compilation"
+      ? reported.length === 0 && observed.length <= 1 && observed.every(({ target }) => target.kind === "candidate-seal")
+      : sourceKind === "integration-assessment"
+        ? reported.length === 1 && reported[0]!.target.kind === "integration-assessment" && observed.length === 0
+        : sourceKind === "agent-proposal"
+          ? reported.length === 1 && reported[0]!.target.kind === "agent-work-product" && observed.length === 1 && observed[0]!.target.kind === "execution-receipt"
+          : true; // Payload validation owns an absent or unsupported source discriminator.
+    if (!valid) throw new FoundationError("lifecycle.control-record-policy.relationship-cardinality",
+      "Material Condition relationships do not match their exact source kind");
   }
   const counts = new Map<string, number>();
   for (const relationship of revision.relationships) {

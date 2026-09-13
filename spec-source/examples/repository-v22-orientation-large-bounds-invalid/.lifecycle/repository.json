@@ -1,0 +1,249 @@
+{
+  "$schema": "lifecycle.repository.v22",
+  "schemaVersion": 22,
+  "targetId": "fixture-orientation-large-v19",
+  "generation": 1,
+  "canonicalBranch": "refs/heads/main",
+  "specification": {
+    "id": "lifecycle",
+    "revision": "lifecycle.foundation.1.0.0-rc.17",
+    "publicationDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "status": "draft"
+  },
+  "runtime": {
+    "compatible": "lifecycle.runtime.foundation.v17",
+    "interface": "lifecycle.interface.foundation.v17"
+  },
+  "provider": {
+    "defaultDescriptorId": "codex-exec-standard-v7",
+    "defaultDescriptorDigest": "sha256:4bcb41216dad08468d53d7208909d3417415c6f5b7b1078da72285650a92d021",
+    "protocol": "lifecycle.provider-adapter.v7"
+  },
+  "processes": [
+    "delivery"
+  ],
+  "atlas": {
+    "root": "atlas",
+    "entrypoint": "atlas/atlas.md",
+    "readOnly": true,
+    "selection": {
+      "release": "0.8.0",
+      "specificationRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
+      "authoredFormat": 1,
+      "processorRevision": "2c7a78540ac30138218b12803f1c045cee8b109a",
+      "validationProfile": "neutral.atlas-validator.resolved",
+      "validationResultSchema": "urn:atlas:schema:validation-result:1",
+      "normalizedModelSchema": "urn:atlas:schema:normalized:1",
+      "consumerProfile": "lifecycle.atlas-consumer.v2"
+    }
+  },
+  "knowledge": {
+    "roots": {
+      "behavior": "records/behavior",
+      "assurance": "records/assurance",
+      "blueprint": "records/blueprint",
+      "check": "records/checks",
+      "descriptionPattern": "**/_*.desc.md",
+      "discipline": "records/disciplines",
+      "disciplineRegistry": "records/disciplines/registry.json"
+    },
+    "owners": [
+      "director"
+    ],
+    "limits": {
+      "maximumRecords": 65536,
+      "maximumTotalRecordBytes": 268435456,
+      "maximumFileBytes": 4194304,
+      "maximumFrontMatterBytes": 524288,
+      "maximumJsonDepth": 64,
+      "maximumJsonNodes": 65536,
+      "maximumObjectProperties": 4096,
+      "maximumArrayItems": 4096,
+      "maximumBodyLines": 131072,
+      "maximumHeadings": 4096,
+      "maximumHeadingBytes": 16384,
+      "maximumPathBytes": 4096,
+      "maximumGraphNodes": 65536,
+      "maximumGraphEdges": 262144,
+      "maximumNodeDegree": 4096,
+      "maximumSources": 262144,
+      "maximumSourcesPerRecord": 128,
+      "maximumSourceBytes": 4194304,
+      "maximumTotalSourceBytes": 268435456
+    }
+  },
+  "sourcePolicy": {
+    "repository": "exact-bound-tree",
+    "externalLocal": "denied",
+    "network": "denied"
+  },
+  "selections": {
+    "schemas": [
+      "urn:lifecycle:schema:agent-attempt-payload:v3",
+      "urn:lifecycle:schema:agent-work-product-payload:v5",
+      "urn:lifecycle:schema:atlas-resolution:v2",
+      "urn:lifecycle:schema:atlas-state:v1",
+      "urn:lifecycle:schema:authorization-review:v1",
+      "urn:lifecycle:schema:builder-repair-output:v1",
+      "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
+      "urn:lifecycle:schema:candidate-revision-payload:v3",
+      "urn:lifecycle:schema:candidate-seal-payload:v2",
+      "urn:lifecycle:schema:capability-profile:v2",
+      "urn:lifecycle:schema:check-receipt-payload:v3",
+      "urn:lifecycle:schema:closure-payload:v6",
+      "urn:lifecycle:schema:common:v2",
+      "urn:lifecycle:schema:conformance-claim:v2",
+      "urn:lifecycle:schema:context-inspection-selector:v3",
+      "urn:lifecycle:schema:control-lifecycle-profile:v7",
+      "urn:lifecycle:schema:control-record-event:v6",
+      "urn:lifecycle:schema:control-record-file:v1",
+      "urn:lifecycle:schema:control-record-revision:v2",
+      "urn:lifecycle:schema:control-record-store-archive:v1",
+      "urn:lifecycle:schema:control-record-store-seal:v1",
+      "urn:lifecycle:schema:control-record-store:v2",
+      "urn:lifecycle:schema:delivery-reduction:v5",
+      "urn:lifecycle:schema:director-brief-payload:v2",
+      "urn:lifecycle:schema:director-decision-payload:v5",
+      "urn:lifecycle:schema:discipline-pack:v1",
+      "urn:lifecycle:schema:discipline-registry:v1",
+      "urn:lifecycle:schema:evidence-packet-payload:v2",
+      "urn:lifecycle:schema:execution-backend-profile:v1",
+      "urn:lifecycle:schema:execution-image:v1",
+      "urn:lifecycle:schema:execution-input-set:v2",
+      "urn:lifecycle:schema:execution-observation:v1",
+      "urn:lifecycle:schema:execution-output-manifest:v1",
+      "urn:lifecycle:schema:execution-receipt-payload:v3",
+      "urn:lifecycle:schema:execution-specification:v1",
+      "urn:lifecycle:schema:fixture-manifest:v1",
+      "urn:lifecycle:schema:integration-assessment-payload:v1",
+      "urn:lifecycle:schema:investment-allocation:v1",
+      "urn:lifecycle:schema:knowledge-projection:v6",
+      "urn:lifecycle:schema:knowledge-record:v2",
+      "urn:lifecycle:schema:material-condition-payload:v4",
+      "urn:lifecycle:schema:product-state:v1",
+      "urn:lifecycle:schema:productive-semantic-operation:v1",
+      "urn:lifecycle:schema:projection-request:v5",
+      "urn:lifecycle:schema:provider-descriptor:v7",
+      "urn:lifecycle:schema:publication-manifest:v1",
+      "urn:lifecycle:schema:publication-statement:v1",
+      "urn:lifecycle:schema:release-notes:v1",
+      "urn:lifecycle:schema:repository-contract:v22",
+      "urn:lifecycle:schema:repository-snapshot:v1",
+      "urn:lifecycle:schema:validation-result:v1",
+      "urn:lifecycle:schema:work-boundary-payload:v6",
+      "urn:lifecycle:schema:work-delegation-payload:v2"
+    ],
+    "profiles": [
+      "knowledge-set-v2",
+      "knowledge-structural-v2",
+      "repository-v9"
+    ],
+    "controlStore": "lifecycle.control-record-store.v2",
+    "controlLifecycleProfile": "foundation-delivery-control-lifecycle-v7",
+    "controlRecordRevision": "lifecycle.control-record-revision.v2",
+    "controlRecordEvent": "lifecycle.control-record-event.v6",
+    "controlReferencedFile": "lifecycle.control-record-file.v1",
+    "controlStoreSeal": "lifecycle.control-record-store-seal.v1",
+    "controlStoreArchive": "lifecycle.control-record-store-archive.v1",
+    "deliveryReduction": "lifecycle.delivery-reduction.v5",
+    "candidateRevisionCarrierManifest": "lifecycle.candidate-revision-carrier-manifest.v1",
+    "executionBackendProfile": "lifecycle.execution-backend-profile.docker-local.v1",
+    "executionCellRunner": "lifecycle.execution-cell-runner.v1",
+    "executionSpecification": "lifecycle.execution-specification.v1",
+    "executionInputSet": "lifecycle.execution-input-set.v2",
+    "executionImage": "lifecycle.execution-image.v1",
+    "executionObservation": "lifecycle.execution-observation.v1",
+    "executionOutputManifest": "lifecycle.execution-output-manifest.v1",
+    "extensions": []
+  },
+  "productState": {
+    "roots": [
+      ".lifecycle/repository.json",
+      "atlas",
+      "records/assurance",
+      "records/behavior",
+      "records/blueprint",
+      "records/checks",
+      "records/disciplines"
+    ],
+    "exclusions": [
+      ".git",
+      ".lifecycle/runtime"
+    ],
+    "governedImplementationRoots": [],
+    "coverageExemptions": []
+  },
+  "checkBindings": {},
+  "capabilityProfiles": {
+    "local-development-v1": {
+      "id": "local-development-v1",
+      "candidateWrites": true,
+      "temporaryWrites": true,
+      "subprocesses": "repository-toolchain",
+      "network": {
+        "mode": "none"
+      },
+      "credentials": "none",
+      "externalEffects": [],
+      "digest": "sha256:903a485c2e64d9f11dc645133d6827ad1a23919f7d7c939ab4499a86c18dbe73"
+    }
+  },
+  "projectionProfiles": {
+    "execution-large-v1": {
+      "id": "execution-large-v1",
+      "maximumMandatoryItems": 4096,
+      "maximumMandatoryBytes": 67108864,
+      "maximumItemBytes": 4194304,
+      "maximumReachableItems": 16384,
+      "maximumReachableBytes": 134217728,
+      "maximumSourceBytes": 33554432,
+      "maximumRelationshipDepth": 128,
+      "digest": "sha256:e2481d0ad191ad7950e5b5ce66b2d762abc6acbd2db3ee536d82143b0625c177"
+    },
+    "execution-standard-v1": {
+      "id": "execution-standard-v1",
+      "maximumMandatoryItems": 512,
+      "maximumMandatoryBytes": 8388608,
+      "maximumItemBytes": 1048576,
+      "maximumReachableItems": 4096,
+      "maximumReachableBytes": 33554432,
+      "maximumSourceBytes": 8388608,
+      "maximumRelationshipDepth": 32,
+      "digest": "sha256:d236db165b5bdda45ec32c5ebff1b3d97df22c22f234f8ca02c692f70a25a5d7"
+    },
+    "orientation-standard-v1": {
+      "id": "orientation-standard-v1",
+      "maximumMandatoryItems": 256,
+      "maximumMandatoryBytes": 4194304,
+      "maximumItemBytes": 1048576,
+      "maximumReachableItems": 4096,
+      "maximumReachableBytes": 33554432,
+      "maximumSourceBytes": 8388608,
+      "maximumRelationshipDepth": 24,
+      "digest": "sha256:13a576b6b96d8372e77541f49d81951483f9c7a4a60edce86faa9e5307dfa177"
+    },
+    "orientation-large-v1": {
+      "id": "orientation-large-v1",
+      "maximumMandatoryItems": 513,
+      "maximumMandatoryBytes": 8388608,
+      "maximumItemBytes": 1048576,
+      "maximumReachableItems": 4096,
+      "maximumReachableBytes": 33554432,
+      "maximumSourceBytes": 8388608,
+      "maximumRelationshipDepth": 32,
+      "digest": "sha256:21537639261522183b2315ccb6c9fc6ec4a76f9fe3feb466d10faf33c936cd3a"
+    }
+  },
+  "defaults": {
+    "capabilityProfileId": "local-development-v1",
+    "orientationProjectionProfileId": "orientation-large-v1",
+    "executionProjectionProfileId": "execution-standard-v1",
+    "providerDescriptorId": "codex-exec-standard-v7"
+  },
+  "authority": {
+    "principalId": "director",
+    "keyId": "fixture-key-v1",
+    "publicKey": "ed25519:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  },
+  "digest": "sha256:91acac8b0b7e7293cfaf0110707e6e04741a7ed5873bbc9c2098c5850bc1597b"
+}

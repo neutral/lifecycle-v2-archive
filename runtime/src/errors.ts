@@ -7,8 +7,8 @@ export type LifecycleErrorJson = {
   code: string;
   message: string;
   retryable: boolean;
-  repositoryChanged: boolean;
-  operationalStateChanged: boolean;
+  repositoryChanged: boolean | null;
+  operationalStateChanged: boolean | null;
   recoveryActions: RecoveryAction[];
   observedFacts?: unknown;
 };
@@ -22,8 +22,8 @@ function safeMessage(error: unknown): string {
 export class LifecycleError extends Error {
   readonly code: string;
   readonly retryable: boolean;
-  readonly repositoryChanged: boolean;
-  readonly operationalStateChanged: boolean;
+  readonly repositoryChanged: boolean | null;
+  readonly operationalStateChanged: boolean | null;
   readonly recoveryActions: RecoveryAction[];
   readonly observedFacts?: unknown;
 
@@ -31,8 +31,8 @@ export class LifecycleError extends Error {
     code: string;
     message: string;
     retryable?: boolean;
-    repositoryChanged?: boolean;
-    operationalStateChanged?: boolean;
+    repositoryChanged?: boolean | null;
+    operationalStateChanged?: boolean | null;
     recoveryActions?: RecoveryAction[];
     observedFacts?: unknown;
   }) {
@@ -40,8 +40,8 @@ export class LifecycleError extends Error {
     this.name = "LifecycleError";
     this.code = options.code;
     this.retryable = options.retryable ?? false;
-    this.repositoryChanged = options.repositoryChanged ?? false;
-    this.operationalStateChanged = options.operationalStateChanged ?? false;
+    this.repositoryChanged = options.repositoryChanged === undefined ? false : options.repositoryChanged;
+    this.operationalStateChanged = options.operationalStateChanged === undefined ? false : options.operationalStateChanged;
     this.recoveryActions = options.recoveryActions ?? [];
     this.observedFacts = options.observedFacts;
   }

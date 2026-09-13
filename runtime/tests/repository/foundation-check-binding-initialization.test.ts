@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -45,7 +46,7 @@ function input(): FoundationCommandCheckBindingInput {
   });
 }
 
-test("package-root Check Binding construction validates Founder input and derives only fixed carrier fields", () => {
+test("package-root Check Binding construction validates Director input and derives only fixed carrier fields", () => {
   const semantic = input();
   const binding = createFoundationCommandCheckBinding(semantic);
 
@@ -153,14 +154,14 @@ test("Check Binding registries reject identity substitution and contract creatio
       targetId: "target.invalid-binding",
       canonicalBranch: "refs/heads/main",
       authority: {
-        principalId: "founder",
+        principalId: "director",
         keyId: "key.test",
         publicKey: "ed25519:dGVzdA==",
       },
       publicationDigest: sha256Bytes("publication"),
       checkBindings: { "binding.broken": { id: "binding.broken" } } as never,
     }),
-    /fails urn:lifecycle:schema:repository-contract:v15/u,
+    /fails urn:lifecycle:schema:repository-contract:v22/u,
   );
 });
 
@@ -173,7 +174,7 @@ test("facade initialization rejects malformed nested Check Bindings before invok
       codexHome: "/tmp/foundation-invalid-binding-codex-home",
       model: "foundation-invalid-binding-model",
       reasoning: "low",
-      specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
+      specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
       publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
     },
     initialize: async () => {
@@ -190,7 +191,7 @@ test("facade initialization rejects malformed nested Check Bindings before invok
       input: {
         checkBindings: { "binding.broken": { id: "binding.broken" } } as never,
       },
-    }, { authoritySecret: SECRET }),
+    }, { authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize") }),
   );
   assert.equal(initialized, 0);
 });
@@ -215,7 +216,7 @@ test("direct initialization rejects malformed Check Bindings without repository 
   await assert.rejects(initializeRepository(root, {
     targetId: "target.invalid-binding",
     home,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
     checkBindings: { "binding.broken": { id: "binding.broken" } } as never,
   }));

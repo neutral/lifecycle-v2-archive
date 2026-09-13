@@ -110,7 +110,7 @@ export function executionContractFixture(salt = "default"): ExecutionContractFix
     imageDigest: digest(`image-${salt}`),
   });
   const inputSet = Object.freeze({
-    profileId: "lifecycle.execution-input-set.v1" as const,
+    profileId: "lifecycle.execution-input-set.v2" as const,
     digest: digest(`input-set-${salt}`),
   });
   const outputContractSubject = {

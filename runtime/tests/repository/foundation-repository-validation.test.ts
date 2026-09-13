@@ -1,3 +1,4 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,7 +8,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { FOUNDATION_SPECIFICATION_REVISION } from "../../src/foundation/constants.js";
-import { loadKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
+import { consumeFoundationKnowledgeCompilation, loadKnowledgeSet, validateKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
 import type { FoundationKnowledgeSet } from "../../src/foundation/knowledge/types.js";
 import { createFoundationAuthority } from "../../src/foundation/repository/authority.js";
 import { createRepositoryContract, writeRepositoryContract } from "../../src/foundation/repository/contract.js";
@@ -41,7 +43,7 @@ async function write(root: string, path: string, content: string): Promise<void>
 
 function blueprintDocument(): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "blueprint",
     id: "blueprint.repository-validation",
     title: "Repository validation architecture",
@@ -49,7 +51,7 @@ function blueprintDocument(): string {
     revision: 1,
     supersedes: null,
     summary: "Repository validation binds one exact target epoch.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -59,7 +61,7 @@ function blueprintDocument(): string {
       scope: ["repository validation"],
       components: ["epoch loader", "Knowledge compiler", "snapshot binder"],
       constraints: ["ambient worktree bytes cannot supply authority"],
-      interfaces: ["repository-v7"],
+      interfaces: ["repository-v9"],
       dataFlows: ["exact tree to Knowledge and repository result"],
       tradeoffs: ["recompilation favors exactness over speed"],
       evolution: [],
@@ -88,10 +90,11 @@ async function knowledge(epoch: FoundationLoadedRepositoryEpoch, options: {
   }
   const repository = exact.manifest.repository;
   const manifestBase = {
-    schema: "lifecycle.knowledge-set.v1" as const,
+    schema: "lifecycle.knowledge-set.v2" as const,
     specificationRevision: FOUNDATION_SPECIFICATION_REVISION,
-    profile: "knowledge-set-v1" as const,
+    profile: "knowledge-set-v2" as const,
     repository,
+    disciplineRegistry: exact.disciplineRegistry,
     records: exact.manifest.records,
     relationships: exact.manifest.relationships,
     sources: exact.manifest.sources,
@@ -104,7 +107,7 @@ async function knowledge(epoch: FoundationLoadedRepositoryEpoch, options: {
   };
   const manifest = Object.freeze({ ...manifestBase, digest: selfDigest(manifestBase as unknown as Record<string, unknown>) });
   const validation = collector.result({
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     publicationDigest: options.publicationDigest ?? epoch.contract.specification.publicationDigest,
     subjectKind: options.subjectKind ?? "repository-knowledge",
     subjectId: options.subjectId ?? epoch.contract.targetId,
@@ -138,8 +141,9 @@ async function target(options: {
   await git(root, ["config", "user.email", "lifecycle@example.invalid"]);
   await writeMinimalAtlas(root);
   await write(root, "records/blueprint/repository-validation.md", blueprintDocument());
+  await write(root, "records/disciplines/registry.json", `${JSON.stringify(createEmptyDisciplineRegistry(), null, 2)}\n`);
   await write(root, ".gitignore", options.ignoreImplementation ? "src/ignored.ts\n" : "node_modules/\n");
-  const authority = await createFoundationAuthority(home, "repository-validation-target", SECRET);
+  const authority = await createFoundationAuthority(home, "repository-validation-target", receiveFoundationAuthorityCredential(SECRET, "initialize"));
   let contract = createRepositoryContract({
     targetId: "repository-validation-target",
     canonicalBranch: options.canonicalBranch ?? "refs/heads/main",
@@ -176,7 +180,7 @@ async function target(options: {
   return root;
 }
 
-test("repository-v7 composes exact Product State, resolved Atlas, Knowledge, and repository snapshot carriers", async () => {
+test("repository-v9 composes exact Product State, resolved Atlas, Knowledge, and repository snapshot carriers", async () => {
   const root = await target();
   const epoch = await loadRepositoryEpoch(root);
   const basis = await knowledge(epoch);
@@ -189,14 +193,14 @@ test("repository-v7 composes exact Product State, resolved Atlas, Knowledge, and
     knowledge: basis,
     observedAt: "2026-08-22T16:01:00.000Z",
   });
-  assert.equal(first.profile, "repository-v7");
+  assert.equal(first.profile, "repository-v9");
   assert.equal(first.complete, true);
   assert.equal(first.valid, true);
   assert.equal(first.subject.digest, loaded.snapshot.digest);
   assert.equal(first.digest, second.digest);
   assert.equal(first.publicationDigest, FOUNDATION_GENERATED_PUBLICATION_DIGEST);
   assert.equal(currentRepositoryValidationSupport().publicationDigest, FOUNDATION_GENERATED_PUBLICATION_DIGEST);
-  assert.deepEqual(first.implementation.supportedProfiles, ["knowledge-set-v1", "knowledge-structural-v1", "repository-v7"]);
+  assert.deepEqual(first.implementation.supportedProfiles, ["knowledge-set-v2", "knowledge-structural-v2", "repository-v9"]);
   const composed = await validateRepository(root, { observedAt: OBSERVED_AT });
   assert.equal(composed.complete, true, JSON.stringify(composed, null, 2));
   assert.equal(composed.valid, true);
@@ -232,7 +236,7 @@ test("repository-v7 composes exact Product State, resolved Atlas, Knowledge, and
   assert.equal(validateProduct(wrongObjectLength), false, "Git objects must contain exactly 40 or 64 hexadecimal digits");
 });
 
-test("repository-v7 refuses tracked, untracked, and ignored authoritative worktree bytes", async () => {
+test("repository-v9 refuses tracked, untracked, and ignored authoritative worktree bytes", async () => {
   const dirtyRoot = await target();
   await writeFile(join(dirtyRoot, "atlas", "atlas.md"), "# Dirty Atlas\n", "utf8");
   const dirtyEpoch = await loadRepositoryEpoch(dirtyRoot);
@@ -285,7 +289,7 @@ test("historical validation requires the full authoritative worktree, including 
   );
 });
 
-test("repository-v7 rejects incompatible publication, runtime, profile, and Knowledge selections", async () => {
+test("repository-v9 rejects incompatible publication, runtime, profile, and Knowledge selections", async () => {
   const wrongPublicationRoot = await target({ publicationDigest: sha256Bytes("other-publication") });
   const wrongPublicationEpoch = await loadRepositoryEpoch(wrongPublicationRoot);
   const wrongPublicationBasis = await knowledge(wrongPublicationEpoch);
@@ -393,7 +397,7 @@ test("repository snapshot binding refuses Knowledge built from another epoch", a
   ));
 });
 
-test("repository snapshot binding recomputes the full Knowledge artifact and exact validation subject", async () => {
+test("repository snapshot binding requires the full Knowledge artifact and exact validation subject", async () => {
   const root = await target();
   const epoch = await loadRepositoryEpoch(root);
   const basis = await knowledge(epoch);
@@ -421,7 +425,59 @@ test("repository snapshot binding recomputes the full Knowledge artifact and exa
   ));
 });
 
-test("repository-v7 cannot bind self-consistent forged Knowledge validation stages and limits", async () => {
+test("snapshot binding consumes only the exact compiler artifact from its own loaded epoch", async () => {
+  const root = await target();
+  const epoch = await loadRepositoryEpoch(root);
+  const compilation = await validateKnowledgeSet(epoch);
+  const basis = compilation.knowledgeSet;
+  assert(basis !== null);
+  const laterObservation = await loadRepositoryEpoch(root);
+  assert.equal(consumeFoundationKnowledgeCompilation(laterObservation, basis), null);
+  assert.equal(consumeFoundationKnowledgeCompilation(Object.freeze({ ...epoch }), basis), null);
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, Object.freeze({ ...basis })), null);
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, basis), compilation);
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, basis), null, "a consumed witness cannot become a cross-observation cache");
+
+  const original = await knowledge(epoch);
+  const snapshot = await bindRepositorySnapshot(epoch, original);
+  assert.equal(snapshot.snapshot.knowledgeSetDigest, original.manifest.digest);
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, original), null, "binding must consume the exact compiler witness");
+
+  const copied = Object.freeze({ ...original });
+  const independentlyBound = await bindRepositorySnapshot(epoch, copied);
+  assert.equal(independentlyBound.snapshot.digest, snapshot.snapshot.digest, "a valid copied artifact retains the independent recompilation course");
+});
+
+test("same-object Knowledge compilation reuse refuses changed loaded-epoch coordinates", async () => {
+  const root = await target();
+  const epoch = await loadRepositoryEpoch(root);
+  const supplied = { ...epoch, epoch: { ...epoch.epoch } };
+  const basis = await knowledge(supplied);
+  supplied.epoch.commit = "0".repeat(40);
+  assert.equal(consumeFoundationKnowledgeCompilation(supplied, basis), null);
+  supplied.epoch.commit = epoch.epoch.commit;
+  assert.equal(consumeFoundationKnowledgeCompilation(supplied, basis), null, "a mismatched witness is retired rather than revived");
+  const snapshot = await bindRepositorySnapshot(supplied, basis);
+  assert.equal(snapshot.snapshot.knowledgeSetDigest, basis.manifest.digest, "restored prerequisites still permit independent compilation and binding");
+});
+
+test("same-object Knowledge compilation reuse refuses changed canonical record content", async () => {
+  const root = await target();
+  const epoch = await loadRepositoryEpoch(root);
+  const basis = await knowledge(epoch);
+  const record = basis.records[0];
+  assert(record);
+  const relationships = record.frontMatter.canonicalValue.relationships;
+  assert(Array.isArray(relationships));
+  relationships.push({ type: "substituted-record-content" });
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, basis), null, "equal object identities cannot authorize a changed canonical carrier");
+  relationships.pop();
+  assert.equal(consumeFoundationKnowledgeCompilation(epoch, basis), null);
+  const snapshot = await bindRepositorySnapshot(epoch, basis);
+  assert.equal(snapshot.snapshot.knowledgeSetDigest, basis.manifest.digest, "restoring the record allows independent compilation and binding");
+});
+
+test("repository-v9 cannot bind self-consistent forged Knowledge validation stages and limits", async () => {
   const root = await target();
   const epoch = await loadRepositoryEpoch(root);
   const basis = await knowledge(epoch);
@@ -479,7 +535,7 @@ test("repository snapshot bind and result emission each re-inventory authoritati
   assert(result.diagnostics.some((diagnostic) => diagnostic.code === "lifecycle.source.unbound"));
 });
 
-test("repository-v7 hard-cut epoch loading refuses every repository-visible Control carrier", async () => {
+test("repository-v9 hard-cut epoch loading refuses every repository-visible Control carrier", async () => {
   const cases = [
     {
       path: "records/control/delivery/work-boundaries/wb.attempt-1.r1.json",

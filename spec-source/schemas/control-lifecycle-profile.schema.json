@@ -1,14 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:control-lifecycle-profile:v4",
-  "title": "Lifecycle Control Lifecycle Profile v4",
-  "description": "Exact Foundation profile for the per-Delivery Control Record Store and its twelve closed Delivery record families.",
+  "$id": "urn:lifecycle:schema:control-lifecycle-profile:v7",
+  "title": "Lifecycle Control Lifecycle Profile v7",
+  "description": "Exact Foundation profile for the per-Delivery Control Record Store, physical SQLite version 2 and its fourteen closed Delivery record families.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "id", "store", "families"],
+  "required": [
+    "schema",
+    "id",
+    "store",
+    "families"
+  ],
   "properties": {
-    "schema": { "const": "lifecycle.control-lifecycle-profile.v4" },
-    "id": { "const": "foundation-delivery-control-lifecycle-v4" },
+    "schema": {
+      "const": "lifecycle.control-lifecycle-profile.v6"
+    },
+    "id": {
+      "const": "foundation-delivery-control-lifecycle-v7"
+    },
     "store": {
       "type": "object",
       "additionalProperties": false,
@@ -29,47 +38,134 @@
         "postClosureDisposition",
         "semanticMarkdown",
         "workingValues",
-        "adjacentDuplicateMarkdown"
+        "adjacentDuplicateMarkdown",
+        "physicalUserVersion"
       ],
       "properties": {
-        "schema": { "const": "lifecycle.control-record-store.v1" },
-        "revisionSchema": { "const": "lifecycle.control-record-revision.v1" },
-        "eventSchema": { "const": "lifecycle.control-record-event.v2" },
-        "referencedFileSchema": { "const": "lifecycle.control-record-file.v1" },
-        "sealSchema": { "const": "lifecycle.control-record-store-seal.v1" },
-        "archiveSchema": { "const": "lifecycle.control-record-store-archive.v1" },
-        "process": { "const": "delivery" },
-        "scope": { "const": "per-delivery" },
-        "standing": { "const": "event-sourced" },
-        "archive": { "const": "off-head-with-delivery" },
-        "sqlOwner": { "const": "runtime" },
-        "primaryCarrier": { "const": "sqlite" },
-        "payloadSelection": { "const": "closed-registry-by-record-kind" },
-        "postClosureDisposition": { "const": "non-event-observation-overlay" },
-        "semanticMarkdown": { "const": "in-record-revision" },
-        "workingValues": { "const": "governed-drafts-retired-before-seal" },
-        "adjacentDuplicateMarkdown": { "const": false }
+        "schema": {
+          "const": "lifecycle.control-record-store.v2"
+        },
+        "revisionSchema": {
+          "const": "lifecycle.control-record-revision.v2"
+        },
+        "eventSchema": {
+          "const": "lifecycle.control-record-event.v6"
+        },
+        "referencedFileSchema": {
+          "const": "lifecycle.control-record-file.v1"
+        },
+        "sealSchema": {
+          "const": "lifecycle.control-record-store-seal.v1"
+        },
+        "archiveSchema": {
+          "const": "lifecycle.control-record-store-archive.v1"
+        },
+        "process": {
+          "const": "delivery"
+        },
+        "scope": {
+          "const": "per-delivery"
+        },
+        "standing": {
+          "const": "event-sourced"
+        },
+        "archive": {
+          "const": "off-head-with-delivery"
+        },
+        "sqlOwner": {
+          "const": "runtime"
+        },
+        "primaryCarrier": {
+          "const": "sqlite"
+        },
+        "payloadSelection": {
+          "const": "closed-registry-by-record-kind"
+        },
+        "postClosureDisposition": {
+          "const": "non-event-observation-overlay"
+        },
+        "semanticMarkdown": {
+          "const": "in-record-revision"
+        },
+        "workingValues": {
+          "const": "governed-drafts-retired-before-seal"
+        },
+        "adjacentDuplicateMarkdown": {
+          "const": false
+        },
+        "physicalUserVersion": {
+          "const": 3
+        }
       }
     },
     "families": {
       "type": "array",
-      "minItems": 12,
-      "maxItems": 12,
+      "minItems": 14,
+      "maxItems": 14,
       "prefixItems": [
         {
           "const": {
-            "kind": "founder-brief",
-            "payloadSchema": "urn:lifecycle:schema:founder-brief-payload:v1",
+            "kind": "director-brief",
+            "payloadSchema": "urn:lifecycle:schema:director-brief-payload:v2",
             "dossier": "frame",
             "producer": "runtime",
-            "semanticAuthor": "founder",
-            "semanticAuthority": "founder-supplied",
-            "editor": "founder",
+            "semanticAuthor": "director",
+            "semanticAuthority": "director-supplied",
+            "editor": "director",
             "editWindow": "before-activity",
             "revisionMode": "single",
-            "finalizationEvent": "founder-brief-submitted",
+            "finalizationEvent": "director-brief-submitted",
             "retention": "archive-with-delivery",
             "relationships": []
+          }
+        },
+        {
+          "const": {
+            "kind": "work-delegation",
+            "payloadSchema": "urn:lifecycle:schema:work-delegation-payload:v2",
+            "dossier": "attempt",
+            "producer": "runtime",
+            "semanticAuthor": "director",
+            "semanticAuthority": "director-supplied",
+            "editor": "director",
+            "editWindow": "before-activity",
+            "revisionMode": "successive",
+            "finalizationEvent": "work-delegation-set",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "uses-boundary",
+                "targetKinds": [
+                  "work-boundary"
+                ],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-admission",
+                "targetKinds": [
+                  "director-decision"
+                ],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "uses-brief",
+                "targetKinds": [
+                  "director-brief"
+                ],
+                "minimum": 0,
+                "maximum": 2
+              },
+              {
+                "relation": "revises",
+                "targetKinds": [
+                  "work-delegation"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
           }
         },
         {
@@ -88,25 +184,33 @@
             "relationships": [
               {
                 "relation": "uses-brief",
-                "targetKinds": ["founder-brief"],
+                "targetKinds": [
+                  "director-brief"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "uses-boundary",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "uses-candidate",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "uses-seal",
-                "targetKinds": ["candidate-seal"],
+                "targetKinds": [
+                  "candidate-seal"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -116,7 +220,7 @@
         {
           "const": {
             "kind": "agent-work-product",
-            "payloadSchema": "urn:lifecycle:schema:agent-work-product-payload:v2",
+            "payloadSchema": "urn:lifecycle:schema:agent-work-product-payload:v5",
             "dossier": "attempt",
             "producer": "runtime",
             "semanticAuthor": "agent",
@@ -129,7 +233,9 @@
             "relationships": [
               {
                 "relation": "result-of",
-                "targetKinds": ["agent-attempt"],
+                "targetKinds": [
+                  "agent-attempt"
+                ],
                 "minimum": 1,
                 "maximum": 1
               }
@@ -152,19 +258,25 @@
             "relationships": [
               {
                 "relation": "observes-attempt",
-                "targetKinds": ["agent-attempt"],
+                "targetKinds": [
+                  "agent-attempt"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "observes-work-product",
-                "targetKinds": ["agent-work-product"],
+                "targetKinds": [
+                  "agent-work-product"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "observes-candidate",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -174,7 +286,7 @@
         {
           "const": {
             "kind": "candidate-revision",
-            "payloadSchema": "urn:lifecycle:schema:candidate-revision-payload:v2",
+            "payloadSchema": "urn:lifecycle:schema:candidate-revision-payload:v3",
             "dossier": "candidate",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -187,19 +299,66 @@
             "relationships": [
               {
                 "relation": "revises",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "result-of",
-                "targetKinds": ["agent-attempt"],
+                "targetKinds": [
+                  "agent-attempt"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "governed-by",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "integrated-from",
+                "targetKinds": [
+                  "integration-assessment"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "kind": "integration-assessment",
+            "payloadSchema": "urn:lifecycle:schema:integration-assessment-payload:v1",
+            "dossier": "candidate",
+            "producer": "runtime",
+            "semanticAuthor": "runtime",
+            "semanticAuthority": "runtime-observed",
+            "editor": "none",
+            "editWindow": "none",
+            "revisionMode": "single",
+            "finalizationEvent": "integration-assessed",
+            "retention": "archive-with-delivery",
+            "relationships": [
+              {
+                "relation": "governed-by",
+                "targetKinds": [
+                  "work-boundary"
+                ],
+                "minimum": 1,
+                "maximum": 1
+              },
+              {
+                "relation": "integrates",
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 1,
                 "maximum": 1
               }
@@ -209,7 +368,7 @@
         {
           "const": {
             "kind": "work-boundary",
-            "payloadSchema": "urn:lifecycle:schema:work-boundary-payload:v4",
+            "payloadSchema": "urn:lifecycle:schema:work-boundary-payload:v6",
             "dossier": "boundary",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -222,25 +381,33 @@
             "relationships": [
               {
                 "relation": "uses-brief",
-                "targetKinds": ["founder-brief"],
+                "targetKinds": [
+                  "director-brief"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "proposed-from",
-                "targetKinds": ["agent-work-product"],
+                "targetKinds": [
+                  "agent-work-product"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "revises",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "resolves",
-                "targetKinds": ["material-condition"],
+                "targetKinds": [
+                  "material-condition"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -250,7 +417,7 @@
         {
           "const": {
             "kind": "material-condition",
-            "payloadSchema": "urn:lifecycle:schema:material-condition-payload:v1",
+            "payloadSchema": "urn:lifecycle:schema:material-condition-payload:v4",
             "dossier": "boundary",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -263,25 +430,35 @@
             "relationships": [
               {
                 "relation": "reported-by",
-                "targetKinds": ["agent-work-product"],
-                "minimum": 1,
+                "targetKinds": [
+                  "agent-work-product",
+                  "integration-assessment"
+                ],
+                "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "observed-in",
-                "targetKinds": ["execution-receipt"],
-                "minimum": 1,
+                "targetKinds": [
+                  "execution-receipt",
+                  "candidate-seal"
+                ],
+                "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "freezes",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "governed-by",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 1,
                 "maximum": 1
               }
@@ -290,57 +467,71 @@
         },
         {
           "const": {
-            "kind": "founder-decision",
-            "payloadSchema": "urn:lifecycle:schema:founder-decision-payload:v4",
+            "kind": "director-decision",
+            "payloadSchema": "urn:lifecycle:schema:director-decision-payload:v5",
             "dossier": "decision",
             "producer": "runtime",
-            "semanticAuthor": "founder",
-            "semanticAuthority": "founder-authenticated",
-            "editor": "founder",
+            "semanticAuthor": "director",
+            "semanticAuthority": "director-authenticated",
+            "editor": "director",
             "editWindow": "before-authentication",
             "revisionMode": "single",
-            "finalizationEvent": "founder-decision-authenticated",
+            "finalizationEvent": "director-decision-authenticated",
             "retention": "archive-with-delivery",
             "relationships": [
               {
                 "relation": "selects-boundary",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "selects-baseline-receipt",
-                "targetKinds": ["check-receipt"],
+                "targetKinds": [
+                  "check-receipt"
+                ],
                 "minimum": 0,
                 "maximum": null
               },
               {
                 "relation": "continues-from-boundary",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "resolves",
-                "targetKinds": ["material-condition"],
+                "targetKinds": [
+                  "material-condition"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "selects-candidate",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "selects-seal",
-                "targetKinds": ["candidate-seal"],
+                "targetKinds": [
+                  "candidate-seal"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "selects-evidence",
-                "targetKinds": ["evidence-packet"],
+                "targetKinds": [
+                  "evidence-packet"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -363,13 +554,17 @@
             "relationships": [
               {
                 "relation": "seals",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "governed-by",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 1,
                 "maximum": 1
               }
@@ -379,7 +574,7 @@
         {
           "const": {
             "kind": "check-receipt",
-            "payloadSchema": "urn:lifecycle:schema:check-receipt-payload:v2",
+            "payloadSchema": "urn:lifecycle:schema:check-receipt-payload:v3",
             "dossier": "evidence",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -392,13 +587,17 @@
             "relationships": [
               {
                 "relation": "checks-boundary",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "checks-seal",
-                "targetKinds": ["candidate-seal"],
+                "targetKinds": [
+                  "candidate-seal"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -408,7 +607,7 @@
         {
           "const": {
             "kind": "evidence-packet",
-            "payloadSchema": "urn:lifecycle:schema:evidence-packet-payload:v1",
+            "payloadSchema": "urn:lifecycle:schema:evidence-packet-payload:v2",
             "dossier": "evidence",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -421,37 +620,49 @@
             "relationships": [
               {
                 "relation": "governed-by",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "evaluates",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "uses-seal",
-                "targetKinds": ["candidate-seal"],
+                "targetKinds": [
+                  "candidate-seal"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "uses-check",
-                "targetKinds": ["check-receipt"],
+                "targetKinds": [
+                  "check-receipt"
+                ],
                 "minimum": 0,
                 "maximum": null
               },
               {
                 "relation": "uses-review",
-                "targetKinds": ["agent-work-product"],
+                "targetKinds": [
+                  "agent-work-product"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "uses-review-receipt",
-                "targetKinds": ["execution-receipt"],
+                "targetKinds": [
+                  "execution-receipt"
+                ],
                 "minimum": 1,
                 "maximum": 1
               }
@@ -461,7 +672,7 @@
         {
           "const": {
             "kind": "closure",
-            "payloadSchema": "urn:lifecycle:schema:closure-payload:v4",
+            "payloadSchema": "urn:lifecycle:schema:closure-payload:v6",
             "dossier": "closure",
             "producer": "runtime",
             "semanticAuthor": "runtime",
@@ -474,31 +685,41 @@
             "relationships": [
               {
                 "relation": "closes-with",
-                "targetKinds": ["founder-decision"],
+                "targetKinds": [
+                  "director-decision"
+                ],
                 "minimum": 1,
                 "maximum": 1
               },
               {
                 "relation": "governed-by",
-                "targetKinds": ["work-boundary"],
+                "targetKinds": [
+                  "work-boundary"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "accepts-candidate",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "accepts-evidence",
-                "targetKinds": ["evidence-packet"],
+                "targetKinds": [
+                  "evidence-packet"
+                ],
                 "minimum": 0,
                 "maximum": 1
               },
               {
                 "relation": "abandons-candidate",
-                "targetKinds": ["candidate-revision"],
+                "targetKinds": [
+                  "candidate-revision"
+                ],
                 "minimum": 0,
                 "maximum": 1
               }

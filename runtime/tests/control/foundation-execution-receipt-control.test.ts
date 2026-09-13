@@ -154,7 +154,7 @@ const image = Object.freeze({
   imageDigest: digest("execution-image"),
 });
 const inputSet = Object.freeze({
-  profileId: "lifecycle.execution-input-set.v1" as const,
+  profileId: "lifecycle.execution-input-set.v2" as const,
   digest: digest("execution-input-set"),
 });
 
@@ -199,9 +199,9 @@ function attemptPayload(
       rationale: "fixture",
     }),
     provider: Object.freeze({
-      descriptorId: "codex-exec-standard-v6",
+      descriptorId: "codex-exec-standard-v7",
       descriptorDigest: digest("provider-descriptor"),
-      adapter: "lifecycle.provider-adapter.v6",
+      adapter: "lifecycle.provider-adapter.v7",
       executableIdentityClass: "oci-image-tool",
       installedIdentityDigest: digest("provider-executable"),
     }),
@@ -240,8 +240,8 @@ function candidatePayload(input: Readonly<{
   unchanged: boolean;
 }>): ControlJsonObject {
   return Object.freeze({
-    schema: "lifecycle.candidate-revision-payload.v2",
-    profileId: "lifecycle.candidate-revision.observation.v1",
+    schema: "lifecycle.candidate-revision-payload.v3",
+    profileId: "lifecycle.candidate-revision.observation.v2",
     observation: input.observation,
     candidateBaseCommit: "1111111111111111111111111111111111111111",
     carrierManifest: Object.freeze({
@@ -274,6 +274,9 @@ type SeededActivity = ReturnType<typeof seedActivity>;
 
 function seedActivity(input: Readonly<{
   role: "reconnaissance" | "builder" | "reviewer";
+  operation?: "delivery.prepare" | "delivery.revise" | "delivery.reaffirm";
+  inputCandidate?: boolean;
+  candidateDigest?: Sha256;
   providerOutcome?: "completed" | "failed" | "not-started";
   workProduct?: boolean;
   successor?: boolean;
@@ -284,9 +287,10 @@ function seedActivity(input: Readonly<{
   const providerOutcome = input.providerOutcome ?? "completed";
   const fixture = fakeStore(`delivery.${role}.${digestCanonical(input).slice(-10)}`);
   const activityId = `activity.${role}.${digestCanonical(input).slice(-10)}`;
-  const inputCandidate = role === "reconnaissance"
-    ? null
-    : fixture.retainRevision(revisionInput({
+  const bindsCandidate = input.inputCandidate ?? (role !== "reconnaissance" ||
+    input.operation === "delivery.revise" || input.operation === "delivery.reaffirm");
+  const inputCandidate = bindsCandidate
+    ? fixture.retainRevision(revisionInput({
         id: `candidate.${role}`,
         kind: "candidate-revision",
         payload: candidatePayload({
@@ -294,14 +298,15 @@ function seedActivity(input: Readonly<{
           manifestDigest: digest(`input-carrier-${role}`),
           unchanged: false,
         }),
-      }));
+      }))
+    : null;
   const attempt = fixture.retainRevision(revisionInput({
     id: `attempt.${role}`,
     kind: "agent-attempt",
-    payload: attemptPayload(role, activityId),
+    payload: { ...attemptPayload(role, activityId), ...(input.operation === undefined ? {} : { operation: input.operation }) },
     relationships: inputCandidate === null ? [] : [{
       relation: "uses-candidate",
-      target: reference(inputCandidate),
+      target: { ...reference(inputCandidate), digest: input.candidateDigest ?? inputCandidate.digest },
     }],
   }));
   const effectDigest = digest(`effect-${role}`);
@@ -342,7 +347,7 @@ function seedActivity(input: Readonly<{
         kind: "agent-work-product",
         semanticMarkdown,
         payload: Object.freeze({
-          schema: "lifecycle.agent-work-product-payload.v3",
+          schema: "lifecycle.agent-work-product-payload.v5",
           role,
           body: Object.freeze({ digest: sha256Bytes(semanticMarkdown) }),
           parseResultDigest,
@@ -649,6 +654,43 @@ test("Reviewer Receipt carries only the exact sealed Candidate input", async () 
   assert.deepEqual(retained.revision.relationships.map(({ relation }) => relation), [
     "observes-attempt",
   ]);
+});
+
+test("Resolution Receipt preserves exact frozen Candidate input through its Attempt without claiming Candidate output", async () => {
+  for (const operation of ["delivery.revise", "delivery.reaffirm"] as const) {
+    const activity = seedActivity({ role: "reconnaissance", operation });
+    const retained = await retain(activity);
+    assert.deepEqual(activity.attempt.relationships.find(({ relation }) => relation === "uses-candidate")?.target,
+      reference(activity.inputCandidate!));
+    assert.deepEqual(retained.revision.relationships, [
+      { relation: "observes-attempt", target: reference(activity.attempt) },
+    ]);
+    assert.deepEqual(retained.revision.payload.candidate, {
+      input: null, successorDisposition: null, successor: null, contentDisposition: null,
+    });
+  }
+});
+
+test("Reconnaissance Receipt rejects initial Candidate input, missing or substituted resolution input, and Candidate output", async () => {
+  for (const input of [
+    { operation: "delivery.prepare", inputCandidate: true },
+    { operation: "delivery.revise", inputCandidate: false },
+    { operation: "delivery.reaffirm", candidateDigest: digest("substituted-frozen-candidate") },
+  ] as const) {
+    await assert.rejects(retain(seedActivity({ role: "reconnaissance", ...input })),
+      (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.control-execution-receipt.relationship");
+  }
+  const observation = seedActivity({ role: "reconnaissance", operation: "delivery.revise" });
+  observation.compileEvent({
+    eventId: "event.invalid-resolution-candidate", eventKind: "candidate-revision-observed",
+    occurredAt: FINISHED, actor: { kind: "runtime", id: RUNTIME },
+    subject: subject(observation.inputCandidate!), payload: { activityId: observation.activityId },
+  });
+  await assert.rejects(retain(observation), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.control-execution-receipt.journal");
+  await assert.rejects(retain(seedActivity({ role: "reconnaissance", operation: "delivery.reaffirm" }), {
+    candidateSuccessorDisposition: "promoted",
+  }), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.control-execution-receipt.candidate");
 });
 
 test("Receipt compiler refuses substituted execution and Candidate successor facts", async () => {

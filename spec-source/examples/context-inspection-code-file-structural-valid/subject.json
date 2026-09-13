@@ -1,0 +1,36 @@
+{
+  "kind": "code-file",
+  "subject": "decision",
+  "fileCursor": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "maximumDiffBytes": 262144,
+  "selection": {
+    "schema": "lifecycle.code-selection.v1",
+    "targetId": "target.one",
+    "storeId": "store.one",
+    "processId": "delivery.one",
+    "origin": {
+      "sequence": 1,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "subject": "decision",
+    "boundary": {
+      "kind": "work-boundary",
+      "id": "boundary.one",
+      "revision": 1,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "candidate": {
+      "kind": "candidate-revision",
+      "id": "candidate.one",
+      "revision": 1,
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "seal": {
+      "kind": "candidate-seal",
+      "id": "seal.one",
+      "revision": 1,
+      "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "digest": "sha256:42ebb6628ca2ce3b744aa1f335bef78dd1ccb389f406c5cfc71687187830d684"
+  }
+}

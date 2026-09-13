@@ -10,11 +10,17 @@
   ],
   "contractId": "lifecycle.execution-cell-runner.v1",
   "fixedPaths": {
+    "deliveryGitContext": "candidate/git-context.json",
+    "deliveryGitContextArtifact": "candidate/git-context.pack",
     "inputRoot": "/lifecycle/input",
     "inputSet": ".lifecycle/input-set.json",
     "outputManifest": ".lifecycle/output-manifest.json",
     "outputRoot": "/lifecycle/output",
-    "providerInputRoot": "/tmp/lifecycle-provider-input"
+    "providerCodexHome": "/tmp/lifecycle-provider-state/home",
+    "providerFailureDiagnostic": "provider-result/failure.json",
+    "providerInputRoot": "/tmp/lifecycle-provider-input",
+    "providerStateRoot": "/tmp/lifecycle-provider-state",
+    "semanticAuthoringBasis": "semantic-basis.json"
   },
   "launchContracts": {
     "agent": "one-provider-entrypoint-per-agent-attempt",
@@ -22,21 +28,34 @@
   },
   "limits": {
     "maximumCandidateEntries": 1000000,
+    "maximumCheckGitEntries": 64,
+    "maximumDeliveryGitContextBytes": 268435456,
     "maximumInputEntries": 16384,
     "maximumProviderAuthBytes": 4194304,
     "maximumProviderControlConnections": 16,
     "maximumProviderEventBytes": 8388608,
     "maximumProviderExecutableBytes": 536870912,
+    "maximumProviderFailureDiagnosticBytes": 16384,
+    "maximumProviderFailureDiagnosticEntries": 8,
+    "maximumProviderFailureMessageBytes": 2048,
     "maximumProviderSupportBytes": 65536,
-    "maximumRawStreamBytesPerStream": 4194304
+    "maximumRawStreamBytesPerStream": 4194304,
+    "maximumSemanticAuthoringBasisBytes": 8388608
   },
   "materializationRules": [
-    "validate-specification-and-input-set-before-productive-start",
+    "exclude-only-runner-owned-root-git-administration-from-product-output",
     "materialize-candidate-revision-carrier-object-closure-under-fresh-root",
     "materialize-curated-provider-visible-input-under-fresh-read-only-root",
+    "materialize-exact-delivery-branch-and-full-history-in-independent-cell-git",
     "materialize-product-base-object-closure-under-fresh-root",
     "refuse-alias-link-special-or-undeclared-input",
-    "treat-every-materialization-as-disposable"
+    "resolve-check-executable-from-declared-image-or-candidate-base",
+    "treat-every-materialization-as-disposable",
+    "validate-specification-and-input-set-before-productive-start",
+    "materialize-only-exact-semantic-authoring-basis-among-provider-visible-operation-inputs",
+    "materialize-exact-check-tree-and-index-from-phase-specific-object-closure",
+    "populate-check-index-stat-data-during-checkout",
+    "do-not-synthesize-check-commits-history-or-resolved-head"
   ],
   "outputLayouts": {
     "agent": [
@@ -53,7 +72,7 @@
         "allowedModeClasses": [
           "regular"
         ],
-        "maximumEntries": 1,
+        "maximumEntries": 2,
         "path": "provider-result",
         "purpose": "raw-provider-output",
         "required": false
@@ -107,12 +126,13 @@
     ]
   },
   "protocols": {
-    "inputSet": "lifecycle.execution-input-set.v1",
+    "deliveryGitContext": "lifecycle.delivery-git-context.private.v1",
+    "inputSet": "lifecycle.execution-input-set.v2",
     "outputManifest": "lifecycle.execution-output-manifest.v1",
     "specification": "lifecycle.execution-specification.v1"
   },
   "runnerExecutable": {
-    "digest": "sha256:81d448e948bec426c7fb93135ee020e09b510702ee3bdaa0bc88ea14024b5b97",
+    "digest": "sha256:03d94eb8ed240372171629523efbaf50a0dbeb4c8af458f1fe944c5f8273e010",
     "imagePath": "/opt/lifecycle/bin/execution-cell-runner",
     "repositorySourcePath": "src/util/execution-cell-runner-v1.ts"
   },
@@ -123,7 +143,15 @@
     "agent-product-permissions-one-named-profile-no-conflicting-sandbox",
     "agent-product-network-none",
     "execution-input-transport-denied-to-agent-process",
-    "provider-control-fixed-destination-bounded-service-channel"
+    "provider-control-fixed-destination-bounded-service-channel",
+    "check-executable-canonical-regular-and-implementation-digest-bound",
+    "provider-failure-detail-sanitized-before-bounded-retention",
+    "local-draft-observation-cannot-replace-independent-runtime-validation",
+    "provider-state-volume-denied-to-agent-tools",
+    "provider-credentials-retained-privately-through-containment-for-exact-runtime-settlement",
+    "check-git-environment-runner-owned-reject-all-binding-git-overrides",
+    "check-private-git-metadata-bounded-regular-non-executable-and-no-alias-links",
+    "check-product-and-private-git-metadata-must-remain-unchanged"
   ],
   "supportFileInventory": [
     {
@@ -134,6 +162,10 @@
   "terminalRules": [
     "capture-bounded-terminal-facts",
     "close-selected-output-before-manifest",
-    "write-output-manifest-last"
+    "write-output-manifest-last",
+    "retain-only-selected-provider-reported-failure-events",
+    "retain-panic-header-with-only-immediate-cause",
+    "quiesce-provider-channel-before-output-with-proxy-process-retained-until-runtime-containment",
+    "preserve-provider-refreshed-authentication-outside-output-until-exact-reclamation"
   ]
 }

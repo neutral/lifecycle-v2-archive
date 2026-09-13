@@ -29,13 +29,13 @@
   ],
   "properties": {
     "schema": { "const": "lifecycle.conformance-claim.v2" },
-    "claimId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "claimId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "specificationId": { "const": "lifecycle" },
-    "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "publicationStatementDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "releaseNotesDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "specificationVersion": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "publicationStatementDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "releaseNotesDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "issuer": { "$ref": "#/$defs/issuer" },
     "issuedAt": { "type": "string", "format": "date-time" },
     "implementation": { "$ref": "#/$defs/implementation" },
@@ -53,7 +53,7 @@
       "additionalProperties": {
         "oneOf": [
           { "type": "integer", "minimum": 0 },
-          { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+          { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
           { "type": "boolean" }
         ]
       },
@@ -63,13 +63,13 @@
       "type": "array",
       "maxItems": 64,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
     },
     "extensions": {
       "type": "array",
       "maxItems": 256,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
     },
     "evidence": { "$ref": "#/$defs/evidence" },
     "environment": { "$ref": "#/$defs/environment" },
@@ -82,25 +82,25 @@
       "type": "string",
       "enum": ["experimental", "qualified", "production-qualified"]
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "idList": {
       "type": "array",
       "maxItems": 256,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
     },
     "issuer": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "contact"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId" },
-        "name": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId" },
+        "name": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" },
         "contact": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
             { "type": "null" }
           ]
         }
@@ -111,11 +111,11 @@
       "additionalProperties": false,
       "required": ["id", "version", "buildId", "artifactDigest", "sourceRevision"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "buildId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "artifactDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "sourceRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" }
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "buildId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "artifactDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "sourceRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
       }
     },
     "classClaim": {
@@ -146,7 +146,7 @@
           "type": "array",
           "maxItems": 5,
           "uniqueItems": true,
-          "items": { "type": "string", "enum": ["behavior", "assurance", "blueprint", "description", "check"] }
+          "items": { "type": "string", "enum": ["behavior", "assurance", "blueprint", "description", "check", "discipline"] }
         },
         "roles": {
           "type": "array",
@@ -166,8 +166,8 @@
       "additionalProperties": false,
       "required": ["id", "version", "draft", "formatAssertion", "vocabularies"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "version": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "version": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "draft": { "const": "2020-12" },
         "formatAssertion": { "type": "boolean" },
         "vocabularies": { "$ref": "#/$defs/idList" }
@@ -182,8 +182,8 @@
           "type": "string",
           "enum": ["validation-results", "fixture-results", "operated-scenarios", "security-report", "limits", "known-deviations", "artifact-digests", "other"]
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "locator": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/uriReference" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "locator": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/uriReference" },
         "complete": { "type": "boolean" }
       }
     },
@@ -198,11 +198,11 @@
           "maxItems": 256,
           "items": { "$ref": "#/$defs/evidenceArtifact" }
         },
-        "validationBundleDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "fixtureBundleDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+        "validationBundleDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "fixtureBundleDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
         "operatedBundleDigest": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
             { "type": "null" }
           ]
         }
@@ -225,19 +225,19 @@
       "additionalProperties": false,
       "required": ["id", "requirement", "detail", "consequence", "workaround", "plannedResolution"],
       "properties": {
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-        "requirement": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "detail": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
-        "consequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+        "requirement": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "detail": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
+        "consequence": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
         "workaround": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
             { "type": "null" }
           ]
         },
         "plannedResolution": {
           "oneOf": [
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText" },
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText" },
             { "type": "null" }
           ]
         }

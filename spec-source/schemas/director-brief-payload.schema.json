@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:director-brief-payload:v2",
+  "title": "Lifecycle Director Brief Payload v2",
+  "description": "Exact Director-supplied direction for one Activity or one operation in a retained work delegation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "scope", "inputProfile", "templateProfileId", "semanticMarkdownDigest", "submission"],
+  "properties": {
+    "schema": { "const": "lifecycle.director-brief-payload.v2" },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "activityId"],
+          "properties": {
+            "kind": { "const": "activity" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "delegationId", "delegationRevision", "operation"],
+          "properties": {
+            "kind": { "const": "delegation" },
+            "delegationId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+            "delegationRevision": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+            "operation": { "enum": ["delivery.continue", "delivery.evaluate"] }
+          }
+        }
+      ]
+    },
+    "inputProfile": {
+      "enum": [
+        "delivery.prepare",
+        "delivery.continue",
+        "delivery.evaluate",
+        "delivery.revise",
+        "delivery.reaffirm"
+      ]
+    },
+    "templateProfileId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "semanticMarkdownDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawDigest", "rawByteLength", "normalizedByteLength"],
+      "properties": {
+        "rawDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "rawByteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "normalizedByteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "scope": { "properties": { "kind": { "const": "delegation" } } } } },
+      "then": {
+        "oneOf": [
+          { "properties": { "inputProfile": { "const": "delivery.continue" }, "scope": { "properties": { "operation": { "const": "delivery.continue" } } } } },
+          { "properties": { "inputProfile": { "const": "delivery.evaluate" }, "scope": { "properties": { "operation": { "const": "delivery.evaluate" } } } } }
+        ]
+      }
+    }
+  ]
+}

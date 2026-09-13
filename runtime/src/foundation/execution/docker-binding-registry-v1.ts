@@ -43,7 +43,8 @@ export class FoundationDockerExecutionBindingRegistryV1 {
   readonly #operations = new Map<Sha256, RegisteredOperation>();
   readonly #volatileObservationSequences = new Map<string, number>();
 
-  register(input: RegisteredOperation): void {
+  /** Release only this invocation's reader when its checkpoint custody ends. */
+  register(input: RegisteredOperation): () => void {
     if (!SHA256.test(input.engineIdentityDigest) ||
         input.specification.digest !== selfDigest(input.specification, "digest")) {
       fail("registration", "Docker recovery binding registration is invalid");
@@ -58,7 +59,13 @@ export class FoundationDockerExecutionBindingRegistryV1 {
     if (existing === undefined && this.#operations.size >= MAXIMUM_REGISTERED_OPERATIONS) {
       fail("bound", "Docker recovery binding registry exceeded its fixed operation bound");
     }
-    this.#operations.set(input.specification.digest, Object.freeze({ ...input }));
+    const registration = Object.freeze({ ...input });
+    this.#operations.set(input.specification.digest, registration);
+    return () => {
+      if (this.#operations.get(input.specification.digest) === registration) {
+        this.#operations.delete(input.specification.digest);
+      }
+    };
   }
 
   readonly resolve: FoundationDockerExecutionBindingResolverV1 = async (

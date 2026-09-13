@@ -25,7 +25,7 @@ const WORKSPACE = resolve(dirname(SCRIPT), "..", "..");
 const CLI = join(WORKSPACE, "runtime", "bin", "lifecycle.mjs");
 const MAXIMUM_CAPTURE_BYTES = 16 * 1024 * 1024;
 const EXPECTED_DESCRIPTOR_DIGEST =
-  "sha256:2e7d6aa152145518c6ce35b561384eb9f0e49dd2736ea019f18d47d5f095fc9e";
+  "sha256:4bcb41216dad08468d53d7208909d3417415c6f5b7b1078da72285650a92d021";
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 
 const ENVIRONMENT = Object.freeze({
@@ -82,7 +82,7 @@ const EXECUTION_POLICY_KEYS = Object.freeze([
 ]);
 const REQUIRED_EVENT_ORDER = Object.freeze([
   "delivery-created",
-  "founder-brief-submitted",
+  "director-brief-submitted",
   "activity-started",
   "agent-attempt-prepared",
   "provider-effect-intended",
@@ -110,7 +110,7 @@ const COMPLETE_QUALIFICATION_DOCUMENT = [
 
 const EXPECTED_TERMINAL_EVENT_KINDS = Object.freeze([
   "delivery-created",
-  "founder-brief-submitted",
+  "director-brief-submitted",
   "activity-started",
   "agent-attempt-prepared",
   "provider-effect-intended",
@@ -121,12 +121,12 @@ const EXPECTED_TERMINAL_EVENT_KINDS = Object.freeze([
   "check-receipt-recorded",
   "activity-completed",
   "activity-started",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "candidate-revision-observed",
   "activity-completed",
-  "founder-brief-submitted",
+  "director-brief-submitted",
   "activity-started",
   "agent-attempt-prepared",
   "provider-effect-intended",
@@ -135,7 +135,32 @@ const EXPECTED_TERMINAL_EVENT_KINDS = Object.freeze([
   "candidate-revision-observed",
   "execution-receipt-recorded",
   "activity-completed",
-  "founder-brief-submitted",
+  "activity-started",
+  "integration-assessed",
+  "candidate-revision-observed",
+  "material-condition-frozen",
+  "activity-completed",
+  "director-brief-submitted",
+  "activity-started",
+  "agent-attempt-prepared",
+  "provider-effect-intended",
+  "provider-effect-observed",
+  "agent-work-product-submitted",
+  "execution-receipt-recorded",
+  "work-boundary-finalized",
+  "check-receipt-recorded",
+  "activity-completed",
+  "activity-started",
+  "director-decision-authenticated",
+  "transaction-effect-intended",
+  "transaction-effect-observed",
+  "candidate-revision-observed",
+  "activity-completed",
+  "activity-started",
+  "integration-assessed",
+  "candidate-revision-observed",
+  "activity-completed",
+  "director-brief-submitted",
   "activity-started",
   "candidate-sealed",
   "check-receipt-recorded",
@@ -147,13 +172,13 @@ const EXPECTED_TERMINAL_EVENT_KINDS = Object.freeze([
   "evidence-packet-finalized",
   "activity-completed",
   "activity-started",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "closure-recorded",
 ]);
 
-const FOUNDER_BRIEF = [
+const DIRECTOR_BRIEF = [
   "# Docker Agent Cell Qualification Direction",
   "",
   "Prepare one bounded Work Boundary that changes only `docs/qualification.md` from the exact pending state to the exact complete state.",
@@ -187,9 +212,34 @@ const REVIEWER_DIRECTION = [
   "Independently evaluate the sealed Candidate against every exact frozen proposition and required evidence.",
   "Confirm that only `docs/qualification.md` changed from `Status: pending` to `Status: complete`, that the final Check passed, and that no mandate excess or missing obligation exists.",
   "Complete the supplied Reviewer Work Product with `Disposition: complete`, `Uncertainty: none`, one accepted decision for every and only frozen proposition, exact Attempt-local citations, and no Material Condition.",
-  "Keep reviewer Claims free of Knowledge and Evidence declarations; cite only `candidate.diff` and the final Check Receipt, and use those exact citations on the accepted proposition decision.",
+  "Keep reviewer Claims free of Knowledge and Evidence declarations. Cite `candidate.diff` and the final Check Receipt for the accepted proposition decision. State that the reaffirmed mandate remains applicable to the exact integrated result and that every baseline required by the active Work Boundary remains sufficient; cite its exact baseline Check Receipt in that baseline applicability judgment. An earlier Boundary's historical baseline does not substitute for the new required baseline.",
   "",
 ].join("\n");
+
+const ATLAS_MAINTENANCE = "\nThe exact pending-to-complete qualification transition remains the project choice; independently maintained context must survive Delivery publication.\n";
+
+function resolutionDirection(boundary, candidate, workProduct) {
+  return [
+    "# Reaffirm the exact qualification mandate",
+    "",
+    "The Director separately clarified the Atlas root. Preserve the complete admitted mandate; this context change adds no Product requirement or capability.",
+    "Read the frozen Candidate working tree, including docs/qualification.md. Do not write any Candidate path or export Product output; only complete the supplied reconnaissance semantic Work Product.",
+    `Verify its Git tree is ${candidate.payload.state.tree} and docs/qualification.md has SHA-256 ${sha256(COMPLETE_QUALIFICATION_DOCUMENT)}. The document must already be complete.`,
+    "Propose a complete reaffirmation using the exact original Objective, Direction, Effects, Risks, Obligation, Artifact, Check and Proposition text and relationships below. Keep all selected Knowledge, Discipline, external-source, Capability and Projection selections unchanged. Do not paraphrase mandate fields or create new ids.",
+    "Use the current Attempt-local citation handles from this Role Brief, not handles copied from the original Work Product. Let Runtime supply the newly selected P Snapshot and new required baseline Receipt.",
+    "",
+    "## Exact admitted mandate and selections",
+    "```json",
+    JSON.stringify({ mandate: boundary.payload.mandate, knowledge: boundary.payload.knowledge,
+      disciplines: boundary.payload.disciplines, externalSources: boundary.payload.externalSources,
+      capabilityProfile: boundary.payload.capabilityProfile, projectionProfile: boundary.payload.projectionProfile }, null, 2),
+    "```",
+    "",
+    "## Original submitted reconnaissance form (replace its local citation handles)",
+    workProduct.semanticMarkdown,
+    "",
+  ].join("\n");
+}
 
 function sha256(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -241,8 +291,8 @@ function selectedEnvironment() {
       throw new Error(`Docker Agent qualification requires one exact digest for ${ENVIRONMENT[key]}`);
     }
   }
-  if (selected.codexVersion !== "0.151.0") {
-    throw new Error("Docker Agent qualification requires the exact operated Codex 0.151.0 image tool");
+  if (selected.codexVersion !== "0.153.4") {
+    throw new Error("Docker Agent qualification requires the exact selected Codex 0.153.4 image tool");
   }
   if (selected.agentAdapterImplementationDigest !== selected.runnerImplementationDigest) {
     throw new Error("Docker Agent qualification requires the fixed runner to own the exact Agent adapter");
@@ -497,9 +547,9 @@ async function runCli(args, options) {
   );
   const result = JSON.parse(completed.stdout);
   if (args[0] !== "version") {
-    assert.equal(result.schema, "lifecycle.foundation-runtime-result.v10");
-    assert.equal(result.runtimeProtocol, "lifecycle.runtime.foundation.v10");
-    assert.equal(result.interfaceProtocol, "lifecycle.interface.foundation.v10");
+    assert.equal(result.schema, "lifecycle.foundation-runtime-result.v17");
+    assert.equal(result.runtimeProtocol, "lifecycle.runtime.foundation.v17");
+    assert.equal(result.interfaceProtocol, "lifecycle.interface.foundation.v17");
     assert.match(result.digest, SHA256);
   }
   return Object.freeze({ result, stdout: completed.stdout });
@@ -507,7 +557,7 @@ async function runCli(args, options) {
 
 function liveCheckKnowledge() {
   const header = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "check",
     id: "check.live-provider-qualification",
     title: "Docker Agent Cell qualification Check",
@@ -515,7 +565,7 @@ function liveCheckKnowledge() {
     revision: 1,
     supersedes: null,
     summary: "Prove that the bounded qualification document remains in one exact admitted state.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -548,7 +598,7 @@ function liveCheckKnowledge() {
 
 function liveDescriptionKnowledge() {
   const header = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.docker-agent-qualification",
     title: "Docker Agent qualification artifact",
@@ -556,7 +606,7 @@ function liveDescriptionKnowledge() {
     revision: 1,
     supersedes: null,
     summary: "Own the exact pending-to-complete transition used by the Docker Agent qualification Delivery.",
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -692,56 +742,102 @@ async function inspectDossier(input) {
   ], input.options);
 }
 
+async function inspectDeliveryView(input) {
+  const query = await writeQuery(input.privateRoot, `inspect-delivery-view-${input.suffix}.json`, {
+    kind: "delivery-view",
+  });
+  const run = await runCli([
+    "inspect", input.target, input.deliveryId, "--input", query,
+  ], input.options);
+  assert.equal(run.result.value.kind, "delivery-view");
+  assert.equal(run.result.value.view.state.processId, input.deliveryId);
+  assertDigest(run.result.value.view.generation.digest, "Delivery View generation");
+  return run;
+}
+
+async function inspectExactRecord(input, reference) {
+  const query = await writeQuery(input.privateRoot, `inspect-record-${reference.id}-${reference.revision}.json`, {
+    kind: "record", reference,
+  });
+  const run = await runCli(["inspect", input.target, input.deliveryId, "--input", query], input.options);
+  const record = run.result.value.record;
+  assert.equal(record.recordId, reference.id);
+  assert.equal(record.revision, reference.revision);
+  assert.equal(record.digest, reference.digest);
+  return { record, run };
+}
+
+function assertRelated(record, relation, reference) {
+  assert.deepEqual(record.relationships.filter((edge) => edge.relation === relation).map(({ target }) => target), [reference]);
+}
+
 function recordsOfKind(records, kind) {
   return records.filter((record) => record.recordKind === kind);
 }
 
-async function assertCleanReclamationLedger(environment) {
-  const configurationModule = await import(pathToFileURL(join(
-    WORKSPACE,
-    "runtime", "dist", "src", "foundation", "installed-configuration-v7.js",
-  )).href);
-  const runtimeModule = await import(pathToFileURL(join(
-    WORKSPACE,
-    "runtime", "dist", "src", "foundation", "execution", "installed-check-runtime-v1.js",
-  )).href);
-  const configuration = await configurationModule.resolveFoundationInstalledRuntimeConfigurationV7({
-    environment,
-  });
-  const opened = await runtimeModule.openFoundationInstalledCheckRuntimeV1({
+async function openQualificationReclamationOwners(environment, owners) {
+  if (owners === undefined) {
+    const [configurationModule, runtimeModule, ledgerModule] = await Promise.all([
+      import(pathToFileURL(join(
+        WORKSPACE, "runtime", "dist", "src", "foundation", "installed-configuration-v7.js",
+      )).href),
+      import(pathToFileURL(join(
+        WORKSPACE, "runtime", "dist", "src", "foundation", "execution", "installed-check-runtime-v1.js",
+      )).href),
+      import(pathToFileURL(join(
+        WORKSPACE, "runtime", "dist", "src", "foundation", "execution", "reclamation-ledger-v1.js",
+      )).href),
+    ]);
+    owners = {
+      resolveConfiguration: configurationModule.resolveFoundationInstalledRuntimeConfigurationV7,
+      openRuntime: runtimeModule.openFoundationInstalledCheckRuntimeV1,
+      openLedger: ledgerModule.openFoundationExecutionReclamationLedgerV1,
+    };
+  }
+  const configuration = await owners.resolveConfiguration({ environment });
+  const opened = await owners.openRuntime({
     configuration,
     now: () => new Date().toISOString(),
   });
   try {
+    // Qualification independently inspects the existing ledger. Effects remain
+    // behind the installed Runtime's exact Reclamation operation.
+    const ledger = await owners.openLedger({
+      machineHome: configuration.machineHome,
+      installationId: configuration.installationId,
+      create: false,
+    });
+    return Object.freeze({
+      opened,
+      ledger,
+      close() {
+        try { ledger.close(); }
+        finally { opened.close(); }
+      },
+    });
+  } catch (error) {
+    opened.close();
+    throw error;
+  }
+}
+
+export async function assertCleanReclamationLedger(environment, owners) {
+  const selected = await openQualificationReclamationOwners(environment, owners);
+  try {
     assert.equal(
-      opened.ledger.list().filter(({ standing }) => standing.state !== "reclaimed").length,
+      selected.ledger.list().filter(({ standing }) => standing.state !== "reclaimed").length,
       0,
       "Docker Agent qualification requires a clean Reclamation ledger before allocation",
     );
   } finally {
-    opened.close();
+    selected.close();
   }
 }
 
-async function reclaimExecutionCells(input) {
-  const configurationModule = await import(pathToFileURL(join(
-    WORKSPACE,
-    "runtime", "dist", "src", "foundation", "installed-configuration-v7.js",
-  )).href);
-  const runtimeModule = await import(pathToFileURL(join(
-    WORKSPACE,
-    "runtime", "dist", "src", "foundation", "execution", "installed-check-runtime-v1.js",
-  )).href);
-  const configuration = await configurationModule.resolveFoundationInstalledRuntimeConfigurationV7({
-    environment: input.environment,
-  });
-  const opened = await runtimeModule.openFoundationInstalledCheckRuntimeV1({
-    configuration,
-    now: () => new Date().toISOString(),
-  });
-  let invocations = 0;
+export async function assertExecutionCellsReclaimed(input, owners) {
+  const selected = await openQualificationReclamationOwners(input.environment, owners);
   try {
-    const foreignOutstanding = opened.ledger.list().filter(({ owner, standing }) =>
+    const foreignOutstanding = selected.ledger.list().filter(({ owner, standing }) =>
       (owner.storeId !== input.storeId || owner.processId !== input.processId) &&
       standing.state !== "reclaimed");
     assert.equal(
@@ -749,26 +845,19 @@ async function reclaimExecutionCells(input) {
       0,
       "Docker Agent qualification requires no outstanding foreign Reclamation obligation",
     );
-    const before = opened.ledger.summarizeProcess({
+    const summary = selected.ledger.summarizeProcess({
       storeId: input.storeId,
       processId: input.processId,
     });
-    assert.equal(before.obligationCount, input.expectedCount);
-    assert.equal(before.pendingCount, input.expectedCount);
-    assert.equal(before.reclaimedCount, 0);
-    for (; invocations < input.expectedCount; invocations += 1) {
-      assert.equal(await opened.reclaimNext(), true, "Selected Delivery has an unreclaimable obligation");
-    }
-    const after = opened.ledger.summarizeProcess({
-      storeId: input.storeId,
-      processId: input.processId,
-    });
-    assert.equal(after.obligationCount, input.expectedCount);
-    assert.equal(after.pendingCount, 0);
-    assert.equal(after.reclaimedCount, input.expectedCount);
-    return Object.freeze({ invocations, summary: after });
+    assert.equal(summary.obligationCount, input.expectedCount);
+    assert.equal(summary.pendingCount, 0,
+      "Normal installed operations left outstanding Reclamation obligations");
+    assert.equal(summary.reclaimedCount, input.expectedCount);
+    // The healthy course must establish automatic cleanup itself. Qualification
+    // cannot repair a disconnected maintenance hook and then report success.
+    return Object.freeze({ invocations: 0, summary });
   } finally {
-    opened.close();
+    selected.close();
   }
 }
 
@@ -787,7 +876,7 @@ await assertPrivateAuthentication(codexHome);
 const dockerPath = await physicalExecutable(selection.dockerPath, "Qualification Docker executable");
 const dockerConfig = await physicalDirectory(selection.dockerConfig, "Qualification Docker config");
 const sourceRevision = await exactSourceRevision();
-const targetId = `docker-agent-rc10-${randomUUID()}`;
+const targetId = `docker-agent-rc16-${randomUUID()}`;
 const targetRegistrySegment = controlRegistrySegment(targetId);
 const registryRoot = join(machineHome, "control-record-stores");
 for (const area of ["active", "archive", "staging"]) {
@@ -801,13 +890,14 @@ for (const area of ["active", "archive", "staging"]) {
   );
 }
 
-const owner = await realpath(await mkdtemp(join(tmpdir(), "lifecycle-foundation-rc10-docker-agent-")));
+const owner = await realpath(await mkdtemp(join(tmpdir(), "lifecycle-foundation-rc16-docker-agent-")));
 const target = join(owner, "target");
 const privateRoot = join(owner, "private");
 const authorityFile = join(privateRoot, "authority.secret");
 const initializeInput = join(privateRoot, "initialize.json");
 const prepareInput = join(privateRoot, "prepare.md");
 const continueInput = join(privateRoot, "continue.md");
+const reaffirmInput = join(privateRoot, "reaffirm.md");
 const evaluateInput = join(privateRoot, "evaluate.md");
 const authoritySecret = randomBytes(48).toString("base64url");
 const environment = runtimeEnvironment({
@@ -843,15 +933,15 @@ try {
   });
   const version = versionRun.result;
   assert.equal(version.runtimeVersion, "1.0.0");
-  assert.equal(version.runtimeProtocol, "lifecycle.runtime.foundation.v10");
-  assert.equal(version.specificationRevision, "lifecycle.foundation.1.0.0-rc.10");
+  assert.equal(version.runtimeProtocol, "lifecycle.runtime.foundation.v17");
+  assert.equal(version.specificationRevision, "lifecycle.foundation.1.0.0-rc.17");
   assert.equal(version.specificationStatus, "draft");
   assert.equal(version.authenticatedPublicationStatus, null);
-  assert.equal(version.provider.defaultDescriptorId, "codex-exec-standard-v6");
+  assert.equal(version.provider.defaultDescriptorId, "codex-exec-standard-v7");
   assert.equal(version.provider.defaultDescriptorDigest, EXPECTED_DESCRIPTOR_DIGEST);
-  assert.equal(version.provider.protocol, "lifecycle.provider-adapter.v6");
-  assert.equal(version.codex.executableRange, ">=0.151.0 <0.152.0");
-  assert.equal(version.codex.generatedWith, "0.151.0");
+  assert.equal(version.provider.protocol, "lifecycle.provider-adapter.v7");
+  assert.equal(version.codex.executableRange, ">=0.153.4 <0.154.0");
+  assert.equal(version.codex.generatedWith, "0.153.4");
   assert.equal(selection.codexVersion, version.codex.generatedWith);
 
   await Promise.all([mkdir(target), mkdir(privateRoot, { mode: 0o700 })]);
@@ -882,7 +972,7 @@ try {
   await writeFile(authorityFile, authoritySecret, { encoding: "utf8", mode: 0o600 });
   await writeFile(initializeInput, JSON.stringify({
     targetId,
-    founderPrincipal: "founder",
+    directorPrincipal: "director",
     implementationRoots: ["checks", "docs"],
     checkBindings: {
       "live-provider-qualification-check": liveCheckBinding(),
@@ -910,17 +1000,17 @@ try {
     "utf8",
   );
   await git(target, ["add", "--", "."]);
-  await git(target, ["commit", "-m", "Initialize Lifecycle Foundation rc.10"]);
+  await git(target, ["commit", "-m", "Initialize Lifecycle Foundation rc.17"]);
 
   const contract = JSON.parse(await readFile(join(target, ".lifecycle", "repository.json"), "utf8"));
-  assert.equal(contract.$schema, "lifecycle.repository.v15");
-  assert.equal(contract.schemaVersion, 15);
-  assert.equal(contract.specification.revision, "lifecycle.foundation.1.0.0-rc.10");
+  assert.equal(contract.$schema, "lifecycle.repository.v22");
+  assert.equal(contract.schemaVersion, 21);
+  assert.equal(contract.specification.revision, "lifecycle.foundation.1.0.0-rc.17");
   assert.equal(contract.specification.publicationDigest, version.publicationDigest);
-  assert.equal(contract.runtime.compatible, "lifecycle.runtime.foundation.v10");
-  assert.equal(contract.runtime.interface, "lifecycle.interface.foundation.v10");
-  assert.equal(contract.provider.protocol, "lifecycle.provider-adapter.v6");
-  assert.equal(contract.provider.defaultDescriptorId, "codex-exec-standard-v6");
+  assert.equal(contract.runtime.compatible, "lifecycle.runtime.foundation.v17");
+  assert.equal(contract.runtime.interface, "lifecycle.interface.foundation.v17");
+  assert.equal(contract.provider.protocol, "lifecycle.provider-adapter.v7");
+  assert.equal(contract.provider.defaultDescriptorId, "codex-exec-standard-v7");
   assert.equal(contract.provider.defaultDescriptorDigest, EXPECTED_DESCRIPTOR_DIGEST);
 
   const validateRun = await runCli(["validate", target], {
@@ -938,7 +1028,7 @@ try {
   );
   assert.equal(
     validateRun.result.observation.repository.repositoryContract,
-    "lifecycle.repository.v15",
+    "lifecycle.repository.v22",
   );
   assertDigest(
     validateRun.result.observation.repository.repositoryContractDigest,
@@ -946,7 +1036,7 @@ try {
   );
   assert.equal(validateRun.result.observation.delivery, null);
 
-  await writeFile(prepareInput, FOUNDER_BRIEF, "utf8");
+  await writeFile(prepareInput, DIRECTOR_BRIEF, "utf8");
   const canonicalHead = (await git(target, ["rev-parse", "HEAD"])).stdout.trim();
   qualificationCustodyAllocated = true;
   const initialPrepareRun = await runCli([
@@ -1065,7 +1155,7 @@ try {
   assert.equal(attempt.payload.role, "reconnaissance");
   assert.equal(attempt.payload.investment.model, selection.model);
   assert.equal(attempt.payload.investment.reasoning, selection.reasoning);
-  assert.equal(attempt.payload.provider.adapter, "lifecycle.provider-adapter.v6");
+  assert.equal(attempt.payload.provider.adapter, "lifecycle.provider-adapter.v7");
   assert.equal(attempt.payload.provider.descriptorId, version.provider.defaultDescriptorId);
   assert.equal(attempt.payload.provider.descriptorDigest, version.provider.defaultDescriptorDigest);
   assert.equal(attempt.payload.provider.executableIdentityClass, "execution-image-tool-inventory-v1");
@@ -1089,7 +1179,7 @@ try {
   assert.equal(attempt.payload.execution.image.imageDigest, selection.imageDigest);
   assert.equal(
     attempt.payload.execution.inputSet.profileId,
-    "lifecycle.execution-input-set.v1",
+    "lifecycle.execution-input-set.v2",
   );
   assertDigest(attempt.payload.execution.inputSet.digest, "Agent Input Set digest");
   assertDigest(attempt.payload.input.contentInventoryDigest, "Agent content inventory digest");
@@ -1098,7 +1188,7 @@ try {
     assertDigest(attempt.payload.executionPolicy[key], `Agent execution policy ${key}`);
   }
 
-  assert.equal(workProduct.payload.schema, "lifecycle.agent-work-product-payload.v2");
+  assert.equal(workProduct.payload.schema, "lifecycle.agent-work-product-payload.v5");
   assert.equal(workProduct.payload.role, "reconnaissance");
   assert.equal(workProduct.payload.disposition, "complete");
   assert.equal(workProduct.payload.roleSemantics.proposal, "work-boundary");
@@ -1107,12 +1197,12 @@ try {
   assert(workProduct.payload.citations.length >= 1);
   assert.equal(workProduct.semanticAuthority, "agent-proposed");
 
-  assert.equal(boundary.payload.schema, "lifecycle.work-boundary-payload.v4");
-  assert.equal(boundary.payload.basis.specificationRevision, "lifecycle.foundation.1.0.0-rc.10");
-  assert.equal(boundary.payload.basis.repositoryContract, "lifecycle.repository.v15");
-  assert.equal(boundary.payload.basis.providerAdapter, "lifecycle.provider-adapter.v6");
+  assert.equal(boundary.payload.schema, "lifecycle.work-boundary-payload.v6");
+  assert.equal(boundary.payload.basis.specificationRevision, "lifecycle.foundation.1.0.0-rc.17");
+  assert.equal(boundary.payload.basis.repositoryContract, "lifecycle.repository.v22");
+  assert.equal(boundary.payload.basis.providerAdapter, "lifecycle.provider-adapter.v7");
   assert.equal(boundary.semanticAuthority, "runtime-derived");
-  assert.equal(checkReceipt.payload.schema, "lifecycle.check-receipt-payload.v2");
+  assert.equal(checkReceipt.payload.schema, "lifecycle.check-receipt-payload.v3");
   assert.equal(checkReceipt.payload.phase, "baseline");
   assert.equal(checkReceipt.payload.modality, "regression-guard");
   assert.equal(checkReceipt.payload.disposition, "pass");
@@ -1125,7 +1215,7 @@ try {
   assert.equal(checkReceipt.semanticAuthority, "runtime-observed");
 
   assert.equal(receipt.payload.schema, "lifecycle.execution-receipt-payload.v3");
-  assert.equal(receipt.payload.provider.adapter, "lifecycle.provider-adapter.v6");
+  assert.equal(receipt.payload.provider.adapter, "lifecycle.provider-adapter.v7");
   assert.equal(receipt.payload.provider.descriptorId, version.provider.defaultDescriptorId);
   assert.equal(receipt.payload.provider.descriptorDigest, version.provider.defaultDescriptorDigest);
   assert.equal(receipt.payload.provider.installedIdentityDigest, selection.codexExecutableIdentity);
@@ -1222,7 +1312,7 @@ try {
   assert.equal(admitted.observation.delivery?.candidateCondition, "ready-for-work");
   assert.deepEqual(admitted.observation.delivery?.eligibleOperations, [
     "delivery.continue",
-    "delivery.evaluate",
+    "delivery.integrate",
     "delivery.no-ship",
   ]);
   const initialCandidate = admitted.observation.delivery?.subjects.candidate;
@@ -1238,9 +1328,22 @@ try {
     "Admission must not create a persistent Candidate worktree",
   );
 
+  const admittedViewRun = await inspectDeliveryView({
+    privateRoot,
+    suffix: "admitted",
+    target,
+    deliveryId,
+    options: operationOptions,
+  });
+  const admittedGeneration = admittedViewRun.result.value.view.generation.digest;
+
   await writeFile(continueInput, BUILDER_DIRECTION, "utf8");
   const continuedOperation = await runRecoverableMutation({
-    args: ["continue", target, deliveryId, "--input", continueInput],
+    args: [
+      "continue", target, deliveryId,
+      "--input", continueInput,
+      "--expected-generation", admittedGeneration,
+    ],
     target,
     deliveryId,
     options: operationOptions,
@@ -1250,7 +1353,7 @@ try {
   assert.equal(continued.observation.delivery?.candidateCondition, "ready-for-work");
   assert.deepEqual(continued.observation.delivery?.eligibleOperations, [
     "delivery.continue",
-    "delivery.evaluate",
+    "delivery.integrate",
     "delivery.no-ship",
   ]);
   const successorCandidate = continued.observation.delivery?.subjects.candidate;
@@ -1294,9 +1397,143 @@ try {
   assert.match(candidateDiff.content, /^\+Status: complete$/mu);
   assert.doesNotMatch(candidateDiff.content, /checks\/verify-qualification-state/u);
 
+  const continuedViewRun = await inspectDeliveryView({
+    privateRoot,
+    suffix: "continued",
+    target,
+    deliveryId,
+    options: operationOptions,
+  });
+  const continuedGeneration = continuedViewRun.result.value.view.generation.digest;
+
+  // This is explicit Director-directed maintenance by the qualification harness,
+  // outside Delivery. Atlas root semantics change while all mandate fields and
+  // selected Knowledge bytes remain exact, making reaffirmation lawful.
+  const atlasPath = join(target, "atlas", "atlas.md");
+  const maintainedAtlas = `${await readFile(atlasPath, "utf8")}${ATLAS_MAINTENANCE}`;
+  await writeFile(atlasPath, maintainedAtlas, "utf8");
+  await git(target, ["add", "--", "atlas/atlas.md"]);
+  await git(target, ["commit", "-m", "Clarify separately maintained qualification context"]);
+  const canonicalParent = (await git(target, ["rev-parse", "HEAD"])).stdout.trim();
+  assert.notEqual(canonicalParent, canonicalHead);
+  assert.equal((await git(target, ["rev-parse", "HEAD^"])).stdout.trim(), canonicalHead);
+
+  const contextIntegrationOperation = await runRecoverableMutation({
+    args: ["integrate", target, deliveryId, "--expected-generation", continuedGeneration],
+    target,
+    deliveryId,
+    options: operationOptions,
+  });
+  const contextIntegrated = contextIntegrationOperation.result;
+  assert.equal(contextIntegrated.observation.delivery?.standing, "boundary-paused");
+  assert.equal(contextIntegrated.observation.delivery?.candidateCondition, "paused-for-boundary");
+  assert.deepEqual(contextIntegrated.observation.delivery?.eligibleOperations, [
+    "delivery.revise", "delivery.reaffirm", "delivery.no-ship",
+  ]);
+  const frozenCandidate = contextIntegrated.observation.delivery?.subjects.candidate;
+  const contextAssessment = contextIntegrated.observation.delivery?.subjects.integrationAssessment;
+  const materialCondition = contextIntegrated.observation.delivery?.subjects.materialCondition;
+  assert(frozenCandidate && contextAssessment && materialCondition);
+  assert.equal(frozenCandidate.id, successorCandidate.id);
+  assert.equal(frozenCandidate.revision, successorCandidate.revision + 1);
+  const inspection = { privateRoot, target, deliveryId, options: operationOptions };
+  const frozenRun = await inspectExactRecord(inspection, frozenCandidate);
+  const assessmentRun = await inspectExactRecord(inspection, contextAssessment);
+  const conditionRun = await inspectExactRecord(inspection, materialCondition);
+  assert.equal(frozenRun.record.payload.candidateBaseCommit, canonicalParent);
+  assertRelated(frozenRun.record, "revises", successorCandidate);
+  assertRelated(frozenRun.record, "integrated-from", contextAssessment);
+  assert.equal(assessmentRun.record.payload.outcome, "constructed");
+  assert.equal(assessmentRun.record.payload.canonicalParent.commit, canonicalParent);
+  assert.equal(assessmentRun.record.payload.contextualApplicability.disposition, "requires-readmission");
+  assert.deepEqual(assessmentRun.record.payload.contextualApplicability.changes.map(({ subject }) => subject), ["atlas"]);
+  assert.equal(conditionRun.record.payload.conditionClass, "integration-context-change");
+  assert.deepEqual(conditionRun.record.payload.source, { kind: "integration-assessment" });
+  assertRelated(conditionRun.record, "reported-by", contextAssessment);
+  assertRelated(conditionRun.record, "freezes", frozenCandidate);
+  assert.equal(contextIntegrated.changes.repository.changed, false);
+
+  const frozenViewRun = await inspectDeliveryView({ ...inspection, suffix: "frozen" });
+  await writeFile(reaffirmInput, resolutionDirection(boundary, frozenRun.record, workProduct), "utf8");
+  const reaffirmedOperation = await runRecoverableMutation({
+    args: ["reaffirm", target, deliveryId, "--input", reaffirmInput,
+      "--expected-generation", frozenViewRun.result.value.view.generation.digest],
+    target, deliveryId, options: operationOptions,
+  });
+  const reaffirmed = reaffirmedOperation.result;
+  assert.equal(reaffirmed.observation.delivery?.standing, "awaiting-readmission");
+  assert.equal(reaffirmed.observation.delivery?.subjects.candidate?.digest, frozenCandidate.digest);
+  assert.equal(reaffirmed.observation.delivery?.subjects.activeBoundary?.digest, boundary.digest);
+  assert.equal(reaffirmed.observation.delivery?.subjects.materialCondition?.digest, materialCondition.digest);
+  assert.equal(reaffirmed.changes.candidate.changed, false);
+  assert.equal(reaffirmed.changes.repository.changed, false);
+  const successorBoundary = reaffirmed.observation.delivery?.subjects.proposedBoundary;
+  assert(successorBoundary);
+  const successorBoundaryRun = await inspectExactRecord(inspection, successorBoundary);
+  assert.equal(successorBoundary.id, boundary.recordId);
+  assert.equal(successorBoundary.revision, boundary.revision + 1);
+  assert.equal(successorBoundaryRun.record.payload.proposalKind, "reaffirmation");
+  assert.equal(successorBoundaryRun.record.payload.basis.productBaseCommit, canonicalParent);
+  assert.deepEqual(successorBoundaryRun.record.payload.resolution.changedMandateFields, []);
+  for (const field of ["mandate", "knowledge", "disciplines", "externalSources", "capabilityProfile", "projectionProfile"]) {
+    assert.deepEqual(successorBoundaryRun.record.payload[field], boundary.payload[field]);
+  }
+  assertRelated(successorBoundaryRun.record, "revises", admitted.observation.delivery.subjects.activeBoundary);
+  assertRelated(successorBoundaryRun.record, "resolves", materialCondition);
+  const readmittedOperation = await runRecoverableMutation({
+    args: ["admit", target, deliveryId, "--authority-secret-file", authorityFile],
+    target, deliveryId, options: operationOptions,
+  });
+  const readmitted = readmittedOperation.result;
+  assert.equal(readmitted.observation.delivery?.standing, "active");
+  assert.equal(readmitted.observation.delivery?.subjects.activeBoundary?.digest, successorBoundary.digest);
+  assert.equal(readmitted.observation.delivery?.subjects.materialCondition, null);
+  const reboundCandidate = readmitted.observation.delivery?.subjects.candidate;
+  assert(reboundCandidate);
+  const reboundRun = await inspectExactRecord(inspection, reboundCandidate);
+  assert.equal(reboundCandidate.id, frozenCandidate.id);
+  assert.equal(reboundCandidate.revision, frozenCandidate.revision + 1);
+  assert.equal(reboundRun.record.payload.observation, "readmission-rebind");
+  assert.equal(reboundRun.record.payload.candidateBaseCommit, canonicalParent);
+  assert.deepEqual(reboundRun.record.payload.state, frozenRun.record.payload.state);
+  assert.deepEqual(reboundRun.record.payload.carrierManifest, frozenRun.record.payload.carrierManifest);
+  assertRelated(reboundRun.record, "revises", frozenCandidate);
+  assertRelated(reboundRun.record, "governed-by", successorBoundary);
+  const readmittedViewRun = await inspectDeliveryView({ ...inspection, suffix: "readmitted" });
+  const integratedOperation = await runRecoverableMutation({
+    args: ["integrate", target, deliveryId, "--expected-generation", readmittedViewRun.result.value.view.generation.digest],
+    target, deliveryId, options: operationOptions,
+  });
+  const integrated = integratedOperation.result;
+  const integratedCandidate = integrated.observation.delivery?.subjects.candidate;
+  const integrationAssessment = integrated.observation.delivery?.subjects.integrationAssessment;
+  assert(integratedCandidate !== null && integratedCandidate !== undefined);
+  assert(integrationAssessment !== null && integrationAssessment !== undefined);
+  const finalAssessmentRun = await inspectExactRecord(inspection, integrationAssessment);
+  assert.equal(finalAssessmentRun.record.payload.canonicalParent.commit, canonicalParent);
+  assert.deepEqual(finalAssessmentRun.record.payload.contextualApplicability, { disposition: "unchanged", changes: [] });
+  assertRelated(finalAssessmentRun.record, "integrates", reboundCandidate);
+  assertRelated(finalAssessmentRun.record, "governed-by", successorBoundary);
+  assert.equal(integratedCandidate.id, successorCandidate.id);
+  assert.equal(integratedCandidate.revision, reboundCandidate.revision + 1);
+  assert.equal(integrated.observation.delivery?.standing, "active");
+  assert.deepEqual(integrated.observation.delivery?.eligibleOperations, [
+    "delivery.continue", "delivery.integrate", "delivery.evaluate", "delivery.no-ship",
+  ]);
+  assert.equal(integrated.changes.repository.changed, false);
+  assert.equal((await git(target, ["rev-parse", "HEAD"])).stdout.trim(), canonicalParent);
+  const integratedViewRun = await inspectDeliveryView({
+    privateRoot, suffix: "integrated", target, deliveryId, options: operationOptions,
+  });
+  const integratedGeneration = integratedViewRun.result.value.view.generation.digest;
+
   await writeFile(evaluateInput, REVIEWER_DIRECTION, "utf8");
   const evaluatedOperation = await runRecoverableMutation({
-    args: ["evaluate", target, deliveryId, "--input", evaluateInput],
+    args: [
+      "evaluate", target, deliveryId,
+      "--input", evaluateInput,
+      "--expected-generation", integratedGeneration,
+    ],
     target,
     deliveryId,
     options: operationOptions,
@@ -1305,13 +1542,14 @@ try {
   assert.equal(evaluated.observation.delivery?.standing, "decision-ready");
   assert.equal(evaluated.observation.delivery?.candidateCondition, "ready-for-decision");
   assert.deepEqual(evaluated.observation.delivery?.eligibleOperations, [
+    "delivery.integrate",
     "delivery.accept",
     "delivery.no-ship",
   ]);
-  assert.equal(evaluated.observation.delivery?.subjects.candidate?.digest, successorCandidate.digest);
+  assert.equal(evaluated.observation.delivery?.subjects.candidate?.digest, integratedCandidate.digest);
   assert(evaluated.observation.delivery?.subjects.seal !== null);
   assert(evaluated.observation.delivery?.subjects.evidence !== null);
-  assert.equal((await git(target, ["rev-parse", "HEAD"])).stdout.trim(), canonicalHead);
+  assert.equal((await git(target, ["rev-parse", "HEAD"])).stdout.trim(), canonicalParent);
   assert.equal((await git(target, ["status", "--porcelain=v1", "--untracked-files=all"])).stdout, "");
   assert.equal(
     (await git(target, ["worktree", "list", "--porcelain"])).stdout
@@ -1333,16 +1571,17 @@ try {
   assert.equal(accepted.observation.delivery?.standing, "closed");
   assert.equal(accepted.observation.delivery?.candidateCondition, "accepted");
   assert.deepEqual(accepted.observation.delivery?.eligibleOperations, []);
-  assert.equal(accepted.observation.delivery?.subjects.candidate?.digest, successorCandidate.digest);
+  assert.equal(accepted.observation.delivery?.subjects.candidate?.digest, integratedCandidate.digest);
   assert(accepted.observation.delivery?.subjects.closure !== null);
 
   const acceptedHead = (await git(target, ["rev-parse", "HEAD"])).stdout.trim();
   const acceptedParent = (await git(target, ["rev-parse", "HEAD^"])).stdout.trim();
   const acceptedTree = (await git(target, ["rev-parse", "HEAD^{tree}"])).stdout.trim();
   assert.notEqual(acceptedHead, canonicalHead);
-  assert.equal(acceptedParent, canonicalHead);
+  assert.equal(acceptedParent, canonicalParent);
   assert.equal(await readFile(join(target, "docs", "qualification.md"), "utf8"),
     COMPLETE_QUALIFICATION_DOCUMENT);
+  assert.equal(await readFile(atlasPath, "utf8"), maintainedAtlas);
   assert.equal((await git(target, ["status", "--porcelain=v1", "--untracked-files=all"])).stdout, "");
   assert.equal(
     (await git(target, ["worktree", "list", "--porcelain"])).stdout
@@ -1449,14 +1688,14 @@ try {
   const agentAttempts = recordsOfKind(attemptRecords, "agent-attempt");
   const workProducts = recordsOfKind(attemptRecords, "agent-work-product");
   const executionReceipts = recordsOfKind(attemptRecords, "execution-receipt");
-  assert.equal(agentAttempts.length, 3);
-  assert.equal(workProducts.length, 3);
-  assert.equal(executionReceipts.length, 3);
+  assert.equal(agentAttempts.length, 4);
+  assert.equal(workProducts.length, 4);
+  assert.equal(executionReceipts.length, 4);
   assert.deepEqual(agentAttempts.map(({ payload }) => payload.role).sort(), [
-    "builder", "reconnaissance", "reviewer",
+    "builder", "reconnaissance", "reconnaissance", "reviewer",
   ]);
   assert.deepEqual(workProducts.map(({ payload }) => payload.role).sort(), [
-    "builder", "reconnaissance", "reviewer",
+    "builder", "reconnaissance", "reconnaissance", "reviewer",
   ]);
   for (const selected of executionReceipts) {
     assert.equal(selected.payload.execution.backendProfile.profileId,
@@ -1466,17 +1705,61 @@ try {
     assert.equal(selected.payload.retirement.classification, "retired");
   }
   const builderAttempt = agentAttempts.find(({ payload }) => payload.role === "builder");
+  const resolutionAttempt = agentAttempts.find(({ payload }) => payload.operation === "delivery.reaffirm");
   const reviewerAttempt = agentAttempts.find(({ payload }) => payload.role === "reviewer");
-  assert(builderAttempt !== undefined && reviewerAttempt !== undefined);
+  assert(builderAttempt !== undefined && resolutionAttempt !== undefined && reviewerAttempt !== undefined);
+  assertRelated(resolutionAttempt, "uses-boundary", admitted.observation.delivery.subjects.activeBoundary);
+  assertRelated(resolutionAttempt, "uses-candidate", frozenCandidate);
+  assert.equal(resolutionAttempt.payload.capability.profileId, boundary.payload.capabilityProfile.id);
+  assert.equal(resolutionAttempt.payload.capability.profileDigest, boundary.payload.capabilityProfile.digest);
+  const selectedCapability = contract.capabilityProfiles[boundary.payload.capabilityProfile.id];
+  assert.equal(resolutionAttempt.payload.capability.effectiveGrantDigest, digestCanonical({
+    candidateWrites: false,
+    temporaryWrites: selectedCapability.temporaryWrites,
+    subprocesses: selectedCapability.subprocesses,
+    network: selectedCapability.network.mode,
+    credentials: selectedCapability.credentials,
+    externalEffects: [],
+  }));
+  const resolutionReceipt = executionReceipts.find(({ relationships }) => relationships.some(({ relation, target: selected }) =>
+    relation === "observes-attempt" && selected.id === resolutionAttempt.recordId));
+  assert(resolutionReceipt !== undefined);
+  // The Attempt and Input Set bind read-only input. Receipt Candidate fields
+  // describe output observation and remain empty for reconnaissance.
+  assert.equal(resolutionReceipt.payload.candidate.input, null);
+  assert.equal(resolutionReceipt.payload.candidate.successorDisposition, null);
+  assert.equal(resolutionReceipt.payload.candidate.successor, null);
+  assert.equal(resolutionReceipt.payload.candidate.contentDisposition, null);
+  assert.equal(resolutionReceipt.relationships.some(({ relation }) => relation === "observes-candidate"), false);
+  assert.deepEqual(resolutionReceipt.payload.execution.inputSet, resolutionAttempt.payload.execution.inputSet);
+  assert.equal(resolutionReceipt.payload.workspace.parserDisposition, "valid");
+  assert.equal(resolutionReceipt.payload.workspace.compilerDisposition, "retained");
+  const resolutionProduct = workProducts.find(({ relationships }) => relationships.some(({ relation, target: selected }) =>
+    relation === "result-of" && selected.id === resolutionAttempt.recordId));
+  assert(resolutionProduct !== undefined);
+  const resolutionProductReference = { kind: "agent-work-product", id: resolutionProduct.recordId,
+    revision: resolutionProduct.revision, digest: resolutionProduct.digest };
+  assert.equal(resolutionProduct.payload.role, "reconnaissance");
+  assert.equal(resolutionProduct.payload.disposition, "complete");
+  assertRelated(successorBoundaryRun.record, "proposed-from", resolutionProductReference);
+  assertRelated(resolutionReceipt, "observes-work-product", resolutionProductReference);
+  assert.equal(terminalEvents.some((event) => event.payload.activityId === resolutionAttempt.payload.activityId &&
+    event.eventKind === "candidate-revision-observed"), false);
   const builderReceipt = executionReceipts.find(({ relationships }) => relationships.some(({ relation, target: selected }) =>
     relation === "observes-attempt" && selected.id === builderAttempt.recordId));
   const reviewerReceipt = executionReceipts.find(({ relationships }) => relationships.some(({ relation, target: selected }) =>
     relation === "observes-attempt" && selected.id === reviewerAttempt.recordId));
   assert(builderReceipt !== undefined && reviewerReceipt !== undefined);
+  for (const [selectedAttempt, selectedReceipt] of [
+    [builderAttempt, builderReceipt], [resolutionAttempt, resolutionReceipt], [reviewerAttempt, reviewerReceipt],
+  ]) {
+    assertRelated(selectedReceipt, "observes-attempt", { kind: "agent-attempt", id: selectedAttempt.recordId,
+      revision: selectedAttempt.revision, digest: selectedAttempt.digest });
+  }
   assert.equal(builderReceipt.payload.candidate.input.revision.digest, initialCandidate.digest);
   assert.equal(builderReceipt.payload.candidate.successorDisposition, "promoted");
   assert.equal(builderReceipt.payload.candidate.successor.revision.digest, successorCandidate.digest);
-  assert.equal(reviewerReceipt.payload.candidate.input.revision.digest, successorCandidate.digest);
+  assert.equal(reviewerReceipt.payload.candidate.input.revision.digest, integratedCandidate.digest);
   assert.equal(reviewerReceipt.payload.candidate.successorDisposition, null);
   assert.equal(reviewerReceipt.payload.candidate.successor, null);
 
@@ -1485,11 +1768,11 @@ try {
     "candidate-revision",
   );
   assert.equal(currentCandidateRecords.length, 1);
-  assert.equal(currentCandidateRecords[0].digest, successorCandidate.digest);
+  assert.equal(currentCandidateRecords[0].digest, integratedCandidate.digest);
   const candidateRecords = candidateRevisionsRun.result.value.records;
-  assert.equal(candidateRecords.length, 2);
+  assert.equal(candidateRecords.length, 5);
   assert.deepEqual(candidateRecords.map(({ payload }) => payload.observation), [
-    "initialization", "builder-successor",
+    "initialization", "builder-successor", "integration-successor", "readmission-rebind", "integration-successor",
   ]);
   assert.deepEqual(candidateRecords[1].payload.state.changedSubjects, [{
     path: "docs/qualification.md",
@@ -1497,16 +1780,30 @@ try {
     beforeDigest: sha256(PENDING_QUALIFICATION_DOCUMENT),
     afterDigest: sha256(COMPLETE_QUALIFICATION_DOCUMENT),
   }]);
-  assert.equal(candidateRecords[1].payload.state.tree, acceptedTree);
+  assert.notEqual(candidateRecords[1].payload.state.tree, acceptedTree, "P contributes maintained Atlas bytes independently of Product work");
+  for (const record of candidateRecords.slice(2)) {
+    assert.equal(record.payload.state.tree, acceptedTree);
+    assert.equal(record.payload.candidateBaseCommit, canonicalParent);
+  }
+  assert.deepEqual(candidateRecords[3].payload.state, candidateRecords[2].payload.state);
+  assert.deepEqual(candidateRecords[3].payload.carrierManifest, candidateRecords[2].payload.carrierManifest);
+  assertRelated(candidateRecords[2], "integrated-from", contextAssessment);
+  assertRelated(candidateRecords[4], "integrated-from", integrationAssessment);
+  assertRelated(candidateRecords[4], "revises", reboundCandidate);
+  assertRelated(candidateRecords[4], "governed-by", successorBoundary);
 
   const evidenceRecords = terminalEvidenceRun.result.value.records;
   const checkReceipts = recordsOfKind(evidenceRecords, "check-receipt");
   const seals = recordsOfKind(evidenceRecords, "candidate-seal");
   const packets = recordsOfKind(evidenceRecords, "evidence-packet");
-  assert.equal(checkReceipts.length, 2);
+  assert.equal(checkReceipts.length, 3);
   assert.equal(seals.length, 1);
   assert.equal(packets.length, 1);
-  assert.deepEqual(checkReceipts.map(({ payload }) => payload.phase).sort(), ["baseline", "final"]);
+  assert.deepEqual(checkReceipts.map(({ payload }) => payload.phase).sort(), ["baseline", "baseline", "final"]);
+  const successorBaseline = checkReceipts.find(({ payload, relationships }) => payload.phase === "baseline" &&
+    relationships.some(({ relation, target: selected }) => relation === "checks-boundary" && selected.digest === successorBoundary.digest));
+  assert(successorBaseline !== undefined);
+  assert.notEqual(successorBaseline.digest, checkReceipt.digest);
   for (const selected of checkReceipts) {
     assert.equal(selected.payload.disposition, "pass");
     assert.equal(selected.payload.modality, "regression-guard");
@@ -1522,23 +1819,23 @@ try {
   assert.equal(packets[0].payload.propositionDecisions.length, 1);
   assert.equal(packets[0].payload.propositionDecisions[0].reviewerDisposition, "accepted");
 
-  const decisions = recordsOfKind(terminalDecisionRun.result.value.records, "founder-decision");
-  assert.equal(decisions.length, 2);
-  assert.deepEqual(decisions.map(({ payload }) => payload.decision).sort(), ["accept", "admit"]);
+  const decisions = recordsOfKind(terminalDecisionRun.result.value.records, "director-decision");
+  assert.equal(decisions.length, 3);
+  assert.deepEqual(decisions.map(({ payload }) => payload.decision).sort(), ["accept", "admit", "readmit"]);
   const closure = exactRecord(terminalClosureRun.result.value.records, "closure");
-  assert.equal(closure.payload.schema, "lifecycle.closure-payload.v4");
+  assert.equal(closure.payload.schema, "lifecycle.closure-payload.v6");
   assert.equal(closure.payload.disposition, "accepted");
   assert.equal(closure.payload.candidateTreatment, "integrated");
   assert.equal(closure.payload.nonIntegrationVerified, false);
-  assert.equal(closure.payload.canonicalResult.parentCommit, canonicalHead);
+  assert.equal(closure.payload.canonicalResult.parentCommit, canonicalParent);
   assert.equal(closure.payload.canonicalResult.commit, acceptedHead);
   assert.equal(closure.payload.canonicalResult.tree, acceptedTree);
   assert.equal(closure.payload.canonicalResult.candidateDigest,
-    candidateRecords[1].payload.state.candidateDigest);
-  assert.equal(closure.payload.terminalExecutions.executionCount, 5);
+    candidateRecords[4].payload.state.candidateDigest);
+  assert.equal(closure.payload.terminalExecutions.executionCount, 7);
   assert.equal(closure.payload.terminalExecutions.containment.classification, "complete");
   assert.equal(closure.payload.terminalExecutions.retirement.classification, "complete");
-  assert.equal(closure.payload.reclamationHandoff.obligationCount, 5);
+  assert.equal(closure.payload.reclamationHandoff.obligationCount, 7);
   assertDigest(closure.payload.reclamationHandoff.obligationSetDigest,
     "Closure Reclamation obligation-set digest");
 
@@ -1556,17 +1853,17 @@ try {
   });
   const archivedDiff = archivedDiffRun.result.value.view;
   assert.equal(archivedDiff.currentness, "exact");
-  assert.equal(archivedDiff.candidate.digest, successorCandidate.digest);
+  assert.equal(archivedDiff.candidate.digest, integratedCandidate.digest);
   assert.equal(archivedDiff.seal.digest, seals[0].digest);
   assert.equal(archivedDiff.tree, acceptedTree);
   assert.equal(archivedDiff.exactDiffDigest, candidateDiff.exactDiffDigest);
   assert.equal(archivedDiff.content, candidateDiff.content);
 
-  const reclamation = await reclaimExecutionCells({
+  const reclamation = await assertExecutionCellsReclaimed({
     environment,
     storeId: terminalDelivery.storeId,
     processId: terminalDelivery.processId,
-    expectedCount: 5,
+    expectedCount: 7,
   });
   assert.equal(reclamation.summary.obligationSetDigest,
     closure.payload.reclamationHandoff.obligationSetDigest);
@@ -1575,6 +1872,10 @@ try {
     preparationRuns,
     admittedOperation.runs,
     continuedOperation.runs,
+    contextIntegrationOperation.runs,
+    reaffirmedOperation.runs,
+    readmittedOperation.runs,
+    integratedOperation.runs,
     evaluatedOperation.runs,
     acceptedOperation.runs,
   ].reduce((count, runs) => count + runs.length - 1, 0);
@@ -1590,8 +1891,23 @@ try {
     boundaryRun.stdout,
     evidenceRun.stdout,
     ...admittedOperation.runs.map(({ stdout }) => stdout),
+    admittedViewRun.stdout,
     ...continuedOperation.runs.map(({ stdout }) => stdout),
     candidateDiffRun.stdout,
+    continuedViewRun.stdout,
+    ...contextIntegrationOperation.runs.map(({ stdout }) => stdout),
+    frozenRun.run.stdout,
+    assessmentRun.run.stdout,
+    conditionRun.run.stdout,
+    frozenViewRun.stdout,
+    ...reaffirmedOperation.runs.map(({ stdout }) => stdout),
+    successorBoundaryRun.run.stdout,
+    ...readmittedOperation.runs.map(({ stdout }) => stdout),
+    reboundRun.run.stdout,
+    readmittedViewRun.stdout,
+    ...integratedOperation.runs.map(({ stdout }) => stdout),
+    finalAssessmentRun.run.stdout,
+    integratedViewRun.stdout,
     ...evaluatedOperation.runs.map(({ stdout }) => stdout),
     ...acceptedOperation.runs.map(({ stdout }) => stdout),
     terminalStatusRun.stdout,
@@ -1608,7 +1924,7 @@ try {
   qualificationCleanupVerified = true;
   process.stdout.write(`${JSON.stringify({
     status: "passed",
-    qualification: "foundation-rc10-docker-agent-terminal-delivery",
+    qualification: "foundation-rc16-docker-agent-resolution-terminal-delivery",
     evidenceClass: "live-docker-execution-cell-terminal-row",
     sourceRevision,
     runtimeVersion: version.runtimeVersion,
@@ -1618,7 +1934,7 @@ try {
     publicationDigest: version.publicationDigest,
     repositoryContract: contract.$schema,
     repositoryContractDigest: validateRun.result.observation.repository.repositoryContractDigest,
-    controlStore: "lifecycle.control-record-store.v1",
+    controlStore: "lifecycle.control-record-store.v2",
     provider: {
       descriptorId: receipt.payload.provider.descriptorId,
       descriptorDigest: receipt.payload.provider.descriptorDigest,
@@ -1629,7 +1945,7 @@ try {
     execution: {
       backendProfile: receipt.payload.execution.backendProfile,
       image: receipt.payload.execution.image,
-      cellCount: 5,
+      cellCount: 7,
       agentCellCount: executionReceipts.length,
       checkCellCount: checkReceipts.length,
       agentInputSetDigests: executionReceipts.map(({ payload }) => payload.execution.inputSet.digest),
@@ -1641,6 +1957,7 @@ try {
       reclamationObligationSetDigest: reclamation.summary.obligationSetDigest,
       reclaimedCount: reclamation.summary.reclaimedCount,
       reclamationInvocationCount: reclamation.invocations,
+      reclamationVerification: "automatic-installed-operation",
     },
     model: selection.model,
     reasoning: selection.reasoning,
@@ -1652,14 +1969,24 @@ try {
     agentAttemptDigests: agentAttempts.map(({ digest }) => digest),
     agentWorkProductDigests: workProducts.map(({ digest }) => digest),
     executionReceiptDigests: executionReceipts.map(({ digest }) => digest),
-    workBoundaryDigest: boundary.digest,
+    workBoundaryDigests: [boundary.digest, successorBoundary.digest],
+    resolution: {
+      materialConditionDigest: materialCondition.digest,
+      assessmentDigest: contextAssessment.digest,
+      frozenCandidateDigest: frozenCandidate.digest,
+      reconnaissanceAttemptDigest: resolutionAttempt.digest,
+      readmissionCandidateDigest: reboundCandidate.digest,
+      baselineCheckDigest: successorBaseline.digest,
+    },
     candidateRevisionDigests: candidateRecords.map(({ digest }) => digest),
+    integrationAssessmentDigest: integrationAssessment.digest,
     candidateSealDigest: seals[0].digest,
     checkReceiptDigests: checkReceipts.map(({ digest }) => digest),
     evidencePacketDigest: packets[0].digest,
     closureDigest: closure.digest,
     canonicalResult: {
-      parentCommit: canonicalHead,
+      admittedBaseCommit: canonicalHead,
+      parentCommit: canonicalParent,
       commit: acceptedHead,
       tree: acceptedTree,
       diffDigest: archivedDiff.exactDiffDigest,
@@ -1667,6 +1994,7 @@ try {
     boundaries: {
       packedInstallationEvidence: false,
       productiveCandidateEvidence: true,
+      frozenCandidateResolutionEvidence: true,
       terminalTransactionEvidence: true,
       archivedStoreReadEvidence: true,
       exactReclamationEvidence: true,

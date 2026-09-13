@@ -71,7 +71,7 @@ function attemptFor(
   };
   const relationships: ControlRecordRelationship[] = [{
     relation: "uses-brief",
-    target: { kind: "founder-brief", id: "brief-one", revision: 1, digest: D0 },
+    target: { kind: "director-brief", id: "brief-one", revision: 1, digest: D0 },
   }];
   if (role !== "reconnaissance") {
     relationships.push({
@@ -140,33 +140,47 @@ function compile(
   return payload;
 }
 
-test("v2 templates remove agent-authored mechanics and use unanchored draft headings", () => {
-  assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID, "lifecycle.agent-work-product-parser.v2");
-  assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID, "lifecycle.agent-work-product-compiler.v2");
+test("current templates exclude agent-authored mechanics and use unanchored draft headings", () => {
+  assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_PARSER_PROFILE_ID, "lifecycle.agent-work-product-parser.v4");
+  assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_COMPILER_PROFILE_ID, "lifecycle.agent-work-product-compiler.v4");
   assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_PARSE_RESULT_SCHEMA, "lifecycle.agent-work-product-parse-result.v6");
   assert.equal(FOUNDATION_AGENT_WORK_PRODUCT_FIXED_BINDINGS_SCHEMA, "lifecycle.agent-work-product-fixed-bindings.v6");
   for (const role of ["reconnaissance", "builder", "reviewer"] as const) {
     const template = renderAgentWorkProductTemplate(role);
-    assert.equal(template.profileId, `lifecycle.agent-work-product-body.${role}.v2`);
+    assert.equal(template.profileId, `lifecycle.agent-work-product-body.${role}.v4`);
     assert.doesNotMatch(template.markdown, /\{#[^}]+\}/u);
-    assert.doesNotMatch(template.markdown, /Founder judgment required|Allow not applicable|None\./u);
+    assert.doesNotMatch(template.markdown, /Director judgment required|Allow not applicable|None\./u);
     const obligation = template.markdown.match(/### Obligation:[\s\S]*?(?=\n### |$)/u)?.[0] ?? "";
     assert.doesNotMatch(obligation, /^- Proposition:/mu);
+    if (role === "reconnaissance") {
+      assert.match(template.markdown, /Baseline required: <true \| false; at least one Check must be true/u);
+      assert.match(template.markdown, /postcondition records authorized not-run without baseline execution/u);
+      assert.match(template.markdown, /Final required: <true \| false; at least one Check must be true/u);
+    }
   }
 });
 
-test("reconnaissance v2 derives mechanics and compiles complete typed Work Boundary semantics", () => {
+test("reconnaissance retains optional work-type discovery and compiles complete typed Work Boundary semantics", () => {
   const registry = Object.freeze([Object.freeze({
     id: "behavior.delivery-loop",
     kind: "knowledge",
+    knowledgeIdentity: "behavior.delivery-loop",
     digest: D0,
     locator: "projection/material/behavior.delivery-loop.md",
     authorityClass: "repository-authored" as const,
   }), Object.freeze({
     id: "check.delivery-loop",
     kind: "knowledge",
+    knowledgeIdentity: "check.delivery-loop",
     digest: D1,
     locator: "projection/material/check.delivery-loop.md",
+    authorityClass: "repository-authored" as const,
+  }), Object.freeze({
+    id: "discipline.go-review",
+    kind: "knowledge",
+    knowledgeIdentity: "discipline.go-review",
+    digest: D0,
+    locator: "projection/material/discipline.go-review.md",
     authorityClass: "repository-authored" as const,
   })]);
   const markdown = [
@@ -180,6 +194,10 @@ test("reconnaissance v2 derives mechanics and compiles complete typed Work Bound
     "",
     "### Citation: citation-check",
     "- Subject: check.delivery-loop",
+    "- Supports: claim-route",
+    "",
+    "### Citation: citation-discipline",
+    "- Subject: discipline.go-review",
     "- Supports: claim-route",
     "",
     "## Claims",
@@ -203,6 +221,8 @@ test("reconnaissance v2 derives mechanics and compiles complete typed Work Bound
     "- Kind: work-boundary",
     "- Projection profile: `execution-standard-v1`",
     "- Selected Knowledge: behavior.delivery-loop",
+    "- Selected Knowledge: discipline.go-review",
+    "- Selected work type: go-development",
     "- Capability profile: `builder-standard`",
     "",
     "### Objective",
@@ -235,7 +255,7 @@ test("reconnaissance v2 derives mechanics and compiles complete typed Work Bound
     "- Final required: true",
     "- Binding: runtime-test",
     "- Check Knowledge: check.delivery-loop",
-    "- Baseline required: false",
+    "- Baseline required: true",
     "- Obligation: obligation-loop",
     "- Modality: postcondition",
     "",
@@ -256,12 +276,32 @@ test("reconnaissance v2 derives mechanics and compiles complete typed Work Bound
   assert.match(parsed.normalizedMarkdown, /### Claim: claim-route \{#claim-route\}/u);
   assert.match(parsed.normalizedMarkdown, /### Objective \{#objective\}/u);
   const payload = compile("reconnaissance", markdown, registry);
+  const duplicateArtifact = markdown.replace("Citation: citation-route", "Citation: artifact-runtime");
+  assert.throws(() => compile("reconnaissance", duplicateArtifact, registry), (error: unknown) => {
+    const failure = error as { code: string; observedFacts: unknown };
+    assert.equal(failure.code, "lifecycle.agent-work-product.invalid.duplicate-local-identity");
+    assert.deepEqual(failure.observedFacts, { classification: "invalid-result", phase: "semantic", firstLine: 5,
+      line: markdown.split("\n").indexOf("### Artifact: artifact-runtime") + 1, localHandle: "artifact-runtime" });
+    return true;
+  });
+  const correctedArtifact = compile("reconnaissance", duplicateArtifact.replace("Citation: artifact-runtime", "Citation: cite-runtime"), registry);
+  assert.equal((correctedArtifact.citations as unknown[]).length, 3, "Renaming the Citation keeps its Claim support and the Artifact definition");
   const result = payload.roleSemantics as Record<string, unknown>;
   const boundary = result.workBoundary as Record<string, unknown>;
   const obligations = boundary.obligations as Array<Record<string, unknown>>;
   const mandate = boundary.mandate as Record<string, unknown>;
   const propositions = boundary.propositions as Array<Record<string, unknown>>;
-  assert.equal((payload.citations as unknown[]).length, 2);
+  assert.equal((payload.citations as unknown[]).length, 3);
+  for (const phase of ["Baseline", "Final"] as const) {
+    assert.throws(() => compile("reconnaissance", markdown.replace(
+      `- ${phase} required: true`, `- ${phase} required: false`,
+    ), registry), (error: unknown) => error instanceof Error && "code" in error &&
+      error.code === "lifecycle.agent-work-product.invalid.work-boundary-coverage" &&
+      agentWorkProductFailureClassification(error) === "invalid-result" &&
+      error.message.includes(`${phase.toLowerCase()}-required`));
+  }
+  assert.deepEqual(boundary.selectedWorkTypeIds, ["go-development"]);
+  assert.deepEqual(boundary.selectedKnowledgeIds, ["behavior.delivery-loop", "check.delivery-loop", "discipline.go-review"]);
   assert.equal(obligations.length, 1);
   assert.deepEqual(obligations[0]!.sourceIds, ["behavior.delivery-loop", mandate.id]);
   assert.deepEqual(obligations[0]!.propositionIds, [propositions[0]!.id]);
@@ -270,6 +310,20 @@ test("reconnaissance v2 derives mechanics and compiles complete typed Work Bound
   assert.equal((payload.body as { digest: string }).digest, sha256Bytes(parsed.normalizedMarkdown));
   const fragments = (payload.body as { fragments: Array<{ anchor: string }> }).fragments;
   assert(fragments.some(({ anchor }) => anchor === "claim-route"));
+  const qualifiedRegistry = Object.freeze([...registry, ...registry.map((entry) => Object.freeze({
+    ...entry,
+    id: `knowledge.qualified-${entry.id}`,
+  }))]);
+  const qualifiedMarkdown = markdown
+    .replace("- Subject: `behavior.delivery-loop`", "- Subject: knowledge.qualified-behavior.delivery-loop")
+    .replace("- Subject: check.delivery-loop", "- Subject: knowledge.qualified-check.delivery-loop")
+    .replace("- Subject: discipline.go-review", "- Subject: knowledge.qualified-discipline.go-review");
+  const qualified = compile("reconnaissance", qualifiedMarkdown, qualifiedRegistry);
+  assert.deepEqual(
+    ((qualified.roleSemantics as ControlJsonObject).workBoundary as ControlJsonObject).selectedKnowledgeIds,
+    ["behavior.delivery-loop", "check.delivery-loop", "discipline.go-review"],
+  );
+  assert((qualified.citations as readonly ControlJsonObject[]).every(({ subjectId }) => String(subjectId).startsWith("knowledge.qualified-")));
   assert.throws(
     () => compile(
       "reconnaissance",
@@ -322,7 +376,7 @@ test("reconnaissance Proposal Kind derives blocked and partial dispositions", ()
   assert.equal(parseAgentWorkProductSemanticMarkdown("reconnaissance", split).disposition, "partial");
 });
 
-test("builder v2 permits omitted optional sections and derives Founder judgment mechanics", () => {
+test("builder compilation permits omitted optional sections and derives the Director judgment requirement", () => {
   const progress = [
     "# Builder Work Product",
     "## Proposal",
@@ -342,20 +396,20 @@ test("builder v2 permits omitted optional sections and derives Founder judgment 
     "## Outcome",
     "- Disposition: blocked",
     "- Uncertainty: material",
-    "The active mandate requires a Founder-owned tradeoff.",
+    "The active mandate requires a Director-owned tradeoff.",
     "## Proposal",
     "- Kind: material-condition",
     "### Material Condition: condition-tradeoff",
-    "- Condition class: founder-tradeoff",
+    "- Condition class: director-tradeoff",
     "The admitted tradeoff no longer selects one honest implementation route.",
     "",
   ].join("\n");
   const conditionPayload = compile("builder", condition, [], null, false);
   const conditions = (conditionPayload.roleSemantics as { conditions: Array<Record<string, unknown>> }).conditions;
-  assert.equal(conditions[0]!.founderJudgmentRequired, true);
+  assert.equal(conditions[0]!.directorJudgmentRequired, true);
 });
 
-test("builder v2 refuses the retired product-state drift Material Condition class", () => {
+test("builder semantics refuse the retired product-state drift Material Condition class", () => {
   const markdown = [
     "# Builder Work Product",
     "## Outcome",
@@ -483,10 +537,11 @@ test("all roles parse no-product Outcome semantics without a marker section", ()
   }
 });
 
-test("reviewer v2 resolves exact citations and proposition coverage", () => {
+test("reviewer semantics resolve exact citations and proposition coverage", () => {
   const registry = Object.freeze([Object.freeze({
     id: "evidence.packet-one",
     kind: "evidence",
+    knowledgeIdentity: null,
     digest: D0,
     locator: "evidence/packet-one",
     authorityClass: "runtime-derived" as const,
@@ -514,6 +569,9 @@ test("reviewer v2 resolves exact citations and proposition coverage", () => {
     "- Supports: claim-evidence",
     "## Review",
     "- Mandate excess: false",
+    "### Mandate Applicability: mandate-applicability",
+    "- Disposition: applicable", "- Citation: citation-evidence",
+    "The admitted mandate still governs the exact integration parent and result.",
     "### Decision: decision-one",
     "- Proposition: proposition-one",
     "- Disposition: accepted",
@@ -526,9 +584,101 @@ test("reviewer v2 resolves exact citations and proposition coverage", () => {
   const judgments = (payload.roleSemantics as { judgments: Array<Record<string, unknown>> }).judgments;
   assert.equal(judgments[0]!.propositionId, "proposition-one");
   assert.deepEqual(judgments[0]!.inspectedSubjectIds, ["evidence.packet-one"]);
+
+  // A mandate finding must carry its typed resolution proposal. Neither a
+  // rejected proposition nor advice in prose manufactures that proposal.
+  const condition = [
+    "### Material Condition: condition-check-requirement",
+    "- Condition class: meaning-ambiguity",
+    "The admitted requirement needs Director clarification before another exact evaluation.",
+  ].join("\n");
+  const requiresReadmission = markdown.replace("- Disposition: applicable", "- Disposition: requires-readmission");
+  assert.throws(() => compile("reviewer", requiresReadmission, registry, propositionSet),
+    { code: "lifecycle.agent-work-product.invalid.material-condition-correspondence" });
+  const paired = requiresReadmission.replace("### Decision: decision-one", `${condition}\n### Decision: decision-one`);
+  const pairedReview = compile("reviewer", paired, registry, propositionSet).roleSemantics as {
+    mandateApplicability: { disposition: string }; conditions: unknown[];
+  };
+  assert.equal(pairedReview.mandateApplicability.disposition, "requires-readmission");
+  assert.equal(pairedReview.conditions.length, 1);
+  assert.throws(() => compile("reviewer", paired.replace("- Disposition: requires-readmission", "- Disposition: applicable"), registry, propositionSet),
+    { code: "lifecycle.agent-work-product.invalid.material-condition-correspondence" });
+  assert.throws(() => compile("reviewer", paired.replace("- Citation: citation-evidence", "- Citation: absent-citation"), registry, propositionSet),
+    { code: "lifecycle.agent-work-product.invalid.local-reference" });
+  const rejected = compile("reviewer", markdown.replace("- Disposition: accepted", "- Disposition: rejected"), registry, propositionSet);
+  assert.deepEqual((rejected.roleSemantics as { conditions: unknown[] }).conditions, []);
+
+  // Actual rejected review: a Claim categorized as a limitation was referenced
+  // by Decision Limitation. Local uniqueness does not make kinds substitutable.
+  const wrongKind = paired.replace("- Category: completed", "- Category: limitation")
+    .replace("- Proposition: proposition-one", "- Proposition: proposition-one\n- Limitation: claim-evidence");
+  assert.throws(() => compile("reviewer", wrongKind, registry, propositionSet),
+    { code: "lifecycle.agent-work-product.invalid.local-reference" });
+  const correctedKind = wrongKind.replace("- Limitation: claim-evidence", "- Limitation: limit-proof")
+    .replace("## Review", "## Limitations\n### Limitation: limit-proof\nThe required final Check is unavailable.\n## Review");
+  const correctedPayload = compile("reviewer", correctedKind, registry, propositionSet);
+  const correctedReview = correctedPayload.roleSemantics as { judgments: Array<{ limitationIds: string[] }> };
+  const retainedLimitations = correctedPayload.limitations as Array<{ id: string }>;
+  assert.equal(retainedLimitations.length, 1);
+  assert.deepEqual(correctedReview.judgments[0]!.limitationIds, [retainedLimitations[0]!.id]);
 });
 
-test("v2 rejects authored mechanics, anchors, unknown sections, and front matter", () => {
+test("reviewer semantics bind stable Knowledge claims to each exact admitted and Candidate citation", () => {
+  const registry: readonly AgentWorkProductCitationRegistryEntry[] = [
+    { id: "knowledge.admitted-occurrence", kind: "knowledge", knowledgeIdentity: "behavior.delivery-loop", digest: D0, locator: "projection/material/admitted.md", authorityClass: "repository-authored" },
+    { id: "knowledge.candidate-occurrence", kind: "knowledge", knowledgeIdentity: "behavior.delivery-loop", digest: D1, locator: "projection/material/candidate.md", authorityClass: "repository-authored" },
+  ];
+  const propositionSet = {
+    schema: "lifecycle.proposition-set.v3" as const,
+    propositions: [{ id: "proposition-one", claim: "The Candidate makes the admitted Knowledge change." }],
+  };
+  const markdown = [
+    "# Reviewer Work Product", "## Outcome", "- Disposition: complete", "- Uncertainty: bounded",
+    "Independent review compares the admitted and proposed Knowledge.",
+    "## Claims", "### Claim: compared-meaning", "- Category: completed", "- State: proposed",
+    "- Uncertainty: bounded", "- Knowledge: behavior.delivery-loop", "The proposed revision satisfies the admitted result.",
+    "## Citations", "### Citation: admitted-meaning", "- Subject: knowledge.admitted-occurrence", "- Supports: compared-meaning",
+    "### Citation: candidate-meaning", "- Subject: knowledge.candidate-occurrence", "- Supports: compared-meaning",
+    "## Review", "- Mandate excess: false",
+    "### Mandate Applicability: mandate-applicability", "- Disposition: applicable", "- Citation: admitted-meaning", "- Citation: candidate-meaning",
+    "The exact integration parent and result remain within the admitted mandate.",
+    "### Decision: decision-one", "- Proposition: proposition-one",
+    "- Disposition: accepted", "- Citation: admitted-meaning", "- Citation: candidate-meaning", "- Uncertainty: bounded",
+    "The exact proposed revision satisfies the admitted change.", "",
+  ].join("\n");
+  const payload = compile("reviewer", markdown, registry, propositionSet);
+  const citations = payload.citations as readonly ControlJsonObject[];
+  for (const selected of registry) {
+    const retained = citations.find(({ subjectId }) => subjectId === selected.id)!;
+    assert.equal(retained.subjectDigest, selected.digest);
+    assert.equal(retained.locator, selected.locator);
+    assert.equal(retained.authorityClass, "repository-authored");
+  }
+  assert.deepEqual((payload.claims as readonly ControlJsonObject[])[0]!.knowledgeIds, ["behavior.delivery-loop"]);
+  assert.throws(() => compile("reviewer", markdown.replace("- Subject: knowledge.admitted-occurrence", "- Subject: behavior.delivery-loop"), registry, propositionSet),
+    (error: unknown) => (error as { code?: string }).code === "lifecycle.agent-work-product.invalid.citation-subject");
+  assert.throws(() => compile("reviewer", markdown.replace("- Knowledge: behavior.delivery-loop", "- Knowledge: behavior.another-result"), registry, propositionSet),
+    (error: unknown) => (error as { code?: string }).code === "lifecycle.agent-work-product.invalid.claim-support");
+  const attempt = attemptFor("reviewer", registry, propositionSet);
+  const remappedRegistry = registry.map((entry) => ({ ...entry, knowledgeIdentity: "behavior.another-result" }));
+  assert.throws(() => compileAgentWorkProductPayload({
+    attempt,
+    workspaceTemplateDigest: renderAgentWorkProductTemplate("reviewer").digest,
+    observation: {
+      activityId: String(attempt.payload.activityId),
+      editor: { kind: "agent", id: "agent-reviewer" },
+      rawDigest: sha256Bytes(markdown),
+      rawByteLength: Buffer.byteLength(markdown),
+      semanticMarkdown: markdown,
+      semanticDigest: sha256Bytes(markdown),
+    },
+    parsed: parseAgentWorkProductSemanticMarkdown("reviewer", markdown),
+    citationRegistry: remappedRegistry,
+    propositionSet,
+  }), (error: unknown) => (error as { code?: string }).code === "lifecycle.agent-work-product.runtime.citation-registry");
+});
+
+test("the semantic parser rejects authored mechanics, anchors, unknown sections, and front matter", () => {
   const classify = (error: unknown): boolean => agentWorkProductFailureClassification(error) === "invalid-result";
   assert.throws(
     () => parseAgentWorkProductSemanticMarkdown("builder", "---\n{}\n---\n# Builder Work Product\n"),

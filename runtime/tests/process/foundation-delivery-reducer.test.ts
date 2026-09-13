@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { integrationAssessmentFacts } from "./exploration/delivery-reducer-fixture.js";
 import test from "node:test";
 import { compileControlRecordEvent } from "../../src/foundation/control/model.js";
 import type {
@@ -71,7 +72,7 @@ function attemptFacts(
 ): RevisionFacts {
   return {
     relationships: [
-      relationship("uses-brief", "founder-brief", brief),
+      relationship("uses-brief", "director-brief", brief),
       ...(boundary === null ? [] : [relationship("uses-boundary", "work-boundary", boundary)]),
       ...(candidate === null ? [] : [relationship("uses-candidate", "candidate-revision", candidate)]),
       ...(seal === null ? [] : [relationship("uses-seal", "candidate-seal", seal)]),
@@ -90,13 +91,13 @@ function boundaryFacts(
 ): RevisionFacts {
   return {
     payload: {
-      schema: "lifecycle.work-boundary-payload.v4",
+      schema: "lifecycle.work-boundary-payload.v6",
       mandate: {
         checks: checks.map((check) => Object.freeze({ ...check })),
       },
     },
     relationships: [
-      relationship("uses-brief", "founder-brief", brief),
+      relationship("uses-brief", "director-brief", brief),
       relationship("proposed-from", "agent-work-product", workProduct),
       ...(prior === null ? [] : [relationship("revises", "work-boundary", prior)]),
       ...(condition === null ? [] : [relationship("resolves", "material-condition", condition)]),
@@ -113,7 +114,7 @@ function checkFacts(
 ): RevisionFacts {
   return {
     payload: {
-      schema: "lifecycle.check-receipt-payload.v2",
+      schema: "lifecycle.check-receipt-payload.v3",
       selectionId,
       phase,
       modality,
@@ -124,11 +125,11 @@ function checkFacts(
 }
 
 function candidateRevisionV2Payload(
-  observation: "initialization" | "builder-successor" | "readmission-rebind",
+  observation: "initialization" | "builder-successor" | "readmission-rebind" | "integration-successor",
 ): ControlJsonObject {
   return Object.freeze({
-    schema: "lifecycle.candidate-revision-payload.v2",
-    profileId: "lifecycle.candidate-revision.observation.v1",
+    schema: "lifecycle.candidate-revision-payload.v3",
+    profileId: "lifecycle.candidate-revision.observation.v2",
     observation,
     candidateBaseCommit: "a".repeat(40),
     carrierManifest: Object.freeze({
@@ -163,7 +164,7 @@ function closurePayload(
   containment: "complete" | "incomplete" = "complete",
 ): ControlJsonObject {
   return Object.freeze({
-    schema: "lifecycle.closure-payload.v4",
+    schema: "lifecycle.closure-payload.v6",
     disposition,
     candidateTreatment,
     terminalExecutions: Object.freeze({
@@ -259,11 +260,13 @@ class EventChain {
           })
         : opening?.payload.operation === "delivery.accept" && outcome === "applied"
           ? Object.freeze({
-              schema: "lifecycle.terminal-acceptance-effect-observation.v1",
+              schema: "lifecycle.terminal-acceptance-effect-observation.v2",
               ref: "refs/heads/main",
               commit: "a".repeat(40),
               tree: "b".repeat(40),
               objectFormat: "sha1",
+              observedTip: Object.freeze({ commit: "a".repeat(40), tree: "b".repeat(40) }),
+              recognition: "at-tip",
               canonicalResultDigest: sha256Bytes(`terminal-canonical-result-${sequence}`),
             })
           : Object.freeze({
@@ -300,6 +303,14 @@ class EventChain {
       if (!this.revisions.has(key)) {
         const kind = deliveryEventDescriptor(eventKind).subjectKind;
         if (kind === null) throw new Error(`${eventKind} cannot synthesize a Control revision`);
+        let recordPayload = facts.payload ?? {};
+        if (eventKind === "director-brief-submitted" && recordPayload.scope === undefined) {
+          const activityId = payload.activityId;
+          if (typeof activityId !== "string") {
+            throw new TypeError("An Activity-scoped Director Brief fixture requires its exact Activity id");
+          }
+          recordPayload = { scope: { kind: "activity", activityId }, ...recordPayload };
+        }
         this.revisions.set(key, Object.freeze({
           schema: CONTROL_RECORD_REVISION_SCHEMA,
           processId: "delivery-reducer-test",
@@ -311,7 +322,7 @@ class EventChain {
           semanticAuthority: "runtime-derived",
           createdAt: "2026-08-29T08:00:00Z",
           semanticMarkdown: "Synthetic reducer fixture.\n",
-          payload: Object.freeze(facts.payload ?? {}),
+          payload: Object.freeze(recordPayload),
           relationships: Object.freeze(facts.relationships ?? []),
           digest: selectedSubject.digest,
         }));
@@ -361,7 +372,7 @@ function prepare(
   baselineReceipt: ControlRecordEventSubject;
 }> {
   const brief = subject(`brief-${suffix}`);
-  chain.append("founder-brief-submitted", { activityId }, brief);
+  chain.append("director-brief-submitted", { activityId }, brief);
   const attempt = subject(`attempt-${suffix}`);
   const workProduct = subject(`work-product-${suffix}`);
   const boundary = subject(`boundary-${suffix}`);
@@ -409,7 +420,7 @@ function eventCode(expected: string): (error: unknown) => boolean {
 }
 
 test("one compact registry contains only Delivery durability and business boundaries", () => {
-  assert.equal(DELIVERY_EVENT_KINDS.length, 22);
+  assert.equal(DELIVERY_EVENT_KINDS.length, 25);
   assert.equal(deliveryEventDescriptors().length, DELIVERY_EVENT_KINDS.length);
   assert.equal(new Set(DELIVERY_EVENT_KINDS).size, DELIVERY_EVENT_KINDS.length);
   assert(!DELIVERY_EVENT_KINDS.includes("semantic-result-parsed" as never));
@@ -455,10 +466,10 @@ test("pre-intent refusal abandons an Agent activity without an Attempt or Receip
   chain.append("delivery-created", {});
   const activityId = "prepare-pre-intent-refused";
   const brief = subject("brief-pre-intent-refused");
-  chain.append("founder-brief-submitted", { activityId }, brief);
+  chain.append("director-brief-submitted", { activityId }, brief);
   chain.append("activity-started", { activityId, operation: "delivery.prepare" });
   chain.append("agent-pre-intent-refused", {
-    activityId,
+ resolution: "none",    activityId,
     diagnosticCode: "lifecycle.repository.epoch-moved",
     refusalFactsDigest: sha256Bytes("pre-intent-refusal"),
   });
@@ -482,7 +493,7 @@ test("incremental replay forks preserve an independent exact derived state", () 
   chain.append("delivery-created", {});
   const brief = subject("brief-forkable-replay");
   chain.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "prepare-forkable-replay" },
     brief,
   );
@@ -523,7 +534,7 @@ test("a missing Candidate remains absent during unrelated preparation recovery",
   chain.append("delivery-created", {});
   const activityId = "prepare-candidate-absent-recovery";
   chain.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId },
     subject("brief-candidate-absent-recovery"),
   );
@@ -550,13 +561,13 @@ test("transaction opening and authority retention always expose their exact next
   assert.deepEqual(state.eligibleOperations, ["delivery.recover"]);
   assert.deepEqual(state.activities.at(-1)?.recovery, {
     kind: "finalization",
-    resumesAt: "founder-decision-authenticated",
+    resumesAt: "director-decision-authenticated",
     exactEffectDigest: null,
   });
 
   const decision = subject("decision-recovery");
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     {
@@ -612,7 +623,7 @@ test("no-ship hard-cuts a current Candidate to abandoned", () => {
     { activityId: "admit-abandoned", operation: "delivery.admit" },
   );
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "admit-abandoned" },
     admissionDecision,
     {
@@ -656,7 +667,7 @@ test("no-ship hard-cuts a current Candidate to abandoned", () => {
     { activityId: "no-ship-abandoned", operation: "delivery.no-ship" },
   );
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "no-ship-abandoned" },
     noShipDecision,
     {
@@ -684,7 +695,7 @@ test("no-ship hard-cuts a current Candidate to abandoned", () => {
     {
       payload: closurePayload("no-ship", "abandoned"),
       relationships: [
-        relationship("closes-with", "founder-decision", noShipDecision),
+        relationship("closes-with", "director-decision", noShipDecision),
         relationship("governed-by", "work-boundary", prepared.boundary),
         relationship("abandons-candidate", "candidate-revision", candidate),
       ],
@@ -721,7 +732,7 @@ test("a non-reconstructible predecessor Candidate payload cannot become current 
   const transactionEffect = effect("admit-candidate-unavailable");
   chain.append("activity-started", { activityId, operation: "delivery.admit" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     {
@@ -766,7 +777,7 @@ test("a determinate not-applied admission proceeds directly to failed activity c
   const transactionEffect = effect("admission-not-applied");
   chain.append("activity-started", { activityId, operation: "delivery.admit" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     {
@@ -834,7 +845,7 @@ test("terminal failed completion requires one exact determinate not-applied obse
   const transactionEffect = effect("no-ship-not-applied");
   chain.append("activity-started", { activityId, operation: "delivery.no-ship" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId },
     decision,
     {
@@ -897,7 +908,7 @@ test("preparation binds its planned Brief and publishes only a checked completed
   const mismatchedBrief = new EventChain();
   mismatchedBrief.append("delivery-created", {});
   mismatchedBrief.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "prepare-planned" },
     subject("brief-planned"),
   );
@@ -907,7 +918,7 @@ test("preparation binds its planned Brief and publishes only a checked completed
   const unchecked = new EventChain();
   unchecked.append("delivery-created", {});
   const brief = subject("brief-unchecked");
-  unchecked.append("founder-brief-submitted", { activityId: "prepare-unchecked" }, brief);
+  unchecked.append("director-brief-submitted", { activityId: "prepare-unchecked" }, brief);
   const attempt = subject("attempt-unchecked");
   const providerEffect = effect("provider-unchecked");
   const boundary = subject("boundary-unchecked");
@@ -1043,14 +1054,14 @@ test("preparation binds its planned Brief and publishes only a checked completed
   );
   const sparseDecision = failedAfterBoundary.fork();
   sparseDecision.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "no-ship-failed-boundary" },
     subject("decision-sparse-failed-boundary"),
     { payload: { decision: "no-ship" } },
   );
   assert.throws(() => reduce(sparseDecision), code("reference"));
   failedAfterBoundary.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "no-ship-failed-boundary" },
     decision,
     {
@@ -1080,7 +1091,7 @@ test("preparation binds its planned Brief and publishes only a checked completed
     subject("closure-sparse-failed-boundary"),
     {
       payload: closurePayload("no-ship", "not-created"),
-      relationships: [relationship("closes-with", "founder-decision", decision)],
+      relationships: [relationship("closes-with", "director-decision", decision)],
     },
   );
   assert.throws(() => reduce(sparseClosure), code("reference"));
@@ -1091,7 +1102,7 @@ test("preparation binds its planned Brief and publishes only a checked completed
     {
       payload: closurePayload("no-ship", "not-created"),
       relationships: [
-        relationship("closes-with", "founder-decision", decision),
+        relationship("closes-with", "director-decision", decision),
         relationship("governed-by", "work-boundary", boundary),
       ],
     },
@@ -1110,7 +1121,7 @@ test("baseline recovery requires every and only each required boundary Check sel
   const boundaryRelation = relationship("checks-boundary", "work-boundary", boundary);
 
   chain.append("delivery-created", {});
-  chain.append("founder-brief-submitted", { activityId }, brief);
+  chain.append("director-brief-submitted", { activityId }, brief);
   chain.append("activity-started", { activityId, operation: "delivery.prepare" });
   chain.append("agent-attempt-prepared", { activityId }, attempt, attemptFacts(brief));
   chain.append(
@@ -1191,7 +1202,7 @@ test("failed fresh preparation can only terminate no-ship", () => {
   const chain = new EventChain();
   chain.append("delivery-created", {});
   const brief = subject("brief-failed");
-  chain.append("founder-brief-submitted", { activityId: "prepare-failed" }, brief);
+  chain.append("director-brief-submitted", { activityId: "prepare-failed" }, brief);
   const attempt = subject("attempt-failed");
   const providerEffect = effect("provider-failed");
   chain.append("activity-started", { activityId: "prepare-failed", operation: "delivery.prepare" });
@@ -1226,7 +1237,7 @@ test("failed fresh preparation can only terminate no-ship", () => {
 
   const repeated = chain.fork();
   repeated.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "prepare-repeated" },
     subject("brief-repeated"),
   );
@@ -1240,7 +1251,7 @@ test("failed fresh preparation can only terminate no-ship", () => {
   const transactionEffect = effect("failed-no-ship");
   chain.append("activity-started", { activityId: "no-ship-failed", operation: "delivery.no-ship" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "no-ship-failed" },
     decision,
     { payload: { decision: "no-ship" } },
@@ -1294,7 +1305,7 @@ test("failed fresh preparation can only terminate no-ship", () => {
     subject("closure-incomplete-cleanup"),
     {
       payload: closurePayload("no-ship", "not-created", "incomplete"),
-      relationships: [relationship("closes-with", "founder-decision", decision)],
+      relationships: [relationship("closes-with", "director-decision", decision)],
     },
   );
   assert.throws(() => reduce(incompleteCleanup), code("order"));
@@ -1305,7 +1316,7 @@ test("failed fresh preparation can only terminate no-ship", () => {
     subject("closure-failed-no-ship"),
     {
       payload: closurePayload("no-ship", "not-created"),
-      relationships: [relationship("closes-with", "founder-decision", decision)],
+      relationships: [relationship("closes-with", "director-decision", decision)],
     },
   );
 
@@ -1346,7 +1357,7 @@ test("deterministic Work Boundary refusal completes preparation without a propos
   const chain = new EventChain();
   chain.append("delivery-created", {});
   const brief = subject("brief-boundary-refusal");
-  chain.append("founder-brief-submitted", { activityId: "prepare-boundary-refusal" }, brief);
+  chain.append("director-brief-submitted", { activityId: "prepare-boundary-refusal" }, brief);
   const attempt = subject("attempt-boundary-refusal");
   const providerEffect = effect("provider-boundary-refusal");
   chain.append(
@@ -1412,7 +1423,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   chain.append("delivery-created", {});
 
   const briefOne = subject("brief-one");
-  chain.append("founder-brief-submitted", { activityId: "prepare-one" }, briefOne);
+  chain.append("director-brief-submitted", { activityId: "prepare-one" }, briefOne);
   chain.append("activity-started", { activityId: "prepare-one", operation: "delivery.prepare" });
   let state = reduce(chain);
   assert.deepEqual(state.activities.map(({ id }) => id), ["prepare-one"]);
@@ -1478,7 +1489,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const candidateOne = subject("candidate", 1);
   chain.append("activity-started", { activityId: "admit-one", operation: "delivery.admit" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "admit-one" },
     admissionDecision,
     {
@@ -1513,7 +1524,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   state = reduce(chain);
   assert.equal(state.standing, "active");
   assert.equal(state.candidateCondition, "ready-for-work");
-  assert.deepEqual(state.eligibleOperations, ["delivery.continue", "delivery.evaluate", "delivery.no-ship"]);
+  assert.deepEqual(state.eligibleOperations, ["delivery.continue", "delivery.integrate", "delivery.no-ship"]);
 
   const progressBranch = chain.fork();
   const progressBrief = subject("brief-progress-branch");
@@ -1521,7 +1532,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const progressEffect = effect("progress-branch");
   const progressWorkProduct = subject("work-product-progress-branch");
   const progressCandidate = subject("candidate", 2);
-  progressBranch.append("founder-brief-submitted", { activityId: "progress-branch" }, progressBrief);
+  progressBranch.append("director-brief-submitted", { activityId: "progress-branch" }, progressBrief);
   progressBranch.append("activity-started", { activityId: "progress-branch", operation: "delivery.continue" });
   progressBranch.append(
     "agent-attempt-prepared",
@@ -1577,7 +1588,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const continuingCandidateState = continuingCandidatePayload.state as ControlJsonObject;
   const conditionBrief = subject("brief-condition-branch");
   conditionBranch.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "condition-branch" },
     conditionBrief,
   );
@@ -1671,7 +1682,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const successorBoundary = subject("boundary-one", 2);
   const successorBaseline = subject("baseline-check-successor");
   conditionBranch.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "resolution-branch" },
     resolutionBrief,
   );
@@ -1737,7 +1748,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
     { activityId: "readmit", operation: "delivery.admit" },
   );
   validReadmitBranch.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "readmit" },
     validReadmitDecision,
     {
@@ -1860,7 +1871,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
     { activityId: "readmit-without-custody", operation: "delivery.admit" },
   );
   conditionBranch.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "readmit-without-custody" },
     readmitDecision,
     {
@@ -1903,7 +1914,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const builderAttempt = subject("attempt-builder");
   const builderEffect = effect("builder");
   const builderBrief = subject("brief-builder");
-  chain.append("founder-brief-submitted", { activityId: "work-one" }, builderBrief);
+  chain.append("director-brief-submitted", { activityId: "work-one" }, builderBrief);
   chain.append("activity-started", { activityId: "work-one", operation: "delivery.continue" });
   state = reduce(chain);
   assert.equal(state.candidateCondition, "in-progress");
@@ -1967,7 +1978,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
     },
   );
   assert.throws(() => reduce(lateCandidate), code("order"));
-  const candidateTwo = subject("candidate", 2);
+  let candidateTwo = subject("candidate", 2);
   chain.append(
     "candidate-revision-observed",
     { activityId: "work-one" },
@@ -1984,6 +1995,18 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   chain.append("execution-receipt-recorded", { activityId: "work-one" }, subject("receipt-builder"));
   chain.append("activity-completed", { activityId: "work-one", outcome: "failed" });
 
+  const integrationSource = candidateTwo;
+  const assessment = subject("assessment-before-evaluation");
+  candidateTwo = subject("candidate", 3);
+  chain.append("activity-started", { activityId: "integrate-one", operation: "delivery.integrate" });
+  chain.append("integration-assessed", { activityId: "integrate-one" }, assessment, integrationAssessmentFacts(boundaryOne, integrationSource));
+  chain.append("candidate-revision-observed", { activityId: "integrate-one" }, candidateTwo, {
+    payload: candidateRevisionV2Payload("integration-successor"),
+    relationships: [relationship("governed-by", "work-boundary", boundaryOne),
+      relationship("revises", "candidate-revision", integrationSource), relationship("integrated-from", "integration-assessment", assessment)],
+  });
+  chain.append("activity-completed", { activityId: "integrate-one", outcome: "completed" });
+
   const seal = subject("seal-one");
   const finalCheck = subject("check-one");
   const reviewerAttempt = subject("attempt-reviewer");
@@ -1991,7 +2014,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   const reviewWorkProduct = subject("work-product-review");
   const reviewReceipt = subject("receipt-review");
   const reviewerBrief = subject("brief-reviewer");
-  chain.append("founder-brief-submitted", { activityId: "evaluate-one" }, reviewerBrief);
+  chain.append("director-brief-submitted", { activityId: "evaluate-one" }, reviewerBrief);
   chain.append("activity-started", { activityId: "evaluate-one", operation: "delivery.evaluate" });
   assert.deepEqual(reduce(chain).activities.at(-1)?.recovery, {
     kind: "finalization",
@@ -2161,13 +2184,13 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
   state = reduce(chain);
   assert.equal(state.standing, "decision-ready");
   assert.equal(state.candidateCondition, "ready-for-decision");
-  assert.deepEqual(state.eligibleOperations, ["delivery.accept", "delivery.no-ship"]);
+  assert.deepEqual(state.eligibleOperations, ["delivery.integrate", "delivery.accept", "delivery.no-ship"]);
 
   const acceptDecision = subject("decision-accept");
   const acceptEffect = effect("accept");
   chain.append("activity-started", { activityId: "accept-one", operation: "delivery.accept" });
   chain.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "accept-one" },
     acceptDecision,
     {
@@ -2197,7 +2220,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
     {
       payload: closurePayload("accepted", "integrated"),
       relationships: [
-        relationship("closes-with", "founder-decision", acceptDecision),
+        relationship("closes-with", "director-decision", acceptDecision),
         relationship("governed-by", "work-boundary", boundaryOne),
         relationship("accepts-candidate", "candidate-revision", candidateTwo),
         relationship("accepts-evidence", "evidence-packet", evidence),
@@ -2263,7 +2286,7 @@ test("replay carries one fresh preparation and one Candidate through acceptance"
       },
     },
     {
-      eventKind: "founder-decision-authenticated",
+      eventKind: "director-decision-authenticated",
       payload: { activityId: "admit-one", selectedDigest: boundaryOne.digest },
     },
     {
@@ -2309,7 +2332,7 @@ test("replay fails closed on invalid order, concurrency, chain, and exact refere
   const order = new EventChain();
   order.append("delivery-created", {});
   const orderBrief = subject("brief-order");
-  order.append("founder-brief-submitted", { activityId: "prepare-order" }, orderBrief);
+  order.append("director-brief-submitted", { activityId: "prepare-order" }, orderBrief);
   order.append("activity-started", { activityId: "prepare-order", operation: "delivery.prepare" });
   const attempt = subject("attempt-order");
   order.append(
@@ -2338,7 +2361,7 @@ test("replay fails closed on invalid order, concurrency, chain, and exact refere
   const admissionEffect = effect("exclusive-admit");
   exclusive.append("activity-started", { activityId: "admit-exclusive", operation: "delivery.admit" });
   exclusive.append(
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     { activityId: "admit-exclusive" },
     decision,
     {
@@ -2371,15 +2394,15 @@ test("replay fails closed on invalid order, concurrency, chain, and exact refere
   exclusive.append("activity-completed", { activityId: "admit-exclusive", outcome: "completed" });
   const workABrief = subject("brief-work-a");
   const workBBrief = subject("brief-work-b");
-  exclusive.append("founder-brief-submitted", { activityId: "work-a" }, workABrief);
-  exclusive.append("founder-brief-submitted", { activityId: "work-b" }, workBBrief);
+  exclusive.append("director-brief-submitted", { activityId: "work-a" }, workABrief);
+  exclusive.append("director-brief-submitted", { activityId: "work-b" }, workBBrief);
   exclusive.append("activity-started", { activityId: "work-a", operation: "delivery.continue" });
   exclusive.append("activity-started", { activityId: "work-b", operation: "delivery.continue" });
   assert.throws(() => reduce(exclusive), code("eligibility"));
 
   const fork = new EventChain();
   fork.append("delivery-created", {});
-  fork.append("founder-brief-submitted", { activityId: "prepare-fork" }, subject("brief-fork"));
+  fork.append("director-brief-submitted", { activityId: "prepare-fork" }, subject("brief-fork"));
   fork.append("activity-started", { activityId: "prepare-fork", operation: "delivery.prepare" });
   const second = fork.events[1]!;
   fork.events[1] = compileControlRecordEvent({

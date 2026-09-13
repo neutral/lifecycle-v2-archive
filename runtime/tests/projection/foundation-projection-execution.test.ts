@@ -1,3 +1,6 @@
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
+import { foundationDisciplineAdoptionFixture } from "../helpers/foundation-discipline-fixture.js";
+import type { FoundationAtlasNormalizedModel } from "../../src/foundation/atlas/types.js";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,15 +10,24 @@ import { compileControlRecordRevision } from "../../src/foundation/control/model
 import type { ControlJsonObject, ControlRecordRevision } from "../../src/foundation/control/types.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import { buildRelationshipEdges } from "../../src/foundation/knowledge/relationships.js";
+import { buildDescriptionCoverage } from "../../src/foundation/knowledge/coverage.js";
 import type {
   FoundationKnowledgeIndex,
   FoundationKnowledgeSet,
 } from "../../src/foundation/knowledge/types.js";
 import { parseKnowledgeRecord } from "../../src/foundation/knowledge/records.js";
+import { compareFoundationIntegrationContextV1 } from "../../src/foundation/projection/integration-context.js";
 import { compileExecution } from "../../src/foundation/projection/execution.js";
+import { seedSubject } from "../../src/foundation/projection/execution-closure.js";
 import { ProjectionByteInventoryBuilder } from "../../src/foundation/projection/content.js";
 import { compileAtlasProjection } from "../../src/foundation/projection/atlas.js";
+import {
+  atlasPointRecordKey,
+  planAtlasExecutionClosure,
+} from "../../src/foundation/projection/atlas-execution-closure.js";
 import { parseProjectionRequest } from "../../src/foundation/projection/request.js";
+import { bindFoundationMandatoryProjectionRefusalV1 } from "../../src/foundation/projection/mandatory-refusal.js";
+import { atlasResourceSourceId } from "../../src/foundation/projection/source-context.js";
 import type {
   FoundationExecutionProjectionRequest,
   FoundationExecutionProjectionSubject,
@@ -43,7 +55,7 @@ const SECTIONS = {
 function spec(kind: keyof typeof SECTIONS): Record<string, unknown> {
   if (kind === "behavior") return {
     outcome: "The exact selected behavior is implemented.",
-    actors: ["founder"],
+    actors: ["director"],
     conditions: [],
     included: ["selected result"],
     excluded: ["unselected result"],
@@ -77,7 +89,7 @@ function document(options: {
   relationships: readonly Readonly<{ type: string; target: string; required: boolean }>[];
 }): Buffer {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: options.kind,
     id: options.id,
     title: options.title,
@@ -85,7 +97,7 @@ function document(options: {
     revision: 1,
     supersedes: null,
     summary: `${options.title} summary.`,
-    owners: ["founder"],
+    owners: ["director"],
     sources: [],
     relationships: options.relationships,
     conflicts: [],
@@ -111,7 +123,7 @@ function fixture(): Readonly<{
   const contract = createRepositoryContract({
     targetId: "projection-execution-target",
     canonicalBranch: "refs/heads/main",
-    authority: { principalId: "founder", keyId: "founder-key", publicKey: `ed25519:${Buffer.alloc(32, 7).toString("base64")}` },
+    authority: { principalId: "director", keyId: "director-key", publicKey: `ed25519:${Buffer.alloc(32, 7).toString("base64")}` },
     publicationDigest: PUBLICATION,
     implementationRoots: [],
     checkBindings: { [binding.id]: binding },
@@ -155,10 +167,11 @@ function fixture(): Readonly<{
     atlasResourceBindingsDigest: atlas.resolution.resourceBindingsDigest,
   };
   const manifestBase = {
-    schema: "lifecycle.knowledge-set.v1" as const,
+    schema: "lifecycle.knowledge-set.v2" as const,
     specificationRevision: contract.specification.revision,
-    profile: "knowledge-set-v1" as const,
+    profile: "knowledge-set-v2" as const,
     repository: repositoryBasis,
+    disciplineRegistry: createEmptyDisciplineRegistry(),
     records: records.map((record) => ({
       kind: record.frontMatter.kind,
       id: record.frontMatter.id,
@@ -179,7 +192,7 @@ function fixture(): Readonly<{
   };
   const manifest = Object.freeze({ ...manifestBase, digest: selfDigest(manifestBase as unknown as Record<string, unknown>) });
   const validation = new DiagnosticCollector().result({
-    profile: "knowledge-set-v1",
+    profile: "knowledge-set-v2",
     publicationDigest: contract.specification.publicationDigest,
     subjectKind: "repository-knowledge",
     subjectId: contract.targetId,
@@ -214,6 +227,7 @@ function fixture(): Readonly<{
     records: Object.freeze(records),
     currentRecords: Object.freeze(records),
     historicalRecords: Object.freeze([]),
+    disciplineRegistry: manifest.disciplineRegistry,
     relationships,
     coverage: Object.freeze([]),
     exemptions: Object.freeze([]),
@@ -256,10 +270,11 @@ function fixture(): Readonly<{
     payload: Object.freeze({
       ...workBoundaryPayload,
       targetId: contract.targetId,
+      disciplines: Object.freeze({ registryDigest: knowledge.disciplineRegistry.digest, workTypeIds: Object.freeze([]), records: Object.freeze([]) }),
       basis: Object.freeze({
         specificationRevision: contract.specification.revision,
-        repositoryContract: "lifecycle.repository.v15",
-        providerAdapter: "lifecycle.provider-adapter.v6",
+        repositoryContract: "lifecycle.repository.v22",
+        providerAdapter: "lifecycle.provider-adapter.v7",
         productBaseCommit: COMMIT,
         productBaseTree: TREE,
         productStateDigest: repositoryBasis.productStateDigest,
@@ -342,7 +357,7 @@ function fixture(): Readonly<{
       Object.freeze({
         relation: "uses-brief",
         target: Object.freeze({
-          kind: "founder-brief",
+          kind: "director-brief",
           id: "brief.projection-execution",
           revision: 1,
           digest: sha256Bytes("brief.projection-execution"),
@@ -362,7 +377,7 @@ function fixture(): Readonly<{
   const boundaryDigest = workBoundary.digest;
   const candidateDigest = sha256Bytes("candidate");
   const requestBase = {
-    schema: "lifecycle.projection-request.v4" as const,
+    schema: "lifecycle.projection-request.v5" as const,
     class: "execution" as const,
     role: "builder" as const,
     specificationRevision: contract.specification.revision,
@@ -419,6 +434,7 @@ function fixture(): Readonly<{
         carrierManifestDigest: sha256Bytes("candidate.selected-result.carrier-manifest"),
         sealedTree: null,
         seal: null,
+        integration: null,
       }),
     }),
     features: Object.freeze({ historical: false, reachable: false }),
@@ -481,6 +497,196 @@ test("Execution Projection closes selected meaning through constraints, Checks, 
   assert.equal(first.unresolved.length, 0);
 });
 
+test("directory Artifact closure resolves descendants and keeps unchanged ownership applicable as files appear or disappear", () => {
+  const value = fixture();
+  const contract = { ...value.loaded.contract, productState: {
+    ...value.loaded.contract.productState, governedImplementationRoots: ["src"],
+  } };
+  const description = (id: string, path: string, exclude: string[] = []) => {
+    const fields = {
+      schema: "lifecycle.knowledge-record.v2", kind: "description", id,
+      title: id, status: "current", revision: 1, supersedes: null,
+      summary: "Own the exact descendant files.", owners: ["director"],
+      sources: [], relationships: [], conflicts: [], tags: [],
+      spec: { responsibility: "Own these source files.",
+        coverage: [{ path, mode: "tree", role: "primary", exclude }],
+        behavior: ["bounded result"], boundaries: ["selected files"],
+        invariants: ["exact ownership"], dependencies: [], failure: ["wrong result"], rationale: ["one owner"] },
+    };
+    return parseKnowledgeRecord({ path: `_${id}.desc.md`, mode: "100644", objectId: "d".repeat(40), contract,
+      bytes: Buffer.from(`---\n${JSON.stringify(fields, null, 2)}\n---\n\n# ${id}\n\n## Responsibility\n\nOwn these files.\n\n## Behavior\n\nBounded result.\n\n## Boundaries\n\nSelected files.\n\n## Rationale\n\nOne owner.\n`) });
+  };
+  const owners = [description("description.feature", "src/feature", ["src/feature/nested"]),
+    description("description.nested", "src/feature/nested"), description("description.adjacent", "src/adjacent")];
+  const currentRecords = [...value.knowledge.currentRecords, ...owners];
+  const knowledge = { ...value.knowledge, records: currentRecords, currentRecords,
+    index: { ...value.knowledge.index, currentByIdentity: new Map(currentRecords.map((record) => [record.frontMatter.id, record])) } };
+  const entries = ["src/adjacent/other.ts", "src/feature/a.ts", "src/feature/nested/b.ts"].map((path) => ({
+    path, role: "governed-implementation" as const, mode: "100644" as const, objectId: "e".repeat(40),
+  }));
+  const loaded = { ...value.loaded, contract, productState: { entries, digest: digestCanonical(entries) } };
+  const subject = { ...value.subject, implementationRoots: [], core: { ...value.subject.core,
+    requiredArtifacts: [{ id: "artifact.feature", path: "src/feature", role: "code" as const, mustChange: true }] } };
+  const selected = seedSubject({ loaded, knowledge, subject, boundary: value.workBoundary });
+  assert.deepEqual([...selected.implementationReasons], [
+    ["src/feature/a.ts", ["required-artifact:artifact.feature"]],
+    ["src/feature/nested/b.ts", ["required-artifact:artifact.feature"]],
+  ]);
+  assert.deepEqual(selected.seeds.filter(({ reason }) => reason.startsWith("description-coverage:")), [
+    { id: "description.feature", reason: "description-coverage:src/feature/a.ts" },
+    { id: "description.nested", reason: "description-coverage:src/feature/nested/b.ts" },
+  ]);
+  const missingOwner = { ...knowledge, currentRecords: currentRecords.filter((record) => record !== owners[1]) };
+  assert.throws(() => seedSubject({ loaded, knowledge: missingOwner, subject, boundary: value.workBoundary }),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.projection.description-missing");
+  const ambiguous = { ...knowledge, currentRecords: [...currentRecords, description("description.duplicate", "src/feature/nested")] };
+  assert.throws(() => seedSubject({ loaded, knowledge: ambiguous, subject, boundary: value.workBoundary }),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.projection.description-ambiguous");
+  const exactFile = { ...subject, core: { ...subject.core, requiredArtifacts: [
+    { ...subject.core.requiredArtifacts[0]!, path: "src/feature/a.ts" },
+  ] } };
+  assert.deepEqual([...seedSubject({ loaded, knowledge, subject: exactFile, boundary: value.workBoundary }).implementationReasons.keys()],
+    ["src/feature/a.ts"]);
+
+  const emptyEntries = entries.filter(({ path }) => path.startsWith("src/adjacent/"));
+  const empty = { ...loaded, productState: { entries: emptyEntries, digest: digestCanonical(emptyEntries) },
+    treeEntries: [...loaded.treeEntries, { path: owners[0]!.path, mode: "100644", type: "blob" as const, objectId: "d".repeat(40) }] };
+  assert(!empty.treeEntries.some(({ path }) => path === "src/feature" || path.startsWith("src/feature/")));
+  const future = seedSubject({ loaded: empty, knowledge, subject, boundary: value.workBoundary });
+  assert.deepEqual([...future.implementationReasons], []);
+  assert.deepEqual(future.seeds.filter(({ reason }) => reason.startsWith("required-artifact-tree:")), [
+    { id: "description.feature", reason: "required-artifact-tree:src/feature" },
+  ]);
+  for (const [selectedKnowledge, code] of [
+    [{ ...knowledge, currentRecords: currentRecords.filter((record) => record !== owners[0]) }, "description-missing"],
+    [{ ...knowledge, currentRecords: [...currentRecords, description("description.duplicate-tree", "src/feature")] }, "description-ambiguous"],
+    [{ ...knowledge, currentRecords: [...currentRecords, description("description.parent", "src")] }, "description-ambiguous"],
+    [{ ...knowledge, currentRecords: [...currentRecords.filter((record) => record !== owners[0]),
+      description("description.excluding-parent", "src", ["src/feature"])] }, "description-missing"],
+  ] as const) {
+    assert.throws(() => seedSubject({ loaded: empty, knowledge: selectedKnowledge, subject, boundary: value.workBoundary }),
+      (error: unknown) => error instanceof FoundationError && error.code === `lifecycle.projection.${code}`);
+  }
+  const excludedParent = { ...knowledge, currentRecords: [...currentRecords,
+    description("description.excluding-parent", "src", ["src/feature"])] };
+  assert.deepEqual(seedSubject({ loaded: empty, knowledge: excludedParent, subject, boundary: value.workBoundary }).seeds,
+    future.seeds);
+  // A real node at the same path still requires file coverage; a tree selector
+  // cannot authorize it merely because the Product State inventory omits it.
+  const occupied = { ...empty, treeEntries: [...empty.treeEntries,
+    { path: "src/feature", mode: "100644", type: "blob" as const, objectId: "f".repeat(40) }] };
+  assert.throws(() => seedSubject({ loaded: occupied, knowledge, subject, boundary: value.workBoundary }),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.projection.description-missing");
+
+  const mandate = value.workBoundary.payload.mandate as ControlJsonObject;
+  const artifact = (mandate.artifacts as readonly ControlJsonObject[])[0]!;
+  const boundary = compileControlRecordRevision(value.workBoundary.processId, { ...value.workBoundary,
+    payload: { ...value.workBoundary.payload, mandate: { ...mandate,
+      artifacts: [{ ...artifact, id: "artifact.feature", path: "src/feature", role: "code" }],
+    } },
+  });
+  const measuredContext = (paths: readonly string[], selectedOwners = owners,
+    selectedContract = contract, objectId = "e".repeat(40)) => {
+    const implementation = paths.map((path) => ({ path, role: "governed-implementation" as const,
+      mode: "100644" as const, objectId }));
+    const treeEntries = [...value.loaded.treeEntries, ...implementation.map((entry) => ({ ...entry, type: "blob" as const }))];
+    const collector = new DiagnosticCollector();
+    const observed = buildDescriptionCoverage({ contract: selectedContract, treeEntries,
+      currentDescriptions: selectedOwners, collector });
+    const records = [...value.knowledge.currentRecords, ...selectedOwners];
+    const manifest = { ...value.knowledge.manifest, coverage: observed.coverage.map(({ mode: _mode, objectId: _objectId, ...entry }) => entry),
+      exemptions: observed.exemptions };
+    return { diagnostics: collector.diagnostics, context: {
+      loaded: { ...value.loaded, contract: selectedContract, treeEntries,
+        productState: { entries: implementation, digest: digestCanonical(implementation) },
+        snapshot: { ...value.loaded.snapshot, contractDigest: selectedContract.digest } },
+      knowledge: { ...value.knowledge, records, currentRecords: records, ...observed, manifest,
+        index: { ...value.knowledge.index, currentByIdentity: new Map(records.map((record) => [record.frontMatter.id, record])) } },
+    } };
+  };
+  const absent = measuredContext([]);
+  const present = measuredContext(["src/feature/a.ts"]);
+  for (const measured of [absent, present]) {
+    assert.deepEqual(measured.diagnostics.filter(({ severity }) => severity === "error"), []);
+  }
+  assert.deepEqual(absent.context.knowledge.manifest.coverage, []);
+  assert.equal(present.context.knowledge.manifest.coverage[0]?.descriptionId, "description.feature");
+  const compare = (admitted: typeof absent.context, parent: typeof absent.context) =>
+    compareFoundationIntegrationContextV1({ boundary, admitted, parent });
+  assert.deepEqual(compare(absent.context, present.context), { disposition: "unchanged", changes: [] });
+  assert.deepEqual(compare(present.context, absent.context), { disposition: "unchanged", changes: [] });
+  assert.deepEqual(compare(present.context, measuredContext(["src/feature/a.ts"], owners, contract, "f".repeat(40)).context),
+    { disposition: "unchanged", changes: [] });
+
+  for (const changedOwner of [description("description.replacement", "src/feature", ["src/feature/nested"]),
+    description("description.feature", "src/feature", ["src/feature/nested", "src/feature/other"])]) {
+    const changed = measuredContext(["src/feature/a.ts"], [changedOwner, ...owners.slice(1)]);
+    assert.deepEqual(changed.diagnostics.filter(({ severity }) => severity === "error"), []);
+    const result = compare(absent.context, changed.context);
+    assert.equal(result.disposition, "requires-readmission");
+    assert.deepEqual(result.changes.map(({ subject }) => subject), ["knowledge-closure"]);
+  }
+  for (const [selectedOwners, code] of [
+    [owners.slice(1), "coverage-missing"],
+    [[...owners, description("description.duplicate", "src/feature")], "coverage-ambiguous"],
+  ] as const) {
+    const invalid = measuredContext(["src/feature/a.ts"], [...selectedOwners]);
+    assert(invalid.diagnostics.some(({ code: observed }) => observed === `lifecycle.description.${code}`));
+    assert.equal(compare(absent.context, invalid.context).disposition, "requires-readmission");
+  }
+
+  const exemptBase = { ...contract, productState: { ...contract.productState,
+    coverageExemptions: [{ path: "src/feature/generated", reason: "Externally generated files." }] } };
+  const exemptContract = { ...exemptBase, digest: selfDigest(exemptBase) };
+  const beforeExemptFile = measuredContext([], owners, exemptContract);
+  const afterExemptFile = measuredContext(["src/feature/a.ts", "src/feature/generated/code.ts"], owners, exemptContract);
+  assert.equal(beforeExemptFile.context.knowledge.exemptions[0]?.matched, false);
+  assert.equal(afterExemptFile.context.knowledge.exemptions[0]?.matched, true);
+  assert.deepEqual(compare(beforeExemptFile.context, afterExemptFile.context), { disposition: "unchanged", changes: [] });
+  assert(compare(absent.context, beforeExemptFile.context).changes.some(({ subject }) => subject === "repository-contract"));
+});
+
+test("Execution Projection distinguishes absent Knowledge outputs from required governing inputs", async () => {
+  const value = fixture();
+  const path = "records/behavior/future.md";
+  for (const mustChange of [false, true]) {
+    const core = { ...value.subject.core, requiredArtifacts: [...value.subject.core.requiredArtifacts,
+      { id: "artifact.future", path, role: "behavior" as const, mustChange }].sort((left, right) => left.id.localeCompare(right.id)) };
+    const body = { ...value.subject, core };
+    const subject = { ...body, subjectDigest: digestCanonical(body) };
+    const actual = await compileExecution({ ...value, subject, inventory: new ProjectionByteInventoryBuilder() });
+    assert.deepEqual(actual.mandatory.map(({ sourceIdentity }) => sourceIdentity),
+      ["behavior.selected-result", "assurance.selected-result", "check.selected-result"]);
+    assert.equal(actual.unresolved.length, 0);
+    const occupied = { ...value.loaded, treeEntries: [...value.loaded.treeEntries,
+      { path, mode: "100644", type: "blob" as const, objectId: "a".repeat(40) }] };
+    await assert.rejects(compileExecution({ ...value, loaded: occupied, subject, inventory: new ProjectionByteInventoryBuilder() }),
+      (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.projection.root-unresolved");
+    const missingBody = { ...subject, knowledgeRoots: [...subject.knowledgeRoots,
+      { ...subject.knowledgeRoots[0]!, id: "behavior.future" }].sort((left, right) => left.id.localeCompare(right.id)) };
+    await assert.rejects(compileExecution({ ...value, subject: { ...missingBody, subjectDigest: digestCanonical(missingBody) },
+      inventory: new ProjectionByteInventoryBuilder() }),
+    (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.projection.root-unresolved");
+  }
+});
+
+test("Knowledge Artifact closure keeps retained superseded output nongoverning while the selected successor supplies meaning", () => {
+  const value = fixture();
+  const original = value.knowledge.currentRecords.find(({ frontMatter }) => frontMatter.id === "behavior.selected-result")!;
+  const parse = (path: string, sourceText: string) => parseKnowledgeRecord({ path, mode: "100644", objectId: "b".repeat(40),
+    bytes: Buffer.from(sourceText), contract: value.loaded.contract });
+  const prior = parse(original.path, original.sourceText.replace('"status": "current"', '"status": "superseded"'));
+  const successorFields = { ...JSON.parse(original.sourceText.split("---\n")[1]!), revision: 2, supersedes: { id: prior.frontMatter.id, revision: prior.frontMatter.revision,
+    sourceDigest: prior.sourceDigest, semanticDigest: prior.semanticDigest } };
+  const successor = parse("records/behavior/selected-result-r2.md", `---\n${JSON.stringify(successorFields, null, 2)}\n---\n${original.body}`);
+  const currentRecords = value.knowledge.currentRecords.map((record) => record === original ? successor : record);
+  const knowledge = { ...value.knowledge, records: [...currentRecords, prior], currentRecords, historicalRecords: [prior],
+    index: { ...value.knowledge.index, currentByIdentity: new Map(currentRecords.map((record) => [record.frontMatter.id, record])) } };
+  const selected = seedSubject({ loaded: value.loaded, knowledge, subject: value.subject, boundary: value.workBoundary, currentRoots: true });
+  assert(selected.seeds.some(({ id }) => id === successor.frontMatter.id));
+  assert(!selected.seeds.some(({ reason }) => reason === "required-artifact:artifact.selected-result"));
+});
+
 test("Execution Projection carries only the normalized Atlas root without an exact Boundary Atlas source", () => {
   const value = fixture();
   const rootOnly = Object.freeze({ id: "root-only", uri: "sources/root-only.md", title: "Root-only Resource" });
@@ -501,6 +707,11 @@ test("Execution Projection carries only the normalized Atlas root without an exa
     loaded,
     inventory,
     mode: "execution",
+    selectedResourceIds: new Set(["absent-resource"]),
+  });
+  const plan = planAtlasExecutionClosure({
+    loaded,
+    selectedResourceIds: new Set(["absent-resource"]),
   });
   const atlas = compiled.items;
 
@@ -516,6 +727,10 @@ test("Execution Projection carries only the normalized Atlas root without an exa
   assert.equal(atlas[0]?.sourcePath, "atlas/atlas.md");
   assert.equal(inventory.entries().length, 1);
   assert.deepEqual([...compiled.resourceIds], []);
+  assert.deepEqual([...plan.mapIds], []);
+  assert.deepEqual([...plan.pointIds], []);
+  assert.deepEqual([...plan.pointRecordKeys], []);
+  assert.deepEqual([...plan.resourceIds], []);
   assert(atlas.every(({ useLimit }) => useLimit !== null && /read-only|Atlas-authored|preserved exactly/u.test(useLimit)));
 });
 
@@ -649,6 +864,26 @@ test("Execution Atlas selection closes only through exact normalized Resource id
     mode: "execution",
     selectedResourceIds: new Set(["architecture"]),
   });
+  const sourceRoot = Object.freeze({
+    owner: "source-anchor" as const,
+    sourceId: atlasResourceSourceId(model.atlas.id, architecture.id),
+    reference: "atlas/sources/architecture.md",
+    revision: "3".repeat(40),
+    digest: sha256Bytes("architecture-resource"),
+    authority: "atlas" as const,
+    required: true,
+    reason: "selected-by-active-work-boundary",
+  });
+  const viaSourceRoot = compileAtlasProjection({
+    loaded,
+    inventory: new ProjectionByteInventoryBuilder(),
+    mode: "execution",
+    sourceRoots: Object.freeze([sourceRoot]),
+  });
+  const plan = planAtlasExecutionClosure({
+    loaded,
+    sourceRoots: Object.freeze([sourceRoot]),
+  });
 
   assert.deepEqual(compiled.items.map(({ unitKind, unitId }) => ({ unitKind, unitId })), [
     { unitKind: "atlas", unitId: "target" },
@@ -656,6 +891,13 @@ test("Execution Atlas selection closes only through exact normalized Resource id
     { unitKind: "point-anchor", unitId: "project-scope:project" },
     { unitKind: "resource", unitId: "architecture" },
   ]);
+  assert.deepEqual(viaSourceRoot, compiled);
+  assert.deepEqual([...plan.mapIds], ["project"]);
+  assert.deepEqual([...plan.pointIds], ["project-scope"]);
+  assert.deepEqual([...plan.pointRecordKeys], [
+    atlasPointRecordKey(model.points[0]!, model.points[0]!.records[0]!),
+  ]);
+  assert.deepEqual([...plan.resourceIds], [architecture.id]);
   assert.deepEqual([...compiled.resourceIds], ["architecture"]);
   assert.equal(compiled.items.some(({ unitId }) => unitId === "unrelated"), false);
 });
@@ -723,6 +965,10 @@ test("Execution Atlas context closure includes the identity anchor and that anch
     mode: "execution",
     selectedResourceIds: new Set([contextSeed.id]),
   });
+  const plan = planAtlasExecutionClosure({
+    loaded,
+    selectedResourceIds: new Set([contextSeed.id]),
+  });
 
   assert.deepEqual(compiled.items.map(({ unitKind, unitId }) => ({ unitKind, unitId })), [
     { unitKind: "atlas", unitId: "target" },
@@ -733,6 +979,13 @@ test("Execution Atlas context closure includes the identity anchor and that anch
     { unitKind: "resource", unitId: anchorSource.id },
     { unitKind: "resource", unitId: contextSeed.id },
   ]);
+  assert.deepEqual([...plan.mapIds].sort(), [baseMap.id, secondaryMap.id].sort());
+  assert.deepEqual([...plan.pointIds], [basePoint.id]);
+  assert.deepEqual([...plan.pointRecordKeys].sort(), [
+    atlasPointRecordKey(basePoint, anchor),
+    atlasPointRecordKey(basePoint, context),
+  ].sort());
+  assert.deepEqual([...plan.resourceIds].sort(), [anchorSource.id, contextSeed.id].sort());
   assert.deepEqual([...compiled.resourceIds].sort(), [anchorSource.id, contextSeed.id]);
 });
 
@@ -837,7 +1090,7 @@ test("Projection requests refuse the unselected acceptance-support role at the s
     () => parseProjectionRequest(request),
     (error: unknown) => error instanceof Error && "code" in error &&
       error.code === "lifecycle.schema.invalid" &&
-      error.message.includes("urn:lifecycle:schema:projection-request:v4"),
+      error.message.includes("urn:lifecycle:schema:projection-request:v5"),
   );
 });
 
@@ -1164,9 +1417,10 @@ test("Execution Projection translates an oversized mandatory Git source to the P
   await assert.rejects(
     compileExecution({ ...value, loaded, knowledge, inventory: new ProjectionByteInventoryBuilder() }),
     (error: unknown) => {
-      assert(error instanceof Error && "code" in error && "observedFacts" in error);
+      assert(error instanceof FoundationError);
       assert.equal(error.code, "lifecycle.projection.mandatory-too-large");
       assert.deepEqual(error.observedFacts, {
+        kind: "mandatory-item",
         category: "source",
         id: "behavior.selected-result:mandatory-source",
         locator: "source.bin",
@@ -1175,7 +1429,149 @@ test("Execution Projection translates an oversized mandatory Git source to the P
         maximumItemBytes,
         profile: value.request.profile.id,
       });
+      const refusal = bindFoundationMandatoryProjectionRefusalV1(error, value.request);
+      assert(refusal !== null);
+      assert.equal(refusal.requestDigest, value.request.digest);
+      assert.equal(refusal.measurement.kind, "mandatory-item");
+      assert.equal("mandatoryItems" in refusal.measurement, false);
+      assert.equal(bindFoundationMandatoryProjectionRefusalV1(new FoundationError(error.code, error.message,
+        { observedFacts: error.observedFacts }), value.request), null);
       return true;
     },
   );
+});
+
+
+test("Integration compares selected governing closure independently from unrelated parent Snapshot movement", () => {
+  const value = fixture();
+  const admitted = { loaded: value.loaded, knowledge: value.knowledge };
+  const compare = (parent: typeof admitted) => compareFoundationIntegrationContextV1({ boundary: value.workBoundary, admitted, parent });
+  assert.deepEqual(compare(admitted), { disposition: "unchanged", changes: [] });
+  const moved = { ...value.loaded, snapshot: { ...value.loaded.snapshot, commit: "e".repeat(40),
+    knowledgeSetDigest: sha256Bytes("unrelated-knowledge-change"), digest: sha256Bytes("new-complete-snapshot") } };
+  assert.deepEqual(compare({ ...admitted, loaded: moved }), { disposition: "unchanged", changes: [] });
+  const selected = value.knowledge.currentRecords.find(({ frontMatter }) => frontMatter.kind === "assurance")!;
+  const changed = { ...selected, sourceDigest: sha256Bytes("changed-inverse-required-assurance") };
+  const changedKnowledge = { ...value.knowledge,
+    currentRecords: value.knowledge.currentRecords.map((record) => record === selected ? changed : record),
+    index: { ...value.knowledge.index, currentByIdentity: new Map([...value.knowledge.index.currentByIdentity].map(([id, record]) => [id, record === selected ? changed : record])) } };
+  const changedResult = compare({ loaded: moved, knowledge: changedKnowledge });
+  assert.equal(changedResult.disposition, "requires-readmission");
+  assert.deepEqual(changedResult.changes.map(({ subject }) => subject), ["knowledge-closure"]);
+  const missing = { ...value.knowledge, index: { ...value.knowledge.index,
+    currentByIdentity: new Map([...value.knowledge.index.currentByIdentity].filter(([id]) => id !== "behavior.selected-result")) } };
+  const missingResult = compare({ ...admitted, knowledge: missing });
+  assert.equal(missingResult.disposition, "requires-readmission");
+  assert.ok(missingResult.changes.some(({ subject }) => subject === "knowledge-closure"));
+});
+
+function integrationAtlasFixture() {
+  const value = fixture();
+  const resource = { id: "architecture", uri: "sources/architecture.md", title: "Architecture" };
+  const unrelated = { id: "catalogue-only", uri: "sources/unrelated.md", title: "Unselected" };
+  const base = value.loaded.atlas.model;
+  const model: FoundationAtlasNormalizedModel = {
+    ...base,
+    atlas: { ...base.atlas, resources: [resource, unrelated] },
+    maps: base.maps.map((map) => ({ ...map, content: [{ resource: resource.id }] })),
+    points: base.points.map((point) => ({ ...point,
+      records: point.records.map((record) => ({ ...record, content: [{ resource: resource.id }] })) })),
+  };
+  const bindings = model.atlas.resources.map(({ id, uri }) => ({ resourceId: id, uri, path: `atlas/${uri}`,
+    mode: "100644" as const, objectId: "4".repeat(40), byteDigest: sha256Bytes(id), disposition: "resolved" as const }));
+  const loaded = { ...value.loaded, atlas: { ...value.loaded.atlas, model,
+    resolution: { ...value.loaded.atlas.resolution, resourceBindings: bindings } } };
+  const sourceId = atlasResourceSourceId(base.atlas.id, resource.id);
+  const boundary = compileControlRecordRevision(value.workBoundary.processId, { ...value.workBoundary,
+    payload: { ...value.workBoundary.payload, externalSources: [{ sourceId, ownerKind: "atlas", ownerId: sourceId,
+      revision: "4".repeat(40), digest: sha256Bytes(resource.id) }] } });
+  const admitted = { loaded, knowledge: value.knowledge };
+  const compare = (parentLoaded: FoundationLoadedRepositorySnapshot) => compareFoundationIntegrationContextV1({
+    boundary, admitted, parent: { ...admitted, loaded: parentLoaded },
+  });
+  const withModel = (next: FoundationAtlasNormalizedModel) => ({ ...loaded, atlas: { ...loaded.atlas, model: next } });
+  return { loaded, model, compare, withModel };
+}
+
+test("Integration preserves admitted applicability across Atlas discovery and unselected Resource changes", () => {
+  const { loaded, model, compare, withModel } = integrationAtlasFixture();
+  assert.deepEqual(compare(loaded), { disposition: "unchanged", changes: [] });
+  const discovery = { ...model,
+    atlas: { ...model.atlas, navigation: [{ title: "Reorganized routes", maps: [model.maps[0]!.id] }],
+      resources: model.atlas.resources.map((resource) => resource.id === "catalogue-only"
+        ? { ...resource, title: "New discovery description", uri: "sources/elsewhere.md" } : resource) },
+    maps: model.maps.map((map) => ({ ...map, pointIds: [...map.pointIds, "unselected-point"],
+      anchorPointIds: [...map.anchorPointIds, "unselected-point"] })),
+    points: [...model.points, { ...model.points[0]!, id: "unselected-point",
+      anchorPath: "maps/project/points/unselected.md", relations: [], incomingRelations: [],
+      records: model.points[0]!.records.map((record) => ({ ...record, path: "maps/project/points/unselected.md", content: [], references: [] })) }],
+  };
+  const changed = withModel(discovery);
+  const parent = { ...changed, atlasState: { ...changed.atlasState, digest: sha256Bytes("different full Atlas State") },
+    atlas: { ...changed.atlas, resolution: { ...changed.atlas.resolution,
+      normalizedModelDigest: digestCanonical(discovery), resourceBindings: changed.atlas.resolution.resourceBindings.map((binding) =>
+        binding.resourceId === "catalogue-only" ? { ...binding, byteDigest: sha256Bytes("changed unselected bytes") } : binding) } } };
+  assert.deepEqual(compare(parent), { disposition: "unchanged", changes: [] });
+  // Exact Projection bytes retain the complete root catalogue and Map indexes.
+  const before = compileAtlasProjection({ loaded, mode: "execution", selectedResourceIds: new Set(["architecture"]), inventory: new ProjectionByteInventoryBuilder() });
+  const after = compileAtlasProjection({ loaded: parent, mode: "execution", selectedResourceIds: new Set(["architecture"]), inventory: new ProjectionByteInventoryBuilder() });
+  assert.notDeepEqual(before.items.map(({ normalizedDigest }) => normalizedDigest), after.items.map(({ normalizedDigest }) => normalizedDigest));
+});
+
+test("Integration refuses changed or missing governing Atlas semantics and selected Resource bindings", () => {
+  const { loaded, model, compare, withModel } = integrationAtlasFixture();
+  const models: readonly FoundationAtlasNormalizedModel[] = [
+    { ...model, atlas: { ...model.atlas, body: "Changed governing project context." } },
+    { ...model, maps: model.maps.map((map) => ({ ...map, question: "A different governing question?" })) },
+    { ...model, points: model.points.map((point) => ({ ...point, title: "Changed conceptual identity meaning" })) },
+    { ...model, points: model.points.map((point) => ({ ...point,
+      records: point.records.map((record) => ({ ...record, references: [{ role: "supporting" as const, resource: "catalogue-only" }] })) })) },
+    { ...model, atlas: { ...model.atlas, resources: model.atlas.resources.filter(({ id }) => id !== "architecture") },
+      maps: model.maps.map((map) => ({ ...map, content: [] })),
+      points: model.points.map((point) => ({ ...point, records: point.records.map((record) => ({ ...record, content: [] })) })) },
+  ];
+  for (const changed of models) {
+    const result = compare(withModel(changed));
+    assert.equal(result.disposition, "requires-readmission");
+    assert.ok(result.changes.some(({ subject }) => subject === "atlas"));
+  }
+  for (const bindings of [loaded.atlas.resolution.resourceBindings.filter(({ resourceId }) => resourceId !== "architecture"),
+    loaded.atlas.resolution.resourceBindings.map((binding) => binding.resourceId === "architecture"
+      ? { ...binding, byteDigest: sha256Bytes("different governing Resource bytes") } : binding)]) {
+    const result = compare({ ...loaded, atlas: { ...loaded.atlas, resolution: { ...loaded.atlas.resolution, resourceBindings: bindings } } });
+    assert.equal(result.disposition, "requires-readmission");
+    assert.ok(result.changes.some(({ subject }) => subject === "atlas"));
+  }
+});
+
+test("Integration binds selected Discipline adoption and publisher provenance independently of Work Type discovery", () => {
+  const value = fixture();
+  const discipline = foundationDisciplineAdoptionFixture(value.loaded.contract);
+  const record = discipline.record;
+  const reference = { id: record.frontMatter.id, revision: record.frontMatter.revision,
+    sourceDigest: record.sourceDigest, semanticDigest: record.semanticDigest };
+  const knowledge = { ...value.knowledge, disciplineRegistry: discipline.registry,
+    currentRecords: [...value.knowledge.currentRecords, record],
+    index: { ...value.knowledge.index, currentByIdentity: new Map([...value.knowledge.index.currentByIdentity, [record.frontMatter.id, record]]) } };
+  const boundary = compileControlRecordRevision(value.workBoundary.processId, { ...value.workBoundary,
+    payload: { ...value.workBoundary.payload, knowledge: [...value.workBoundary.payload.knowledge as readonly ControlJsonObject[], reference],
+      disciplines: { registryDigest: discipline.registry.digest, workTypeIds: [], records: [{ ...reference }] } } });
+  const admitted = { loaded: value.loaded, knowledge };
+  const compare = (registry: typeof discipline.registry) => compareFoundationIntegrationContextV1({ boundary, admitted,
+    parent: { ...admitted, knowledge: { ...knowledge, disciplineRegistry: registry } } });
+  assert.deepEqual(compare(discipline.registry), { disposition: "unchanged", changes: [] });
+  const discovery = { ...discipline.registry, digest: sha256Bytes("new Registry"), workTypes: [],
+    adoptions: [...discipline.registry.adoptions, { ...discipline.registry.adoptions[0]!, id: "discipline.unselected", packId: "unselected" }],
+    packs: [...discipline.registry.packs, { ...discipline.registry.packs[0]!, id: "unselected", publisher: "other.publisher" }] };
+  assert.deepEqual(compare(discovery), { disposition: "unchanged", changes: [] });
+  for (const registry of [
+    { ...discipline.registry, adoptions: [] },
+    { ...discipline.registry, packs: [] },
+    { ...discipline.registry, packs: discipline.registry.packs.map((pack) => ({ ...pack, revision: "different publisher revision" })) },
+    { ...discipline.registry, adoptions: discipline.registry.adoptions.map((adoption) => ({ ...adoption, sourceDigest: sha256Bytes("changed exact adopted bytes") })) },
+  ]) {
+    const result = compare(registry);
+    assert.equal(result.disposition, "requires-readmission");
+    assert.deepEqual(result.changes.map(({ subject }) => subject), ["discipline-registry"]);
+  }
 });

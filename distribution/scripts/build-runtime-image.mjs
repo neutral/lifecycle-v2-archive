@@ -4,7 +4,6 @@ import { parseNamedArguments, run, withExactSourceSnapshot } from "./lib.mjs";
 
 const names = [
   "--architecture",
-  "--bun-image",
   "--ca-certificates-version",
   "--docker-cli-image",
   "--git-version",
@@ -18,7 +17,7 @@ const architecture = values.get("--architecture");
 if (architecture !== "amd64" && architecture !== "arm64") {
   throw new TypeError("Runtime Image architecture must be amd64 or arm64");
 }
-for (const name of ["--bun-image", "--docker-cli-image", "--node-image"]) {
+for (const name of ["--docker-cli-image", "--node-image"]) {
   if (!/@sha256:[a-f0-9]{64}$/u.test(values.get(name))) {
     throw new TypeError(`${name} must select one immutable image digest`);
   }
@@ -41,7 +40,6 @@ await withExactSourceSnapshot(values.get("--source-revision"), async (sourceRoot
     "--file", "distribution/runtime-image/Dockerfile",
     "--tag", values.get("--tag"),
     "--build-arg", `LIFECYCLE_NODE_IMAGE=${values.get("--node-image")}`,
-    "--build-arg", `LIFECYCLE_BUN_IMAGE=${values.get("--bun-image")}`,
     "--build-arg", `LIFECYCLE_DOCKER_CLI_IMAGE=${values.get("--docker-cli-image")}`,
     "--build-arg", `LIFECYCLE_SOURCE_REVISION=${values.get("--source-revision")}`,
     "--build-arg", `LIFECYCLE_UTIL_LINUX_VERSION=${values.get("--util-linux-version")}`,

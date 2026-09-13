@@ -26,11 +26,17 @@ function isDescriptionRecord(path: string): boolean {
   return name.startsWith("_") && name.endsWith(".desc.md");
 }
 
-function knowledgeOrControlPath(path: string, contract: FoundationRepositoryContract): boolean {
+export function knowledgeOrControlPath(path: string, contract: FoundationRepositoryContract): boolean {
   const roots = contract.knowledge.roots;
   return atOrBelow(path, roots.behavior) || atOrBelow(path, roots.assurance) || atOrBelow(path, roots.blueprint) ||
-    atOrBelow(path, roots.check) || atOrBelow(path, contract.atlas.root) ||
+    atOrBelow(path, roots.check) || atOrBelow(path, roots.discipline) || atOrBelow(path, contract.atlas.root) ||
     atOrBelow(path, "records/control") || atOrBelow(path, ".lifecycle") || isDescriptionRecord(path);
+}
+
+/** Knowledge and Control retain their owners even beneath an implementation root. */
+export function governedImplementationPath(contract: FoundationRepositoryContract, path: string): boolean {
+  return contract.productState.governedImplementationRoots.some((root) => atOrBelow(path, root)) &&
+    !knowledgeOrControlPath(path, contract);
 }
 
 export function governedImplementationEntries(options: {
@@ -38,13 +44,11 @@ export function governedImplementationEntries(options: {
   treeEntries: readonly FoundationGitTreeEntry[];
   collector: DiagnosticCollector;
 }): readonly FoundationGitTreeEntry[] {
-  const roots = options.contract.productState.governedImplementationRoots;
   const entries: FoundationGitTreeEntry[] = [];
   for (const entry of options.treeEntries) {
-    if (!roots.some((root) => atOrBelow(entry.path, root))) continue;
     // Product State exclusions decide drift membership, not Description
     // coverage. Only exact coverageExemptions can waive semantic ownership.
-    if (knowledgeOrControlPath(entry.path, options.contract)) continue;
+    if (!governedImplementationPath(options.contract, entry.path)) continue;
     if (entry.type !== "blob" || (entry.mode !== "100644" && entry.mode !== "100755")) {
       options.collector.add({
         stage: COVERAGE_STAGE,

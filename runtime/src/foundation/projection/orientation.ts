@@ -2,13 +2,12 @@ import { FOUNDATION_PROJECTION_COMPILER } from "../constants.js";
 import { FoundationError } from "../error.js";
 import { governedImplementationEntries } from "../knowledge/coverage.js";
 import type { FoundationKnowledgeObservation, FoundationKnowledgeSourceResolution } from "../knowledge/types.js";
-import { objectBlobBytes } from "../repository/git.js";
+import { exactBlobSizes, objectBlobBytes } from "../repository/git.js";
 import type { FoundationLoadedRepositoryEpoch, FoundationProjectionProfile } from "../repository/types.js";
 import { digestCanonical, sha256Bytes, type Sha256 } from "../validation/canonical.js";
 import { compareCodePoints, sortUniqueCodePoints } from "../validation/ordering.js";
 import { DiagnosticCollector } from "../validation/result.js";
 import { buildTierTwoItem, ProjectionByteInventoryBuilder, projectionIndexBytes } from "./content.js";
-import { exactBlobSizes } from "./objects.js";
 import { foundationRepositorySourceMaterials } from "./source-context.js";
 import type {
   FoundationOrientationProjectionCore,
@@ -45,6 +44,7 @@ const KNOWLEDGE_KIND_ORDER = new Map([
   ["blueprint", 2],
   ["description", 3],
   ["check", 4],
+  ["discipline", 5],
 ]);
 
 type ReachableCandidate = Readonly<{
@@ -232,6 +232,19 @@ export async function compileOrientation(options: {
     .sort((left, right) => compareCodePoints(`${left.sourceId}\0${left.type}\0${left.targetId}`, `${right.sourceId}\0${right.type}\0${right.targetId}`));
   const knowledgeIndexBase = { records: Object.freeze(records), relationships: Object.freeze(relationships) };
   const knowledgeIndex = Object.freeze({ ...knowledgeIndexBase, digest: digestCanonical(knowledgeIndexBase) });
+  const disciplineIndexBase = Object.freeze({
+    registryDigest: knowledge.disciplineRegistry.digest,
+    workTypes: Object.freeze(knowledge.disciplineRegistry.workTypes.map((entry) => Object.freeze({
+      id: entry.id,
+      title: entry.title,
+      description: entry.description,
+      disciplineIds: Object.freeze([...entry.disciplineIds]),
+    }))),
+  });
+  const disciplineIndex = Object.freeze({
+    ...disciplineIndexBase,
+    digest: digestCanonical(disciplineIndexBase),
+  });
   const coverageEntries = knowledge.coverage.map((entry) => Object.freeze({
     path: entry.path,
     descriptionId: entry.descriptionId,
@@ -281,11 +294,27 @@ export async function compileOrientation(options: {
   const profileEntries = Object.values(loaded.contract.projectionProfiles).sort((left, right) => compareCodePoints(left.id, right.id));
   const profileBase = { entries: Object.freeze(profileEntries) };
   const profileIndex = Object.freeze({ ...profileBase, digest: digestCanonical(profileBase) });
+  const conditionIdentitiesByPath = new Map<string, string[]>();
+  for (const record of knowledge.records) {
+    const identities = conditionIdentitiesByPath.get(record.path) ?? [];
+    identities.push(record.frontMatter.id);
+    conditionIdentitiesByPath.set(record.path, identities);
+  }
+  for (const source of knowledge.sources) {
+    if (source.locator === null) continue;
+    const identities = conditionIdentitiesByPath.get(source.locator) ?? [];
+    identities.push(source.sourceId);
+    conditionIdentitiesByPath.set(source.locator, identities);
+  }
   const conditions = knowledge.validation.diagnostics.map((diagnostic) => Object.freeze({
     code: diagnostic.code,
     severity: diagnostic.severity,
     detail: diagnostic.message,
-    sourceIds: Object.freeze(sortUniqueCodePoints(diagnostic.related.map((entry) => entry.id))),
+    // Related diagnostic locators are not opaque source identities. Preserve
+    // their exact location in the bound Validation Result and resolve only
+    // observed record/source identities into this index, including history.
+    sourceIds: Object.freeze(sortUniqueCodePoints(diagnostic.related.flatMap((entry) =>
+      entry.kind === "repository-path" ? conditionIdentitiesByPath.get(entry.id) ?? [] : [entry.id]))),
   })).sort((left, right) => compareCodePoints(
     `${left.code}\0${left.severity}\0${left.detail}\0${left.sourceIds.join("\0")}`,
     `${right.code}\0${right.severity}\0${right.detail}\0${right.sourceIds.join("\0")}`,
@@ -348,7 +377,7 @@ export async function compileOrientation(options: {
       category: "knowledge" as const,
       sourceIdentity: record.frontMatter.id,
       kind: record.frontMatter.kind,
-      authority: "product-knowledge" as const,
+      authority: record.frontMatter.kind === "discipline" ? "discipline-guidance" as const : "product-knowledge" as const,
       locator: record.path,
       revision: record.frontMatter.revision,
       sourceDigest: record.sourceDigest,
@@ -357,7 +386,9 @@ export async function compileOrientation(options: {
       relationshipPaths: Object.freeze([]),
       content: stored.content,
       presentationHint: "markdown" as const,
-      useLimit: "Current repository Knowledge retains its declared kind and owner authority; reconnaissance may propose but cannot revise it.",
+      useLimit: record.frontMatter.kind === "discipline"
+        ? "Advisory Discipline guidance supports agent judgment; it does not create product meaning, mandatory proof, capability, or authority."
+        : "Current repository Knowledge retains its declared kind and owner authority; reconnaissance may propose but cannot revise it.",
     }));
   }
   mandatory.sort((left, right) =>
@@ -546,6 +577,7 @@ export async function compileOrientation(options: {
   const retrievalIndex = Object.freeze({ ...retrievalBase, digest: digestCanonical(retrievalBase) });
   const indexDigest = digestCanonical({
     knowledgeIndexDigest: knowledgeIndex.digest,
+    disciplineIndexDigest: disciplineIndex.digest,
     coverageIndexDigest: coverageIndex.digest,
     bindingIndexDigest: bindingIndex.digest,
     capabilityIndexDigest: capabilityIndex.digest,
@@ -555,9 +587,10 @@ export async function compileOrientation(options: {
   const core: FoundationOrientationProjectionCore = Object.freeze({
     class: "orientation",
     objective: request.subject.objective,
-    purpose: "Ground reconnaissance in the exact Repository Epoch, Knowledge observation, Description coverage, Check Bindings, and authorized retrieval surface.",
+    purpose: "Ground reconnaissance in the exact Repository Epoch, Knowledge observation, compact Discipline work-type index, Description coverage, Check Bindings, and authorized retrieval surface.",
     conditions: Object.freeze(conditions),
     knowledgeIndex,
+    disciplineIndex,
     coverageIndex,
     bindingIndex,
     capabilityIndex,

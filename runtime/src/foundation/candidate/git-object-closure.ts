@@ -15,6 +15,7 @@ import { join, resolve } from "node:path";
 import { TextDecoder } from "node:util";
 import { FoundationError } from "../error.js";
 import {
+  canonicalRepository,
   git,
   gitBytes,
   resolveGitObjectFormat,
@@ -681,6 +682,7 @@ export async function withVerifiedCandidateRevisionCarrierRepository<T>(input: R
   manifest: FoundationCandidateRevisionCarrierManifestV1;
   verificationParent: string;
   limits: FoundationCandidateRevisionCarrierLimitsV1;
+  comparisonBase?: Readonly<{ repository: string; commit: string; tree: string }>;
   operation: (
     repository: string,
     closure: FoundationCandidateRevisionCarrierClosureV1,
@@ -782,6 +784,35 @@ export async function withVerifiedCandidateRevisionCarrierRepository<T>(input: R
     });
     if (!sameInventory(closure.objectInventory, input.manifest.objectInventory)) {
       invalid("Candidate Revision Carrier artifact inventory is not the exact root-tree closure");
+    }
+    if (input.comparisonBase !== undefined) {
+      const base = input.comparisonBase;
+      exactObjectId(base.commit, input.manifest.objectFormat, "Comparison base commit");
+      exactObjectId(base.tree, input.manifest.objectFormat, "Comparison base tree");
+      const source = await canonicalRepository(base.repository);
+      await git(repository, [
+        "-c",
+        "protocol.file.allow=always",
+        "fetch",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--no-auto-maintenance",
+        source,
+        base.commit,
+      ], {
+        timeoutMs: input.limits.commandTimeoutMs,
+        maxStdoutBytes: 1024 * 1024,
+      });
+      const resolvedCommit = (await git(repository, [
+        "rev-parse", "--verify", "--end-of-options", `${base.commit}^{commit}`,
+      ])).stdout.trim();
+      const resolvedTree = (await git(repository, [
+        "rev-parse", "--verify", "--end-of-options", `${resolvedCommit}^{tree}`,
+      ])).stdout.trim();
+      if (
+        resolvedCommit !== base.commit ||
+        resolvedTree !== base.tree
+      ) invalid("Imported Candidate base differs from its exact retained commit");
     }
     return await input.operation(repository, closure);
   } finally {

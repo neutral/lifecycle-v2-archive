@@ -1,0 +1,39 @@
+{
+  "schema": "lifecycle.builder-repair-output.v1",
+  "attempt": {
+    "id": "attempt.builder",
+    "revision": 1,
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "boundary": {
+    "id": "boundary.delivery",
+    "revision": 1,
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "inputCandidate": {
+    "id": "candidate.delivery",
+    "revision": 1,
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "rejection": {
+    "schema": "lifecycle.candidate-output-rejection.v1",
+    "manifestFileDigest": "sha256:41ec95744c5262dc3244a3d1981eba9768042d54584f4c7985cad105bac4bc54",
+    "candidateTree": "1111111111111111111111111111111111111111",
+    "applicationBaseCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "explanation": "Candidate Knowledge Set is invalid",
+    "knowledgeDiagnostic": {
+      "code": "lifecycle.knowledge.front-matter",
+      "locator": "src/_source.desc.md"
+    },
+    "validationResultDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "violationDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "digest": "sha256:7ff7f17226c76a7b2d5c3a1008d66972d52478e772c2bec9278b91060089f2d5"
+  },
+  "carrierManifest": {
+    "digest": "sha256:41ec95744c5262dc3244a3d1981eba9768042d54584f4c7985cad105bac4bc54",
+    "byteLength": 756,
+    "mediaType": "application/json",
+    "purpose": "candidate-revision-carrier-manifest"
+  },
+  "digest": "sha256:00361a8a18f0676c958d2c151dbf4dd67cc79eda6b825d75f889d4529f05add4"
+}

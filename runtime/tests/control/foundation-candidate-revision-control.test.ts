@@ -29,6 +29,10 @@ import {
   sha256Bytes,
 } from "../../src/foundation/validation/canonical.js";
 import { testCandidateCarrierManifestBytes } from "../support/candidate-revision-carrier-fixture.js";
+import { foundationIntegrationValidationFactsDigestV1, parseFoundationIntegrationAssessmentPayloadV1, prepareIntegrationAssessmentRetentionV1 } from "../../src/foundation/control/integration-assessment.js";
+import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
+import { selfDigest } from "../../src/foundation/validation/canonical.js";
+import type { ControlJsonObject } from "../../src/foundation/control/types.js";
 
 const CREATED = "2026-08-29T16:00:00.000Z";
 const RUNTIME = "foundation-runtime";
@@ -264,7 +268,49 @@ function initialInput(store: ControlRecordStore, stages: string[], selectedState
   });
 }
 
-test("Candidate compiler verifies and atomically retains complete v2 state and Carrier manifest", async () => {
+test("Candidate integration refuses a different verified Carrier than its exact Assessment observed", async () => {
+  for (const substitute of [false, true]) {
+    const fixture = fakeStore();
+    const initial = await retainCandidateRevision(initialInput(fixture.store, fixture.stages));
+    const constructedState = state(false);
+    const constructedBytes = testCandidateCarrierManifestBytes(constructedState.tree, constructedState.pathInventoryDigest);
+    const payload = validDeliveryControlPayload("integration-assessment");
+    const parent = { ...(payload.canonicalParent as ControlJsonObject), targetId: fixture.store.identity.targetId,
+      commit: BASE_COMMIT, tree: BASE_TREE };
+    const assessment = prepareIntegrationAssessmentRetentionV1({
+      store: fixture.store, activityId: "activity-integration", boundary: retainedBoundary,
+      sourceCandidate: initial.revision, runtimeId: RUNTIME,
+      payload: parseFoundationIntegrationAssessmentPayloadV1({ ...payload,
+        canonicalParent: { ...parent, digest: selfDigest(parent) },
+        validation: { complete: true, valid: true, diagnosticCodes: [],
+          factsDigest: foundationIntegrationValidationFactsDigestV1({ manifestFileDigest: sha256Bytes(constructedBytes), state: constructedState, observer: CARRIER_OBSERVER }) },
+        assessedAt: "2026-08-29T16:00:01.000Z",
+      }),
+    });
+    fixture.store.append(assessment.append);
+    const selectedState = substitute ? withCandidateDigest({ ...constructedState, tree: "d".repeat(40) }) : constructedState;
+    const selectedBytes = testCandidateCarrierManifestBytes(selectedState.tree, selectedState.pathInventoryDigest);
+    const retain = () => retainCandidateRevision({
+      store: fixture.store, activityId: "activity-integration", observation: "integration-successor",
+      candidateBaseCommit: BASE_COMMIT, carrierManifestBytes: selectedBytes,
+      verifyCarrier: verifier(fixture.stages, selectedState, selectedBytes), boundary,
+      predecessor: { kind: "candidate-revision", id: initial.revision.recordId, revision: initial.revision.revision, digest: initial.revision.digest },
+      integrationAssessment: { kind: "integration-assessment", id: assessment.revision.recordId, revision: assessment.revision.revision, digest: assessment.revision.digest },
+      observedAt: "2026-08-29T16:00:01.000Z", runtimeId: RUNTIME,
+    });
+    if (substitute) {
+      await assert.rejects(retain, (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.control-candidate-revision.integration");
+      assert.equal(fixture.files.size, 1);
+      assert.equal(fixture.store.getRevision(initial.revision.recordId, 2), null);
+    } else {
+      const retained = await retain();
+      assert.equal(retained.revision.revision, 2);
+      assert.equal(retained.revision.payload.observation, "integration-successor");
+    }
+  }
+});
+
+test("Candidate compiler verifies and atomically retains complete current state and Carrier manifest", async () => {
   const { store, files, stages } = fakeStore();
   const retained = await retainCandidateRevision(initialInput(store, stages));
   const manifestBytes = testCandidateCarrierManifestBytes(
@@ -277,7 +323,7 @@ test("Candidate compiler verifies and atomically retains complete v2 state and C
   assert.equal(retained.revision.recordKind, "candidate-revision");
   assert.equal(retained.revision.revision, 1);
   assert.equal(retained.revision.semanticAuthority, "runtime-observed");
-  assert.equal(retained.revision.payload.schema, "lifecycle.candidate-revision-payload.v2");
+  assert.equal(retained.revision.payload.schema, "lifecycle.candidate-revision-payload.v3");
   assert.equal("availability" in retained.revision.payload, false);
   assert.equal("failureFactsDigest" in retained.revision.payload, false);
   assert.deepEqual(retained.revision.payload.observer, CARRIER_OBSERVER);

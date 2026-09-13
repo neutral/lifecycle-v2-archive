@@ -163,7 +163,7 @@ function normalizedControlJsonObject(
 }
 
 function normalizedActor(actor: ControlActor, label: string): ControlActor {
-  if (!(["agent", "founder", "runtime"] as const).includes(actor.kind)) {
+  if (!(["agent", "director", "runtime"] as const).includes(actor.kind)) {
     fail("actor", `${label} has an unsupported actor kind`);
   }
   return Object.freeze({ kind: actor.kind, id: controlIdentifier(actor.id, `${label} identity`) });
@@ -222,8 +222,8 @@ export function compileControlRecordRevision(
   const semanticAuthor = normalizedActor(input.semanticAuthor, "Control record semantic author");
   if (!([
     "agent-proposed",
-    "founder-supplied",
-    "founder-authenticated",
+    "director-supplied",
+    "director-authenticated",
     "runtime-observed",
     "runtime-derived",
   ] as const).includes(input.semanticAuthority)) {

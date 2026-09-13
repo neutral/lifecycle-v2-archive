@@ -31,6 +31,7 @@ import type {
   FoundationCheckSpec,
   FoundationCoverageSelector,
   FoundationDescriptionSpec,
+  FoundationDisciplineSpec,
   FoundationDeclaredConflict,
   FoundationEvidenceKind,
   FoundationKnowledgeFrontMatter,
@@ -41,13 +42,20 @@ import type {
   FoundationSourceBinding,
 } from "./types.js";
 
+/** Exact parsing policy; parsing a record does not require a target authority or Registry. */
+export type FoundationKnowledgeParsingPolicy = Readonly<{
+  knowledge: Pick<FoundationRepositoryContract["knowledge"], "roots" | "limits">;
+  atlas: Pick<FoundationRepositoryContract["atlas"], "root">;
+}>;
+
 const STANDARD_FIELDS = ["schema", "kind", "id", "title", "status", "revision", "supersedes", "summary", "owners", "sources", "relationships", "conflicts", "tags", "spec"] as const;
-const BODY_SECTIONS: Readonly<Record<FoundationKnowledgeKind, readonly string[]>> = Object.freeze({
+export const FOUNDATION_KNOWLEDGE_BODY_SECTIONS: Readonly<Record<FoundationKnowledgeKind, readonly string[]>> = Object.freeze({
   behavior: ["Meaning", "Boundaries", "Examples", "Rationale"],
   assurance: ["Obligation", "Failure Model", "Limits", "Rationale"],
   blueprint: ["Decision", "Structure", "Tradeoffs", "Evolution"],
   description: ["Responsibility", "Behavior", "Boundaries", "Rationale"],
   check: ["Proposition", "Evaluation", "Evidence", "Limits"],
+  discipline: ["Practice", "Applicability", "Guidance", "Verification"],
 });
 
 function closedKeys(value: KnowledgeJsonObject, required: readonly string[], optional: readonly string[], code: string, label: string): void {
@@ -99,6 +107,16 @@ function parseSource(value: unknown, index: number): FoundationSourceBinding {
     digest: source.digest === null ? null : sha256(source.digest, `Knowledge source ${index} digest`),
     role: enumeration(source.role, `Knowledge source ${index} role`, ["decision", "research", "policy", "incident", "atlas-context", "external-standard", "repository-reality", "other"] as const),
   });
+}
+
+function declaresRequiredDisciplineSource(value: unknown): boolean {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (record.kind !== "discipline" || !Array.isArray(record.sources)) return false;
+  return record.sources.some((source) => (
+    source !== null && typeof source === "object" && !Array.isArray(source) &&
+    (source as Record<string, unknown>).required === true
+  ));
 }
 
 function parseConflict(value: unknown, index: number): FoundationDeclaredConflict {
@@ -221,6 +239,24 @@ function parseDescription(value: unknown, maximumPathBytes: number): FoundationD
   });
 }
 
+function parseDiscipline(value: unknown): FoundationDisciplineSpec {
+  const source = knowledgeObject(value, "lifecycle.knowledge.discipline", "Discipline spec");
+  closedKeys(
+    source,
+    ["practice", "appliesWhen", "doesNotApplyWhen", "guidance", "verification"],
+    [],
+    "lifecycle.knowledge.discipline",
+    "Discipline spec",
+  );
+  return Object.freeze({
+    practice: text(source.practice, "Discipline practice"),
+    appliesWhen: stringList(source.appliesWhen, "Discipline applicability", 1),
+    doesNotApplyWhen: stringList(source.doesNotApplyWhen, "Discipline non-applicability", 0),
+    guidance: stringList(source.guidance, "Discipline guidance", 1),
+    verification: stringList(source.verification, "Discipline verification suggestions", 0),
+  });
+}
+
 function parseCheck(value: unknown): FoundationCheckSpec {
   const source = knowledgeObject(value, "lifecycle.knowledge.check", "Check spec");
   closedKeys(source, ["proposition", "subjects", "evidenceKinds", "requiredBindings", "evaluation", "limits", "freshness", "falsifiers"], [], "lifecycle.knowledge.check", "Check spec");
@@ -271,6 +307,7 @@ function parseSpec(kind: FoundationKnowledgeKind, value: unknown, maximumPathByt
     case "blueprint": return parseBlueprint(value);
     case "description": return parseDescription(value, maximumPathBytes);
     case "check": return parseCheck(value);
+    case "discipline": return parseDiscipline(value);
   }
 }
 
@@ -278,12 +315,13 @@ function specValue(spec: FoundationKnowledgeSpec): unknown {
   return spec;
 }
 
-export function expectedKnowledgeKind(path: string, contract: FoundationRepositoryContract): FoundationKnowledgeKind | null {
+export function expectedKnowledgeKind(path: string, contract: FoundationKnowledgeParsingPolicy): FoundationKnowledgeKind | null {
   const roots = contract.knowledge.roots;
   if (path.startsWith(`${roots.behavior}/`) && path.endsWith(".md")) return "behavior";
   if (path.startsWith(`${roots.assurance}/`) && path.endsWith(".md")) return "assurance";
   if (path.startsWith(`${roots.blueprint}/`) && path.endsWith(".md")) return "blueprint";
   if (path.startsWith(`${roots.check}/`) && path.endsWith(".md")) return "check";
+  if (path !== roots.disciplineRegistry && path.startsWith(`${roots.discipline}/`) && path.endsWith(".md")) return "discipline";
   const forbidden = [".lifecycle/", "records/control/", `${contract.atlas.root}/`];
   if (forbidden.some((prefix) => path.startsWith(prefix))) return null;
   if (basename(path).startsWith("_") && basename(path).endsWith(".desc.md")) return "description";
@@ -297,7 +335,7 @@ function validateBody(path: string, kind: FoundationKnowledgeKind, title: string
     throw new FoundationError("lifecycle.knowledge.body-title", `${path} must begin with exactly one level-one title matching ${JSON.stringify(title)}`);
   }
   const levelTwo = headings.filter((heading) => heading.level === 2);
-  for (const required of BODY_SECTIONS[kind]) {
+  for (const required of FOUNDATION_KNOWLEDGE_BODY_SECTIONS[kind]) {
     const matches = levelTwo.filter((heading) => heading.text === required);
     if (matches.length !== 1) {
       throw new FoundationError("lifecycle.knowledge.body-section", `${path} must contain exactly one level-two ${required} section`);
@@ -310,21 +348,47 @@ export function parseKnowledgeRecord(options: {
   mode: string;
   objectId: string;
   bytes: Buffer;
-  contract: FoundationRepositoryContract;
+  contract: FoundationKnowledgeParsingPolicy;
 }): FoundationKnowledgeRecord {
   if (options.mode !== "100644") {
     throw new FoundationError("lifecycle.knowledge.file-mode", `${options.path} must be one non-executable regular Git blob`);
   }
   const path = normalizedKnowledgePath(options.path, "Knowledge record path", options.contract.knowledge.limits.maximumPathBytes);
   gitObject(options.objectId, `${path} Git object`);
+  return Object.freeze({
+    ...parseKnowledgeSource({ ...options, path }),
+    mode: "100644",
+    objectId: options.objectId,
+  });
+}
+
+/** Parsed local source bytes, without claiming Git retention or a repository epoch. */
+export type FoundationKnowledgeSourceRecord = Omit<FoundationKnowledgeRecord, "mode" | "objectId">;
+
+export function parseKnowledgeSource(options: {
+  path: string;
+  bytes: Buffer;
+  contract: FoundationKnowledgeParsingPolicy;
+}): FoundationKnowledgeSourceRecord {
+  const path = normalizedKnowledgePath(options.path, "Knowledge record path", options.contract.knowledge.limits.maximumPathBytes);
   const expected = expectedKnowledgeKind(path, options.contract);
   if (expected === null) throw new FoundationError("lifecycle.knowledge.kind-location", `${path} is not one standard Knowledge locator`);
   const document = parseKnowledgeDocument(path, options.bytes, options.contract.knowledge.limits);
-  assertFoundationSchema(FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID, document.frontMatterValue, path);
+  try {
+    assertFoundationSchema(FOUNDATION_KNOWLEDGE_RECORD_SCHEMA_ID, document.frontMatterValue, path);
+  } catch (error) {
+    if (declaresRequiredDisciplineSource(document.frontMatterValue)) {
+      throw new FoundationError(
+        "lifecycle.discipline.source-required",
+        `${path} Discipline sources must remain optional advisory provenance`,
+      );
+    }
+    throw error;
+  }
   const source = knowledgeObject(document.frontMatterValue, "lifecycle.knowledge.front-matter-object", `${path} front matter`);
   extensibleKeys(source, STANDARD_FIELDS, [], "lifecycle.knowledge.front-matter-fields", `${path} front matter`);
 
-  const kind = enumeration(source.kind, `${path} kind`, ["behavior", "assurance", "blueprint", "description", "check"] as const);
+  const kind = enumeration(source.kind, `${path} kind`, ["behavior", "assurance", "blueprint", "description", "check", "discipline"] as const);
   if (kind !== expected) throw new FoundationError("lifecycle.knowledge.kind-location", `${path} physically requires kind ${expected}, not ${kind}`);
   const id = knowledgeId(source.id, `${path} id`);
   if (!id.startsWith(`${kind}.`)) throw new FoundationError("lifecycle.knowledge.id-kind", `${id} does not match kind ${kind}`);
@@ -349,6 +413,12 @@ export function parseKnowledgeRecord(options: {
   const owners = sortedStringSet(source.owners, `${path} owners`, 1, 32, 160).map((entry, index) => ownerId(entry, `${path} owner ${index}`));
   const sources = array(source.sources, `${path} sources`, 0, options.contract.knowledge.limits.maximumSourcesPerRecord).map(parseSource)
     .sort((left, right) => codePointCompare(`${left.id}\0${left.reference}\0${left.revision ?? ""}`, `${right.id}\0${right.reference}\0${right.revision ?? ""}`));
+  if (kind === "discipline" && sources.some(({ required }) => required)) {
+    throw new FoundationError(
+      "lifecycle.discipline.source-required",
+      `${path} Discipline sources must remain optional advisory provenance`,
+    );
+  }
   const relationships = array(source.relationships, `${path} relationships`, 0, 512).map(parseRelationship)
     .sort((left, right) => codePointCompare(`${left.type}\0${left.target}\0${left.scope ?? ""}`, `${right.type}\0${right.target}\0${right.scope ?? ""}`));
   const relationshipKeys = relationships.map((entry) => `${entry.type}\0${entry.target}`);
@@ -364,7 +434,7 @@ export function parseKnowledgeRecord(options: {
   if (new Set(conflictKeys).size !== conflictKeys.length) {
     throw new FoundationError("lifecycle.knowledge.conflict-duplicate", `${path} repeats one exact conflict declaration`);
   }
-  if ((kind === "behavior" || kind === "description" || kind === "check") && conflicts.length > 0) {
+  if ((kind === "behavior" || kind === "description" || kind === "check" || kind === "discipline") && conflicts.length > 0) {
     throw new FoundationError("lifecycle.knowledge.conflict-kind", `${path} kind ${kind} cannot declare structured conflicts`);
   }
   if (kind === "assurance" && conflicts.some((entry) => entry.type !== "assurance-limit" || !entry.target.startsWith("assurance."))) {
@@ -372,6 +442,12 @@ export function parseKnowledgeRecord(options: {
   }
   if (kind === "blueprint" && conflicts.some((entry) => entry.type !== "blueprint-constraint" || !entry.target.startsWith("blueprint."))) {
     throw new FoundationError("lifecycle.knowledge.conflict-kind", `${path} Blueprint conflicts must target Blueprint constraints`);
+  }
+  if (kind === "discipline" && relationships.some((entry) => entry.type !== "related-to" || entry.required)) {
+    throw new FoundationError(
+      "lifecycle.relationship.kind-invalid",
+      `${path} Discipline relationships must be optional related-to context`,
+    );
   }
   const spec = parseSpec(kind, source.spec, options.contract.knowledge.limits.maximumPathBytes);
   const topExtensions = extensions(source, STANDARD_FIELDS);
@@ -417,8 +493,6 @@ export function parseKnowledgeRecord(options: {
   const semanticDigest = digestCanonical({ body: document.bodyNormalized, frontMatter: canonicalValue }) as Sha256;
   return Object.freeze({
     path,
-    mode: "100644",
-    objectId: options.objectId,
     sourceText: document.sourceText,
     body: document.body,
     bodyNormalized: document.bodyNormalized,

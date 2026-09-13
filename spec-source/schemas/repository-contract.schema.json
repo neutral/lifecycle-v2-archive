@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:repository-contract:v15",
-  "title": "Lifecycle Repository Contract v15",
+  "$id": "urn:lifecycle:schema:repository-contract:v22",
+  "title": "Lifecycle Repository Contract v22",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,13 +28,13 @@
   ],
   "properties": {
     "$schema": {
-      "const": "lifecycle.repository.v15"
+      "const": "lifecycle.repository.v22"
     },
     "schemaVersion": {
-      "const": 15
+      "const": 22
     },
     "targetId": {
-      "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
     },
     "generation": {
       "type": "integer",
@@ -59,10 +59,10 @@
           "const": "lifecycle"
         },
         "revision": {
-          "const": "lifecycle.foundation.1.0.0-rc.10"
+          "const": "lifecycle.foundation.1.0.0-rc.17"
         },
         "publicationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "status": {
           "enum": [
@@ -81,10 +81,10 @@
       ],
       "properties": {
         "compatible": {
-          "const": "lifecycle.runtime.foundation.v10"
+          "const": "lifecycle.runtime.foundation.v17"
         },
         "interface": {
-          "const": "lifecycle.interface.foundation.v10"
+          "const": "lifecycle.interface.foundation.v17"
         }
       }
     },
@@ -98,13 +98,13 @@
       ],
       "properties": {
         "defaultDescriptorId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "defaultDescriptorDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "protocol": {
-          "const": "lifecycle.provider-adapter.v6"
+          "const": "lifecycle.provider-adapter.v7"
         }
       }
     },
@@ -135,8 +135,12 @@
         "entrypoint": {
           "const": "atlas/atlas.md"
         },
-        "readOnly": { "const": true },
-        "selection": { "$ref": "#/$defs/atlasSelection" }
+        "readOnly": {
+          "const": true
+        },
+        "selection": {
+          "$ref": "#/$defs/atlasSelection"
+        }
       }
     },
     "knowledge": {
@@ -156,7 +160,9 @@
             "assurance",
             "blueprint",
             "check",
-            "descriptionPattern"
+            "descriptionPattern",
+            "discipline",
+            "disciplineRegistry"
           ],
           "properties": {
             "behavior": {
@@ -173,6 +179,12 @@
             },
             "descriptionPattern": {
               "const": "**/_*.desc.md"
+            },
+            "discipline": {
+              "const": "records/disciplines"
+            },
+            "disciplineRegistry": {
+              "const": "records/disciplines/registry.json"
             }
           }
         },
@@ -182,7 +194,7 @@
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
           }
         },
         "limits": {
@@ -238,70 +250,78 @@
         "schemas": {
           "const": [
             "urn:lifecycle:schema:agent-attempt-payload:v3",
-            "urn:lifecycle:schema:agent-work-product-payload:v2",
+            "urn:lifecycle:schema:agent-work-product-payload:v5",
             "urn:lifecycle:schema:atlas-resolution:v2",
             "urn:lifecycle:schema:atlas-state:v1",
+            "urn:lifecycle:schema:authorization-review:v1",
+            "urn:lifecycle:schema:builder-repair-output:v1",
             "urn:lifecycle:schema:candidate-revision-carrier-manifest:v1",
-            "urn:lifecycle:schema:candidate-revision-payload:v2",
+            "urn:lifecycle:schema:candidate-revision-payload:v3",
             "urn:lifecycle:schema:candidate-seal-payload:v2",
             "urn:lifecycle:schema:capability-profile:v2",
-            "urn:lifecycle:schema:check-receipt-payload:v2",
-            "urn:lifecycle:schema:closure-payload:v4",
-            "urn:lifecycle:schema:common:v1",
+            "urn:lifecycle:schema:check-receipt-payload:v3",
+            "urn:lifecycle:schema:closure-payload:v6",
+            "urn:lifecycle:schema:common:v2",
             "urn:lifecycle:schema:conformance-claim:v2",
-            "urn:lifecycle:schema:control-lifecycle-profile:v4",
-            "urn:lifecycle:schema:control-record-event:v2",
+            "urn:lifecycle:schema:context-inspection-selector:v3",
+            "urn:lifecycle:schema:control-lifecycle-profile:v7",
+            "urn:lifecycle:schema:control-record-event:v6",
             "urn:lifecycle:schema:control-record-file:v1",
-            "urn:lifecycle:schema:control-record-revision:v1",
+            "urn:lifecycle:schema:control-record-revision:v2",
             "urn:lifecycle:schema:control-record-store-archive:v1",
             "urn:lifecycle:schema:control-record-store-seal:v1",
-            "urn:lifecycle:schema:control-record-store:v1",
-            "urn:lifecycle:schema:delivery-reduction:v2",
-            "urn:lifecycle:schema:evidence-packet-payload:v1",
+            "urn:lifecycle:schema:control-record-store:v2",
+            "urn:lifecycle:schema:delivery-reduction:v5",
+            "urn:lifecycle:schema:director-brief-payload:v2",
+            "urn:lifecycle:schema:director-decision-payload:v5",
+            "urn:lifecycle:schema:discipline-pack:v1",
+            "urn:lifecycle:schema:discipline-registry:v1",
+            "urn:lifecycle:schema:evidence-packet-payload:v2",
             "urn:lifecycle:schema:execution-backend-profile:v1",
             "urn:lifecycle:schema:execution-image:v1",
-            "urn:lifecycle:schema:execution-input-set:v1",
+            "urn:lifecycle:schema:execution-input-set:v2",
             "urn:lifecycle:schema:execution-observation:v1",
             "urn:lifecycle:schema:execution-output-manifest:v1",
             "urn:lifecycle:schema:execution-receipt-payload:v3",
             "urn:lifecycle:schema:execution-specification:v1",
             "urn:lifecycle:schema:fixture-manifest:v1",
-            "urn:lifecycle:schema:founder-brief-payload:v1",
-            "urn:lifecycle:schema:founder-decision-payload:v4",
+            "urn:lifecycle:schema:integration-assessment-payload:v1",
             "urn:lifecycle:schema:investment-allocation:v1",
-            "urn:lifecycle:schema:knowledge-projection:v4",
-            "urn:lifecycle:schema:knowledge-record:v1",
-            "urn:lifecycle:schema:material-condition-payload:v1",
+            "urn:lifecycle:schema:knowledge-projection:v6",
+            "urn:lifecycle:schema:knowledge-record:v2",
+            "urn:lifecycle:schema:material-condition-payload:v4",
             "urn:lifecycle:schema:product-state:v1",
-            "urn:lifecycle:schema:projection-request:v4",
-            "urn:lifecycle:schema:provider-descriptor:v6",
+            "urn:lifecycle:schema:productive-semantic-operation:v1",
+            "urn:lifecycle:schema:projection-request:v5",
+            "urn:lifecycle:schema:provider-descriptor:v7",
             "urn:lifecycle:schema:publication-manifest:v1",
             "urn:lifecycle:schema:publication-statement:v1",
             "urn:lifecycle:schema:release-notes:v1",
-            "urn:lifecycle:schema:repository-contract:v15",
+            "urn:lifecycle:schema:repository-contract:v22",
             "urn:lifecycle:schema:repository-snapshot:v1",
             "urn:lifecycle:schema:validation-result:v1",
-            "urn:lifecycle:schema:work-boundary-payload:v4"
+            "urn:lifecycle:schema:work-boundary-payload:v6",
+            "urn:lifecycle:schema:work-delegation-payload:v2"
           ]
         },
         "profiles": {
           "const": [
-            "knowledge-set-v1",
-            "knowledge-structural-v1",
-            "repository-v7"
+            "knowledge-set-v2",
+            "knowledge-structural-v2",
+            "repository-v9"
           ]
         },
         "controlStore": {
-          "const": "lifecycle.control-record-store.v1"
+          "const": "lifecycle.control-record-store.v2"
         },
         "controlLifecycleProfile": {
-          "const": "foundation-delivery-control-lifecycle-v4"
+          "const": "foundation-delivery-control-lifecycle-v7"
         },
         "controlRecordRevision": {
-          "const": "lifecycle.control-record-revision.v1"
+          "const": "lifecycle.control-record-revision.v2"
         },
         "controlRecordEvent": {
-          "const": "lifecycle.control-record-event.v2"
+          "const": "lifecycle.control-record-event.v6"
         },
         "controlReferencedFile": {
           "const": "lifecycle.control-record-file.v1"
@@ -313,7 +333,7 @@
           "const": "lifecycle.control-record-store-archive.v1"
         },
         "deliveryReduction": {
-          "const": "lifecycle.delivery-reduction.v2"
+          "const": "lifecycle.delivery-reduction.v5"
         },
         "candidateRevisionCarrierManifest": {
           "const": "lifecycle.candidate-revision-carrier-manifest.v1"
@@ -328,7 +348,7 @@
           "const": "lifecycle.execution-specification.v1"
         },
         "executionInputSet": {
-          "const": "lifecycle.execution-input-set.v1"
+          "const": "lifecycle.execution-input-set.v2"
         },
         "executionImage": {
           "const": "lifecycle.execution-image.v1"
@@ -387,10 +407,10 @@
             ],
             "properties": {
               "path": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
               },
               "reason": {
-                "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
               }
             }
           }
@@ -523,6 +543,41 @@
               }
             }
           ]
+        },
+        "orientation-large-v1": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/projectionProfile"
+            },
+            {
+              "properties": {
+                "id": {
+                  "const": "orientation-large-v1"
+                },
+                "maximumMandatoryItems": {
+                  "const": 512
+                },
+                "maximumMandatoryBytes": {
+                  "const": 8388608
+                },
+                "maximumItemBytes": {
+                  "const": 1048576
+                },
+                "maximumReachableItems": {
+                  "const": 4096
+                },
+                "maximumReachableBytes": {
+                  "const": 33554432
+                },
+                "maximumSourceBytes": {
+                  "const": 8388608
+                },
+                "maximumRelationshipDepth": {
+                  "const": 32
+                }
+              }
+            }
+          ]
         }
       },
       "additionalProperties": {
@@ -540,16 +595,16 @@
       ],
       "properties": {
         "capabilityProfileId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "orientationProjectionProfileId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "executionProjectionProfileId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "providerDescriptorId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         }
       }
     },
@@ -563,10 +618,10 @@
       ],
       "properties": {
         "principalId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/ownerId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/ownerId"
         },
         "keyId": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "publicKey": {
           "type": "string",
@@ -576,7 +631,7 @@
       }
     },
     "digest": {
-      "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
     }
   },
   "$defs": {
@@ -594,14 +649,30 @@
         "consumerProfile"
       ],
       "properties": {
-        "release": { "const": "0.7.0" },
-        "specificationRevision": { "const": "429fee62966f4d30e91ec2a15d27ecf353f5d68f" },
-        "authoredFormat": { "const": 1 },
-        "processorRevision": { "const": "746cbce73c51b28d617b96ca08f18d498ac749c4" },
-        "validationProfile": { "const": "neutral.atlas-validator.resolved" },
-        "validationResultSchema": { "const": "urn:atlas:schema:validation-result:1" },
-        "normalizedModelSchema": { "const": "urn:atlas:schema:normalized:1" },
-        "consumerProfile": { "const": "lifecycle.atlas-consumer.v1" }
+        "release": {
+          "const": "0.8.0"
+        },
+        "specificationRevision": {
+          "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
+        },
+        "authoredFormat": {
+          "const": 1
+        },
+        "processorRevision": {
+          "const": "2c7a78540ac30138218b12803f1c045cee8b109a"
+        },
+        "validationProfile": {
+          "const": "neutral.atlas-validator.resolved"
+        },
+        "validationResultSchema": {
+          "const": "urn:atlas:schema:validation-result:1"
+        },
+        "normalizedModelSchema": {
+          "const": "urn:atlas:schema:normalized:1"
+        },
+        "consumerProfile": {
+          "const": "lifecycle.atlas-consumer.v2"
+        }
       }
     },
     "pathSet": {
@@ -609,7 +680,7 @@
       "maxItems": 4096,
       "uniqueItems": true,
       "items": {
-        "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
       }
     },
     "knowledgeLimits": {
@@ -753,7 +824,7 @@
       ],
       "properties": {
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "maximumMandatoryItems": {
           "type": "integer",
@@ -785,7 +856,7 @@
           "maximum": 256
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
@@ -813,14 +884,14 @@
       ],
       "properties": {
         "id": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
         },
         "checkIds": {
           "type": "array",
           "maxItems": 4096,
           "uniqueItems": true,
           "items": {
-            "$ref": "urn:lifecycle:schema:common:v1#/$defs/knowledgeId"
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
           }
         },
         "subjectSelectors": {
@@ -838,10 +909,20 @@
         "executable": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["relativeTo", "path"],
+          "required": [
+            "relativeTo",
+            "path"
+          ],
           "properties": {
-            "relativeTo": { "enum": ["candidate", "execution-image"] },
-            "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" }
+            "relativeTo": {
+              "enum": [
+                "candidate",
+                "execution-image"
+              ]
+            },
+            "path": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
+            }
           }
         },
         "args": {
@@ -858,7 +939,7 @@
               "const": "."
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath"
             }
           ]
         },
@@ -894,7 +975,7 @@
               "type": "null"
             },
             {
-              "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId"
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
             }
           ]
         },
@@ -925,7 +1006,7 @@
           "const": "forbidden"
         },
         "implementationDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         },
         "limitations": {
           "type": "array",
@@ -938,7 +1019,7 @@
           }
         },
         "digest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
@@ -962,7 +1043,7 @@
           ]
         },
         "selector": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/plainText"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/plainText"
         }
       }
     },
@@ -999,5 +1080,5 @@
       }
     }
   },
-  "description": "Fresh Foundation rc.10 target contract selecting repository v15, runtime/interface v10, Provider Adapter v6, Docker-local execution contracts, immutable Candidate Revision Carriers, and the SQLite Delivery Control Record Store contracts without a backend fallback or repository-authored execution default."
+  "description": "Fresh Foundation rc.17 target contract selecting repository v22, runtime/interface v17, independent per-Delivery Git repositories, exact integration assessments, and conditional canonical publication."
 }

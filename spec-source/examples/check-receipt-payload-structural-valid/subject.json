@@ -1,5 +1,5 @@
 {
-  "schema": "lifecycle.check-receipt-payload.v2",
+  "schema": "lifecycle.check-receipt-payload.v3",
   "profileId": "lifecycle.check-receipt.foundation-v1",
   "selectionId": "selection.check.demo",
   "definition": {
@@ -22,7 +22,7 @@
     "identityDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
     "requested": [],
     "runtimeEnforced": [],
-    "founderManaged": []
+    "directorManaged": []
   },
   "disposition": "pass",
   "resultFacts": [
@@ -43,7 +43,7 @@
       "imageDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     },
     "inputSet": {
-      "profileId": "lifecycle.execution-input-set.v1",
+      "profileId": "lifecycle.execution-input-set.v2",
       "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     },
     "specificationDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",

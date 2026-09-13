@@ -13,9 +13,9 @@
     "inputMaterialDigest": null
   },
   "provider": {
-    "descriptorId": "codex-exec-standard-v6",
+    "descriptorId": "codex-exec-standard-v7",
     "descriptorDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-    "adapter": "lifecycle.provider-adapter.v6",
+    "adapter": "lifecycle.provider-adapter.v7",
     "installedIdentityDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
     "observedExecutableIdentity": null,
     "model": "gpt-5.6-sol",
@@ -39,7 +39,7 @@
       "imageDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
     },
     "inputSet": {
-      "profileId": "lifecycle.execution-input-set.v1",
+      "profileId": "lifecycle.execution-input-set.v2",
       "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
     },
     "specificationDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

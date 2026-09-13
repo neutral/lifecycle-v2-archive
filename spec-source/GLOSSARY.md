@@ -6,26 +6,28 @@
 
 The canonical repository result created by an authorized Delivery acceptance
 transaction. Its tree is exactly the sealed Candidate tree applied over the
-exact admitted parent. The Candidate cannot change the authoritative Atlas
-root, so the result contains the admitted Atlas without terminal resampling,
-composition, or substitution. The result commit contains no Delivery Control.
-Exact Evidence, Founder Decision, transaction facts, and Closure remain in the
+exact integration parent. The Candidate cannot change the authoritative Atlas
+root, so the result preserves the exact Atlas from its selected integration
+parent. Governing applicability and any required readmission precede acceptance;
+there is no terminal Atlas resampling, composition, or substitution. The result commit contains no Delivery Control.
+Exact Evidence, Director Decision, transaction facts, and Closure remain in the
 sealed Control Record Store archive off HEAD. A reviewer recommendation or
 complete Evidence Packet is not an Accepted Result until the transaction
 succeeds and is truthfully observed.
 
 ## Agent
 
-A probabilistic software worker that receives an Agent Attempt and develops a
-proposal in its governed semantic Markdown workspace inside one Execution Cell.
-Submission, rather than provider terminal text, freezes the proposed semantics.
-An Agent can perform broad labor but has no inherent product, Process, Founder,
-Backend, or canonical authority.
+A software actor that can hold a Director or Worker role at a particular work
+level. An agent dispatched through an Agent Attempt acts as a Worker and
+develops proposal semantics inside one Execution Cell. Submission freezes those
+semantics. Being an agent confers no product, Process, Director, Backend, or
+canonical authority; an agent Director uses the separately configured principal
+and exact authenticated transition.
 
 ## Agent Attempt
 
-One provider-neutral execution contract binding a fresh Founder Brief, role,
-exact role subject, Knowledge Projection, exact Candidate Revision Carrier or
+One provider-neutral Worker execution contract binding the selected Director
+Brief, assignment, exact role subject, Knowledge Projection, exact Candidate Revision Carrier or
 other Input Set, capability, Investment, governed semantic-body template,
 controlled authoring workspace, compiler profiles, Execution Backend Profile,
 Execution Image, and Provider Adapter. The Attempt is frozen before dispatch
@@ -34,11 +36,27 @@ provider-authored protocol mechanics.
 
 ## Agent Work Product
 
-The immutable Control revision retained from one valid Agent semantic
-submission. Its body preserves the Agent-authored Markdown; its typed payload
-contains the runtime-normalized semantics and exact Attempt bindings. It is an
-Agent proposal, not Candidate observation, Evidence, Founder authority, or
-canonical product truth.
+The immutable Control revision compiled from one valid Agent semantic
+submission. The Agent authors the meaning; the Runtime parses that meaning,
+resolves its exact references, and renders canonical retained Markdown with a
+typed payload and fixed Attempt bindings. The Execution Receipt separately
+binds the observed workspace bytes and normalized submission. Preserving
+semantic authorship does not preserve every authored layout choice.
+
+A Work Product remains an Agent proposal. Its valid submission does not by
+itself establish Candidate advancement, a Check outcome, Evidence sufficiency,
+Director authority, or canonical application.
+
+## Adopted Discipline Record
+
+An exact tracked Pack Discipline record under `records/disciplines/` whose
+identity, revision, path, digests, and Pack provenance are bound by the target's
+Discipline Registry. Adoption makes the guidance available to the target; it
+does not give the publisher Product Knowledge or Director authority.
+
+Its revision and structurally exact supersession reference retain publisher
+provenance. The target need not import all publisher predecessors; its current
+copy and Registry binding remain exact, and Git preserves prior adoptions.
 
 ## Attempt View
 
@@ -62,23 +80,19 @@ references do not transfer ownership or grant authority.
 
 ## Admitted Atlas Snapshot
 
-The complete valid Atlas State, Resolution, normalized model, Resource
-bindings, repository commit, and tree selected by an admitted Work Boundary.
-It is immutable historical context for that Boundary's Projections, Attempts,
-Checks, and Evidence. The active-Delivery branch lease keeps the canonical
-checkout and HEAD at that same admitted repository epoch until Closure; a
-successor Boundary in the same Delivery cannot adopt another Atlas snapshot.
+The complete valid Atlas State, Resolution, normalized model, Resource bindings,
+and repository epoch selected by one admitted Work Boundary. It remains exact
+historical context. Canonical maintenance may advance independently; an explicit
+runtime context-change or exact reviewer applicability Condition and successor Boundary/readmission can
+select another governing Snapshot within the same Delivery.
 
-## Active-Delivery Branch Lease
+## Application Base
 
-The exclusive operating claim derived from one applied initial Work Boundary
-and active Control state over an exact physical target and canonical branch.
-The lease permits at most one admitted, unclosed Delivery for that target
-branch. It requires a clean canonical checkout and exact admitted HEAD for all
-active nonterminal operations and acceptance. Prepared proposals hold no
-lease. The exact acceptance commit is the sole authorized branch motion while
-the lease persists through terminal recovery; accepted or no-ship Closure and
-Store disposition release it.
+The exact immutable repository commit against which one Candidate Revision's
+contribution is measured. Initialization selects its admitted base; ordinary
+builder and readmission successors inherit it. Only an explicit integration
+successor advances it to the exact parent selected by its Assessment. Original
+bases remain addressable through immutable Candidate lineage.
 
 ## Atlas Resolution
 
@@ -105,8 +119,28 @@ establishes complete valid conformance to the selected Atlas contract.
 
 The right to establish or move one class of truth. Authority is typed and
 non-transitive: product authority does not imply runtime capability, evidence
-does not imply acceptance, and a tool permission does not imply founder
+does not imply acceptance, and a tool permission does not imply director
 judgment.
+
+## Authorization Challenge
+
+A volatile, invocation-private, single-use token issued only after the Runtime
+derives one exact Authorization Review for admit, accept, or no-ship. It binds
+one target-pinned interface session, operation, Delivery, read generation,
+review digest, and complete authority subject. It is neither approval nor a
+Control, Evidence, or public protocol carrier. Authentication consumes it
+atomically only after the Runtime rederives the same current subject under
+lock; expiry, replay, staleness, substitution, or ambiguity is refused without
+effect.
+
+## Authorization Review
+
+The deterministic read-only presentation of one exact current Director
+authority subject for admit, accept, or no-ship. It exposes the complete stable
+facts the Director needs to inspect and one reproducible review digest, while
+excluding secret bytes, signatures, challenge mechanics, private paths, and
+transaction internals. A Review informs judgment but cannot authorize or prove
+an operation.
 
 ## Behavior
 
@@ -127,8 +161,8 @@ Candidate Revision from the immutable product base. The Candidate persists
 across productive Agent Attempts, bounded correction, and compatible readmission
 through its immutable Candidate Revision lineage and reconstructible Carriers,
 not through one physical checkout. It remains noncanonical until an authorized
-acceptance transaction makes its exact sealed state canonical over the unchanged
-admitted parent. Working and sealed are lifecycle conditions of this same
+acceptance transaction makes its exact sealed state canonical over the exact
+integration parent. Working and sealed are lifecycle conditions of this same
 Candidate, not new record families or identities.
 
 ## Candidate Revision
@@ -206,7 +240,7 @@ conditions, not acceptance or an unstated isolation guarantee.
 ## Closure
 
 The immutable terminal Control revision for one Delivery. Closure references
-the exact authenticated Founder Decision and applied transaction and records
+the exact authenticated Director Decision and applied transaction and records
 accepted or no-ship disposition, applicable Boundary and Candidate treatment,
 Execution Containment and Retirement, and terminal facts. Completed Execution
 Reclamation is not required. Its atomic `closure-recorded` finalization is the
@@ -214,7 +248,7 @@ final Journal head and makes Control Record Store sealing eligible. It is
 sufficient terminal Process truth but is not Product Knowledge.
 
 An accepted Closure uses Candidate treatment `integrated`: the exact sealed
-Candidate tree becomes the accepted result over the exact admitted parent, and
+Candidate tree becomes the accepted result over the exact integration parent, and
 Candidate confinement proves it has no Atlas delta. A no-ship Closure uses
 `abandoned` when a Candidate existed and `not-created` when none did.
 Abandonment permanently ends Candidate advancement and acceptance without
@@ -237,12 +271,12 @@ inside the revision.
 
 ## Control Record Event
 
-One immutable member of the closed twenty-two-kind Delivery event sequence.
+One immutable member of the closed twenty-five-kind Delivery event sequence.
 It binds the exact Delivery, positive contiguous sequence, immediately
 preceding event digest except at sequence one, occurrence time, actor, optional
 exact Control Record Revision subject, and bounded event-owned payload. An event
 owns why and when a fact affected Process reduction; it does not duplicate
-record-owned semantics or form a thirteenth Control family.
+record-owned semantics or form another Control record family.
 
 ## Control Record Reference
 
@@ -276,6 +310,17 @@ disposed. It binds the exact Closure revision, event head, and logical
 inventory. Sealing and archiving are post-Closure runtime boundaries; exact
 recovery may finish them without appending another event.
 
+## Context Basis
+
+The exact immutable repository, Atlas, Knowledge, Candidate, and Control
+subjects from which one context-inspection result is derived. A selected
+Delivery reopens the repository basis retained by its proposed or active Work
+Boundary rather than the mutable live checkout. Knowledge, Code, Atlas, and
+Source inspection results bind this basis with one read generation so a cursor
+or locator cannot drift into another epoch.
+Authorization Review instead binds its exact operation and generation directly;
+it can support no-ship before a Work Boundary exists.
+
 ## Document Reference
 
 A typed reference containing an exact document kind, stable identity, and
@@ -288,6 +333,21 @@ or display title alone is not a Document Reference.
 A governed code-adjacent Knowledge record that owns the responsibility,
 behavior, constraints, and rationale of one implementation unit and declares
 its exact implementation coverage.
+
+## Discipline
+
+A governed, advisory Knowledge record containing one independently selectable,
+self-contained practice for a recognizable class of work. Discipline is
+governed for identity, provenance, currentness, adoption, and projection, but
+is not Product Knowledge and does not create an obligation or Evidence gate.
+Its source declarations are optional provenance and never a Knowledge Set
+completeness condition.
+
+## Discipline Registry
+
+The tracked target configuration at `records/disciplines/registry.json` that
+binds exact Pack provenance, adopted Discipline records, and Work Type
+groupings. It is repository configuration rather than a Knowledge record.
 
 ## Delivery
 
@@ -312,8 +372,11 @@ Control record, event, Process state, or transition permit.
 
 ## Evidence
 
-Authenticated observations that can support a proposition about an exact
-subject. Evidence does not create product meaning or grant authority.
+Exact-subject observations and independent judgments used to assess support
+for admitted obligations. Their provenance identifies what was observed, who
+made a judgment, and under which conditions. Evidence interpretation does not
+create the obligation, authenticate a Director Decision, or establish that an
+authorized effect applied.
 
 ## Evidence Ledger
 
@@ -325,10 +388,22 @@ identity.
 
 ## Evidence Packet
 
-The immutable Control revision that binds one Candidate Revision and Seal,
-final Check Receipts, independent reviewer Work Product and Receipt, all
-Evidence ledgers, unresolved uncertainty, reviewer identity, and active Work
-Boundary.
+The immutable Control revision bringing together the exact Candidate Revision,
+Seal, integration subject, active Work Boundary, Check Receipts, reviewer Work
+Product and Receipt, and the derived Evidence ledgers. It records supported and
+unmet obligations, applicability, uncertainty, and readiness for that evaluated
+subject. Historical validity survives later work; current acceptance still
+requires the exact current subjects and separate Director authorization.
+
+## Evidence Verifier
+
+The effect-free component within the Evidence owner that interprets support
+for one exact evaluated result. Semantic assessment applies obligations to
+observations and judgments; the selected Foundation provenance adapter
+validates their origins and joins and checks a retained Packet against the
+recomputed assessment. Acceptance verification also compares explicitly
+supplied current subjects and the Decision subject. None of these comparisons
+authenticates the Director or applies a canonical effect.
 
 ## Execution Backend
 
@@ -381,7 +456,10 @@ host-installed executable path is not Image identity.
 
 The immutable digest-bound inputs selected for one Cell. Depending on the
 owner, they include an exact Candidate Revision Carrier, Projection, Check
-material, and bounded Runtime support. Reconnaissance has no Candidate input.
+material, and bounded Runtime support. Initial preparation has no Candidate;
+revision or reaffirmation reconnaissance receives its exact frozen Candidate
+read-only. A builder receives writable Candidate material and a reviewer an
+exact read-only evaluation subject.
 Backend-created materialization paths, credential bytes, and private
 coordinates are not Input Set content.
 
@@ -441,23 +519,29 @@ unpredictable allocation key is separately generated and durably bound to it;
 reusing that exact pair is deterministic, but the key is not a public digest or
 part of Specification identity.
 
-## Founder
+## Director
 
-The person or configured principal retaining final product judgment and the
-authority to authenticate designated Process transitions. An interface can act
-for the Founder only through explicit, scoped authorization.
+The role that supplies direction, makes the choices reserved at its work level,
+and assesses the Worker's returned support and result. A Director can be a human
+or an agent. Its configured principal and exact authenticated subject establish
+authority for designated Process transitions; the role name does not. The same
+actor can be a Worker for a broader objective. [Authority](spec/AUTHORITY.md#operating-roles)
+owns the pair's operating contract.
 
-## Founder Brief
+## Director Brief
 
-One complete fresh Founder-supplied semantic Markdown input finalized before
-an exact agent activity starts. Preparation, continuation, evaluation,
-revision, and reaffirmation each use the Brief profile owned by their operation.
-The bound Agent Attempt cannot inherit or merge another Brief, Work Product,
+One complete Director-supplied semantic Markdown input finalized before its
+exact activity or delegation starts. The Director selects and supplies the
+direction, including when a Worker gathers or prepares supporting requirements
+or design material. Preparation, continuation, evaluation, revision, and
+reaffirmation use the Brief profile owned by their operation. A manual Attempt
+binds fresh activity input; a delegated pass binds the exact original standing
+Brief. An Attempt cannot silently inherit or merge another Brief, Work Product,
 interface transcript, or provider conversation.
 
 ## Frame
 
-The founder-facing presentation for starting a fresh reconnaissance Delivery.
+The director-facing presentation for starting a fresh reconnaissance Delivery.
 Frame accepts one complete fresh Brief, presents the resulting Work Boundary
 revision and exact dossier, and hands its Delivery identity to explicit
 admission. A new Frame submission creates a fresh Delivery and does not inherit
@@ -481,32 +565,65 @@ Executable code, test code, configuration, documentation, or another product
 file. It is repository reality rather than a governed Knowledge record. A
 Description can own its semantic coverage.
 
+## Integration Assessment
+
+One immutable runtime-observed Control record binding an exact source Candidate,
+active Boundary, complete canonical parent Snapshot, selected merge rule,
+outcome/conflicts, physical validation, and contextual applicability. It owns
+assembly facts; a successful integration successor owns the actual result state.
+It grants no mandate or acceptance authority.
+
+## Integration Successor
+
+An immutable revision of the same Candidate that binds a constructed Integration
+Assessment and changes its own application base to the Assessment's exact parent.
+It preserves predecessor lineage and validates the Delivery contribution from
+that parent to the result. Context change freezes the result for exact successor
+Boundary/readmission before productive use.
+
 ## Investment
 
-The caller-funded reasoning resources allocated to one Agent Attempt, such as
-model class, reasoning effort, wall time, and cumulative policy limits.
+The caller-funded resources allocated to one Agent Attempt, including its
+selected model, reasoning effort, wall time, and effective execution limits.
 Investment changes neither scope nor authority.
 
 ## Knowledge
 
 Durable repository-addressable material that can govern or explain future
-work. Lifecycle governs Behavior, Assurance, Blueprint, Description, and Check
-Definition records.
+work. Lifecycle governs Behavior, Assurance, Blueprint, Description, Check
+Definition, and Discipline records. The first five are Product Knowledge;
+Discipline is advisory guidance.
 
 ## Knowledge Closure
 
 The complete set of Knowledge records and relationships required to interpret
 and validate one Work Boundary for one role.
 
+## Knowledge occurrence
+
+One exact Knowledge revision in one selected basis. Admitted and Candidate
+bases can contain different revisions of the same enduring Knowledge identity;
+even byte-identical revisions retain distinct contextual occurrences during
+review. A basis-qualified Projection item and source digest identify exact
+citation support. [Knowledge](spec/KNOWLEDGE.md#identity-revision-and-occurrence)
+owns the distinction.
+
 ## Knowledge Projection
 
-A deterministic immutable compilation of the exact Knowledge Closure required
-by one role, plus provenance, conflicts, unresolved references, reachable
-context, and an omission manifest.
+A deterministic immutable compilation of exact role context, including
+provenance, conflicts, unresolved references, reachable context, and an omission
+manifest. Orientation supplies discovery for a bound objective and repository
+epoch, including the derived objective for resolving a frozen Material Condition.
+Execution supplies the mandatory Knowledge Closure selected by an admitted
+Work Boundary.
 
 ## Knowledge Set
 
 The complete validated graph of governed Knowledge at one repository state.
+It distinguishes Current Product Knowledge from historical and contiguous
+Draft successors, and keeps advisory Discipline adoption separate from product
+authority. A Draft can be present and retained without becoming the Current
+owner used for governing comparisons.
 
 ## Lifecycle Document
 
@@ -524,16 +641,20 @@ The trusted product actor that owns Delivery Control, Candidate Revision
 lineage and Carriers, Evidence compilation, authority verification, Backend
 selection, and exact Process transitions. It delegates bounded physical
 execution to subordinate Backends but does not delegate product or Process
-authority. A later Runtime Image or Launcher is distribution machinery, not a
-second controller or current Foundation requirement.
+authority. Distribution packages this implementation in the selected Runtime
+Image and Launcher. Those carriers deliver the Runtime; they do not become a
+second controller or an owner of Foundation meaning.
 
 ## Material Condition
 
-A fact that prevents honest continuation under the active Work Boundary without
-founder judgment, mandate revision, capability change, or no-ship. It is not a
-local implementation defect. Delivery freezes the exact condition and its
-source as an immutable retained Control revision before productive continuation
-is blocked.
+An exact retained condition requiring an explicit response before productive
+work can resume under a Work Boundary. It can arise from material Agent
+findings, changed governing context, or conclusive mandatory-context failure.
+It freezes the active Boundary and Candidate while revision or reaffirmation
+prepares a complete proposal for Director readmission. A permitted larger
+Projection profile can resolve an execution prerequisite without changing the
+mandate. Local implementation defects instead remain correction work under the
+active Boundary. No-ship is a separately authenticated terminal choice.
 
 ## No-ship
 
@@ -549,6 +670,18 @@ One enumerated condition that an accepted result must satisfy. Obligations can
 originate in Behavior, Assurance, Blueprint, Description, effects, risks,
 artifacts, Checks, exclusions, or acceptance propositions.
 
+## Pack
+
+An external fresh-only distribution envelope that inventories exact Pack
+Discipline records and can publish curated Sets. A Pack does not govern a
+target and is never a runtime source for an active Delivery.
+
+## Pack Discipline Record
+
+A conforming Discipline record offered by a Pack outside a target's Knowledge
+locators. It becomes target Knowledge only when its exact bytes are adopted and
+registered by that target.
+
 ## Process
 
 A stateful contract governing one class of truth transition, including its
@@ -557,7 +690,7 @@ paths, terminal dispositions, and information closure.
 
 ## Store Journal
 
-The closed twenty-two-kind append-only Control Record Event sequence inside one
+The closed twenty-five-kind append-only Control Record Event sequence inside one
 Control Record Store. Deterministic reduction over the complete validated chain
 and exact referenced revisions reproduces Process state. Ordinary edits,
 commands, provider streams, compiler microsteps, and model reasoning are not
@@ -577,14 +710,19 @@ mutable state row, or transition authority.
 
 ## Product State
 
-The exact repository-native state that participates in product meaning and
-behavior. Product State includes governed Knowledge, Atlas inputs bound by the
-Process, implementation artifacts, and other declared product sources. It
-excludes compatible process-only Control and ignored runtime support. A
-Product State digest identifies one complete repository epoch. During an
-admitted Delivery, the active branch lease treats any canonical or
-authoritative-worktree change as a violation; Atlas receives no movement
-exception.
+The exact repository-native state participating in product meaning and behavior,
+including governed Knowledge, Atlas, implementation, and declared sources. It
+excludes Control and private runtime support. A Product State digest identifies
+one complete epoch; a Boundary's governing epoch, integration parent, and
+Candidate result are distinguishable exact subjects. Canonical movement does
+not rewrite any retained epoch.
+
+## Product Knowledge
+
+Governed Knowledge that owns target product meaning, obligation, structure,
+implementation responsibility, or falsifiable proof definition: Behavior,
+Assurance, Blueprint, Description, and Check Definition. Discipline is governed
+Knowledge but is not Product Knowledge.
 
 ## Publication Manifest
 
@@ -597,14 +735,25 @@ maturity. It does not carry publication lifecycle status.
 A separately authenticated carrier establishing `draft`, `candidate`,
 `released`, `superseded`, or `withdrawn` lifecycle status for one exact
 Publication Manifest and Release Notes digest. Its signing authority is
-distinct from target-repository Founder authority and conformance-claim
+distinct from target-repository Director authority and conformance-claim
 issuance.
+
+## Productive completeness
+
+The requirement that ordinary legitimate work remains expressible and
+completable through Delivery's existing operations, including changed
+Knowledge, useful failed-Attempt output, local correction, and interrupted
+terminal decisions. It requires legal progress and termination routes within
+the selected contracts, not guaranteed provider success or acceptance.
+[Delivery](spec/DELIVERY.md#productive-completeness) owns the requirement.
 
 ## Projection Compiler
 
-A conforming implementation that validates a Knowledge Set and deterministically
-produces a role-specific Knowledge Projection for an exact Work Boundary and
-repository state.
+A conforming implementation that validates the selected repository and
+Knowledge inputs and deterministically produces the role's Knowledge Projection.
+Orientation binds an objective and repository epoch, including a resolution
+objective derived from the frozen Condition and its active Boundary. Execution
+additionally binds the admitted Work Boundary and its exact role subjects.
 
 ## Provider Adapter
 
@@ -628,7 +777,22 @@ effect, risk, artifact, or Check coverage.
 
 ## Receipt
 
-See Check Receipt.
+A retained observation carrier with a specific owner and subject. A
+[Check Receipt](#check-receipt) records a Check execution or declared
+non-execution against its exact proof subject. An
+[Execution Receipt](#execution-receipt) records an Agent Attempt's provider,
+submission, Candidate-output, and execution-disposition facts. Neither may be
+substituted for the other merely because both are Receipts.
+
+## Rejected Product repair output
+
+Exact structurally verified Product bytes that failed Candidate selection and
+are retained through a Runtime-produced builder Execution Receipt for repair.
+The Receipt binds a bounded rejection descriptor and the existing Git Carrier
+manifest; the installation Carrier Store preserves the bytes. A later builder
+may inspect selected differences read-only while starting from the valid current
+Candidate. This output is neither a Candidate Revision nor governing Knowledge.
+[Attempts](spec/ATTEMPTS.md#rejected-product-output-and-repair) owns its meaning.
 
 ## Release Notes
 
@@ -646,17 +810,34 @@ Knowledge Set.
 
 ## Role
 
-The bounded job an Agent performs in an Agent Attempt. Standard Delivery roles
-are reconnaissance, builder, and reviewer.
+A responsibility within a Director–Worker pair at one work level. The Director
+supplies direction and owns reserved decisions; the Worker performs the bounded
+assignment and returns its result. Machine `role` fields in Agent Attempt and
+Projection contracts select the Worker's technical assignment, exactly
+`reconnaissance`, `builder`, or `reviewer`. Those assignment values do not confer
+Director authority.
 
 ## Role Brief
 
-The exact runtime-authored provider-visible assignment that quotes the
-normalized fresh Founder direction and presents the role, subject, Work
-Boundary, Projection, capability, governed semantic file, body template,
-submission rule, and authority limits. It exposes no Control envelope and
-cannot widen the typed operation or authority. It is input, not a provider
+The exact runtime-authored provider-visible assignment that identifies the
+Worker and its Director counterpart, quotes the normalized selected Director
+Brief, and presents the technical assignment, subject, Work Boundary,
+Projection, capability, governed semantic file, body template, submission rule,
+and authority limits. It carries the concise operating guidance owned by
+[Authority](spec/AUTHORITY.md#operating-roles). It exposes no Control envelope
+and cannot widen the typed operation or authority. It is input, not a provider
 proposal.
+
+## Set
+
+A publisher-curated list of Pack Discipline identities useful together. A Set
+is adoption convenience, not Knowledge, a dependency solver, or compatibility.
+
+## Work Router
+
+The target-owned Work Type index in the Discipline Registry. It groups adopted
+guidance for discovery by language, domain, or phase without selecting records,
+dispatching work, defining a Process, or creating requirements.
 
 ## Controlled Authoring Workspace
 
@@ -667,9 +848,19 @@ authoritative until the runtime contains the Cell, retrieves the output, and
 independently observes, validates, and compiles one exact revision. The Agent
 can edit the same file across provider turns in that funded Attempt.
 Intermediate edits are not Journal events, and another Attempt reconstructs a
-fresh workspace rather than continuing this path. Foundation rc.10 exposes no
-provider-invoked live semantic validator; only post-Containment Runtime
-validation can establish whether the final draft is valid.
+fresh workspace rather than continuing this path. Local draft assistance can
+inspect the observed draft against a supplied immutable basis; only independent
+post-Containment Runtime validation establishes the final submission's validity.
+
+## Local Draft Assistance
+
+The read-only installed authoring profile that discovers exact forms, inspects
+explicit Knowledge sources and local revision chains, and checks semantic
+Markdown against a supplied immutable basis using existing Runtime owners.
+Its observed-byte and basis-bound result states checked scope and exclusions.
+It cannot establish complete Candidate validity, currentness, eligibility,
+Evidence, authority, or submission. [Attempts](spec/ATTEMPTS.md#local-draft-assistance)
+owns the exact contract.
 
 ## Agent Work Product Compiler
 
@@ -704,18 +895,21 @@ The mandatory Runtime operation that reopens the exact final governed Agent
 draft from an independently validated Output Carrier only after Execution
 Containment, then applies the parser and compiler basis selected by the frozen
 Attempt. It can retain one valid Agent Work Product or one bounded final
-submission diagnostic. Foundation rc.10 has no provider-invoked live semantic
-validator or Cell validity claim.
+submission diagnostic. Local draft assistance is separate advisory inspection;
+a Cell's local result cannot replace independent Runtime validation.
 
 ## Semantic Operation Input
 
-The bounded UTF-8 Markdown through which the Founder supplies only the meaning
-required by one public v10 Delivery operation. Preparation carries one complete,
+The bounded UTF-8 Markdown through which the Director supplies only the meaning
+required by one public v17 Delivery operation. Preparation carries one complete,
 self-contained reconnaissance brief for a fresh Delivery; it does not inherit
 a prior Brief, Boundary, TUI transcript, or provider conversation.
 Continuation and evaluation carry role direction; revision and reaffirmation
 carry exact resolution rationale; and no-ship carries an exact reason plus
-explicit Candidate disposition. Runtime bindings, Investment mechanics,
+explicit Candidate disposition. Continue, evaluate, revise, and reaffirm also
+carry the exact Runtime-issued read generation on which the complete semantic
+input was authored; that value is a staleness precondition and not authored
+Process state. Runtime bindings, Investment mechanics,
 machine configuration, authority bytes, state projections, package identities,
 digests, timestamps, and operation eligibility are derived from their owners.
 
@@ -739,6 +933,15 @@ material retained by an exact source owner and reached through a Knowledge
 source or an Atlas Content or typed Reference edge. Source material can inform
 Knowledge and Agent judgment but does not silently become Product meaning,
 Process Control, Evidence, or authority.
+
+## Source Reference
+
+An opaque Runtime-issued locator for one bounded inert source selected by a
+Knowledge, Code, or Atlas inspection result. It binds the exact target, Delivery,
+retained Context or Code selection, original Journal provenance, context basis,
+media type, byte length,
+and content digest. Only bounded byte ranges may be retrieved through it; it is
+not a repository path, URL, capability, or permission to read ambient files.
 
 ## Source Revision
 
@@ -765,16 +968,20 @@ canonical for its authority class.
 
 ## Work Boundary
 
-Delivery's immutable proposed or active mandate and final comparison basis. It
-binds the selected result, knowledge, obligations, exclusions, effects, risks,
-artifacts, Checks, acceptance propositions, capability, and exact bases.
+The complete immutable envelope for one proposed or active Delivery basis.
+Its nested mandate contains objective, direction, effects, risks, obligations,
+artifacts, Check selections, and acceptance propositions. Selected Knowledge,
+external sources, Capability Profile, Projection profile, governing Snapshot,
+and proposal provenance are separately bound fields. The governing comparison
+includes selected fields outside the nested mandate, so that object alone does
+not exhaust the Work Boundary or the meaning of unchanged-mandate resolution.
 Required baseline Receipts bind this exact Boundary and determine its proposal
 readiness under their selected temporal modalities; they are not fields or
 forward references inside it. The runtime compiles one complete immutable
-revision from a Founder Brief, reconnaissance Work Product, and runtime facts,
+revision from a Director Brief, reconnaissance Work Product, and runtime facts,
 then executes its baseline Checks. It is admission-ready only when the reducer
 observes the complete modality-valid Receipt set, and becomes active only when
-an applied Founder Admission Decision selects those same Boundary bytes. Its
+an applied Director Admission Decision selects those same Boundary bytes. Its
 active standing begins independently of the later initial Candidate
 observation.
 Proposed, admission-ready, and active are derived standings, not separate
@@ -785,13 +992,35 @@ record kinds.
 One immutable version of the Work Boundary. Revision 1 is the initial complete
 mandate revision and becomes proposed only after its modality-valid baseline
 Receipt set is complete. A later revision references its active predecessor
-and, when applicable, the exact Material Condition and Founder resolution
+and, when applicable, the exact Material Condition and Director resolution
 rationale. Historical revisions remain addressable. Admission selects a
 revision without copying it into an admitted carrier.
 
-## Founder Decision
+## Worker
 
-One runtime-constructed, Founder-authenticated Control revision with a typed
+The role that gathers and checks the supporting information needed for an
+assignment, performs authorized intellectual or implementation work, and returns
+useful results, evidence, and unresolved decisions to its Director. A Worker is
+usually an agent and can be a human. It continues within its assignment without
+adding a human approval requirement. Acting as a Worker does not confer its
+Director's authority; directing subordinate work preserves the containing
+assignment's limits.
+
+## Work Delegation
+
+One Director-supplied Control revision permitting finite reversible labor under
+an exact active Work Boundary and applied admission. It retains original
+standing directions, exact resolved resources, allowed productive operations,
+and Delivery-lifetime reservation ceilings. Each delegated operation reserves
+its complete maximum allocation atomically with its Activity opening. The
+Journal owns the charges; replacement and readmission do not reset them.
+Delegation is resource permission, not mandate admission, acceptance authority,
+or a retained workflow position. [Attempt View](spec/ATTEMPT_VIEW.md#work-delegation)
+owns its allocation and stopping contract.
+
+## Director Decision
+
+One runtime-constructed, Director-authenticated Control revision with a typed
 variant: admit, readmit, accept, or no-ship. It references the exact Boundary,
 Condition, Candidate Revision, Seal, Evidence Packet, and disposition required
 by that variant. Admission also references every required modality-valid
@@ -800,11 +1029,18 @@ from its active predecessor. Authentication freezes the Decision; a separate
 transaction intent and truthful observation determine whether its selected
 effect became Process or product truth.
 
+## Work Type
+
+A target-local discovery grouping in the Discipline Registry that names a
+class of work and lists adopted Discipline records that may be useful. Naming
+a Work Type does not select all grouped records or create a requirement; direct
+Discipline selection without a Work Type is valid.
+
 ## Decision Readiness
 
 A non-authoritative section of one current Delivery View that joins the exact
 Boundary, Candidate, Seal, Evidence, eligible operation, and any already
-authenticated Founder Decision needed for review. It cannot authenticate,
+authenticated Director Decision needed for review. It cannot authenticate,
 authorize, or apply a transition.
 
 ## Working Candidate

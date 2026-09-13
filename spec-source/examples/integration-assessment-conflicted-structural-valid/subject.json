@@ -1,0 +1,42 @@
+{
+  "schema": "lifecycle.integration-assessment-payload.v1",
+  "profileId": "lifecycle.integration-assessment.foundation-v1",
+  "canonicalParent": {
+    "targetId": "target.integration-fixture",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "tree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "objectFormat": "sha1",
+    "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "productStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "atlasStateDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "atlasResolutionDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "atlasNormalizedModelDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "atlasResourceBindingsDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "knowledgeSetDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "digest": "sha256:a191fd027b41629f83579da7682233e2a224fe7c470cc555bba6859f25076e35"
+  },
+  "mergeRule": {
+    "id": "lifecycle.integration.three-way.v2",
+    "implementationId": "lifecycle.integration.git-merge-tree.v1",
+    "implementationDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "outcome": "conflicted",
+  "conflicts": [
+    {
+      "path": "src/product.ts",
+      "kind": "content"
+    }
+  ],
+  "validation": {
+    "complete": true,
+    "valid": false,
+    "diagnosticCodes": [],
+    "factsDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "contextualApplicability": {
+    "disposition": "unchanged",
+    "changes": []
+  },
+  "assessedAt": "2026-09-05T12:00:00.000Z",
+  "limitations": []
+}

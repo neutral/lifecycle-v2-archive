@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:control-record-event:v2",
-  "title": "Lifecycle Delivery Control Record Event v2",
-  "description": "Closed Foundation rc.10 Delivery event envelope and exact twenty-two-kind payload vocabulary; private Execution Cell and Reclamation state never enters the Journal.",
+  "$id": "urn:lifecycle:schema:control-record-event:v6",
+  "title": "Lifecycle Delivery Control Record Event v6",
+  "description": "Closed Delivery event envelope including standing Director direction, finite resource delegation and optional Activity-opening reservation. Physical execution custody and pending stop-request metadata remain outside the Journal.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,15 +20,27 @@
     "digest"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.control-record-event.v2" },
-    "storeId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-    "processId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-    "sequence": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-    "eventId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+    "schema": {
+      "const": "lifecycle.control-record-event.v6"
+    },
+    "storeId": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+    },
+    "processId": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+    },
+    "sequence": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+    },
+    "eventId": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+    },
     "eventKind": {
       "enum": [
         "delivery-created",
-        "founder-brief-submitted",
+        "director-brief-submitted",
+        "work-delegation-set",
+        "work-delegation-stopped",
         "activity-started",
         "activity-recovery-recorded",
         "agent-pre-intent-refused",
@@ -37,6 +49,7 @@
         "provider-effect-observed",
         "agent-work-product-submitted",
         "agent-work-product-abandoned",
+        "integration-assessed",
         "candidate-revision-observed",
         "execution-receipt-recorded",
         "work-boundary-finalized",
@@ -44,19 +57,27 @@
         "candidate-sealed",
         "check-receipt-recorded",
         "evidence-packet-finalized",
-        "founder-decision-authenticated",
+        "director-decision-authenticated",
         "transaction-effect-intended",
         "transaction-effect-observed",
         "activity-completed",
         "closure-recorded"
       ]
     },
-    "occurredAt": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/canonicalTime" },
-    "actor": { "$ref": "#/$defs/runtimeActor" },
+    "occurredAt": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+    },
+    "actor": {
+      "$ref": "#/$defs/runtimeActor"
+    },
     "subject": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/eventSubject" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/eventSubject"
+        }
       ]
     },
     "payload": {
@@ -65,165 +86,349 @@
     },
     "predecessorDigest": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       ]
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    }
   },
   "oneOf": [
     {
       "properties": {
-        "eventKind": { "const": "delivery-created" },
-        "subject": { "type": "null" },
-        "payload": { "$ref": "#/$defs/emptyPayload" }
+        "eventKind": {
+          "const": "delivery-created"
+        },
+        "subject": {
+          "type": "null"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "founder-brief-submitted" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "director-brief-submitted"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/activityPayload"
+            },
+            {
+              "$ref": "#/$defs/standingBriefPayload"
+            }
+          ]
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "activity-started" },
-        "subject": { "type": "null" },
-        "payload": { "$ref": "#/$defs/activityStartedPayload" }
+        "eventKind": {
+          "const": "work-delegation-set"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "activity-recovery-recorded" },
-        "subject": { "type": "null" },
-        "payload": { "$ref": "#/$defs/activityRecoveryPayload" }
+        "eventKind": {
+          "const": "work-delegation-stopped"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/workDelegationStoppedPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "agent-pre-intent-refused" },
-        "subject": { "type": "null" },
-        "payload": { "$ref": "#/$defs/agentPreIntentRefusedPayload" }
+        "eventKind": {
+          "const": "activity-started"
+        },
+        "subject": {
+          "type": "null"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityStartedPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "agent-attempt-prepared" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "activity-recovery-recorded"
+        },
+        "subject": {
+          "type": "null"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityRecoveryPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "provider-effect-intended" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/effectIntendedPayload" }
+        "eventKind": {
+          "const": "agent-pre-intent-refused"
+        },
+        "subject": {
+          "type": "null"
+        },
+        "payload": {
+          "$ref": "#/$defs/agentPreIntentRefusedPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "provider-effect-observed" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/providerEffectObservedPayload" }
+        "eventKind": {
+          "const": "agent-attempt-prepared"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "agent-work-product-submitted" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "provider-effect-intended"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/effectIntendedPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "agent-work-product-abandoned" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "provider-effect-observed"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/providerEffectObservedPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "candidate-revision-observed" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "agent-work-product-submitted"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "execution-receipt-recorded" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "agent-work-product-abandoned"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "work-boundary-finalized" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "integration-assessed"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "material-condition-frozen" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/materialConditionFrozenPayload" }
+        "eventKind": {
+          "const": "candidate-revision-observed"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "candidate-sealed" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "execution-receipt-recorded"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "check-receipt-recorded" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "work-boundary-finalized"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "evidence-packet-finalized" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "material-condition-frozen"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/materialConditionFrozenPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "founder-decision-authenticated" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "candidate-sealed"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "transaction-effect-intended" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/effectIntendedPayload" }
+        "eventKind": {
+          "const": "check-receipt-recorded"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "transaction-effect-observed" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/transactionEffectObservedPayload" }
+        "eventKind": {
+          "const": "evidence-packet-finalized"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "activity-completed" },
-        "subject": { "type": "null" },
-        "payload": { "$ref": "#/$defs/activityCompletedPayload" }
+        "eventKind": {
+          "const": "director-decision-authenticated"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     },
     {
       "properties": {
-        "eventKind": { "const": "closure-recorded" },
-        "subject": { "$ref": "#/$defs/eventSubject" },
-        "payload": { "$ref": "#/$defs/activityPayload" }
+        "eventKind": {
+          "const": "transaction-effect-intended"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/effectIntendedPayload"
+        }
+      }
+    },
+    {
+      "properties": {
+        "eventKind": {
+          "const": "transaction-effect-observed"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/transactionEffectObservedPayload"
+        }
+      }
+    },
+    {
+      "properties": {
+        "eventKind": {
+          "const": "activity-completed"
+        },
+        "subject": {
+          "type": "null"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityCompletedPayload"
+        }
+      }
+    },
+    {
+      "properties": {
+        "eventKind": {
+          "const": "closure-recorded"
+        },
+        "subject": {
+          "$ref": "#/$defs/eventSubject"
+        },
+        "payload": {
+          "$ref": "#/$defs/activityPayload"
+        }
       }
     }
   ],
@@ -231,20 +436,37 @@
     "runtimeActor": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "id"],
+      "required": [
+        "kind",
+        "id"
+      ],
       "properties": {
-        "kind": { "const": "runtime" },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+        "kind": {
+          "const": "runtime"
+        },
+        "id": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        }
       }
     },
     "eventSubject": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["recordId", "revision", "digest"],
+      "required": [
+        "recordId",
+        "revision",
+        "digest"
+      ],
       "properties": {
-        "recordId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "revision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "recordId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "revision": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+        },
+        "digest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "emptyPayload": {
@@ -255,42 +477,84 @@
     "activityPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId"],
+      "required": [
+        "activityId"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        }
       }
     },
     "agentPreIntentRefusedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "diagnosticCode", "refusalFactsDigest"],
+      "required": [
+        "activityId",
+        "diagnosticCode",
+        "refusalFactsDigest",
+        "resolution"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "diagnosticCode": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "refusalFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "diagnosticCode": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "refusalFactsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "resolution": {
+          "description": "The required variant names an owned measured continue or evaluate refusal and requires its exact runtime Material Condition before Activity completion; it proves zero Agent allocation.",
+          "enum": [
+            "none",
+            "projection-condition-required"
+          ]
+        }
       }
     },
     "materialConditionFrozenPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sourceKind", "activityId", "observedFactsDigest"],
+      "required": [
+        "sourceKind",
+        "activityId",
+        "observedFactsDigest"
+      ],
       "properties": {
-        "sourceKind": { "const": "agent-proposal" },
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "observedFactsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "sourceKind": {
+          "enum": [
+            "agent-proposal",
+            "integration-assessment",
+            "projection-compilation"
+          ]
+        },
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "observedFactsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "activityStartedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "operation"],
+      "required": [
+        "activityId",
+        "operation"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
         "operation": {
           "enum": [
             "delivery.prepare",
             "delivery.admit",
             "delivery.continue",
+            "delivery.integrate",
             "delivery.evaluate",
             "delivery.revise",
             "delivery.reaffirm",
@@ -298,20 +562,37 @@
             "delivery.no-ship",
             "delivery.recover"
           ]
+        },
+        "reservation": {
+          "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/reservation"
         }
-      }
+      },
+      "description": "An optional exact reservation finances this Activity only. Semantic validation binds its activity/operation, predecessor Journal head, current delegation, lifetime charges and complete selected execution slots; canonical event payload remains bounded to 65536 bytes."
     },
     "activityRecoveryPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "kind", "resumesAt", "exactEffectDigest"],
+      "required": [
+        "activityId",
+        "kind",
+        "resumesAt",
+        "exactEffectDigest"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
         "kind": {
-          "enum": ["provider", "candidate-observation", "transaction", "finalization"]
+          "enum": [
+            "provider",
+            "candidate-observation",
+            "transaction",
+            "finalization"
+          ]
         },
         "resumesAt": {
           "enum": [
+            "integration-assessed",
             "provider-effect-observed",
             "work-product-observation",
             "candidate-revision-observed",
@@ -329,8 +610,12 @@
         },
         "exactEffectDigest": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           ]
         }
       },
@@ -339,27 +624,42 @@
           "oneOf": [
             {
               "properties": {
-                "kind": { "const": "provider" },
-                "resumesAt": { "const": "provider-effect-observed" }
+                "kind": {
+                  "const": "provider"
+                },
+                "resumesAt": {
+                  "const": "provider-effect-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "candidate-observation" },
-                "resumesAt": { "const": "candidate-revision-observed" }
+                "kind": {
+                  "const": "candidate-observation"
+                },
+                "resumesAt": {
+                  "const": "candidate-revision-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "transaction" },
-                "resumesAt": { "const": "transaction-effect-observed" }
+                "kind": {
+                  "const": "transaction"
+                },
+                "resumesAt": {
+                  "const": "transaction-effect-observed"
+                }
               }
             },
             {
               "properties": {
-                "kind": { "const": "finalization" },
+                "kind": {
+                  "const": "finalization"
+                },
                 "resumesAt": {
                   "enum": [
+                    "integration-assessed",
                     "work-product-observation",
                     "execution-receipt-recorded",
                     "work-boundary-finalized",
@@ -381,45 +681,95 @@
     "effectIntendedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "effectDigest"],
+      "required": [
+        "activityId",
+        "effectDigest"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "effectDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        }
       }
     },
     "providerEffectObservedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "effectDigest", "outcome"],
+      "required": [
+        "activityId",
+        "effectDigest",
+        "outcome"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "outcome": { "enum": ["completed", "failed", "not-started"] }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "effectDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed",
+            "not-started"
+          ]
+        }
       }
     },
     "transactionEffectObservedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "effectDigest", "facts", "factsDigest", "outcome"],
+      "required": [
+        "activityId",
+        "effectDigest",
+        "facts",
+        "factsDigest",
+        "outcome"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "effectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "facts": { "$ref": "#/$defs/transactionObservationFacts" },
-        "factsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "outcome": { "enum": ["applied", "not-applied", "indeterminate"] }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "effectDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "facts": {
+          "$ref": "#/$defs/transactionObservationFacts"
+        },
+        "factsDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "outcome": {
+          "enum": [
+            "applied",
+            "not-applied",
+            "indeterminate"
+          ]
+        }
       }
     },
     "admissionDisposition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["outcome", "reason", "observedFactsDigest"],
+      "required": [
+        "outcome",
+        "reason",
+        "observedFactsDigest"
+      ],
       "properties": {
-        "outcome": { "const": "not-applied" },
+        "outcome": {
+          "const": "not-applied"
+        },
         "reason": {
-          "enum": ["repository-basis-mismatch", "candidate-continuity-mismatch"]
+          "enum": [
+            "repository-basis-mismatch",
+            "candidate-continuity-mismatch"
+          ]
         },
         "observedFactsDigest": {
-          "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256"
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
         }
       }
     },
@@ -433,18 +783,34 @@
         "repositoryBasisDigest"
       ],
       "properties": {
-        "schema": { "const": "lifecycle.admission-effect-observation-facts.v2" },
-        "outcome": { "enum": ["applied", "not-applied", "indeterminate"] },
+        "schema": {
+          "const": "lifecycle.admission-effect-observation-facts.v2"
+        },
+        "outcome": {
+          "enum": [
+            "applied",
+            "not-applied",
+            "indeterminate"
+          ]
+        },
         "disposition": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "#/$defs/admissionDisposition" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/admissionDisposition"
+            }
           ]
         },
         "repositoryBasisDigest": {
           "oneOf": [
-            { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+            }
           ]
         }
       }
@@ -452,33 +818,67 @@
     "terminalRepositoryCoordinate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ref", "commit", "tree", "objectFormat"],
+      "required": [
+        "ref",
+        "commit",
+        "tree",
+        "objectFormat"
+      ],
       "properties": {
         "ref": {
           "type": "string",
           "maxLength": 512,
           "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
         },
-        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "objectFormat": { "enum": ["sha1", "sha256"] }
+        "commit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "tree": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "objectFormat": {
+          "enum": [
+            "sha1",
+            "sha256"
+          ]
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "objectFormat": { "const": "sha1" } } },
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha1"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "commit": { "pattern": "^[a-f0-9]{40}$" },
-              "tree": { "pattern": "^[a-f0-9]{40}$" }
+              "commit": {
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{40}$"
+              }
             }
           }
         },
         {
-          "if": { "properties": { "objectFormat": { "const": "sha256" } } },
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha256"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "commit": { "pattern": "^[a-f0-9]{64}$" },
-              "tree": { "pattern": "^[a-f0-9]{64}$" }
+              "commit": {
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{64}$"
+              }
             }
           }
         }
@@ -487,34 +887,71 @@
     "terminalRepositoryObservationFacts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "ref", "commit", "tree", "objectFormat"],
+      "required": [
+        "schema",
+        "ref",
+        "commit",
+        "tree",
+        "objectFormat"
+      ],
       "properties": {
-        "schema": { "const": "lifecycle.terminal-repository-effect-observation.v1" },
+        "schema": {
+          "const": "lifecycle.terminal-repository-effect-observation.v1"
+        },
         "ref": {
           "type": "string",
           "maxLength": 512,
           "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
         },
-        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "objectFormat": { "enum": ["sha1", "sha256"] }
+        "commit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "tree": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "objectFormat": {
+          "enum": [
+            "sha1",
+            "sha256"
+          ]
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "objectFormat": { "const": "sha1" } } },
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha1"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "commit": { "pattern": "^[a-f0-9]{40}$" },
-              "tree": { "pattern": "^[a-f0-9]{40}$" }
+              "commit": {
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{40}$"
+              }
             }
           }
         },
         {
-          "if": { "properties": { "objectFormat": { "const": "sha256" } } },
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha256"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "commit": { "pattern": "^[a-f0-9]{64}$" },
-              "tree": { "pattern": "^[a-f0-9]{64}$" }
+              "commit": {
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{64}$"
+              }
             }
           }
         }
@@ -524,67 +961,173 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "schema", "ref", "commit", "tree", "objectFormat", "canonicalResultDigest"
+        "schema",
+        "ref",
+        "commit",
+        "tree",
+        "objectFormat",
+        "canonicalResultDigest",
+        "observedTip",
+        "recognition"
       ],
       "properties": {
-        "schema": { "const": "lifecycle.terminal-acceptance-effect-observation.v1" },
+        "schema": {
+          "const": "lifecycle.terminal-acceptance-effect-observation.v2"
+        },
         "ref": {
           "type": "string",
           "maxLength": 512,
           "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
         },
-        "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "objectFormat": { "enum": ["sha1", "sha256"] },
-        "canonicalResultDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "commit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "tree": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "objectFormat": {
+          "enum": [
+            "sha1",
+            "sha256"
+          ]
+        },
+        "canonicalResultDigest": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        "observedTip": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "commit",
+            "tree"
+          ],
+          "properties": {
+            "commit": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            },
+            "tree": {
+              "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+            }
+          }
+        },
+        "recognition": {
+          "enum": [
+            "at-tip",
+            "ancestor"
+          ]
+        }
       },
       "allOf": [
         {
-          "if": { "properties": { "objectFormat": { "const": "sha1" } } },
-          "then": { "properties": {
-            "commit": { "pattern": "^[a-f0-9]{40}$" },
-            "tree": { "pattern": "^[a-f0-9]{40}$" }
-          } }
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "commit": {
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "observedTip": {
+                "properties": {
+                  "commit": {
+                    "pattern": "^[a-f0-9]{40}$"
+                  },
+                  "tree": {
+                    "pattern": "^[a-f0-9]{40}$"
+                  }
+                }
+              }
+            }
+          }
         },
         {
-          "if": { "properties": { "objectFormat": { "const": "sha256" } } },
-          "then": { "properties": {
-            "commit": { "pattern": "^[a-f0-9]{64}$" },
-            "tree": { "pattern": "^[a-f0-9]{64}$" }
-          } }
+          "if": {
+            "properties": {
+              "objectFormat": {
+                "const": "sha256"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "commit": {
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "tree": {
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "observedTip": {
+                "properties": {
+                  "commit": {
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "tree": {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },
     "terminalDetachedObservationFacts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "attached", "canonicalRef", "canonicalCommit", "canonicalTree"],
+      "required": [
+        "schema",
+        "attached",
+        "canonicalRef",
+        "canonicalCommit",
+        "canonicalTree"
+      ],
       "properties": {
         "schema": {
           "const": "lifecycle.terminal-detached-canonical-effect-observation.v1"
         },
-        "attached": { "$ref": "#/$defs/terminalRepositoryCoordinate" },
+        "attached": {
+          "$ref": "#/$defs/terminalRepositoryCoordinate"
+        },
         "canonicalRef": {
           "type": "string",
           "maxLength": 512,
           "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
         },
-        "canonicalCommit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-        "canonicalTree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" }
+        "canonicalCommit": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        },
+        "canonicalTree": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject"
+        }
       },
       "allOf": [
         {
           "if": {
             "properties": {
               "attached": {
-                "properties": { "objectFormat": { "const": "sha1" } }
+                "properties": {
+                  "objectFormat": {
+                    "const": "sha1"
+                  }
+                }
               }
             }
           },
           "then": {
             "properties": {
-              "canonicalCommit": { "pattern": "^[a-f0-9]{40}$" },
-              "canonicalTree": { "pattern": "^[a-f0-9]{40}$" }
+              "canonicalCommit": {
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "canonicalTree": {
+                "pattern": "^[a-f0-9]{40}$"
+              }
             }
           }
         },
@@ -592,14 +1135,22 @@
           "if": {
             "properties": {
               "attached": {
-                "properties": { "objectFormat": { "const": "sha256" } }
+                "properties": {
+                  "objectFormat": {
+                    "const": "sha256"
+                  }
+                }
               }
             }
           },
           "then": {
             "properties": {
-              "canonicalCommit": { "pattern": "^[a-f0-9]{64}$" },
-              "canonicalTree": { "pattern": "^[a-f0-9]{64}$" }
+              "canonicalCommit": {
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "canonicalTree": {
+                "pattern": "^[a-f0-9]{64}$"
+              }
             }
           }
         }
@@ -608,9 +1159,15 @@
     "terminalFailureObservationFacts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "stage", "code"],
+      "required": [
+        "schema",
+        "stage",
+        "code"
+      ],
       "properties": {
-        "schema": { "const": "lifecycle.terminal-effect-failure.v1" },
+        "schema": {
+          "const": "lifecycle.terminal-effect-failure.v1"
+        },
         "stage": {
           "enum": [
             "repository-observation",
@@ -619,25 +1176,91 @@
             "no-ship-non-integration"
           ]
         },
-        "code": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" }
+        "code": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        }
       }
     },
     "transactionObservationFacts": {
       "oneOf": [
-        { "$ref": "#/$defs/admissionTransactionObservationFacts" },
-        { "$ref": "#/$defs/terminalRepositoryObservationFacts" },
-        { "$ref": "#/$defs/terminalAcceptanceObservationFacts" },
-        { "$ref": "#/$defs/terminalDetachedObservationFacts" },
-        { "$ref": "#/$defs/terminalFailureObservationFacts" }
+        {
+          "$ref": "#/$defs/admissionTransactionObservationFacts"
+        },
+        {
+          "$ref": "#/$defs/terminalRepositoryObservationFacts"
+        },
+        {
+          "$ref": "#/$defs/terminalAcceptanceObservationFacts"
+        },
+        {
+          "$ref": "#/$defs/terminalDetachedObservationFacts"
+        },
+        {
+          "$ref": "#/$defs/terminalFailureObservationFacts"
+        }
       ]
     },
     "activityCompletedPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activityId", "outcome"],
+      "required": [
+        "activityId",
+        "outcome"
+      ],
       "properties": {
-        "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "outcome": { "enum": ["completed", "failed", "abandoned"] }
+        "activityId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed",
+            "abandoned"
+          ]
+        }
+      }
+    },
+    "standingBriefPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delegationId",
+        "delegationRevision",
+        "operation"
+      ],
+      "properties": {
+        "delegationId": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId"
+        },
+        "delegationRevision": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger"
+        },
+        "operation": {
+          "enum": [
+            "delivery.continue",
+            "delivery.evaluate"
+          ]
+        }
+      }
+    },
+    "workDelegationStoppedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestDigest",
+        "requestedAt",
+        "requestedBy"
+      ],
+      "properties": {
+        "requestDigest": {
+          "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/exactDigest"
+        },
+        "requestedAt": {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/canonicalTime"
+        },
+        "requestedBy": {
+          "$ref": "urn:lifecycle:schema:work-delegation-payload:v2#/$defs/exactControlId"
+        }
       }
     }
   }

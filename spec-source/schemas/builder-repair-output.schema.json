@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:builder-repair-output:v1",
+  "title": "Lifecycle Builder Repair Output v1",
+  "description": "Runtime-derived Receipt-adjacent selection of a complete rejected Product Carrier for read-only repair. It does not select a Candidate Revision.",
+  "$comment": "The canonical JSON line is at most 65,536 UTF-8 bytes. Each self-digest omits only its own digest field. The Receipt must select both this descriptor and the unchanged Carrier manifest using the manifest's established purpose and media type. The manifest file digest, root tree and application base must equal the owner-issued rejection. The original Attempt, Work Boundary and input Candidate are exact retained provenance. Only the owning Runtime compiler creates the descriptor; provider-authored bytes cannot create this selection. Carrier closure and artifact bytes are independently reopened, and a missing exact binding is unavailable rather than an omitted repair source.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "attempt", "boundary", "inputCandidate", "rejection", "carrierManifest", "digest"],
+  "properties": {
+    "schema": { "const": "lifecycle.builder-repair-output.v1" },
+    "attempt": { "$ref": "#/$defs/reference" },
+    "boundary": { "$ref": "#/$defs/reference" },
+    "inputCandidate": { "$ref": "#/$defs/reference" },
+    "rejection": { "$ref": "#/$defs/rejection" },
+    "carrierManifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["digest", "byteLength", "mediaType", "purpose"],
+      "properties": {
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "byteLength": { "type": "integer", "minimum": 1, "maximum": 268435456 },
+        "mediaType": { "const": "application/vnd.lifecycle.candidate-revision-carrier-manifest+json" },
+        "purpose": { "const": "candidate-revision-carrier-manifest" }
+      }
+    },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+  },
+  "$defs": {
+    "reference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "revision", "digest"],
+      "properties": {
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "revision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    },
+    "rejection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "manifestFileDigest", "candidateTree", "applicationBaseCommit", "explanation", "knowledgeDiagnostic", "validationResultDigest", "violationDigest", "digest"],
+      "properties": {
+        "schema": { "const": "lifecycle.candidate-output-rejection.v1" },
+        "manifestFileDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "candidateTree": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+        "applicationBaseCommit": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+        "explanation": { "type": "string", "minLength": 1, "maxLength": 16384, "$comment": "The owner also enforces a 16,384-byte UTF-8 maximum; it carries a bounded Candidate explanation, never a raw exception dump." },
+        "knowledgeDiagnostic": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "additionalProperties": false, "required": ["code", "locator"], "properties": {
+              "code": { "type": "string", "minLength": 1, "maxLength": 256 },
+              "locator": { "oneOf": [
+                { "type": "null" },
+                { "type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^(?!/)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.?(?:/|$)).+$" }
+              ] }
+            } }
+          ]
+        },
+        "validationResultDigest": { "oneOf": [{ "type": "null" }, { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }] },
+        "violationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
+      }
+    }
+  }
+}

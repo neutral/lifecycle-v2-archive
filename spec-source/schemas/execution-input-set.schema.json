@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:execution-input-set:v1",
-  "title": "Lifecycle Execution Input Set v1",
+  "$id": "urn:lifecycle:schema:execution-input-set:v2",
+  "title": "Lifecycle Execution Input Set v2",
   "description": "Exact immutable logical input and ordered content inventory for one Agent Attempt or Check execution.",
-  "$comment": "Semantic validation recomputes digest over the complete value without digest, entryCount and aggregateByteLength from entries, and contentInventoryDigest as digestCanonical over the complete canonically path-ordered unique entries array, and requires subjects in canonical kind/id/revision/digest order. Every owner requires exactly one runner subject whose digest equals runnerContractDigest. For an Agent owner, owner.ownerSubjectDigest equals the singleton exact role-subject digest; for a Check owner it equals the singleton exact check-proof-subject digest. It is never the digest of an Agent Attempt that itself selects this Input Set, preventing an Attempt digest cycle, and no other subject can substitute for either owner binding. Agent owners require their exact Projection, role subject, Founder direction, Role Brief, semantic template, Capability Profile, Provider Descriptor, Investment, and one or more policy subjects; builder and reviewer owners additionally require one exact Candidate Revision and Candidate Revision Carrier manifest and artifact, while reconnaissance forbids them. Final Check owners require one exact Candidate Revision, Candidate Revision Carrier manifest, and Carrier artifact. Baseline Check owners instead require one exact product-base subject and deterministic Git object-closure manifest and artifact binding the exact Work Boundary product-base commit and tree; those bytes are immutable operation input and never Candidate truth. Every Check also requires one exact Check Definition, Binding, proof subject, and runner and may bind zero or more separately resolved policy subjects. Every subject and entry must resolve to independently verified immutable bytes, Candidate Carrier bindings must agree with the selected Revision, and no physical materialization, volume, cache, Cell, backend, credential, private path identity, provider-invoked validator, or live validity claim may enter the value.",
+  "$comment": "Semantic validation recomputes digest over the complete value without digest, entryCount and aggregateByteLength from entries, and contentInventoryDigest as digestCanonical over the complete canonically path-ordered unique entries array, and requires subjects in canonical kind/id/revision/digest order. Every owner requires exactly one runner subject whose digest equals runnerContractDigest. For an Agent owner, owner.ownerSubjectDigest equals the singleton exact role-subject digest; for a Check owner it equals the singleton exact check-proof-subject digest. It is never the digest of an Agent Attempt that itself selects this Input Set, preventing an Attempt digest cycle, and no other subject can substitute for either owner binding. Agent owners require their exact Projection, role subject, Director direction, Role Brief, semantic template, Capability Profile, Provider Descriptor, Investment, and one or more policy subjects; builder and reviewer owners additionally require one exact Candidate Revision and Candidate Revision Carrier manifest and artifact, plus one delivery-git-context subject binding exact canonical private manifest bytes and a complete pack as operation-input entries. Reconnaissance permits either none of this Candidate selection or the complete exact selection; partial selections are invalid. The Agent owner requires absence for initial preparation and binds the complete frozen Candidate selection to the exact uses-candidate Attempt relationship for boundary resolution. Resolution materializes read-only with no Candidate write capability or Candidate Output export. Final Check owners require one exact Candidate Revision, Candidate Revision Carrier manifest, and Carrier artifact. Baseline Check owners instead require one exact product-base subject and deterministic Git object-closure manifest and artifact binding the exact Work Boundary product-base commit and tree; those bytes are immutable operation input and never Candidate truth. Every Check also requires one exact Check Definition, Binding, proof subject, and runner and may bind zero or more separately resolved policy subjects. Every subject and entry must resolve to independently verified immutable bytes, Candidate Carrier bindings must agree with the selected Revision, and no physical materialization, volume, cache, Cell, backend, credential, private path identity, or claim of final submission validity may enter the value. Provider Adapter v7 Agent input includes exactly one semantic-basis.json operation-input member: application/json, regular, at most 8 MiB, bound to the role-subject digest. Its canonical bytes reproduce the compact immutable basis selected by provider input v7; its presence grants only the bounded local draft assistance profile, never a host callback or authority.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,9 +20,9 @@
     "digest"
   ],
   "properties": {
-    "schema": { "const": "lifecycle.execution-input-set.v1" },
+    "schema": { "const": "lifecycle.execution-input-set.v2" },
     "owner": { "$ref": "#/$defs/owner" },
-    "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
+    "inputMaterialDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
     "subjects": {
       "type": "array",
       "minItems": 1,
@@ -47,10 +47,10 @@
       "minimum": 0,
       "maximum": 9007199254740991
     },
-    "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "runnerContractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "toolInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "contentInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "runnerContractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "toolInventoryDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "owner": {
@@ -61,10 +61,10 @@
           "required": ["kind", "activityId", "attemptId", "role", "ownerSubjectDigest"],
           "properties": {
             "kind": { "const": "agent-attempt" },
-            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-            "attemptId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+            "attemptId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
             "role": { "enum": ["reconnaissance", "builder", "reviewer"] },
-            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
           }
         },
         {
@@ -73,10 +73,10 @@
           "required": ["kind", "activityId", "selectionId", "phase", "ownerSubjectDigest"],
           "properties": {
             "kind": { "const": "check" },
-            "activityId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-            "selectionId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+            "activityId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+            "selectionId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
             "phase": { "enum": ["baseline", "final"] },
-            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+            "ownerSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
           }
         }
       ]
@@ -90,11 +90,12 @@
           "enum": [
             "candidate-revision",
             "candidate-revision-carrier-manifest",
+            "delivery-git-context",
             "product-base",
             "product-base-object-closure-manifest",
             "projection",
             "role-subject",
-            "founder-direction",
+            "director-direction",
             "role-brief",
             "semantic-template",
             "capability-profile",
@@ -107,14 +108,14 @@
             "runner"
           ]
         },
-        "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
+        "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
         "revision": {
           "oneOf": [
             { "type": "null" },
-            { "$ref": "urn:lifecycle:schema:common:v1#/$defs/positiveSafeInteger" }
+            { "$ref": "urn:lifecycle:schema:common:v2#/$defs/positiveSafeInteger" }
           ]
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "entry": {
@@ -122,7 +123,7 @@
       "additionalProperties": false,
       "required": ["path", "purpose", "mediaType", "modeClass", "byteLength", "digest", "sourceSubjectDigest"],
       "properties": {
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
         "purpose": {
           "enum": [
             "candidate-carrier-artifact",
@@ -147,8 +148,8 @@
           "minimum": 0,
           "maximum": 9007199254740991
         },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "sourceSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "sourceSubjectDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     }
   }

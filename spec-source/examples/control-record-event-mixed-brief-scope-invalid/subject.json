@@ -1,0 +1,26 @@
+{
+  "schema": "lifecycle.control-record-event.v6",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 2,
+  "eventId": "event.delegation.demo",
+  "eventKind": "director-brief-submitted",
+  "occurredAt": "2026-09-06T20:00:00.000Z",
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
+  "subject": {
+    "recordId": "delegation.demo",
+    "revision": 1,
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "payload": {
+    "activityId": "activity.demo",
+    "delegationId": "delegation.demo",
+    "delegationRevision": 1,
+    "operation": "delivery.continue"
+  },
+  "predecessorDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "digest": "sha256:8fffe16ffe2841555e37a6596fe73aa9732632c21bf607620421021f091cea28"
+}

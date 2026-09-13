@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { FoundationError } from "../../src/foundation/error.js";
 import {
   createFoundationExecutionAllocationKey,
   foundationExecutionAllocationKeyBindingDigest,
@@ -139,7 +140,7 @@ test("Docker binding recovery resolves one durable Handle and resumes observatio
   const fixture = executionContractFixture("docker-binding-registry-restart");
   const persistence = new RetainedCheckpoint(fixture.specification, 7);
   const first = new FoundationDockerExecutionBindingRegistryV1();
-  first.register({
+  const release = first.register({
     specification: fixture.specification,
     engineIdentityDigest: ENGINE_DIGEST,
     persistence,
@@ -158,6 +159,8 @@ test("Docker binding recovery resolves one durable Handle and resumes observatio
   assert.equal(await first.observationSequence.next(CELL_ID), 9);
 
   persistence.retain(8);
+  release();
+  assert.equal(await first.resolve(HANDLE), null);
   const restarted = new FoundationDockerExecutionBindingRegistryV1();
   restarted.register({
     specification: fixture.specification,
@@ -168,4 +171,103 @@ test("Docker binding recovery resolves one durable Handle and resumes observatio
   assert.equal(await restarted.resolve(
     privateFoundationExecutionHandle(`execution-handle-v1:${"d".repeat(64)}`),
   ), null);
+});
+
+test("released Docker bindings no longer read the previous operation checkpoint", async () => {
+  const firstFixture = executionContractFixture("docker-binding-registry-first");
+  const secondFixture = executionContractFixture("docker-binding-registry-second");
+  assert.notEqual(firstFixture.specification.digest, secondFixture.specification.digest);
+  const firstPersistence = new RetainedCheckpoint(firstFixture.specification, 7);
+  const secondPersistence = new RetainedCheckpoint(secondFixture.specification, 17);
+  const registry = new FoundationDockerExecutionBindingRegistryV1();
+  let previousCheckpointIsCurrent = true;
+  let firstReads = 0;
+  const release = registry.register({
+    specification: firstFixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence: {
+      read: async (specificationDigest) => {
+        firstReads += 1;
+        assert.equal(previousCheckpointIsCurrent, true,
+          "the previous operation must not read the next operation's checkpoint");
+        return firstPersistence.read(specificationDigest);
+      },
+      compareExchange: () => firstPersistence.compareExchange(),
+    },
+  });
+  assert.equal((await registry.resolve(HANDLE))!.retainedObservationSequence, 7);
+  assert.equal(firstReads, 1);
+
+  release();
+  release();
+  previousCheckpointIsCurrent = false;
+  registry.register({
+    specification: secondFixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence: secondPersistence,
+  });
+  const binding = await registry.resolve(HANDLE);
+  assert.equal(binding!.specification.digest, secondFixture.specification.digest);
+  assert.equal(binding!.retainedObservationSequence, 17);
+  assert.equal(await registry.observationSequence.next(CELL_ID), 18);
+  assert.equal(firstReads, 1);
+});
+
+test("releasing an earlier Docker binding preserves its exact-Specification replacement", async () => {
+  const fixture = executionContractFixture("docker-binding-registry-replacement");
+  const registry = new FoundationDockerExecutionBindingRegistryV1();
+  const releaseEarlier = registry.register({
+    specification: fixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence: new RetainedCheckpoint(fixture.specification, 7),
+  });
+  const releaseReplacement = registry.register({
+    specification: fixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence: new RetainedCheckpoint(fixture.specification, 17),
+  });
+
+  releaseEarlier();
+  releaseEarlier();
+  assert.equal((await registry.resolve(HANDLE))!.retainedObservationSequence, 17);
+  assert.equal(await registry.observationSequence.next(CELL_ID), 18);
+  releaseReplacement();
+  releaseReplacement();
+  assert.equal(await registry.resolve(HANDLE), null);
+});
+
+test("active Docker binding checkpoint refusals remain conclusive until that registration is released", async () => {
+  const fixture = executionContractFixture("docker-binding-registry-checkpoint-refusal");
+  const persistence = new RetainedCheckpoint(fixture.specification, 7);
+  const registry = new FoundationDockerExecutionBindingRegistryV1();
+  const refusal = new FoundationError(
+    "lifecycle.check-operation-v7.substitution",
+    "Retained Check Cell checkpoint differs from the exact proof obligation",
+  );
+  let substituted = false;
+  const release = registry.register({
+    specification: fixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence: {
+      read: async (specificationDigest) => {
+        if (substituted) throw refusal;
+        return persistence.read(specificationDigest);
+      },
+      compareExchange: () => persistence.compareExchange(),
+    },
+  });
+  assert.equal((await registry.resolve(HANDLE))!.retainedObservationSequence, 7);
+  substituted = true;
+  await assert.rejects(registry.resolve(HANDLE), (error: unknown) => error === refusal);
+  await assert.rejects(registry.observationSequence.next(CELL_ID),
+    (error: unknown) => error === refusal);
+
+  release();
+  assert.equal(await registry.resolve(HANDLE), null);
+  registry.register({
+    specification: fixture.specification,
+    engineIdentityDigest: ENGINE_DIGEST,
+    persistence,
+  });
+  assert.equal(await registry.observationSequence.next(CELL_ID), 8);
 });

@@ -7,12 +7,16 @@ import type {
   ControlRecordEventSubject,
 } from "../control/types.js";
 import { digestCanonical } from "../validation/canonical.js";
+import { controlTimestamp } from "../control/model.js";
+import { parseWorkDelegationReservation } from "../control/work-delegation.js";
 import { parseFoundationTransactionObservationFactsV7 } from
   "./transaction-observation-facts-v7.js";
 
 export const DELIVERY_EVENT_KINDS = Object.freeze([
   "delivery-created",
-  "founder-brief-submitted",
+  "director-brief-submitted",
+  "work-delegation-set",
+  "work-delegation-stopped",
   "activity-started",
   "activity-recovery-recorded",
   "agent-pre-intent-refused",
@@ -22,13 +26,14 @@ export const DELIVERY_EVENT_KINDS = Object.freeze([
   "agent-work-product-submitted",
   "agent-work-product-abandoned",
   "candidate-revision-observed",
+  "integration-assessed",
   "execution-receipt-recorded",
   "work-boundary-finalized",
   "material-condition-frozen",
   "candidate-sealed",
   "check-receipt-recorded",
   "evidence-packet-finalized",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "activity-completed",
@@ -38,17 +43,19 @@ export const DELIVERY_EVENT_KINDS = Object.freeze([
 export type DeliveryEventKind = typeof DELIVERY_EVENT_KINDS[number];
 
 export type DeliveryEventSubjectKind =
-  | "founder-brief"
+  | "director-brief"
+  | "work-delegation"
   | "agent-attempt"
   | "agent-work-product"
   | "candidate-revision"
+  | "integration-assessment"
   | "execution-receipt"
   | "work-boundary"
   | "material-condition"
   | "candidate-seal"
   | "check-receipt"
   | "evidence-packet"
-  | "founder-decision"
+  | "director-decision"
   | "closure";
 
 export type DeliveryEventDescriptor = Readonly<{
@@ -76,10 +83,10 @@ const DESCRIPTORS = Object.freeze({
     subjectKind: null,
     subjectUse: "forbidden",
   },
-  "founder-brief-submitted": {
-    kind: "founder-brief-submitted",
+  "director-brief-submitted": {
+    kind: "director-brief-submitted",
     boundary: "activity",
-    subjectKind: "founder-brief",
+    subjectKind: "director-brief",
     subjectUse: "required",
   },
   "activity-started": {
@@ -87,6 +94,18 @@ const DESCRIPTORS = Object.freeze({
     boundary: "activity",
     subjectKind: null,
     subjectUse: "forbidden",
+  },
+  "work-delegation-set": {
+    kind: "work-delegation-set",
+    boundary: "process",
+    subjectKind: "work-delegation",
+    subjectUse: "required",
+  },
+  "work-delegation-stopped": {
+    kind: "work-delegation-stopped",
+    boundary: "process",
+    subjectKind: "work-delegation",
+    subjectUse: "required",
   },
   "activity-recovery-recorded": {
     kind: "activity-recovery-recorded",
@@ -130,6 +149,12 @@ const DESCRIPTORS = Object.freeze({
     subjectKind: "agent-attempt",
     subjectUse: "exact-activity-subject",
   },
+  "integration-assessed": {
+    kind: "integration-assessed",
+    boundary: "candidate",
+    subjectKind: "integration-assessment",
+    subjectUse: "required",
+  },
   "candidate-revision-observed": {
     kind: "candidate-revision-observed",
     boundary: "candidate",
@@ -172,22 +197,22 @@ const DESCRIPTORS = Object.freeze({
     subjectKind: "evidence-packet",
     subjectUse: "required",
   },
-  "founder-decision-authenticated": {
-    kind: "founder-decision-authenticated",
+  "director-decision-authenticated": {
+    kind: "director-decision-authenticated",
     boundary: "authority",
-    subjectKind: "founder-decision",
+    subjectKind: "director-decision",
     subjectUse: "required",
   },
   "transaction-effect-intended": {
     kind: "transaction-effect-intended",
     boundary: "transaction",
-    subjectKind: "founder-decision",
+    subjectKind: "director-decision",
     subjectUse: "exact-activity-subject",
   },
   "transaction-effect-observed": {
     kind: "transaction-effect-observed",
     boundary: "transaction",
-    subjectKind: "founder-decision",
+    subjectKind: "director-decision",
     subjectUse: "exact-activity-subject",
   },
   "activity-completed": {
@@ -209,12 +234,16 @@ type PayloadField =
   | "sha256"
   | "nullable-sha256"
   | "transaction-facts"
+  | "positive-integer"
+  | "timestamp"
+  | "work-reservation"
   | Readonly<{ values: readonly string[] }>;
 
 const OPERATIONS = Object.freeze([
   "delivery.prepare",
   "delivery.admit",
   "delivery.continue",
+  "delivery.integrate",
   "delivery.evaluate",
   "delivery.revise",
   "delivery.reaffirm",
@@ -225,7 +254,11 @@ const OPERATIONS = Object.freeze([
 
 const PAYLOAD_FIELDS = Object.freeze({
   "delivery-created": Object.freeze({}),
-  "founder-brief-submitted": Object.freeze({ activityId: "identifier" }),
+  "director-brief-submitted": Object.freeze({ activityId: "identifier" }),
+  "work-delegation-set": Object.freeze({}),
+  "work-delegation-stopped": Object.freeze({
+    requestDigest: "sha256", requestedAt: "timestamp", requestedBy: "identifier",
+  }),
   "activity-started": Object.freeze({
     activityId: "identifier",
     operation: Object.freeze({ values: OPERATIONS }),
@@ -245,6 +278,7 @@ const PAYLOAD_FIELDS = Object.freeze({
     activityId: "identifier",
     diagnosticCode: "identifier",
     refusalFactsDigest: "sha256",
+    resolution: Object.freeze({ values: Object.freeze(["none", "projection-condition-required"]) }),
   }),
   "agent-attempt-prepared": Object.freeze({ activityId: "identifier" }),
   "provider-effect-intended": Object.freeze({ activityId: "identifier", effectDigest: "sha256" }),
@@ -256,17 +290,18 @@ const PAYLOAD_FIELDS = Object.freeze({
   "agent-work-product-submitted": Object.freeze({ activityId: "identifier" }),
   "agent-work-product-abandoned": Object.freeze({ activityId: "identifier" }),
   "candidate-revision-observed": Object.freeze({ activityId: "identifier" }),
+  "integration-assessed": Object.freeze({ activityId: "identifier" }),
   "execution-receipt-recorded": Object.freeze({ activityId: "identifier" }),
   "work-boundary-finalized": Object.freeze({ activityId: "identifier" }),
   "material-condition-frozen": Object.freeze({
-    sourceKind: Object.freeze({ values: Object.freeze(["agent-proposal"]) }),
+    sourceKind: Object.freeze({ values: Object.freeze(["agent-proposal", "integration-assessment", "projection-compilation"]) }),
     activityId: "identifier",
     observedFactsDigest: "sha256",
   }),
   "candidate-sealed": Object.freeze({ activityId: "identifier" }),
   "check-receipt-recorded": Object.freeze({ activityId: "identifier" }),
   "evidence-packet-finalized": Object.freeze({ activityId: "identifier" }),
-  "founder-decision-authenticated": Object.freeze({ activityId: "identifier" }),
+  "director-decision-authenticated": Object.freeze({ activityId: "identifier" }),
   "transaction-effect-intended": Object.freeze({ activityId: "identifier", effectDigest: "sha256" }),
   "transaction-effect-observed": Object.freeze({
     activityId: "identifier",
@@ -301,6 +336,21 @@ export function deliveryEventDescriptor(kind: string): DeliveryEventDescriptor {
 }
 
 function assertPayloadValue(name: string, value: ControlJsonValue, field: PayloadField): void {
+  if (field === "positive-integer") {
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+      fail("payload", `Delivery event payload ${name} requires a positive safe integer`);
+    }
+    return;
+  }
+  if (field === "timestamp") {
+    if (typeof value !== "string") fail("payload", `Delivery event payload ${name} requires a timestamp`);
+    controlTimestamp(value, `Delivery event payload ${name}`);
+    return;
+  }
+  if (field === "work-reservation") {
+    parseWorkDelegationReservation(value);
+    return;
+  }
   if (field === "identifier") {
     if (
       typeof value !== "string" ||
@@ -334,7 +384,13 @@ function assertPayloadValue(name: string, value: ControlJsonValue, field: Payloa
 
 export function assertDeliveryEventPayload(event: ControlRecordEvent): ControlJsonObject {
   const descriptor = deliveryEventDescriptor(event.eventKind);
-  const fields: Readonly<Record<string, PayloadField>> = PAYLOAD_FIELDS[descriptor.kind];
+  const fields: Readonly<Record<string, PayloadField>> =
+    descriptor.kind === "director-brief-submitted" && Object.hasOwn(event.payload, "delegationId")
+      ? { delegationId: "identifier", delegationRevision: "positive-integer",
+          operation: { values: ["delivery.continue", "delivery.evaluate"] } }
+      : descriptor.kind === "activity-started" && Object.hasOwn(event.payload, "reservation")
+        ? { ...PAYLOAD_FIELDS["activity-started"], reservation: "work-reservation" }
+        : PAYLOAD_FIELDS[descriptor.kind];
   const actual = Object.keys(event.payload).sort();
   const expected = Object.keys(fields).sort();
   if (

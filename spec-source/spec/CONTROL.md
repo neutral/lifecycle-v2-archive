@@ -4,18 +4,18 @@
 
 ## Purpose
 
-This document defines the Lifecycle Foundation rc.10 Delivery Control Record
+This document defines the Lifecycle Foundation rc.17 Delivery Control Record
 Store, the common lifecycle of every Delivery Control record, the closed
 Delivery record-family registry, the append-only event source, and the exact
 seal and archive boundary.
 
-Delivery Control preserves what the Founder supplied or authenticated, what an
+Delivery Control preserves what the Director supplied or authenticated, what an
 assigned agent proposed, what the runtime observed or derived, and which exact
 revision caused each Process milestone. Control is not Product Knowledge, the
 Candidate, canonical product state, provider conversation, or a mutable Process
 state object.
 
-The Foundation rc.10 rule is:
+The Foundation rc.17 rule is:
 
 ```text
 one Delivery
@@ -34,7 +34,7 @@ revision from exported prose, or promote Delivery Control onto repository HEAD.
 operation eligibility, transactions, and recovery semantics. This document
 also owns the common Activity-kernel mechanics that durably execute those
 semantics. [Authority](AUTHORITY.md) owns authenticated
-Founder decisions. [Agent Attempts](ATTEMPTS.md) owns provider execution and
+Director decisions. [Agent Attempts](ATTEMPTS.md) owns provider execution and
 agent work-product submission. [Evidence](EVIDENCE.md) owns Checks, sealing,
 review, and Evidence meaning. [Processing](PROCESSING.md) owns canonical JSON,
 digests, identifiers, ordering, and general processing security. This document
@@ -47,7 +47,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 and **MAY** are normative only when they appear in uppercase. Their meanings
 follow BCP 14.
 
-## Foundation rc.10 Hard Cut
+## Foundation rc.17 Hard Cut
 
 The current Control Store cut is selected only by these coordinated fresh
 Foundation values:
@@ -56,16 +56,17 @@ Foundation values:
 
 | Coordinate | Selected value |
 | --- | --- |
-| Qualification revision | `lifecycle.foundation.1.0.0-rc.10` |
-| Repository contract | `lifecycle.repository.v15` |
-| Runtime protocol | `lifecycle.runtime.foundation.v10` |
-| Interface protocol | `lifecycle.interface.foundation.v10` |
-| Provider adapter | `lifecycle.provider-adapter.v6` |
-| Store | `lifecycle.control-record-store.v1` |
-| Record revision | `lifecycle.control-record-revision.v1` |
-| Control lifecycle profile | `foundation-delivery-control-lifecycle-v4` |
-| Event | `lifecycle.control-record-event.v2` |
-| Delivery reduction | `lifecycle.delivery-reduction.v2` |
+| Qualification revision | `lifecycle.foundation.1.0.0-rc.17` |
+| Repository contract | `lifecycle.repository.v22` |
+| Runtime protocol | `lifecycle.runtime.foundation.v17` |
+| Interface protocol | `lifecycle.interface.foundation.v17` |
+| Provider adapter | `lifecycle.provider-adapter.v7` |
+| Store | `lifecycle.control-record-store.v2` |
+| Physical SQLite version | `user_version = 3` |
+| Record revision | `lifecycle.control-record-revision.v2` |
+| Control lifecycle profile | `foundation-delivery-control-lifecycle-v7` |
+| Event | `lifecycle.control-record-event.v6` |
+| Delivery reduction | `lifecycle.delivery-reduction.v5` |
 | Referenced file | `lifecycle.control-record-file.v1` |
 | Candidate Revision Carrier manifest | `lifecycle.candidate-revision-carrier-manifest.v1` |
 | Operation support | `lifecycle.control-record-operation-support.v1` |
@@ -78,31 +79,33 @@ The product package remains `1.0.0`. These coordinates are independent; no
 package label substitutes for an exact repository, runtime, interface,
 provider, store, record, event, seal, or archive selection.
 
-The twelve selected payload schemas are:
+The fourteen selected payload schemas are:
 
 <!-- markdownlint-disable MD013 -->
 
 | Family | Payload schema |
 | --- | --- |
-| `founder-brief` | `urn:lifecycle:schema:founder-brief-payload:v1` |
+| `director-brief` | `urn:lifecycle:schema:director-brief-payload:v2` |
+| `work-delegation` | `urn:lifecycle:schema:work-delegation-payload:v2` |
 | `agent-attempt` | `urn:lifecycle:schema:agent-attempt-payload:v3` |
-| `agent-work-product` | `urn:lifecycle:schema:agent-work-product-payload:v2` |
+| `agent-work-product` | `urn:lifecycle:schema:agent-work-product-payload:v5` |
 | `execution-receipt` | `urn:lifecycle:schema:execution-receipt-payload:v3` |
-| `candidate-revision` | `urn:lifecycle:schema:candidate-revision-payload:v2` |
-| `work-boundary` | `urn:lifecycle:schema:work-boundary-payload:v4` |
-| `material-condition` | `urn:lifecycle:schema:material-condition-payload:v1` |
-| `founder-decision` | `urn:lifecycle:schema:founder-decision-payload:v4` |
+| `candidate-revision` | `urn:lifecycle:schema:candidate-revision-payload:v3` |
+| `integration-assessment` | `urn:lifecycle:schema:integration-assessment-payload:v1` |
+| `work-boundary` | `urn:lifecycle:schema:work-boundary-payload:v6` |
+| `material-condition` | `urn:lifecycle:schema:material-condition-payload:v4` |
+| `director-decision` | `urn:lifecycle:schema:director-decision-payload:v5` |
 | `candidate-seal` | `urn:lifecycle:schema:candidate-seal-payload:v2` |
-| `check-receipt` | `urn:lifecycle:schema:check-receipt-payload:v2` |
-| `evidence-packet` | `urn:lifecycle:schema:evidence-packet-payload:v1` |
-| `closure` | `urn:lifecycle:schema:closure-payload:v4` |
+| `check-receipt` | `urn:lifecycle:schema:check-receipt-payload:v3` |
+| `evidence-packet` | `urn:lifecycle:schema:evidence-packet-payload:v2` |
+| `closure` | `urn:lifecycle:schema:closure-payload:v6` |
 
 <!-- markdownlint-enable MD013 -->
 
-Foundation rc.10 does not read, migrate, adopt, import, promote, or continue an
+Foundation rc.17 does not read, migrate, adopt, import, promote, or continue an
 unsupported Delivery Store, document, Process Git ref, tracked Control tree,
 Journal, repository contract, runtime or interface protocol, or Provider
-Adapter. A fresh v15 target containing recognized unsupported or mixed
+Adapter. A fresh v22 target containing recognized unsupported or mixed
 Delivery Control MUST be refused. Shape similarity, an export, and a matching
 digest string do not create compatibility.
 
@@ -138,7 +141,7 @@ authority. Putting product bytes, a Carrier object closure, Knowledge, or
 ordinary development files in the Control Store does not make them a Candidate
 or canonical product state. A Carrier manifest retained as an adjacent file is
 bounded Control evidence about exact external Git bytes; it does not move those
-bytes into Control or make a Carrier a thirteenth record family.
+bytes into Control or make a Carrier another record family.
 
 The Repository Contract and Product State compiler MUST exclude the active and
 archived Control Store roots. Candidate observation and sealing MUST likewise
@@ -155,29 +158,37 @@ finalization event atomically.
 
 Physical production does not transfer semantic authorship or authority:
 
-- `founder-supplied` means the Founder supplied the retained semantics without
+- `director-supplied` means the Director supplied the retained semantics without
   authenticating a Process effect;
 - `agent-proposed` means the assigned agent proposed the retained semantics
   inside one exact Agent Attempt;
-- `founder-authenticated` means the Founder authenticated the exact typed
+- `director-authenticated` means the Director authenticated the exact typed
   decision subject and semantic revision;
 - `runtime-observed` means the runtime directly established the operative
   fact through its owned observer or qualified adapter; and
 - `runtime-derived` means the runtime deterministically compiled the value
   from exact retained inputs and the selected rule set.
 
+Director provenance identifies the capacity in which the input or decision was
+supplied, whether its principal represents a human or an agent. The `agent`
+actor kind and `agent-proposed` class identify semantic work from an assigned
+Agent Attempt. A software Director supplies its Director Brief through the
+Director input contract; its Worker output cannot relabel itself as Director
+input or authentication. The [operating roles](AUTHORITY.md#operating-roles)
+remain separate from physical actor identity.
+
 Every revision records both a `producer` actor and a `semanticAuthor` actor.
 They MUST satisfy the closed family registry. Runtime normalization,
-validation, identity assignment, or retention MUST NOT relabel Founder or agent
+validation, identity assignment, or retention MUST NOT relabel Director or agent
 semantics as runtime-observed or runtime-derived. A record-level authority
-class likewise MUST NOT promote an agent proposal into Founder authority or
+class likewise MUST NOT promote an agent proposal into Director authority or
 turn a runtime observation into product acceptance.
 
 ### Access is not standing
 
 `private` is not a record standing, authority class, retention class, or
 Process state. The store instead applies explicit custody and access rules.
-The Founder, an assigned agent, an interface, and the runtime can have different
+The Director, an assigned agent, an interface, and the runtime can have different
 read or edit capabilities over the same governed Delivery without changing the
 record's meaning.
 
@@ -231,7 +242,7 @@ Control path.
 ## SQLite Is the Primary Carrier
 
 Foundation uses one SQLite database with application identifier `0x4c435253`
-and physical user version `1`. It contains these relations:
+and physical user version `2`. It contains these relations:
 
 - immutable store metadata;
 - logical record identities and kinds;
@@ -240,7 +251,8 @@ and physical user version `1`. It contains these relations:
 - immutable Journal events;
 - immutable referenced-file descriptors;
 - one transient pending-file custody batch with its exact file entries;
-- bounded mutable operation-support rows keyed by activity identity; and
+- bounded mutable operation-support rows keyed by activity identity;
+- one transient exact Work Delegation stop request; and
 - one immutable optional store seal.
 
 The database MUST use strict typing, foreign-key enforcement, defensive mode,
@@ -271,9 +283,9 @@ operation support and cannot be reopened or replaced.
 The support kind and all store, Process, and activity bindings are immutable.
 At most 256 live rows may exist, and the total of live rows and disposal
 tombstones cannot exceed the Journal-event bound. Operation support and its
-disposal tombstones are runtime-writable. A bounded Founder read may expose
+disposal tombstones are runtime-writable. A bounded Director read may expose
 only a sanitized activity identity, generation digest, and recovery standing.
-Agents, provider adapters, Founders, and interfaces including the TUI cannot
+Agents, provider adapters, Directors, and interfaces including the TUI cannot
 read a private Execution Handle, allocation key, backend coordinate,
 credential, or Reclamation handoff from support and cannot mutate support.
 Operation support is not a Control record, Journal event, semantic authority
@@ -315,10 +327,58 @@ defined by the canonical values and digests in this document. Once archived,
 the archive manifest separately binds the exact retrieval bytes of the SQLite
 file.
 
+### Work Delegation stop custody
+
+The Store retains at most one `lifecycle.work-delegation-stop-request.v1`
+request while its current delegation is stopping. This operational value has
+exactly `schema`, `storeId`, `processId`, `delegation`, `requestedBy`,
+`requestedAt`, and `digest`. `delegation` is the complete Work Delegation
+reference; `requestedBy` is its supplying Director identity; `requestedAt` is
+the Runtime-observed canonical UTC request time. The digest is SHA-256 of the
+canonical JSON object with `digest` omitted. The entire retained request uses
+the existing 65,536-byte Control event JSON bound. No secret, Handle, support
+payload or next-operation cursor belongs in it.
+
+A stop request uses its own short immediate SQLite transaction and does not
+take the Delivery operation lock or append a Journal event. Inside that
+transaction the Store replays fresh Journal facts, verifies the current exact
+delegation and its supplying Director, and inserts the request against absence.
+Pending file custody does not prevent recording the request. A repeated request
+for that same delegation returns the first retained request; it cannot replace
+its identity, time or digest. A changed delegation or Director refuses. A
+terminal Activity already in progress uses its existing decision and recovery
+route and cannot acquire a pending resource stop.
+
+Every fresh `activity-started` append checks pending stop custody in the same
+transaction that retains the opening, reservation and operation support. An
+existing request prevents that opening, delegation replacement, and Closure.
+It does not interrupt the already opened finite operation, its remaining
+reserved Cells, or its exact recovery. An opening that committed first remains
+reserved; a stop that committed first prevents the opening. No concurrent
+Journal writer is introduced and the operation owner's cached replay is not
+replaced by the stop caller.
+
+After the existing Activity and pending file custody settle, the sole Journal
+writer appends `work-delegation-stopped` over the exact delegation. Its payload
+has exactly `requestDigest`, `requestedAt`, and `requestedBy`, reproducing the
+retained request. The request time cannot follow the event time. The same
+transaction appends this fact and deletes the operational request; either
+both commit or neither does. Exact replay returns the retained event without
+another stop or charge. The event's request digest also permits observation
+after a lost successful return. The historical stopped fact does not
+invalidate an already reserved operation or refund its charge.
+
+Stop custody is immutable until that exact consumption. It is neither a
+Control family nor part of the logical inventory. Integrity checks require its
+exact current unstopped delegation, Director, digest and supported phase. No
+pending stop may survive sealing. The public read distinguishes a pending
+request from the reducer-derived settled stop; closing a browser does not
+establish either condition.
+
 ### Runtime-owned SQL
 
 Only the selected Lifecycle runtime may execute SQL against the database.
-Founders, agents, provider adapters, Checks, interfaces, scripts, plugins, and
+Directors, agents, provider adapters, Checks, interfaces, scripts, plugins, and
 external tools MUST use a runtime protocol operation for inspection, authoring,
 submission, validation, or export. Possession of filesystem access does not
 grant SQL authority.
@@ -351,6 +411,12 @@ An operation definition owns the meaning specific to one route:
 - the physical effects to perform and the direct observations that establish
   their outcomes; and
 - compilation of the operation-specific Control revisions and events.
+
+Ownership of the physical effect plan means declaring and requesting the exact
+effect through its existing implementation owner. It does not grant the
+operation definition a general Engine driver, Director signer, or canonical Git
+writer. The [capability ownership contract](SECURITY.md#consequential-capability-ownership)
+preserves those boundaries while the Store retains sole SQL ownership.
 
 The reducer alone determines whether those eligibility requirements are
 satisfied at the exact Journal head. An operation definition cannot make
@@ -389,14 +455,13 @@ Handle or redispatching consumed authority. Only the owning Attempt or Check
 Receipt may retain the stable sanitized execution facts established from that
 mechanism.
 
-Acceptance's immutable semantic activity plan contains the authenticated exact
-sealed Candidate result and admitted canonical parent. Its one terminal effect
-plan and effect digest bind one atomic application over that unchanged parent.
-Any pre-effect canonical or authoritative-worktree movement is conclusively
-`not-applied`; Atlas receives no separate waiting or retry rule. Recovery may
-recognize the exact retained pre-effect parent or the one exact accepted commit
-already applied, but it cannot resample semantic authority, another parent, or
-a replacement plan.
+Acceptance's immutable semantic Activity plan binds the exact sealed integrated
+Candidate and its application parent. Its one effect plan authorizes one
+conditional application. Conclusive parent movement finishes that effect as
+`not-applied`; a fresh integration and Decision are separate eligible work.
+Recovery can recognize the exact accepted commit after later forward movement,
+but MUST NOT select another parent, substitute a plan, or infer non-application
+from unavailable or rewritten history.
 
 Operation support MAY retain bounded effect-specific checkpoint, private
 execution coordinate, and physical observation facts needed for exact
@@ -413,15 +478,13 @@ observation and their runtime-derived `factsDigest` belong to that exact
 MUST NOT remove the preimage needed to validate an earlier event's shape,
 operation/outcome compatibility, or digest.
 
-For applied acceptance, the checkpoint additionally retains the exact observed
-canonical result needed for finalization: admitted parent commit and tree,
-accepted commit and tree, Candidate Product State and Knowledge Set identities,
-and the admitted four-part Atlas identities.
-Acceptance finalization MUST validate the final immutable applied observation
-through the closed acceptance-observation facts contract and MUST require its
-`canonicalResultDigest` to equal the canonical digest of that exact checkpoint
-result before compiling Closure. A generic, missing, malformed, or mismatched
-observation fact cannot establish accepted Closure.
+For applied acceptance, the checkpoint retains the exact observed integration
+parent commit and tree, accepted commit and tree, Candidate Product State and
+Knowledge Set, and exact selected integration provenance. Finalization MUST
+validate the immutable applied-observation contract and require its
+`canonicalResultDigest` to equal the digest of that checkpoint result before
+compiling Closure. A missing, malformed, or substituted observation cannot
+establish accepted Closure.
 
 `closure-recorded` completes the terminal Activity and is the final Journal
 event. Any remaining Store seal or archive recovery is a physical
@@ -447,10 +510,10 @@ events or operative Process facts.
 
 The three standard edit windows are:
 
-- `before-activity` — Founder editing ends before the funded activity starts;
+- `before-activity` — Director editing ends before the funded activity starts;
 - `provider-active` — only the assigned agent can edit while its exact
   provider activity remains active; and
-- `before-authentication` — Founder editing ends before the exact decision is
+- `before-authentication` — Director editing ends before the exact decision is
   authenticated.
 
 `none` means no actor can edit semantic input for that family. The runtime
@@ -465,7 +528,7 @@ edit capability.
 
 ### Governed working values and authoring workspace
 
-A Founder-edited working value MAY use the Store's bounded `drafts/` support
+A Director-edited working value MAY use the Store's bounded `drafts/` support
 while its exact edit window remains open. It is not a retained revision and
 MUST be submitted or abandoned before sealing. Its physical path and continued
 existence do not create Process standing.
@@ -474,8 +537,9 @@ An Agent Work Product uses one governed authoring workspace inside the exact
 Attempt Cell. The Runtime compiles the template and binding into the Execution
 Input Set; the fixed cell-side runner materializes one bounded `semantic.md`
 working value. The assigned Agent can revise that value across provider turns
-inside the one funded Attempt. Foundation rc.10 exposes no provider-invoked
-live validator or validity response. Intermediate writes do not submit a Work
+inside the one funded Attempt. Local draft assistance may inspect explicit
+bytes against the immutable authoring basis, without creating Control truth.
+Intermediate writes and local observations do not submit a Work
 Product, append a revision or event, or become Candidate state.
 
 Submission closes the editor capability over one exact output claim, but the
@@ -515,7 +579,7 @@ A validation failure, expired edit window, provider interruption, cancellation,
 or missing submission leaves no finalized record revision and no finalization
 event. The runtime MAY retain a bounded support-resource digest for diagnosis,
 but MUST NOT reinterpret an incomplete working value as a submitted Work
-Product or Founder decision.
+Product or Director decision.
 
 ### Finalization and immutable revision
 
@@ -531,8 +595,9 @@ revision `n`; it cannot skip, overwrite, renumber, or change kind. The prior
 revision remains immutable and addressable. A successor does not make the
 predecessor false or delete it.
 
-`candidate-revision` and `work-boundary` are the only successive Foundation
-rc.10 families. Every other standard family is single-revision. A fresh
+`candidate-revision`, `work-boundary`, and `work-delegation` are the only
+successive Foundation rc.17 families. Every other standard family is
+single-revision. A fresh
 reconnaissance Brief, Agent Attempt, Work Product, Receipt, decision, Seal,
 Check Receipt, Packet, Condition, or Closure therefore receives a new logical
 record identity rather than mutating an earlier record.
@@ -548,7 +613,7 @@ In particular:
 
 - a Work Boundary becomes active only through the
   `transaction-effect-observed(applied)` event for its exact
-  Founder-authenticated admission or readmission effect;
+  Director-authenticated admission or readmission effect;
 - after an applied initial-admission effect, that Boundary is current before
   the required initialization Candidate observation; the distinct Candidate
   condition remains `absent` and exact recovery is the only eligible operation;
@@ -558,7 +623,7 @@ In particular:
   resolves it;
 - a Candidate Seal and Evidence Packet remain usable only while their exact
   Candidate and Work Boundary join remains current;
-- a Founder Decision authenticates one subject but does not claim that its
+- a Director Decision authenticates one subject but does not claim that its
   transaction completed; and
 - every unresolved Activity head is recoverable, while Candidate condition
   distinguishes a `started` or `prepared` pre-effect Activity from one that has
@@ -574,7 +639,7 @@ the event fold.
 
 ## Record Revision Contract
 
-One `lifecycle.control-record-revision.v1` logical value contains exactly:
+One `lifecycle.control-record-revision.v2` logical value contains exactly:
 
 - schema and Process identity;
 - record identity, kind, and positive revision;
@@ -610,7 +675,7 @@ Before digesting or retaining Markdown, the runtime MUST:
 - normalize CRLF to LF;
 - remove every terminal LF and append exactly one LF; and
 - preserve all other authored content exactly, except where the selected Agent
-  Work Product v2 profile explicitly requires deterministic rendering from the
+  Work Product v4 profile explicitly requires deterministic rendering from the
   parsed typed value.
 
 Provider terminal-message framing is not the semantic return contract and
@@ -626,8 +691,8 @@ profile. It contains the operational fields the runtime must validate, reduce,
 authenticate, or inspect. It MUST NOT repeat the Markdown merely to produce a
 second prose authority surface.
 
-The runtime, not a Founder or agent, supplies identities, fixed bindings,
-ordering, derived values, compiler facts, envelopes, and digests. Founder or
+The runtime, not a Director or agent, supplies identities, fixed bindings,
+ordering, derived values, compiler facts, envelopes, and digests. Director or
 agent semantic input is compiled into the payload only under the family's
 declared provenance. Unknown properties, invalid types, unsupported values,
 duplicate keys, noncanonical numbers, or an unbounded value fail before
@@ -640,7 +705,7 @@ containing target kind, identity, positive revision, and logical digest.
 Relationships are ordered by relation, target kind, identity, revision, and
 digest and MUST be unique.
 
-Every rc.10 relationship names an exact target revision and matching logical
+Every rc.17 relationship names an exact target revision and matching logical
 digest. A lineage-only, latest, or null-revision relationship is invalid.
 
 Every standard relationship MUST satisfy the closed family registry below. A
@@ -653,8 +718,8 @@ repeat the same fact.
 ## Event Source
 
 The `journal_events` relation is the sole retained Delivery event source. An
-event is not a thirteenth Control record family. It is one
-`lifecycle.control-record-event.v2` value containing:
+event is not a separate Control record family. It is one
+`lifecycle.control-record-event.v6` value containing:
 
 - store and Process identities;
 - positive contiguous sequence;
@@ -688,12 +753,14 @@ Retirement, Reclamation, or reasoning.
 
 ### Closed event vocabulary
 
-Foundation rc.10 has exactly these twenty-two event kinds, in the lifecycle
+The selected fresh cut has exactly these twenty-five event kinds, in the lifecycle
 profile's fixed order:
 
 ```text
 delivery-created
-founder-brief-submitted
+director-brief-submitted
+work-delegation-set
+work-delegation-stopped
 activity-started
 activity-recovery-recorded
 agent-pre-intent-refused
@@ -702,6 +769,7 @@ provider-effect-intended
 provider-effect-observed
 agent-work-product-submitted
 agent-work-product-abandoned
+integration-assessed
 candidate-revision-observed
 execution-receipt-recorded
 work-boundary-finalized
@@ -709,7 +777,7 @@ material-condition-frozen
 candidate-sealed
 check-receipt-recorded
 evidence-packet-finalized
-founder-decision-authenticated
+director-decision-authenticated
 transaction-effect-intended
 transaction-effect-observed
 activity-completed
@@ -747,21 +815,23 @@ provider work, infer absence as failure, or repair ambiguity with direct SQL.
 
 ## Closed Delivery Record-Family Registry
 
-Foundation rc.10 supports exactly twelve Delivery Control record kinds. Every
+The selected fresh cut supports exactly fourteen Delivery Control record kinds. Every
 family retains with and archives as part of the complete Delivery Store.
 
 <!-- markdownlint-disable MD013 -->
 
 | Kind | Dossier | Semantic author | Authority | Editor/window | Revisions | Finalization event |
 | --- | --- | --- | --- | --- | --- | --- |
-| `founder-brief` | Frame | Founder | `founder-supplied` | Founder / `before-activity` | single | `founder-brief-submitted` |
+| `director-brief` | Frame | Director | `director-supplied` | Director / `before-activity` | single | `director-brief-submitted` |
+| `work-delegation` | Attempt | Director | `director-supplied` | Director / `before-activity` | successive | `work-delegation-set` |
 | `agent-attempt` | Attempt | runtime | `runtime-derived` | none | single | `agent-attempt-prepared` |
 | `agent-work-product` | Attempt | assigned agent | `agent-proposed` | assigned agent / `provider-active` | single | `agent-work-product-submitted` |
 | `execution-receipt` | Attempt | runtime | `runtime-observed` | none | single | `execution-receipt-recorded` |
 | `candidate-revision` | Candidate | runtime | `runtime-observed` | none | successive | `candidate-revision-observed` |
+| `integration-assessment` | Candidate | runtime | `runtime-observed` | none | single | `integration-assessed` |
 | `work-boundary` | Boundary | runtime | `runtime-derived` | none | successive | `work-boundary-finalized` |
 | `material-condition` | Boundary | runtime | `runtime-derived` | none | single | `material-condition-frozen` |
-| `founder-decision` | Decision | Founder | `founder-authenticated` | Founder / `before-authentication` | single | `founder-decision-authenticated` |
+| `director-decision` | Decision | Director | `director-authenticated` | Director / `before-authentication` | single | `director-decision-authenticated` |
 | `candidate-seal` | Evidence | runtime | `runtime-observed` | none | single | `candidate-sealed` |
 | `check-receipt` | Evidence | runtime | `runtime-observed` | none | single | `check-receipt-recorded` |
 | `evidence-packet` | Evidence | runtime | `runtime-derived` | none | single | `evidence-packet-finalized` |
@@ -769,17 +839,21 @@ family retains with and archives as part of the complete Delivery Store.
 
 <!-- markdownlint-enable MD013 -->
 
-The producer is `runtime` for all twelve kinds. “Semantic author” in the
+The producer is `runtime` for all fourteen kinds. “Semantic author” in the
 table does not change that physical producer. Each family has retention
-`archive-with-delivery`; Foundation rc.10 does not selectively promote,
+`archive-with-delivery`; Foundation rc.17 does not selectively promote,
 permanently prune, or leave one family on HEAD.
 
 ### Relationship registry
 
 The only standard relationships and cardinalities are:
 
-- `founder-brief` has no relationship.
-- `agent-attempt` has exactly one `uses-brief` to `founder-brief`, zero or one
+- `director-brief` has no relationship.
+- `work-delegation` has exactly one `uses-boundary` to `work-boundary`, one
+  `uses-admission` to `director-decision`, zero through two `uses-brief` to
+  `director-brief`, and zero or one `revises` to `work-delegation`. Its payload
+  selects every-and-only standing Brief and the exact predecessor, when present.
+- `agent-attempt` has exactly one `uses-brief` to `director-brief`, zero or one
   `uses-boundary` to `work-boundary`, zero or one `uses-candidate` to
   `candidate-revision`, and zero or one `uses-seal` to `candidate-seal`.
   The reviewer variant requires all three admitted-subject relationships;
@@ -793,15 +867,24 @@ The only standard relationships and cardinalities are:
 - `candidate-revision` has zero or one `revises` to `candidate-revision` and
   exactly one `governed-by` to `work-boundary`, plus zero or one `result-of` to
   `agent-attempt`. A `builder-successor` requires exactly one `result-of` to
-  its creating builder Attempt. Initialization and `readmission-rebind` forbid
-  it.
-- `work-boundary` has exactly one `uses-brief` to `founder-brief`, exactly one
+  its creating builder Attempt; other observations forbid it. An
+  `integration-successor` requires exactly one `integrated-from` relationship
+  to `integration-assessment`; other observations forbid that relationship.
+- `integration-assessment` has exactly one `governed-by` to `work-boundary`
+  and exactly one `integrates` to its source `candidate-revision`.
+- `work-boundary` has exactly one `uses-brief` to `director-brief`, exactly one
   `proposed-from` to `agent-work-product`, zero or one `revises` to
   `work-boundary`, and zero or one `resolves` to `material-condition`.
-- `material-condition` has exactly one `reported-by` to `agent-work-product`,
-  exactly one `observed-in` to `execution-receipt`, exactly one `freezes` to
-  `candidate-revision`, and exactly one `governed-by` to `work-boundary`.
-- `founder-decision` has zero or one `selects-boundary` to `work-boundary`, any
+- `material-condition` has exactly one `freezes` to `candidate-revision` and
+  one `governed-by` to `work-boundary`. Its `agent-proposal` source requires one
+  `reported-by` to `agent-work-product` and one `observed-in` to
+  `execution-receipt`. Its `integration-assessment` source instead requires one
+  `reported-by` to `integration-assessment` and forbids `observed-in`. The
+  `projection-compilation` source forbids `reported-by`. A reviewer refusal
+  requires one `observed-in` to its exact `candidate-seal`; a builder refusal
+  has no Seal or `observed-in` relationship. These source-specific cardinalities
+  are mandatory; optional family-level fields do not weaken them.
+- `director-decision` has zero or one `selects-boundary` to `work-boundary`, any
   number of `selects-baseline-receipt` relationships to `check-receipt`, zero
   or one `continues-from-boundary` to `work-boundary`, zero or one `resolves`
   to `material-condition`, zero or one `selects-candidate` to
@@ -823,7 +906,7 @@ The only standard relationships and cardinalities are:
   `candidate-seal`, any number of `uses-check` relationships to
   `check-receipt`, exactly one `uses-review` to `agent-work-product`, and
   exactly one `uses-review-receipt` to `execution-receipt`.
-- `closure` has exactly one `closes-with` to `founder-decision`, zero or one
+- `closure` has exactly one `closes-with` to `director-decision`, zero or one
   `governed-by` to `work-boundary`, zero or one `accepts-candidate` to
   `candidate-revision`, zero or one `accepts-evidence` to `evidence-packet`, and
   zero or one `abandons-candidate` to `candidate-revision`. Its terminal
@@ -834,21 +917,59 @@ The only standard relationships and cardinalities are:
 
 ### Family meaning
 
-#### Founder Brief
+#### Director Brief
 
-The Founder Brief is one complete fresh Founder semantic input for one agent
-activity. Its typed payload selects the exact operation and input profile, and
-it is finalized before that funded activity begins. Preparation uses one
-self-contained Frame Brief. Continue and evaluate use one fresh direction
-Brief. Revise and reaffirm use one fresh boundary-resolution Brief. A later
-activity receives another Brief record; it does not append to, merge, or
-implicitly inherit an earlier Brief. One Delivery still has exactly one
-preparation activity; later Briefs cannot authorize another preparation.
+The Director Brief is one complete Director semantic input with an explicit
+lifetime. Its v2 typed payload selects the exact operation and input profile
+and a closed `scope`: either `activity` with an `activityId`, or `delegation`
+with a Work Delegation identity, positive revision and `delivery.continue` or
+`delivery.evaluate` operation. Delegation scope binds the forthcoming record
+coordinate; the delegation in turn binds the complete Brief reference, avoiding
+a circular digest. The original normalized semantic Markdown and raw submission
+digest and length remain exact.
+
+Preparation uses one self-contained Frame Brief. Manually requested Continue
+and Evaluate use one fresh direction Brief; Revise and Reaffirm use one fresh
+boundary-resolution Brief. Their `activity` scope finalizes atomically with
+opening that Activity. A standing Brief finalizes atomically with its exact
+Work Delegation. Subsequent reserved Activities reuse that immutable Brief;
+fresh Runtime context is not another Director submission. There is no implicit
+inheritance, merged direction or resampled submission time. One Delivery still
+has exactly one preparation Activity.
+
+The Store MUST refuse a fresh append batch containing a standing Brief unless
+that same batch finalizes the exact Work Delegation that selects it. The entire
+batch rolls back on refusal, including earlier Briefs in the batch. Reducer
+interpretation of intermediate Journal prefixes does not establish this physical
+commit boundary; the Store append owner enforces it. Recognizing already
+retained exact events does not create a new submission or charge.
+
+#### Work Delegation
+
+The Work Delegation retains the Director-supplied finite resource selection
+defined by [Investment Allocation](ATTEMPT_VIEW.md#work-delegation). Its exact
+active Work Boundary and applied admission distinguish funding from mandate
+authority. Its first revision begins one Delivery-local identity; replacement
+advances that same identity by one and names the preceding complete reference.
+Replacement neither reinterprets opened Activities nor resets lifetime charges.
+It requires settled work without an unresolved Material Condition. Every
+standing Brief has the same supplying Director as the admission and exact
+delegation scope. The ordered Brief and delegation appends share one commit.
+
+An Activity's optional `reservation` in `activity-started` binds its exact
+delegation, operation-specific decision basis, finite slots and charges. The
+reducer validates the previous Journal head, exact decision-basis digest,
+current Boundary and admission, selected standing Brief, and allowance before
+charging once. It checks every required final Check selection and its admitted
+Definition and Binding. Execution owners independently compare actual resolved
+resources with those slots at allocation and exact recovery. Existing Activity,
+Attempt and Check selection identities connect these facts; there is no second
+slot ledger or per-Cell reservation event.
 
 #### Agent Attempt
 
 The Agent Attempt is the frozen runtime-derived invocation contract. It binds
-the exact Founder Brief for that activity. Its typed payload owns the exact
+the exact Director Brief for that activity. Its typed payload owns the exact
 role, subject, Projection, input Candidate Revision and Carrier when applicable,
 Provider Descriptor, Capability Profile, Investment, Execution Backend Profile,
 Execution Image, Input Set, working-value contract, effective limits, and
@@ -858,10 +979,12 @@ private Backend coordinate.
 
 #### Agent Work Product
 
-The Agent Work Product is the assigned agent's submitted semantic result. The
-agent may edit its governed working value over multiple provider tool turns and
-may validate it before submission. The runtime supplies every operational
-binding and final record mechanic. A provider final message, event stream, or
+The Agent Work Product is the assigned Agent's semantic result after successful
+Runtime parsing and compilation. The Agent may inspect and revise its governed
+working value over multiple provider tool turns and use the selected local
+draft assistance profile. Runtime independently validates the exact retrieved
+submission after Containment; local observations cannot replace that validation. It supplies every operational binding
+and final record mechanic. A provider final message, event stream, or
 unsubmitted draft is not a Work Product.
 
 Role-specific payload profiles distinguish reconnaissance, builder, and
@@ -871,11 +994,13 @@ does not relabel it as a runtime observation.
 
 The payload retains the complete normalized typed semantics required by every
 downstream compiler and recovery route, including readable semantic scalar
-values where they are operational inputs. The Markdown body remains the exact
-human-readable authored source and the payload binds its complete body and
-addressable fragments. This deliberate joined representation is not two
-authorities: the compiler establishes one validated revision, and a mismatch
-between payload semantics and its body bindings is invalid. Runtime components
+values where they are operational inputs. The compiler renders the retained
+Markdown body from that normalized semantic value and binds its complete body
+and addressable fragments. The Receipt separately identifies raw workspace
+bytes and the normalized submission. Authored layouts can therefore compile to
+one canonical body while their original byte observations remain distinct.
+This joined representation is one validated revision; a mismatch between
+payload semantics and its canonical body bindings is invalid. Runtime components
 MUST NOT recover missing typed semantics by reparsing retained or exported
 Markdown.
 
@@ -907,8 +1032,8 @@ already be durable and independently reopenable in the installation Carrier
 Store. A Revision has no `invalid` or `unavailable` state and does not claim
 semantic progress, proof, acceptance, or canonicality.
 
-The observation kind is `initialization`, `builder-successor`, or
-`readmission-rebind`. Initialization publishes and reopens the initial Carrier
+The observation kind is `initialization`, `builder-successor`,
+`integration-successor`, or `readmission-rebind`. Initialization publishes and reopens the initial Carrier
 before retaining the first Revision. A builder successor MUST `revises` the
 exact reducer-selected input Revision, MUST bind its creating builder Attempt,
 and can be retained with `candidate-revision-observed` only after complete
@@ -923,36 +1048,92 @@ Carrier, and `candidateBaseCommit`, and MUST NOT bind an Agent Attempt. It
 records the changed governance coordinate without claiming product-byte
 motion.
 
+An integration successor preserves the Candidate identity, `revises` the exact
+source C selected by its Assessment, and is `integrated-from` that Assessment.
+The Assessment MUST be constructed under the same governing Boundary. Its
+`canonicalParent.commit` is the successor's `candidateBaseCommit`; its Carrier
+and state describe the exact result and P→I contribution. Only this observation
+may change the application base. Builder successors and readmission rebinds
+inherit it unchanged. Ancestry retains the original base and resolves the latest
+integration provenance for later revisions; the latest unrelated Assessment is
+not a replacement subject.
+
+#### Integration Assessment
+
+An Integration Assessment is the immutable runtime-observed result of one
+explicit `delivery.integrate` over source C and canonical parent P. It is not a
+product result, semantic admission, or acceptance authority. Its exact
+relationships bind C and the active Boundary. C owns its source application
+base and Carrier; the Assessment MUST NOT duplicate those state facts.
+
+The v1 payload selects `lifecycle.integration-assessment.foundation-v1` and
+retains the complete `canonicalParent` Repository Snapshot, fixed `mergeRule`
+identity and implementation digest, `outcome`, bounded exact `conflicts`,
+`validation`, `contextualApplicability`, `assessedAt`, and limitations.
+The fixed rule id is `lifecycle.integration.three-way.v2`. The implementation
+selection binds the executable version and fixed behavior before construction
+and is rechecked on recovery; repository configuration cannot replace it.
+
+`outcome` is `constructed`, `conflicted`, or `invalid`. Constructed requires
+complete valid physical/Knowledge validation and no conflict. Conflicted
+requires nonempty exact path/kind facts; invalid records failed or incomplete
+validation. Neither failure selects a Candidate or publishes a conflict-marker
+result as a valid Carrier. Validation retains `complete`, `valid`, sorted unique
+`diagnosticCodes`, and an exact public `factsDigest`. Conflicts contain normalized
+path and one of content, add-add, modify-delete, rename, mode, type, unsupported.
+Result state lives solely in a valid successor Candidate Revision. Its exact
+Carrier manifest file digest, complete state, and observer MUST reproduce the
+constructed Assessment's `validation.factsDigest` under the Processing preimage.
+Rehashing a different Candidate payload cannot preserve that join. Later builder
+or readmission successors keep their own facts; verification walks to the exact
+integration-origin revision rather than applying the origin digest to later work.
+
+Contextual applicability is `unchanged` or `requires-readmission`, with exact
+changed comparisons for repository-contract, atlas, discipline-registry,
+knowledge-closure, and required-sources. Each comparison binds admitted and
+parent content digests under [Processing](PROCESSING.md#integration-canonicalization).
+An unchanged comparison has no change entries; requires-readmission has at
+least one. Mechanical comparison is not a judgment of mandate sufficiency.
+
+`integration-assessed` finalizes this record with payload `{activityId}`.
+A constructed Assessment can be durable before its successor append; the
+unfinished guarded finalization then remains exact recovery work. Completed
+conflicted/invalid assessments are complete observations without advancement.
+
 #### Work Boundary
 
-The Work Boundary is one complete runtime-compiled mandate revision. It binds
-one Founder Brief, one reconnaissance Work Product, exact repository and
-Knowledge basis, obligations, and proof plan. The runtime finalizes this exact
+The Work Boundary is the complete runtime-compiled envelope for a proposed or
+active Delivery basis. Its nested mandate carries the intended result and
+obligations; its other fields bind the exact repository and Knowledge basis,
+profile selections, Director Brief, reconnaissance Work Product, and provenance.
+[Delivery](DELIVERY.md#basis-and-mandate) owns those fields' governing meaning. The runtime finalizes this exact
 subject before executing its required baseline Checks; each resulting Receipt
 then points to the Boundary. Reducer-derived proposal readiness requires the
-complete passing Receipt set, so the Boundary does not point forward to records
-that do not yet exist. Before Founder admission it is a proposal; the same
+complete modality-valid Receipt set, so the Boundary does not point forward to records
+that do not yet exist. Before Director admission it is a proposal; the same
 immutable revision becomes active only through the exact authenticated and
-observed admission effect. Foundation rc.10 has no separate Preparation,
+observed admission effect. Foundation rc.17 has no separate Preparation,
 Proposal, or copied admitted-boundary record.
 
-The repository basis directly binds `atlasStateDigest`,
-`atlasResolutionDigest`, `atlasNormalizedModelDigest`, and
-`atlasResourceBindingsDigest` from the same Repository Snapshot. The Resolution
-digest does not substitute for any of the other three identities.
-After admission, those fields identify the historical admitted Atlas snapshot
-for that Boundary revision. Applied initial admission derives the
-active-Delivery branch lease over the exact physical target and canonical
-branch. While active, every nonterminal operation requires that branch's clean
-checkout and exact admitted HEAD; a successor Boundary and readmission retain
-the same repository and Atlas epoch. A future separate Delivery can select a
-newer epoch after the active Delivery reaches Closure.
+The v6 Work Boundary payload also retains the exact Discipline Registry digest,
+selected Work Type ids, and exact advisory Discipline subset of selected
+Knowledge. These are Boundary-owned context selections, not new Control
+families, event facts, requirements, or evidence. Their identity remains frozen
+with the Boundary and is reconstructed from retained subjects during recovery.
+
+The repository basis directly binds the four exact Atlas identities from the
+same Repository Snapshot. They remain immutable historical context for that
+Boundary. A successor resolving a runtime context-change or exact reviewer
+applicability Condition under Delivery can bind the complete
+retained integration parent Snapshot in the same Delivery. Readmission changes
+active governance, preserves Candidate bytes and its application base, and
+never refreshes from live HEAD.
 
 #### Material Condition
 
 The Material Condition is the runtime-derived frozen fact that the active Work
-Boundary can no longer govern productive work honestly. It binds the reporting
-Work Product, Execution Receipt, exact reducer-selected Candidate Revision, and
+Boundary can no longer govern productive work honestly. Its agent-proposal
+variant binds the reporting Work Product, Execution Receipt, exact reducer-selected Candidate Revision, and
 active Work Boundary. For a builder it freezes the published successor when
 one exists; otherwise it freezes the Attempt's exact input Revision. It MUST
 NOT select provisional Cell output or manufacture an unavailable Revision. It
@@ -962,10 +1143,46 @@ or a read-only reviewer result; the runtime validates the exact role-specific
 joins before freezing the same record family. Revision, reaffirmation,
 readmission, or no-ship resolves it under Delivery.
 
-#### Founder Decision
+The runtime-owned `integration-context-change` variant has source
+`{kind: "integration-assessment"}`. It binds the exact requires-readmission
+Assessment through `reported-by`, freezes that Assessment's constructed
+successor, and retains the active Boundary. It forbids a Work Product or
+Execution Receipt source. `observedFactsDigest` is the canonical digest of the
+Assessment's contextualApplicability value. This distinct source preserves
+runtime provenance without creating an Agent Attempt.
 
-The Founder Decision retains the exact Founder-authenticated admission,
-readmission, acceptance, or no-ship subject and readable rationale. The Founder
+The runtime-owned `projection-closure-exceeded` variant can instead have source
+`projection-compilation`. Payload v3 retains exact request digest, selected
+profile id/digest, compiler identity/version/digest, typed measurement, and
+refusal-facts digest. It freezes the exact Candidate under the active Boundary
+and, for evaluation, observes the exact Seal. A builder refusal has no Seal.
+Neither invents a Work Product or Receipt. Only a compiler-owned measured witness can construct this variant.
+
+A `complete-closure` measurement retains exact mandatory item/byte and source
+byte counts, their selected limits, and an oversized-item count, canonical
+complete-list digest, and one exact bounded witness when available. The complete
+list orders by code-point item identity and remains reproducible from the exact
+retained basis; it is not copied without bound into a Condition. A
+`mandatory-item` measurement instead binds one required category/identity,
+repository-relative locator, exact Git object identity, observed byte length,
+and selected per-item bound. It proves that one required item cannot fit before
+reading its oversized content and MUST NOT claim complete closure counts.
+
+The refusal-facts digest uses the domain tag
+`lifecycle.projection-mandatory-refusal.v1` over the request digest, complete
+selected profile, compiler identity, and typed measurement. The Condition's
+`observedFactsDigest` separately uses
+`lifecycle.projection-condition-observed-facts.v1` over Activity identity,
+kind-qualified exact Boundary/Candidate references and nullable Seal reference,
+refusal event sequence
+and digest, and the complete retained source. The two digests bind measurement
+and Process provenance separately. Generic exceptions, partial retrieval, or
+claimed trust fields cannot become this runtime fact.
+
+#### Director Decision
+
+The Director Decision retains the exact Director-authenticated admission,
+readmission, acceptance, or no-ship subject and readable rationale. The Director
 can edit the working decision only before authentication. The runtime then
 produces one immutable authenticated revision. Authentication does not claim
 that the corresponding recoverable transaction completed. Admission authority
@@ -1004,10 +1221,15 @@ independence, proposition decisions, obligation states, diagnostics, and
 uncertainty as bounded ledgers. Those ledgers are not separate Control record
 families.
 
+The [Evidence verifier](EVIDENCE.md#evidence-verifier) owns their semantic
+derivation and validation. Control owns exact revision construction and atomic
+retention; the reducer owns current selection and legal finalization. Retaining
+an assembly does not independently prove its acceptance justification.
+
 #### Closure
 
 Closure is the sufficient terminal runtime-derived record. It binds the exact
-Founder Decision, optional Work Boundary, accepted Candidate and Evidence or
+Director Decision, optional Work Boundary, accepted Candidate and Evidence or
 no-ship Candidate disposition, completed transaction observation, exact
 terminal execution-set digest, Execution Containment, Runtime-owned Retirement,
 the immutable Reclamation-handoff obligation-set digest and count at Closure,
@@ -1031,26 +1253,29 @@ Closure or append a Journal event.
 `terminalExecutions` is derived from finalized Execution Receipts and allocated
 Check Receipts. `reclamationHandoff` accounts for every Cell allocation handed
 to installation-private Reclamation. When an Agent activity ends through
-`agent-pre-intent-refused`, no Attempt or Receipt exists; the validated
-subjectless event's Store, Process, and activity identity instead anchors
-exactly one private Agent handoff recording `dispatchAuthorityConsumed=false`
+`agent-pre-intent-refused` after a prearmed allocation, no Attempt or Receipt
+exists; the validated subjectless event's Store, Process, and activity identity
+instead anchors exactly one private Agent handoff recording `dispatchAuthorityConsumed=false`
 and final Retirement, which makes the Handle non-reusable. That handoff
 contributes to the Reclamation obligation set but not
-the terminal execution set. The two counts are derived independently and MUST
-NOT be required to equal. Missing, duplicate, consumed, cross-activity,
+the terminal execution set. A `projection-condition-required` refusal proves
+that no builder or reviewer allocation exists and therefore contributes no Agent handoff. Previously allocated Check
+Cells remain accounted independently. The two counts are derived independently
+and MUST NOT be required to equal. Missing, duplicate, consumed, cross-activity,
 cross-Delivery, or substituted handoffs fail closed.
 
 For acceptance, `canonicalResult` binds only the exact sealed Candidate result
-applied over the exact admitted parent:
+applied over the exact integration parent:
 
-- `parentCommit` and `parentTree` MUST equal the admitted repository basis;
+- `parentCommit` and `parentTree` MUST equal the exact integration parent
+  resolved from the accepted Candidate lineage;
 - `commit` MUST identify the accepted commit whose sole parent is
   `parentCommit` and whose tree is `tree`;
 - `tree` MUST equal the sealed Candidate tree;
 - `candidateDigest`, `productStateDigest`, and `knowledgeSetDigest` MUST equal
   the selected Candidate Revision, Seal, and Evidence subject; and
-- the Candidate's no-Atlas-delta proof MUST establish that the admitted Atlas
-  subtree remains byte-identical in `tree`.
+- protected-root validation MUST establish that the integration parent's Atlas
+  and Discipline subtrees remain byte-identical in `tree`.
 
 There is no live current-Atlas input, alternate parent, composition identity,
 or separately compiled accepted Knowledge Set.
@@ -1103,6 +1328,40 @@ an owning revision, and a physical file without a descriptor, a descriptor
 without exact bytes, an unreachable descriptor, an unsupported filename,
 altered bytes, length mismatch, or path substitution is an orphan or integrity
 failure.
+
+### Builder repair output
+
+A builder Execution Receipt with an exact conclusive invalid-Candidate
+observation can retain one `lifecycle.builder-repair-output.v1` descriptor.
+It uses purpose `builder-repair-output`, media type `application/json`, canonical
+JSON bytes, and a 64 KiB maximum. Its closed value binds the exact builder
+Attempt, original Work Boundary and input Candidate, the Candidate owner's
+rejection, one exact Carrier manifest file descriptor and a self-digest.
+[`builder-repair-output.schema.json`](../schemas/builder-repair-output.schema.json)
+owns its structural shape; [Attempts](ATTEMPTS.md#rejected-product-output-and-repair)
+owns its observation and selection meaning.
+
+The Receipt's `rawMaterials` directly selects both this small descriptor and
+the unchanged Carrier manifest. The manifest uses the existing reserved
+Candidate Carrier manifest purpose, media type and 256 MiB bound below; a
+reference from this exact repair pair does not create a Candidate Revision.
+Reusing that descriptor preserves one digest-to-metadata binding when the same
+manifest already exists. Both purposes must be declared by the builder Attempt.
+Other roles, missing or duplicate members, mixed subjects, unsupported purposes
+and provider-authored repair descriptors cannot establish a repair selection.
+Retention is atomic with its Receipt, before Activity support disposal.
+
+The installation Carrier Store retains the complete object closure while any
+live or archived Receipt references this pair. Receipt retention validates the
+pair, exact observed Attempt/Candidate/Boundary joins, rejection and manifest
+bindings. Generic Store opening validates retained file bytes, metadata and
+reference ownership. Repair selection reopens the exact pair and joins before
+using its Product bytes; terminal sealing and archive verification independently
+reopen the referenced Git closure. Reference accounting includes both current
+and expired repair pairs. The tree stays outside SQLite and adjacent files.
+Receipt retention does not select it as current Product or governing
+Knowledge, and expiration from a future builder's context does not erase
+historical custody.
 
 ### Candidate Revision Carrier manifest
 
@@ -1194,7 +1453,7 @@ store sealing or archive.
 
 ## Bounded Processing Profile
 
-Foundation rc.10 applies these inclusive per-Delivery limits before retention
+Foundation rc.17 applies these inclusive per-Delivery limits before retention
 or unbounded allocation:
 
 <!-- markdownlint-disable MD013 -->
@@ -1224,7 +1483,7 @@ or unbounded allocation:
 Identifiers, actors, relationship names, media types, purposes, diagnostics,
 Output Carrier entries, and SQL statements remain subject to their smaller
 owning limits. A runtime MAY refuse at a lower disclosed operational limit,
-but it MUST report that effective limit and MUST NOT claim the rc.10
+but it MUST report that effective limit and MUST NOT claim the rc.17
 qualification profile unless it supports every required fixture within these
 maxima.
 
@@ -1249,8 +1508,8 @@ Opening, recovery, sealing, archiving, and read-only inspection MUST validate:
 - event sequence, predecessor chain, nondecreasing time, and exact subjects;
 - family policy and relationship cardinality;
 - every referenced file descriptor and exact content-addressed byte carrier;
-- every Candidate Revision Carrier manifest and exact referenced immutable Git
-  object closure in the installation Carrier Store;
+- every Candidate Revision or Receipt-bound repair Carrier manifest and exact
+  referenced immutable Git object closure in the installation Carrier Store;
 - exact pending-file custody, when present, including absent-or-complete append
   disposition and the restricted recoverable carrier/descriptor combinations;
 - canonical and correctly digested live operation support, exact payload-free
@@ -1346,14 +1605,184 @@ Process state, authority subject, transaction input, or recovery carrier.
 Deleting every presentation cache leaves replay, eligibility, Evidence,
 authority, sealing, archive, and recovery unchanged.
 
-Every read result carries one disclosed read generation. For one Delivery the
-generation binds at least Store and Process identity, physical Store
+Every read result discloses its exact subject and observation. Current Delivery
+views, mutable inspection pages, Authorization Review, and watches carry one
+disclosed read generation. For one Delivery that generation binds at least
+Store and Process identity, physical Store
 disposition, the complete validated Journal head, installed reducer and view
 profiles, repository epoch, current Control subjects, and the identity and
-bounded generation digest of any active operation support. It exposes no
+bounded generation digest of any active operation support, plus the exact
+pending Work Delegation stop request digest when present. A stop request MUST
+advance the token after its durable commit even while Journal and logical
+inventory remain unchanged. Reopening the same retained custody reproduces
+that binding. The token exposes no
 support payload, machine path, provider bytes, credential, process handle, or
 transaction continuation. A result becomes stale when any bound constituent
 changes.
+
+### Exact immutable Control record inspection
+
+The `record` selector supplies one complete Control reference: kind, identity,
+revision, and digest. It reads that exact retained revision, including a
+historical revision that is no longer current. Its currency is the selected
+Target, Store and Process identity and the immutable reference, rather than
+the complete current Delivery generation. Unrelated Journal appends and private
+operation-support checkpoints MUST NOT invalidate that unchanged record read.
+
+The Runtime MUST verify Store integrity and the exact revision, then reopen
+the selected custody and verify its final Journal and revision. Store identity
+and active-or-archived custody MUST remain unchanged during this read, and the
+original observed Journal head MUST remain an exact prefix of the final
+verified Journal. Missing custody, rollback, a different history, substituted
+records, or digest mismatch MUST refuse; no similar or cached record is a
+fallback. A subsequent request may reopen the same exact revision after its
+required custody is restored or its lawful archive movement has finished.
+Unrelated canonical Product movement cannot replace the record's Target or
+Store identity and is not itself a change to the immutable record.
+
+The result identifies the exact retained record separately from its final
+Runtime observation. Reading an earlier revision does not make it current,
+renew a review, or supply a mutation precondition. Interfaces may preserve its
+verified body and original read observation through unrelated live refreshes.
+They MUST distinguish that body from current selected subjects and disclose
+when its observed selection or availability is no longer confirmed. No earlier
+body may be relabeled with a later read time or current-generation claim.
+
+This exception does not change the complete-generation contract of mutable
+family or revision pages, Authorization Review, watches,
+productive input, or recovery. Reads create no operation or retained progress.
+
+### Historical Context basis
+
+Knowledge, Atlas, Code, and Source inspection bind retained artifact selections,
+not the complete current Delivery generation. A self-digested Context selection
+(`lifecycle.context-selection.v1`) names the Target, Store, Process, exact
+Journal origin (positive sequence and event digest), and the proposed or active
+role plus exact Work Boundary reference selected at that origin. The Runtime
+MUST replay the retained prefix through the sole Delivery reducer to reproduce
+that role and reference. The origin remains provenance even after a successor
+Boundary is proposed or admitted; it is not a claim of currentness.
+
+The Runtime reopens that Boundary's retained Repository Snapshot and reproduces
+its canonical commit and tree, Product State, Knowledge Set, raw Atlas State,
+Atlas Resolution, normalized Atlas model, Resource bindings, repository
+contract, and Check Binding Set. The self-digested Context basis
+(`lifecycle.context-basis.v2`) binds the complete selection and these historical
+dependencies. Current repository and operation observations are separate; they
+MUST NOT enter or replace this basis merely because work continues.
+
+A self-digested Code selection (`lifecycle.code-selection.v1`) additionally
+names candidate or decision inspection and the exact active Boundary, Candidate
+Revision, and, for a sealed decision, Candidate Seal selected at its Journal
+origin. The same reducer replay MUST reproduce that combination. An absent
+Candidate or absent decision Seal permits only the corresponding explicit
+unavailable result. An available Code basis (`lifecycle.code-basis.v2`) binds
+that selection, its active historical Context basis, exact application base,
+Candidate Carrier and difference facts. Later Candidate advancement does not
+replace the selected Candidate. A Code Source retains candidate-versus-decision
+selection and the exact Seal when present, including for the canonical side.
+
+Artifact reads MUST preserve the initial verified Journal head as an exact
+prefix of a freshly reopened final verified Store, with unchanged Target,
+Store, Process and active-or-archived custody. The retained selection origin
+MUST still reproduce at that final read. Checkpoint updates and unrelated
+Journal appends do not invalidate unchanged artifact dependencies. Missing or
+corrupt custody, history substitution or rollback, a false historical subject
+combination, unavailable required artifacts, and non-reproducible digests
+produce typed unavailability or refusal. No current `HEAD`, alternate Boundary,
+Candidate, Atlas epoch, or presentation cache supplies fallback truth.
+
+Interfaces may retain the selected basis, pages and exact Source bytes across
+live refreshes, including after current subjects advance. They MUST retain the
+original inspection observation and distinguish an earlier selection from the
+latest observed subjects. Refreshing live state MUST NOT silently replace the
+selected content or relabel it with a later inspection time. A separate explicit
+reselection may choose a later exact origin and subjects. Retained display bytes
+do not prove continuing availability; an unsuccessful reopening remains visible.
+All operation, authority, recovery and watch currency remains the complete
+current generation. Inspection cannot start, continue, stop or authorize work.
+
+### Closed context-inspection selector union
+
+`delivery.inspect` retains its bounded Control selectors and adds exactly these
+nine context selectors under
+[`context-inspection-selector.schema.json`](../schemas/context-inspection-selector.schema.json):
+
+<!-- markdownlint-disable MD013 -->
+
+| Selector | Exact subject and selected bound |
+| --- | --- |
+| `knowledge-index` | one Context basis; opaque continuation or `null`; 1 through 200 records |
+| `knowledge-record` | one Runtime-issued exact Knowledge reference under one Context basis |
+| `code-index` | one exact Code selection; opaque continuation or `null`; 1 through 200 changed paths |
+| `code-file` | one exact Code selection and Runtime-issued changed-path cursor; 4 through 262,144 returned difference bytes |
+| `atlas-overview` | one Context basis; independently paged Maps, Points, and Resources; 1 through 200 rows in each collection |
+| `atlas-point` | one Runtime-issued Point cursor; 1 through 100 authored records and 1 through 200 relations |
+| `atlas-resource` | one exact registered Resource identity under one Context basis |
+| `source` | one exact Runtime-issued Source Reference; UTF-8 byte offset; 4 through 262,144 requested bytes |
+| `authorization-review` | one eligible `delivery.admit`, `delivery.accept`, or `delivery.no-ship` review under the exact expected generation |
+
+<!-- markdownlint-enable MD013 -->
+
+Every selector is strict and rejects additional fields. Artifact selectors bind their retained Context or Code selection;
+Authorization Review binds the complete expected generation. A cursor is
+an opaque SHA-256 canonical-value digest over the Context-basis digest,
+collection identity, and exact semantic row key. A continuation equals the
+last returned cursor, pages preserve the owning model's canonical order, and a
+cursor cannot move across an inspection selection, basis, collection, subject, or result
+kind. Callers can tighten a selected limit but cannot enlarge it. The runtime
+rederives cursor membership and every selected reference from immutable truth;
+possession of a digest is not authority or a general lookup capability.
+
+Knowledge index results expose exact record identity, kind, status, revision,
+source and semantic digests, path, title, summary, owners, tags, and Boundary
+selection. One Knowledge record result exposes its complete kind-specific
+public semantics, supersession, relationships, conflicts, source resolutions,
+Boundary selection, and one Source Reference for the exact normalized semantic
+body. It does not return authoring front matter, pre-normalization source text,
+or a reconstructed Markdown rendering. No index or record result exceeds 200
+rows in one collection page.
+
+Code index results expose at most 16,384 exact changed paths for the selected
+Candidate or sealed decision and page no more than 200 rows at a time. Code file
+results bind the immutable canonical side, exact Candidate Revision side,
+per-side mode and object disposition, exact complete difference digest, exact
+returned-byte digest, and at most 262,144 raw UTF-8 difference bytes. The exact
+underlying per-file difference may be at most 268,435,456 bytes. Binary,
+oversized, absent, symlink, gitlink, unavailable Carrier, and unsupported rename
+conditions remain explicit; the runtime MUST NOT fabricate text, parse hunks as
+product truth, or reopen arbitrary Git revisions or caller paths.
+
+Atlas overview results page Maps, Points, and Resources independently with at
+most 200 rows per collection. A Point returns at most 100 authored records and
+200 relations per page; a Resource returns its exact registration and observed
+binding. Text Source References may describe authored Atlas files and resolved
+Resources only through the shared 16,777,216-byte Source ceiling. A larger
+resolved Resource remains an exact binding with `source: null`, as does a
+binary Resource; the 67,108,864-byte Resource-binding ceiling does not enlarge
+Source retrieval. Atlas inspection alone may use the selected
+strict-JSON result ceilings of 100,663,296 bytes, 16,777,216 UTF-16 code units
+per string, depth 64, 33,554,432 nodes, 16,777,216 array items, and 100,000
+object properties. Those ceilings do not enlarge another operation, permit
+silent truncation, or replace owner-validity rules.
+
+A Source Reference (`lifecycle.source-reference.v2`) is a self-digested,
+retained-selection- and Context-basis-bound
+description of one exact textual Knowledge body, Atlas body, Atlas Resource,
+canonical Git blob, or Candidate blob. It binds owner identity, repository
+path, media type, complete content digest, and byte length. A Source result
+returns one exact UTF-8 range, its byte offset and digest, and either the next
+byte offset or terminal `null`. One Source is at most 16,777,216 bytes and one
+returned range is at most 262,144 bytes. Retrieval rederives and compares the
+complete reference before reading; a Source Reference is not a filesystem path,
+URL, bearer capability, Evidence subject, or authority grant.
+
+Each Source owner uses its owning identity grammar: an exact Knowledge record
+ID, Atlas Resource ID, full Git blob object ID, or Candidate Revision ID as
+applicable. The repository-relative path rejects absolute, dot-segment, empty,
+backslash, query, fragment, and percent-encoded separator aliases; semantic
+interface validation additionally enforces Unicode scalar values and the exact
+4,096-byte UTF-8 ceiling that structural JSON Schema cannot express directly.
 
 ### Delivery Inbox
 
@@ -1372,11 +1801,12 @@ another Delivery, and a target locator alone never selects the newest row.
 
 ### Selected Delivery View
 
-One selected Delivery View is compiled under one read generation. It joins the
+One selected `lifecycle.delivery-view.v2` Delivery View is compiled under one
+read generation. It joins the
 Delivery reduction, exact current subjects, latest applicable Attempt View,
 Candidate condition, obligation and Evidence standing, Decision Readiness,
 eligible operations, recovery, and bounded Control navigation. Typed semantic
-sections keep Founder-supplied meaning, agent proposals, runtime observations,
+sections keep Director-supplied meaning, agent proposals, runtime observations,
 runtime-derived conclusions, Evidence, and authenticated authority visibly
 distinct. An interface MUST NOT assemble those sections from reads at different
 generations.
@@ -1390,14 +1820,77 @@ rewrite the Process reduction.
 Decision Readiness is review support inside that joined view. It may show the
 exact Boundary, Candidate Revision, Seal, Evidence Packet, eligible authority
 operation, complete authority-subject review, and an already authenticated
-Founder Decision. It MUST NOT infer a Decision, accept generic approval,
+Director Decision. It MUST NOT infer a Decision, accept generic approval,
 request a signature over a summary, or make Evidence equivalent to acceptance.
+
+The view's `work` section exposes the exact retained Work Delegation selection,
+its standing direction references and resolved resources, the separately
+observed pending stop request, and the fixed policy's current continuation
+conclusion. Lifetime charges come from the existing reduction. These values do
+not create a second resource ledger or an execution-availability claim. The
+pending request is captured once for both the work section and the read
+generation token; an interface cannot combine a token that already binds a
+stop with a work section that still reports its absence.
+
+Agent Next Pass Investment is null when the installed model/reasoning choices
+are missing or malformed. Role and Process eligibility remain disclosed.
+Null means the preview is unavailable, not that an Agent needs no resources.
+Reading retained work and requesting its Stop MUST NOT depend on resolving
+Docker, provider credentials, or the current Execution Image. Actual new
+allocation retains its independent complete selection and availability checks.
+
+### Explicit resource controls
+
+The public Runtime Facade operation `delivery.work` is a closed resource-control
+surface with `set`, `run` and `stop` actions. It is not a Delivery Process
+operation. It requires no authority credential and cannot admit, accept or
+close a Delivery.
+
+`set` binds the reviewed Delivery generation and explicitly supplied permitted
+operations, original builder/reviewer directions, model/reasoning choices,
+lifetime ceilings and optional expiry. Agent operations require exactly their
+corresponding direction and choice. Runtime resolves the installed resource
+selections and mechanically renders the grant body from that structured input;
+it retains each original direction as its exact standing Director Brief. Saving
+permission does not run work. A changed generation refuses before retention.
+
+`run` binds the reviewed generation and exact saved grant reference. It invokes
+the [fixed useful-work selection](ATTEMPT_VIEW.md#fixed-useful-work-selection)
+in the foreground under one Delivery lock. Each existing operation owns its
+normal context, finalization and effects. A completed `run` result means that
+this foreground invocation reached its disclosed stop boundary; it does not
+mean that the Candidate was accepted or the Delivery finished.
+
+`stop` binds the exact grant reference without a Journal-generation
+precondition: ongoing work must not make its own Stop perpetually stale. The
+Store commits the bounded request independently of the long writer lock. Its
+acknowledgment binds the exact reduced state, seal and immutable Journal head
+observed in that commit transaction. Later work cannot invalidate that known
+acknowledgment. The available Journal writer may fold a settled request; an
+unavailable optional fold returns the retained acknowledgment and a bounded
+finding. `pending` remains distinct from the observed `stopped` fact. Subsequent
+View and watch reads disclose later movement.
+
+Work-control results select `journal-coordinates-only`: their event and Control
+lists are empty, and their exact before/after heads disclose the observed
+Journal range. `changes.control.advanced` compares those heads. The result
+reports a safe-integer completed-operation count, exact last Activity when
+observed, selected grant, stop reason and any committed Stop acknowledgment.
+The ordinary mutation event-list contract remains unchanged. A finite work
+course MUST NOT fail after its effects merely because returning every event
+would exceed a bounded presentation envelope.
+
+An unknown transport outcome does not authorize automatic replay of `set` or
+`run`. Interfaces retain the uncertain request, continue read-only observation,
+and permit exact Stop. A temporarily idle Activity view is not proof that a
+lost foreground invocation has returned between reservations.
 
 ### Exact Candidate difference
 
-The runtime may derive a bounded Git difference only between the immutable
-product base and exact current Candidate Revision selected by the reducer. A
-caller cannot supply arbitrary Git revisions, paths, or command text. The
+The runtime may derive a bounded Git difference only between the current
+Candidate Revision's immutable application base and that exact Revision,
+selected by the reducer. A caller cannot supply arbitrary Git revisions,
+paths, or command text. The
 result binds the Candidate reference, before and after Git identities, full
 difference digest, returned-byte digest, byte and path bounds, binary findings,
 and any omission or truncation. It is a disposable observation, not Evidence or
@@ -1421,7 +1914,7 @@ wakeup.
 A watch may target the Inbox generation or one exact Delivery generation. It
 does not create a service identity, Store row, support payload, Journal event,
 Process stage, or automatic operation. Cancellation leaves no retained
-milestone. Founder-facing activity labels derive from reducer and owning
+milestone. Director-facing activity labels derive from reducer and owning
 Activity facts rather than a persisted support stage; provider messages,
 reasoning, authoring transcripts, and private continuation facts remain
 undisclosed.
@@ -1443,7 +1936,7 @@ itself as a derived inspection representation.
 Ordinary inspection exports may vary in wrapping, display ordering, filenames,
 and template presentation. Only an explicitly selected named canonical export
 profile uses the canonical Lifecycle Document renderer in Processing; no such
-profile is selected by the Foundation rc.10 qualification surface.
+profile is selected by the Foundation rc.17 qualification surface.
 
 An export is not:
 
@@ -1458,7 +1951,7 @@ Changing line wrapping, front-matter presentation, filename, ordering for
 display, or export template does not change the retained logical revision. The
 runtime MUST NOT calculate the revision digest over exported bytes.
 
-The Founder can inspect every non-secret Control fact needed for judgment.
+The Director can inspect every non-secret Control fact needed for judgment.
 Assigned agents receive only exact projected Control subjects allowed by their
 Attempt. Raw operational files require an explicit read capability and remain
 subject to their media, size, and disclosure policy. Inspection MUST NOT expose
@@ -1496,10 +1989,10 @@ is available:
   or archive-manifest mismatch;
 - hot database at archive time, partial archive, or existing archive
   destination; and
-- predecessor or mixed Control discovered in a fresh v15 target.
+- predecessor or mixed Control discovered in a fresh v22 target.
 
 The runtime MUST NOT repair a failure by accepting the latest row, dropping an
-event, regenerating agent or Founder semantics, importing an export, scanning
+event, regenerating agent or Director semantics, importing an export, scanning
 HEAD for similar Markdown, editing SQL, weakening a relationship, recomputing a
 different digest, falling back to a predecessor Carrier, redispatching a Cell,
 deleting evidence, broadly pruning physical resources, or creating a second
@@ -1518,10 +2011,10 @@ refuses.
 
 ## Generic Extension Seam
 
-The Foundation registry is closed to the twelve Delivery families above. An
-extension cannot add a thirteenth Delivery kind, relationship, editor,
+The Foundation registry is closed to the fourteen Delivery families above. An
+extension cannot add an additional Delivery kind, relationship, editor,
 authority class, event consequence, table, SQL trigger, or archive member under
-an rc.10 coordinate.
+an rc.17 coordinate.
 
 A future Process can use the generic concepts of one Process-scoped store,
 immutable revisions, typed relationships, an event source, sealing, and
@@ -1535,7 +2028,7 @@ archiving only by defining all of the following under new exact coordinates:
   conformance evidence; and
 - explicit repository and runtime selection.
 
-Foundation rc.10 defines no future Process, generic arbitrary record API,
+Foundation rc.17 defines no future Process, generic arbitrary record API,
 dynamic registry loading, extension SQL, or cross-Process relationship. An
 unknown Process kind or Control family is refused.
 
@@ -1549,7 +2042,7 @@ The Control Record Store does not:
 - expose a Cell, Handle, Backend operation, Retirement, or Reclamation as a
   Delivery workflow or public Control object;
 - retain a transcript of model reasoning, edits, commands, or provider events;
-- let the Founder or agent author SQL, identities, digests, ordering, fixed
+- let the Director or agent author SQL, identities, digests, ordering, fixed
   bindings, envelopes, or runtime observations;
 - replace exact repository, Candidate, Check, authority, transaction,
   Containment, or Retirement observation;

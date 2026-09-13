@@ -10,7 +10,7 @@
           "additionalProperties": false,
           "properties": {
             "agentAdapterImplementationDigest": { "$ref": "#/$defs/digest" },
-            "codexVersion": { "const": "0.151.0" },
+            "codexVersion": { "const": "0.153.4" },
             "imageId": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$", "type": "string" },
             "indexDigest": { "$ref": "#/$defs/digest" },
             "nonRootUser": { "const": "65532:65532" },

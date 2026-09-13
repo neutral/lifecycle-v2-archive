@@ -23,6 +23,7 @@ function subjects(
   changes: Partial<DeliveryObservation["subjects"]> = {},
 ): DeliveryObservation["subjects"] {
   return {
+    integrationAssessment: null,
     proposedBoundary: null,
     activeBoundary: null,
     candidate: null,
@@ -274,10 +275,10 @@ test("the reducer fixture fails as harness code when replay modes disagree", () 
   const chain = new EventChain();
   chain.append("delivery-created", {});
   chain.append(
-    "founder-brief-submitted",
+    "director-brief-submitted",
     { activityId: "prepare-nondeterministic-resolver" },
     subject("brief-nondeterministic-resolver"),
-    { recordKind: "founder-brief" },
+    { recordKind: "director-brief" },
   );
   const stableResolve = chain.resolveRevision;
   let resolutions = 0;

@@ -46,7 +46,7 @@ const identity: ControlRecordStoreIdentity = Object.freeze({
 });
 
 function revision(
-  kind: "agent-attempt" | "founder-decision",
+  kind: "agent-attempt" | "director-decision",
   decision: "admit" | "readmit" | "accept" | "no-ship" = "no-ship",
 ): ControlRecordRevision {
   return compileControlRecordRevision(identity.processId, {
@@ -54,13 +54,13 @@ function revision(
     recordKind: kind,
     revision: 1,
     producer: { kind: "runtime", id: RUNTIME },
-    semanticAuthor: kind === "founder-decision"
-      ? { kind: "founder", id: "founder" }
+    semanticAuthor: kind === "director-decision"
+      ? { kind: "director", id: "director" }
       : { kind: "runtime", id: RUNTIME },
-    semanticAuthority: kind === "founder-decision" ? "founder-authenticated" : "runtime-derived",
+    semanticAuthority: kind === "director-decision" ? "director-authenticated" : "runtime-derived",
     createdAt: CREATED,
     semanticMarkdown: `# ${kind}\n`,
-    payload: kind === "founder-decision" ? { decision } : {},
+    payload: kind === "director-decision" ? { decision } : {},
     relationships: [],
   });
 }
@@ -106,6 +106,7 @@ function state(input: Readonly<{
       ? Object.freeze([])
       : Object.freeze([input.activity]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: null,
       candidate: null,
@@ -114,6 +115,7 @@ function state(input: Readonly<{
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({
       eventCount: input.head?.sequence ?? 0,
       headDigest: input.head?.digest ?? null,
@@ -275,11 +277,11 @@ test("provider mechanics derive the exact Attempt subject and recovery coordinat
 });
 
 test("transaction mechanics retain exact authority and allow determinate recovery after uncertainty", () => {
-  const decision = revision("founder-decision");
+  const decision = revision("director-decision");
   const authenticated = journalEvent({
     sequence: 1,
     predecessor: null,
-    eventKind: "founder-decision-authenticated",
+    eventKind: "director-decision-authenticated",
     payload: { activityId: ACTIVITY },
     selected: decision,
   });
@@ -358,11 +360,11 @@ test("transaction mechanics retain exact authority and allow determinate recover
 });
 
 test("the transaction compiler rejects retired physical Candidate facts", () => {
-  const decision = revision("founder-decision", "admit");
+  const decision = revision("director-decision", "admit");
   const authenticated = journalEvent({
     sequence: 1,
     predecessor: null,
-    eventKind: "founder-decision-authenticated",
+    eventKind: "director-decision-authenticated",
     payload: { activityId: ACTIVITY },
     selected: decision,
   });

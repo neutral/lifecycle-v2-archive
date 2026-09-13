@@ -30,6 +30,8 @@ import {
   FoundationRepositoryObservationSchema,
   FoundationRuntimeVersionSchema,
   FoundationSubmissionDiagnosticSchema,
+  FoundationWorkControlResultSchema,
+  FoundationWorkDelegationStopRequestSchema,
   canonicalFoundationJson,
   createFoundationRuntimeOperationRequest,
   createFoundationRuntimeOperationResult,
@@ -53,7 +55,7 @@ const observedAt = "2026-08-29T12:00:00.000Z";
 
 function state() {
   return FoundationDeliveryStateSchema.parse({
-    schema: "lifecycle.delivery-reduction.v2",
+    schema: "lifecycle.delivery-reduction.v5",
     storeId: "store.delivery-1",
     processId: "delivery-1",
     standing: "active",
@@ -61,6 +63,7 @@ function state() {
     activities: [],
     recovery: null,
     subjects: {
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: { kind: "work-boundary", id: "boundary-1", revision: 1, digest: sha("b") },
       candidate: { kind: "candidate-revision", id: "candidate-1", revision: 1, digest: sha("c") },
@@ -69,6 +72,7 @@ function state() {
       evidence: null,
       closure: null,
     },
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: { eventCount: 1, headSequence: 1, headDigest: sha("d") },
     storeDisposition: {
       stage: "active",
@@ -87,29 +91,29 @@ function observation(
     schema: FOUNDATION_RUNTIME_OBSERVATION_SCHEMA,
     observedAt,
     repository: {
-      schema: "lifecycle.repository-observation.v10",
+      schema: "lifecycle.repository-observation.v17",
       initialized: true,
       valid: true,
       targetId: "target-1",
-      repositoryContract: "lifecycle.repository.v15",
+      repositoryContract: "lifecycle.repository.v22",
       repositoryContractDigest: sha("e"),
       headCommit: commit,
       headTree: commit,
       productDigest: sha("f"),
       atlas: {
         selection: {
-          release: "0.7.0",
-          specificationRevision: "429fee62966f4d30e91ec2a15d27ecf353f5d68f",
+          release: "0.8.0",
+          specificationRevision: "2c7a78540ac30138218b12803f1c045cee8b109a",
           authoredFormat: 1,
-          processorRevision: "746cbce73c51b28d617b96ca08f18d498ac749c4",
+          processorRevision: "2c7a78540ac30138218b12803f1c045cee8b109a",
           validationProfile: "neutral.atlas-validator.resolved",
           validationResultSchema: "urn:atlas:schema:validation-result:1",
           normalizedModelSchema: "urn:atlas:schema:normalized:1",
-          consumerProfile: "lifecycle.atlas-consumer.v1",
+          consumerProfile: "lifecycle.atlas-consumer.v2",
         },
         processor: {
           id: "atlas-reference-validator",
-          version: "0.7.0",
+          version: "0.8.0",
           implementationDigest: sha("0"),
         },
         stateDigest: sha("1"),
@@ -142,10 +146,11 @@ function deliveryView(delivery = state()) {
     digest: sha("7"),
   });
   return FoundationDeliveryViewSchema.parse({
-    schema: "lifecycle.delivery-view.v1",
+    schema: "lifecycle.delivery-view.v2",
     generation,
     state: delivery,
     currentSubjects: delivery.subjects,
+    work: { current: null, pendingStop: null, continuation: { kind: "stop", reason: "delegation-required" } },
     semantics: {
       outcome: { disposition: null, summary: null, uncertainty: null },
       claims: [],
@@ -188,6 +193,35 @@ function deliveryView(delivery = state()) {
   });
 }
 
+test("Integration Next Pass has exact subjects and no Agent role or Investment", () => {
+  const reduced = state();
+  const selected = FoundationDeliveryStateSchema.parse({ ...reduced,
+    eligibleOperations: [...reduced.eligibleOperations, "delivery.integrate"],
+  });
+  const base = deliveryView(selected);
+  const integration = {
+    operation: "delivery.integrate" as const,
+    eligible: true,
+    role: null,
+    boundary: selected.subjects.activeBoundary,
+    candidate: selected.subjects.candidate,
+    consequence: "Construct against one newly observed canonical parent.",
+    investment: null,
+  };
+  const view = { ...base, nextPass: [...base.nextPass, integration] };
+  assert.equal(FoundationDeliveryViewSchema.parse(view).nextPass.length, 2);
+  for (const substituted of [
+    { ...integration, role: "builder" },
+    { ...integration, investment: base.nextPass[0]!.investment },
+    { ...integration, eligible: false },
+    { ...integration, boundary: null },
+    { ...integration, candidate: null },
+  ]) assert.equal(FoundationDeliveryViewSchema.safeParse({ ...view, nextPass: [substituted] }).success, false);
+  assert.equal(FoundationDeliveryViewSchema.safeParse({ ...base,
+    nextPass: [{ ...base.nextPass[0]!, investment: null }],
+  }).success, true, "Unavailable installed choices do not invalidate an exact Agent role or reducer eligibility");
+});
+
 const unchanged: FoundationChangeFacts = {
   repository: { changed: false, beforeCommit: commit, afterCommit: commit },
   candidate: { changed: false, before: null, after: null },
@@ -217,26 +251,27 @@ function assertInvalidRuntimeResultAt(
   );
 }
 
-test("v10 exposes one closed compact operation surface", () => {
-  assert.equal(FOUNDATION_INTERFACE_PROTOCOL, "lifecycle.interface.foundation.v10");
-  assert.equal(FOUNDATION_RUNTIME_PROTOCOL, "lifecycle.runtime.foundation.v10");
-  assert.equal(FOUNDATION_RUNTIME_FACADE_SCHEMA, "lifecycle.foundation-runtime-facade.v10");
-  assert.equal(FOUNDATION_RUNTIME_RESULT_SCHEMA, "lifecycle.foundation-runtime-result.v10");
-  assert.equal(FOUNDATION_RUNTIME_OBSERVATION_SCHEMA, "lifecycle.foundation-runtime-observation.v10");
+test("Foundation exposes one closed compact operation surface", () => {
+  assert.equal(FOUNDATION_INTERFACE_PROTOCOL, "lifecycle.interface.foundation.v17");
+  assert.equal(FOUNDATION_RUNTIME_PROTOCOL, "lifecycle.runtime.foundation.v17");
+  assert.equal(FOUNDATION_RUNTIME_FACADE_SCHEMA, "lifecycle.foundation-runtime-facade.v17");
+  assert.equal(FOUNDATION_RUNTIME_RESULT_SCHEMA, "lifecycle.foundation-runtime-result.v17");
+  assert.equal(FOUNDATION_RUNTIME_OBSERVATION_SCHEMA, "lifecycle.foundation-runtime-observation.v17");
   assert.deepEqual(FOUNDATION_DELIVERY_OPERATIONS, [
-    "delivery.prepare", "delivery.admit", "delivery.continue", "delivery.evaluate",
+    "delivery.prepare", "delivery.admit", "delivery.continue", "delivery.integrate", "delivery.evaluate",
     "delivery.revise", "delivery.reaffirm", "delivery.accept", "delivery.no-ship",
     "delivery.recover",
   ]);
   assert.deepEqual(FOUNDATION_RUNTIME_OPERATION_KINDS, [
     "repository.initialize", "repository.validate", "delivery.inbox", "delivery.status",
-    ...FOUNDATION_DELIVERY_OPERATIONS, "delivery.inspect", "delivery.diff", "delivery.watch",
+    ...FOUNDATION_DELIVERY_OPERATIONS, "delivery.work", "delivery.inspect", "delivery.diff", "delivery.watch",
     "delivery.export",
   ]);
-  assert.equal(FOUNDATION_CONTROL_RECORD_KINDS.length, 12);
-  assert.equal(FOUNDATION_CONTROL_EVENT_KINDS.length, 22);
+  assert.equal(FOUNDATION_CONTROL_RECORD_KINDS.length, 14);
+  assert.equal(FOUNDATION_CONTROL_EVENT_KINDS.length, 25);
   assert.deepEqual(FOUNDATION_DELIVERY_RECOVERY_STEPS, [
     "candidate-sealed",
+    "integration-assessed",
     "agent-attempt-prepared",
     "provider-effect-intended",
     "provider-effect-observed",
@@ -248,7 +283,7 @@ test("v10 exposes one closed compact operation surface", () => {
     "evaluation-checks",
     "activity-finalization",
     "activity-completed",
-    "founder-decision-authenticated",
+    "director-decision-authenticated",
     "transaction-effect-intended",
     "transaction-effect-observed",
     "transaction-finalization",
@@ -283,7 +318,7 @@ test("repository observation exposes only the exact complete resolved Atlas sele
   }).success, false);
 });
 
-test("strict version and CLI-error envelopes retain every v10 field", () => {
+test("strict version and CLI-error envelopes retain every selected field", () => {
   const version = {
     ...FOUNDATION_RUNTIME_VERSION_EXPECTATION,
     publicationDigest: sha("a"),
@@ -292,12 +327,26 @@ test("strict version and CLI-error envelopes retain every v10 field", () => {
       defaultDescriptorDigest: sha("b"),
     },
   };
-  assert.equal(version.specificationRevision, "lifecycle.foundation.1.0.0-rc.10");
-  assert.equal(version.provider.defaultDescriptorId, "codex-exec-standard-v6");
-  assert.equal(version.codex.executableRange, ">=0.151.0 <0.152.0");
-  assert.equal(version.codex.generatedWith, "0.151.0");
+  assert.equal(version.specificationRevision, "lifecycle.foundation.1.0.0-rc.17");
+  assert.equal(version.provider.defaultDescriptorId, "codex-exec-standard-v7");
+  assert.equal(version.codex.executableRange, ">=0.153.4 <0.154.0");
+  assert.equal(version.codex.generatedWith, "0.153.4");
   assert.equal(FoundationRuntimeVersionSchema.parse(version).runtimeProtocol, FOUNDATION_RUNTIME_PROTOCOL);
-  assert.equal(parseFoundationRuntimeVersionJson(JSON.stringify(version)).provider.protocol, "lifecycle.provider-adapter.v6");
+  assert.equal(parseFoundationRuntimeVersionJson(JSON.stringify(version)).provider.protocol, "lifecycle.provider-adapter.v7");
+  for (const predecessor of [
+    { ...version, specificationRevision: "lifecycle.foundation.1.0.0-rc.16" },
+    { ...version, runtimeProtocol: "lifecycle.runtime.foundation.v16" },
+    { ...version, interfaceProtocol: "lifecycle.interface.foundation.v16" },
+    { ...version, specificationRevision: "lifecycle.foundation.1.0.0-rc.15" },
+    { ...version, runtimeProtocol: "lifecycle.runtime.foundation.v15" },
+    { ...version, specificationRevision: "lifecycle.foundation.1.0.0-rc.14" },
+    { ...version, runtimeProtocol: "lifecycle.runtime.foundation.v14" },
+    { ...version, provider: { ...version.provider, protocol: "lifecycle.provider-adapter.v6" } },
+    { ...version, provider: { ...version.provider, defaultDescriptorId: "codex-exec-standard-v6" } },
+  ]) {
+    assert.equal(FoundationRuntimeVersionSchema.safeParse(predecessor).success, false,
+      "the current public version must not negotiate a predecessor selection");
+  }
   assert.equal(FoundationRuntimeVersionSchema.safeParse({ ...version, codex: { ...version.codex, protocol: "wrong" } }).success, false);
   const error = {
     error: {
@@ -313,6 +362,24 @@ test("strict version and CLI-error envelopes retain every v10 field", () => {
   assert.equal(FoundationCliErrorSchema.safeParse({ error: { ...error.error, unknown: true } }).success, false);
 });
 
+test("CLI authorization observation failure is a closed unknown-effect diagnostic, never an unchanged refusal", () => {
+  const error = {
+    code: "runtime.authorization-result-unavailable", message: "Refresh the selected Delivery.", retryable: false,
+    repositoryChanged: null, operationalStateChanged: null, recoveryActions: [],
+    observedFacts: { invocationId: "a1111111-1111-4111-8111-111111111111", authorizationSubmission: "may-have-started" },
+  };
+  assert.deepEqual(parseFoundationCliErrorJson(JSON.stringify({ error })), error);
+  for (const change of [
+    { code: "runtime.authorization-refused" }, { repositoryChanged: false }, { operationalStateChanged: true },
+    { retryable: true }, { recoveryActions: [{ action: "authorize", detail: "Repeat." }] }, { diagnostics: [] },
+    { observedFacts: undefined }, { observedFacts: {} },
+    { observedFacts: { ...error.observedFacts, invocationId: `${error.observedFacts.invocationId}\n` } },
+    { observedFacts: { ...error.observedFacts, authorizationSubmission: "completed" } },
+    { observedFacts: { ...error.observedFacts, path: "/private/unselected" } },
+  ]) assert.equal(FoundationCliErrorSchema.safeParse({ error: { ...error, ...change } }).success, false);
+  assert.equal(FoundationCliErrorSchema.safeParse({ error: { ...error, repositoryChanged: false, operationalStateChanged: false } }).success, false);
+});
+
 test("prepare creates a Delivery while every later Delivery request selects one", () => {
   const prepare = createFoundationRuntimeOperationRequest({
     target: "/target",
@@ -324,10 +391,11 @@ test("prepare creates a Delivery while every later Delivery request selects one"
   for (const request of [
     { operation: "delivery.status", input: null },
     { operation: "delivery.admit", input: null },
-    { operation: "delivery.continue", input: { semanticMarkdown: "Continue.\n" } },
-    { operation: "delivery.evaluate", input: { semanticMarkdown: "Evaluate.\n" } },
-    { operation: "delivery.revise", input: { semanticMarkdown: "Revise.\n" } },
-    { operation: "delivery.reaffirm", input: { semanticMarkdown: "Reaffirm.\n" } },
+    { operation: "delivery.continue", input: { semanticMarkdown: "Continue.\n", expectedGeneration: sha("7") } },
+    { operation: "delivery.integrate", input: { expectedGeneration: sha("7") } },
+    { operation: "delivery.evaluate", input: { semanticMarkdown: "Evaluate.\n", expectedGeneration: sha("7") } },
+    { operation: "delivery.revise", input: { semanticMarkdown: "Revise.\n", expectedGeneration: sha("7") } },
+    { operation: "delivery.reaffirm", input: { semanticMarkdown: "Reaffirm.\n", expectedGeneration: sha("7") } },
     { operation: "delivery.accept", input: null },
     {
       operation: "delivery.no-ship",
@@ -348,7 +416,7 @@ test("prepare creates a Delivery while every later Delivery request selects one"
   }
 });
 
-test("Inbox and watch carry exact scope while semantic mutations may bind one expected generation", () => {
+test("Inbox and watch carry exact scope while productive semantic mutations require one expected generation", () => {
   const generation = sha("7");
   const inbox = createFoundationRuntimeOperationRequest({
     target: "/target",
@@ -404,6 +472,13 @@ test("Inbox and watch carry exact scope while semantic mutations may bind one ex
         : null,
       generation,
     );
+    assert.throws(() => parseFoundationRuntimeOperationRequest({
+      schema: FOUNDATION_RUNTIME_FACADE_SCHEMA,
+      target: "/target",
+      deliveryId: "delivery-1",
+      operation,
+      input: { semanticMarkdown: `${operation}.\n` },
+    }), FoundationProtocolError);
   }
 });
 
@@ -452,7 +527,7 @@ test("requests are strict, canonical, digestible, and duplicate-key safe", () =>
   assert.match(digestFoundationCanonical(request), /^sha256:[a-f0-9]{64}$/u);
   assert.throws(
     () => parseFoundationRuntimeOperationRequestJson(
-      '{"schema":"lifecycle.foundation-runtime-facade.v10","target":"/target","target":"/other","operation":"repository.validate","input":null}',
+      '{"schema":"lifecycle.foundation-runtime-facade.v17","target":"/target","target":"/other","operation":"repository.validate","input":null}',
     ),
     FoundationProtocolError,
   );
@@ -473,9 +548,56 @@ test("portable canonical digests match Node SHA-256 exactly", () => {
   }
 });
 
+test("Control refusal reads preserve the exact required resolution variant", () => {
+  const source = {
+    schema: "lifecycle.control-record-event.v6" as const,
+    storeId: "store.delivery-1", processId: "delivery-1", sequence: 1,
+    eventId: "event-refusal", eventKind: "agent-pre-intent-refused" as const,
+    occurredAt: observedAt, actor: { kind: "runtime" as const, id: "runtime-1" },
+    subject: null, predecessorDigest: null,
+  };
+  const base = { activityId: "activity-1", diagnosticCode: "lifecycle.projection.bounds-invalid", refusalFactsDigest: sha("a") };
+  for (const resolution of ["none", "projection-condition-required"] as const) {
+    const event = { ...source, payload: { ...base, resolution } };
+    const parsed = FoundationControlEventSchema.parse({ ...event, digest: selfDigestFoundationCarrier(event) });
+    assert.deepEqual(parsed.payload, event.payload);
+  }
+  for (const payload of [base, { ...base, resolution: "automatic-readmission" }]) {
+    const event = { ...source, payload };
+    assert.equal(FoundationControlEventSchema.safeParse({ ...event, digest: selfDigestFoundationCarrier(event) }).success, false);
+  }
+});
+
+test("Control reads decode integration and all selected Material Condition sources", () => {
+  const base = {
+    schema: "lifecycle.control-record-event.v6" as const,
+    storeId: "store.delivery-1", processId: "delivery-1", sequence: 1,
+    eventId: "event-current", occurredAt: observedAt,
+    actor: { kind: "runtime" as const, id: "runtime-1" }, predecessorDigest: null,
+  };
+  const integration = {
+    ...base, eventKind: "integration-assessed" as const,
+    subject: { recordId: "assessment-1", revision: 1, digest: sha("a") },
+    payload: { activityId: "integration-1" },
+  };
+  assert.deepEqual(FoundationControlEventSchema.parse({
+    ...integration, digest: selfDigestFoundationCarrier(integration),
+  }).payload, integration.payload);
+  for (const sourceKind of ["agent-proposal", "integration-assessment", "projection-compilation", "unselected-source"] as const) {
+    const condition = {
+      ...base, eventKind: "material-condition-frozen" as const,
+      subject: { recordId: "condition-1", revision: 1, digest: sha("b") },
+      payload: { activityId: "activity-1", sourceKind, observedFactsDigest: sha("c") },
+    };
+    const result = FoundationControlEventSchema.safeParse({ ...condition, digest: selfDigestFoundationCarrier(condition) });
+    assert.equal(result.success, sourceKind !== "unselected-source", sourceKind);
+    if (result.success) assert.deepEqual(result.data.payload, condition.payload);
+  }
+});
+
 test("Control events retain exact logical identities and self-digests", () => {
   const source = {
-    schema: "lifecycle.control-record-event.v2" as const,
+    schema: "lifecycle.control-record-event.v6" as const,
     storeId: "store.delivery-1",
     processId: "delivery-1",
     sequence: 1,
@@ -557,12 +679,14 @@ test("Control events retain exact logical identities and self-digests", () => {
     digest: selfDigestFoundationCarrier(custodyObservation),
   }).success, false);
   const acceptanceFacts = {
-    schema: "lifecycle.terminal-acceptance-effect-observation.v1" as const,
+    schema: "lifecycle.terminal-acceptance-effect-observation.v2" as const,
     ref: "refs/heads/main",
     commit: "a".repeat(40),
     tree: "b".repeat(40),
     objectFormat: "sha1" as const,
     canonicalResultDigest: sha("1"),
+    observedTip: { commit: "a".repeat(40), tree: "b".repeat(40) },
+    recognition: "at-tip" as const,
   };
   const acceptanceObservation = {
     ...transactionObservation,
@@ -578,11 +702,13 @@ test("Control events retain exact logical identities and self-digests", () => {
     digest: selfDigestFoundationCarrier(acceptanceObservation),
   }).success, true);
   const acceptanceFactsWithoutResultDigest = {
-    schema: "lifecycle.terminal-acceptance-effect-observation.v1" as const,
+    schema: "lifecycle.terminal-acceptance-effect-observation.v2" as const,
     ref: "refs/heads/main",
     commit: "a".repeat(40),
     tree: "b".repeat(40),
     objectFormat: "sha1" as const,
+    observedTip: { commit: "a".repeat(40), tree: "b".repeat(40) },
+    recognition: "at-tip" as const,
   };
   const acceptanceWithoutResultDigest = {
     ...transactionObservation,
@@ -712,23 +838,73 @@ test("Control events retain exact logical identities and self-digests", () => {
   }
 });
 
+test("acceptance observation facts preserve exact tip and ancestor recognition through the public event", () => {
+  for (const objectFormat of ["sha1", "sha256"] as const) {
+    const length = objectFormat === "sha1" ? 40 : 64;
+    const base = {
+      schema: "lifecycle.terminal-acceptance-effect-observation.v2",
+      ref: "refs/heads/main", commit: "a".repeat(length), tree: "b".repeat(length), objectFormat,
+      canonicalResultDigest: sha("1"),
+      observedTip: { commit: "a".repeat(length), tree: "b".repeat(length) }, recognition: "at-tip",
+    };
+    const parse = (facts: Record<string, unknown>, outcome = "applied", factsDigest = digestFoundationCanonical(facts)) => {
+      const event = {
+        schema: "lifecycle.control-record-event.v6", storeId: "store.delivery-1", processId: "delivery-1",
+        sequence: 2, eventId: "accepted-observation", occurredAt: observedAt,
+        actor: { kind: "runtime", id: "runtime-1" }, predecessorDigest: sha("0"),
+        eventKind: "transaction-effect-observed", subject: { recordId: "decision-1", revision: 1, digest: sha("2") },
+        payload: { activityId: "accept-1", effectDigest: sha("3"), facts, factsDigest, outcome },
+      };
+      return FoundationControlEventSchema.safeParse({ ...event, digest: selfDigestFoundationCarrier(event) });
+    };
+    // Equal trees are legal for a distinct descendant commit; this parser binds
+    // the observation and does not independently establish Git ancestry.
+    const ancestor = { ...base, recognition: "ancestor", observedTip: { commit: "c".repeat(length), tree: base.tree } };
+    for (const facts of [base, ancestor]) {
+      const parsed = parse(facts);
+      assert.equal(parsed.success, true, `${objectFormat}/${facts.recognition}`);
+      if (parsed.success) assert.deepEqual(parsed.data.payload, {
+        activityId: "accept-1", effectDigest: sha("3"), facts,
+        factsDigest: digestFoundationCanonical(facts), outcome: "applied",
+      });
+      for (const field of ["observedTip", "recognition", "canonicalResultDigest"]) {
+        const missing: Record<string, unknown> = { ...facts };
+        delete missing[field];
+        assert.equal(parse(missing).success, false, `missing ${field}`);
+      }
+    }
+    for (const facts of [
+      { ...base, recognition: "unknown" },
+      { ...base, recognition: "ancestor" },
+      { ...base, observedTip: { ...base.observedTip, commit: "c".repeat(length) } },
+      { ...base, observedTip: { ...base.observedTip, tree: "c".repeat(length) } },
+      { ...base, observedTip: { ...base.observedTip, path: "/private/unselected" } },
+      { ...base, observedTip: { ...base.observedTip, commit: "c".repeat(length === 40 ? 64 : 40) } },
+      { ...base, observedTip: { ...base.observedTip, tree: "c".repeat(length === 40 ? 64 : 40) } },
+      { ...base, extra: true },
+    ]) assert.equal(parse(facts).success, false, JSON.stringify(facts));
+    for (const outcome of ["not-applied", "indeterminate"]) assert.equal(parse(base, outcome).success, false);
+    assert.equal(parse(ancestor, "applied", digestFoundationCanonical(base)).success, false);
+  }
+});
+
 test("Control revisions expose semantic records without physical custody", () => {
   const source = {
-    schema: "lifecycle.control-record-revision.v1" as const,
+    schema: "lifecycle.control-record-revision.v2" as const,
     processId: "delivery-1",
     recordId: "brief-1",
-    recordKind: "founder-brief" as const,
+    recordKind: "director-brief" as const,
     revision: 1,
     producer: { kind: "runtime" as const, id: "runtime-1" },
-    semanticAuthor: { kind: "founder" as const, id: "founder-1" },
-    semanticAuthority: "founder-supplied" as const,
+    semanticAuthor: { kind: "director" as const, id: "director-1" },
+    semanticAuthority: "director-supplied" as const,
     createdAt: observedAt,
     semanticMarkdown: "# Frame\n\nBuild the feature.\n",
     payload: { operation: "delivery.prepare" },
     relationships: [],
   };
   const record = FoundationControlRevisionSchema.parse({ ...source, digest: selfDigestFoundationCarrier(source) });
-  assert.equal(record.recordKind, "founder-brief");
+  assert.equal(record.recordKind, "director-brief");
   assert.equal(FoundationPublicFactsSchema.safeParse({ authorityProof: "signature-bytes" }).success, false);
   assert.equal(FoundationPublicFactsSchema.safeParse({ databasePath: "/private/store.sqlite" }).success, false);
   assert.equal(FoundationPublicFactsSchema.safeParse({ nested: { providerBytes: "opaque" } }).success, false);
@@ -834,6 +1010,10 @@ test("Delivery generation is an opaque staleness token without private support f
 test("Delivery View refuses substituted duplicate coordinates", () => {
   const delivery = state();
   const view = deliveryView(delivery);
+  assert.equal(view.schema, "lifecycle.delivery-view.v2");
+  assert.equal(FoundationDeliveryViewSchema.safeParse({
+    ...view, schema: "lifecycle.delivery-view.v1",
+  }).success, false, "The predecessor view discriminator cannot select the current work and Investment contract");
   const fabricatedActivity = {
     activityId: "activity-substituted",
     operation: "delivery.continue" as const,
@@ -953,7 +1133,7 @@ test("Delivery View binds one real unresolved activity and its recovery presenta
 test("Attempt View exposes stable execution facts without a second workflow", () => {
   const attempt = { kind: "agent-attempt", id: "attempt-1", revision: 1, digest: sha("1") } as const;
   const receipt = { kind: "execution-receipt", id: "receipt-1", revision: 1, digest: sha("2") } as const;
-  const brief = { kind: "founder-brief", id: "brief-1", revision: 1, digest: sha("3") } as const;
+  const brief = { kind: "director-brief", id: "brief-1", revision: 1, digest: sha("3") } as const;
   const boundary = { kind: "work-boundary", id: "boundary-1", revision: 1, digest: sha("4") } as const;
   const executionSelection = {
     backendProfile: {
@@ -962,7 +1142,7 @@ test("Attempt View exposes stable execution facts without a second workflow", ()
       implementationDigest: sha("6"),
     },
     image: { imageId: "image-1", imageDigest: sha("7") },
-    inputSet: { profileId: "lifecycle.execution-input-set.v1", digest: sha("9") },
+    inputSet: { profileId: "lifecycle.execution-input-set.v2", digest: sha("9") },
     network: { agentProductNetwork: "none", separationRequired: true },
     services: { providerControlPlane: "fixed-service-channel" },
     effectiveLimits: {
@@ -1017,7 +1197,7 @@ test("Attempt View exposes stable execution facts without a second workflow", ()
       processId: "delivery-1",
       journal: { headSequence: 1, headDigest: sha("3") },
       attempt,
-      reducer: { id: "lifecycle.delivery-reducer.foundation-v2", digest: sha("4") },
+      reducer: { id: "lifecycle.delivery-reducer.foundation-v3", digest: sha("4") },
       profile: { id: "lifecycle.attempt-view.foundation-v1", digest: sha("5") },
       currentBoundary: boundary,
       currentCandidate: null,
@@ -1037,7 +1217,7 @@ test("Attempt View exposes stable execution facts without a second workflow", ()
       projection: { digest: sha("7") },
       capability: { profileId: "capability-1" },
       investment: { id: "investment-1" },
-      provider: { adapter: "lifecycle.provider-adapter.v6" },
+      provider: { adapter: "lifecycle.provider-adapter.v7" },
       authoring: { profileId: "authoring-1" },
       input: { contentInventoryDigest: sha("8") },
       execution: executionSelection,
@@ -1560,25 +1740,19 @@ test("completed Delivery View refuses a self-consistent view from another coordi
   });
   assertInvalidRuntimeResultAt(substitutedDelivery, ["value", "view", "state"]);
 
-  const selectedView = deliveryView(selected);
-  const substitutedRepository = FoundationDeliveryViewSchema.parse({
-    ...selectedView,
-    generation: {
-      ...selectedView.generation,
+  const movedCanonical = resealRuntimeResult({
+    ...result,
+    observation: {
+      ...result.observation,
       repository: {
-        ...selectedView.generation.repository,
+        ...result.observation.repository,
         headCommit: "b".repeat(40),
+        headTree: "c".repeat(40),
       },
     },
   });
-  const mixedRepository = resealRuntimeResult({
-    ...result,
-    value: { kind: "delivery-view" as const, view: substitutedRepository },
-  });
-  assertInvalidRuntimeResultAt(
-    mixedRepository,
-    ["value", "view", "generation", "repository"],
-  );
+  assert.doesNotThrow(() => parseFoundationRuntimeOperationResult(movedCanonical));
+
 });
 
 test("completed read results answer the exact requested selector", () => {
@@ -1597,14 +1771,14 @@ test("completed read results answer the exact requested selector", () => {
   });
   const record = (recordId: string) => {
     const source = {
-      schema: "lifecycle.control-record-revision.v1" as const,
+      schema: "lifecycle.control-record-revision.v2" as const,
       processId: "delivery-1",
       recordId,
-      recordKind: "founder-brief" as const,
+      recordKind: "director-brief" as const,
       revision: 1,
       producer: { kind: "runtime" as const, id: "runtime-1" },
-      semanticAuthor: { kind: "founder" as const, id: "founder-1" },
-      semanticAuthority: "founder-supplied" as const,
+      semanticAuthor: { kind: "director" as const, id: "director-1" },
+      semanticAuthority: "director-supplied" as const,
       createdAt: observedAt,
       semanticMarkdown: "# Frame\n\nBuild it.\n",
       payload: { operation: "delivery.prepare" },
@@ -1656,7 +1830,7 @@ test("completed read results answer the exact requested selector", () => {
 
   const familyRequest = createFoundationRuntimeOperationRequest({
     target: "/target", deliveryId: "delivery-1", operation: "delivery.inspect",
-    input: { kind: "family", recordKind: "founder-brief", afterRecordId: null, limit: 10 },
+    input: { kind: "family", recordKind: "director-brief", afterRecordId: null, limit: 10 },
   });
   mismatches.push({ request: familyRequest, result: makeResult(familyRequest, { kind: "family", generation, recordKind: "agent-attempt", records: [], nextAfterRecordId: null }) });
 
@@ -1768,11 +1942,11 @@ test("completed read models cannot mix Delivery or repository generations", () =
       kind: "families" as const,
       generation: {
         ...generation,
-        repository: { ...generation.repository, headTree: "b".repeat(40) },
+        processId: "delivery-other",
       },
       families: [],
     },
-  }), ["value", "generation", "repository"]);
+  }), ["value", "generation"]);
 
   const diffRequest = createFoundationRuntimeOperationRequest({
     target: "/target", deliveryId: selected.processId, operation: "delivery.diff",
@@ -1867,7 +2041,7 @@ test("completed preparation returns its newly created Delivery identity", () => 
   ), FoundationProtocolError);
 });
 
-test("the v10 source has no predecessor protocol coordinates or retired public carriers", async () => {
+test("the current source has no predecessor protocol coordinates or retired public carriers", async () => {
   const moduleRoot = new URL("../../src/foundation/", import.meta.url);
   const moduleNames = (await readdir(moduleRoot))
     .filter((name) => name.endsWith(".ts"))
@@ -1881,10 +2055,26 @@ test("the v10 source has no predecessor protocol coordinates or retired public c
     ["foundation", "v5"].join("."),
     ["foundation", "v8"].join("."),
     ["foundation", "v9"].join("."),
+    ["foundation", "v10"].join("."),
+    ["foundation", "v11"].join("."),
+    ["foundation", "v14"].join("."),
+    ["foundation", "v15"].join("."),
+    ["foundation", "v16"].join("."),
     ["repository", "v13"].join("."),
     ["repository", "v14"].join("."),
+    ["repository", "v15"].join("."),
+    ["repository", "v17"].join("."),
+    ["repository", "v19"].join("."),
+    ["repository", "v20"].join("."),
+    ["repository", "v21"].join("."),
+    ["1", "0", "0-rc", "10"].join("."),
+    ["1", "0", "0-rc", "11"].join("."),
+    ["1", "0", "0-rc", "14"].join("."),
+    ["1", "0", "0-rc", "15"].join("."),
+    ["1", "0", "0-rc", "16"].join("."),
     ["provider-adapter", "v4"].join("."),
     ["provider-adapter", "v5"].join("."),
+    ["provider-adapter", "v6"].join("."),
     ["delivery-reducer", "foundation-v1"].join("."),
     ["dis", "posed"].join(""),
     ["select", "no", "ship"].join("-"),
@@ -1896,4 +2086,176 @@ test("the v10 source has no predecessor protocol coordinates or retired public c
     ["acceptance", "support"].join("-"),
   ];
   for (const value of forbidden) assert.equal(source.includes(value), false, value);
+});
+
+
+test("Integration requests bind one Delivery generation and leave parent selection and merge policy to the Runtime", () => {
+  const request = createFoundationRuntimeOperationRequest({ target: "/target", deliveryId: "delivery-integration",
+    operation: "delivery.integrate", input: { expectedGeneration: sha("7") } });
+  assert.equal(request.operation, "delivery.integrate");
+  assert.deepEqual(request.input, { expectedGeneration: sha("7") });
+  assert.deepEqual(parseFoundationRuntimeOperationRequestJson(serializeFoundationRuntimeOperationRequest(request)), request);
+  for (const input of [null, {}, { expectedGeneration: "not-a-generation" },
+    ...["semanticMarkdown", "authoritySecret", "parentCommit", "canonicalParent", "mergeRule", "strategy", "workspaceStrategy"]
+      .map((field) => ({ expectedGeneration: sha("7"), [field]: "caller-selected" }))]) {
+    assert.throws(() => parseFoundationRuntimeOperationRequest({ ...request, input }), FoundationProtocolError);
+  }
+  assert.throws(() => parseFoundationRuntimeOperationRequest({ ...request, deliveryId: undefined }), FoundationProtocolError);
+  assert.throws(() => parseFoundationRuntimeOperationRequest({ ...request, authoritySecret: "caller-authority" }), FoundationProtocolError);
+});
+
+const workReference = { kind: "work-delegation" as const, id: "work.one", revision: 1, digest: sha("a") };
+function workStopRequest() {
+  const body = { schema: "lifecycle.work-delegation-stop-request.v1", storeId: "store.delivery-1", processId: "delivery-1",
+    delegation: workReference, requestedBy: "director.one", requestedAt: observedAt };
+  return FoundationWorkDelegationStopRequestSchema.parse({ ...body, digest: selfDigestFoundationCarrier(body) });
+}
+function workSetInput() {
+  return {
+    action: "set" as const, expectedGeneration: sha("7"),
+    allowedOperations: ["delivery.integrate" as const],
+    directions: { continue: null, evaluate: null }, agentChoices: { builder: null, reviewer: null },
+    ceilings: { operations: 3, agentAttempts: 0, reservedCellWallTimeMs: 0 }, expiresAt: null,
+  };
+}
+
+test("Work control is Facade-only; set preserves exact directions and stop cannot be made generation-dependent", () => {
+  const base = { schema: FOUNDATION_RUNTIME_FACADE_SCHEMA, target: "/target", deliveryId: "delivery-1", operation: "delivery.work" };
+  const selected = workSetInput();
+  assert.deepEqual(parseFoundationRuntimeOperationRequest({ ...base, input: selected }).input, selected);
+  const directed = { ...selected, allowedOperations: ["delivery.continue", "delivery.evaluate"],
+    directions: { continue: "# Direction\n\nKeep the exact original text.\n", evaluate: "# Review\n\nReview the admitted result.\n" },
+    agentChoices: { builder: { model: "model.one", reasoning: "high" }, reviewer: { model: "model.two", reasoning: "medium" } },
+    ceilings: { operations: 3, agentAttempts: 2, reservedCellWallTimeMs: 6_000 } };
+  assert.deepEqual(parseFoundationRuntimeOperationRequest({ ...base, input: directed }).input, directed);
+  for (const input of [
+    { ...directed, allowedOperations: ["delivery.evaluate", "delivery.continue"] },
+    { ...directed, allowedOperations: ["delivery.continue", "delivery.continue"] },
+    { ...directed, directions: { ...directed.directions, continue: null } },
+    { ...directed, agentChoices: { ...directed.agentChoices, reviewer: null } },
+    { ...selected, directions: directed.directions },
+    { ...selected, allowedOperations: ["delivery.accept"] },
+    { ...selected, semanticMarkdown: "# Unselected grant language" },
+    { ...selected, policy: { id: "caller-policy", digest: sha("a") } },
+    { ...selected, ceilings: { ...selected.ceilings, operations: 0 } },
+    { ...directed, ceilings: { ...directed.ceilings, agentAttempts: 0 } },
+    { ...selected, expiresAt: "2026-02-31T00:00:00.000Z" },
+    { action: "run", delegation: workReference },
+    { action: "stop", delegation: workReference, expectedGeneration: sha("7") },
+    { action: "stop", delegation: { ...workReference, kind: "work-boundary" } },
+  ]) assert.throws(() => parseFoundationRuntimeOperationRequest({ ...base, input }), FoundationProtocolError);
+  for (const input of [{ action: "run", expectedGeneration: sha("7"), delegation: workReference },
+    { action: "stop", delegation: workReference }]) {
+    const request = parseFoundationRuntimeOperationRequest({ ...base, input });
+    assert.deepEqual(parseFoundationRuntimeOperationRequestJson(serializeFoundationRuntimeOperationRequest(request)), request);
+  }
+  assert.equal((FOUNDATION_DELIVERY_OPERATIONS as readonly string[]).includes("delivery.work"), false);
+});
+
+test("Work View binds retained resources and pending stop without relabeling an older grant after readmission", () => {
+  const base = deliveryView();
+  const admission = { kind: "director-decision" as const, id: "admission.old", revision: 1, digest: sha("b") };
+  const current = {
+    reference: workReference, boundary: { kind: "work-boundary" as const, id: "boundary.old", revision: 1, digest: sha("c") },
+    admission, policy: { id: "lifecycle.work-delegation.standard-v1", digest: sha("d") },
+    allowedOperations: ["delivery.integrate"], directions: { continue: null, evaluate: null },
+    agentSelections: { builder: null, reviewer: null }, ceilings: workSetInput().ceilings,
+    expiresAt: null, stopPolicy: "finish-reserved-operation",
+  };
+  const selected = { ...base, state: { ...base.state, delegation: {
+    ...base.state.delegation, admission: { ...admission, id: "admission.current" },
+    current: { reference: workReference, stopped: false },
+  } }, work: { current, pendingStop: null, continuation: { kind: "stop", reason: "admission-required" } } };
+  assert.deepEqual(FoundationDeliveryViewSchema.parse(selected).work.current?.boundary, current.boundary);
+  const stopping = { ...selected, work: { ...selected.work, pendingStop: workStopRequest() } };
+  assert.deepEqual(FoundationDeliveryViewSchema.parse(stopping).work.pendingStop, workStopRequest());
+  const withStop = (patch: Record<string, unknown>) => {
+    const body = { ...workStopRequest(), ...patch };
+    return { ...body, digest: selfDigestFoundationCarrier(body) };
+  };
+  for (const work of [
+    undefined,
+    { ...selected.work, current: null },
+    { ...selected.work, current: { ...current, reference: { ...workReference, revision: 2 } } },
+    { ...stopping.work, pendingStop: withStop({ storeId: "store.other" }) },
+    { ...stopping.work, pendingStop: withStop({ processId: "delivery.other" }) },
+    { ...stopping.work, pendingStop: withStop({ delegation: { ...workReference, digest: sha("e") } }) },
+    { ...stopping.work, pendingStop: { ...workStopRequest(), requestedBy: "director.substitution" } },
+    { ...selected.work, continuation: { kind: "operation", operation: "delivery.integrate", reason: "develop-candidate" } },
+  ]) assert.equal(FoundationDeliveryViewSchema.safeParse({ ...selected, work }).success, false);
+  assert.equal(FoundationDeliveryViewSchema.safeParse({ ...stopping, state: { ...stopping.state,
+    delegation: { ...stopping.state.delegation, current: { reference: workReference, stopped: true } } } }).success, false);
+});
+
+function workResultFixture(action: "set" | "run" | "stop") {
+  const request = createFoundationRuntimeOperationRequest({ target: "/target", deliveryId: "delivery-1", operation: "delivery.work",
+    input: action === "set" ? workSetInput() : action === "run"
+      ? { action, expectedGeneration: sha("7"), delegation: workReference } : { action, delegation: workReference } });
+  const reduced = FoundationDeliveryStateSchema.parse({ ...state(),
+    activities: [{ id: "work.activity", operation: "delivery.integrate", family: "integration", stage: "completed" }],
+    delegation: { ...state().delegation, current: { reference: workReference, stopped: false } },
+    journal: { eventCount: 4, headSequence: 4, headDigest: sha("e") } });
+  const beforeHead = { sequence: action === "stop" ? 4 : 1, eventId: action === "stop" ? "event.after" : "event.before",
+    digest: action === "stop" ? sha("e") : sha("d") };
+  const value = FoundationWorkControlResultSchema.parse({ kind: "work-control", action, delegation: workReference,
+    eventProjection: "journal-coordinates-only", completedOperations: action === "run" ? 1 : 0,
+    lastActivity: action === "run" ? { activityId: "work.activity", operation: "delivery.integrate" } : null,
+    stop: action === "stop" ? { disposition: "pending", request: workStopRequest() } : null,
+    reason: action === "set" ? "delegation-set" : action === "stop" ? "stop-pending" : "no-useful-work" });
+  const result = createFoundationRuntimeOperationResult({ request, observedAt, status: "completed", targetId: "target-1",
+    deliveryId: "delivery-1", observation: observation(reduced), changes: { ...unchanged,
+      control: { advanced: action !== "stop", beforeHead, afterHead: { sequence: 4, eventId: "event.after", digest: sha("e") } } }, value });
+  return { request, result };
+}
+
+test("Work results project an exact Journal range and retained outcome, not truncated execution events", () => {
+  for (const action of ["set", "run", "stop"] as const) {
+    const { request, result } = workResultFixture(action);
+    assert.deepEqual(parseFoundationRuntimeOperationResultForRequest(result, request), result);
+    assert.deepEqual(result.events, []);
+    assert.deepEqual(result.control, []);
+  }
+  const { request, result } = workResultFixture("run");
+  assert.ok(result.value !== null && "kind" in result.value && result.value.kind === "work-control");
+  const work = result.value;
+  assert.equal(FoundationWorkControlResultSchema.parse({ ...work, completedOperations: 10_001 }).completedOperations, 10_001,
+    "The scalar summary has no extra lifetime ceiling beyond the exact retained grant and Journal range");
+  for (const changed of [
+    { ...result, value: null },
+    { ...result, control: [workReference] },
+    { ...result, changes: { ...result.changes, control: { ...result.changes.control, advanced: false } } },
+    { ...result, changes: { ...result.changes, control: { ...result.changes.control,
+      afterHead: { sequence: 3, eventId: "event.other", digest: sha("e") } } } },
+    { ...result, value: { ...work, lastActivity: { activityId: "activity.other", operation: "delivery.integrate" } } },
+    { ...result, value: { ...work, lastActivity: { activityId: "work.activity", operation: "delivery.evaluate" } } },
+    { ...result, value: { ...work, completedOperations: 4 } },
+    { ...result, value: { ...work, eventProjection: "complete" } },
+    { ...result, value: { ...work, reason: "all-work-succeeded" } },
+  ]) assert.throws(() => parseFoundationRuntimeOperationResult(resealRuntimeResult(changed)), FoundationProtocolError);
+  const replaced = resealRuntimeResult({ ...result, observation: { ...result.observation, delivery: {
+    ...result.observation.delivery!, delegation: { ...result.observation.delivery!.delegation,
+      current: { reference: { ...workReference, revision: 2 }, stopped: false } },
+  } } });
+  assert.deepEqual(parseFoundationRuntimeOperationResultForRequest(replaced, request), replaced,
+    "A run result keeps its exact historical grant when a later observation names another current revision");
+  assert.throws(() => parseFoundationRuntimeOperationResultForRequest(resealRuntimeResult({ ...result,
+    value: { ...work, delegation: { ...workReference, revision: 2 } } }), request), FoundationProtocolError);
+  const { result: pending } = workResultFixture("stop");
+  assert.ok(pending.value !== null && "kind" in pending.value && pending.value.kind === "work-control");
+  assert.throws(() => parseFoundationRuntimeOperationResult(resealRuntimeResult({ ...pending,
+    value: { ...pending.value, stop: { disposition: "stopped", request: workStopRequest() }, reason: "delegation-stopped" } })), FoundationProtocolError);
+  const folded = resealRuntimeResult({ ...pending,
+    observation: { ...pending.observation, delivery: { ...pending.observation.delivery!,
+      delegation: { ...pending.observation.delivery!.delegation, current: { reference: workReference, stopped: true } },
+      journal: { eventCount: 5, headSequence: 5, headDigest: sha("f") } } },
+    changes: { ...pending.changes, control: { ...pending.changes.control, advanced: true,
+      afterHead: { sequence: 5, eventId: "event.stopped", digest: sha("f") } } },
+    value: { ...pending.value, stop: { disposition: "stopped", request: workStopRequest() }, reason: "delegation-stopped" },
+  });
+  assert.equal(parseFoundationRuntimeOperationResult(folded).status, "completed");
+  const refused = resealRuntimeResult({ ...result, status: "refused" as const, value: null,
+    changes: { ...result.changes, control: { ...result.changes.control, advanced: false,
+      beforeHead: result.changes.control.afterHead } } });
+  assert.equal(parseFoundationRuntimeOperationResultForRequest(refused, request).value, null,
+    "A refusal can disclose exact observations without claiming any matching grant action result");
 });

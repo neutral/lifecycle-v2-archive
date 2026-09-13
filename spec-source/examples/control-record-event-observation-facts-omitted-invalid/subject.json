@@ -1,12 +1,15 @@
 {
-  "schema": "lifecycle.control-record-event.v2",
+  "schema": "lifecycle.control-record-event.v6",
   "storeId": "store.delivery.demo",
   "processId": "delivery.demo",
   "sequence": 9,
   "eventId": "event.admission-effect-observed-without-facts",
   "eventKind": "transaction-effect-observed",
   "occurredAt": "2026-08-29T12:30:00Z",
-  "actor": { "kind": "runtime", "id": "runtime.foundation" },
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
   "subject": {
     "recordId": "decision.admit.demo",
     "revision": 1,

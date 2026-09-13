@@ -30,11 +30,11 @@ export type DistributionExecutionPlatformSelection = DistributionPlatformSelecti
 
 export type DistributionManifest = Readonly<{
   coordinates: Readonly<{
-    interfaceProtocol: "lifecycle.interface.foundation.v10";
-    providerAdapter: "lifecycle.provider-adapter.v6";
-    qualificationRevision: "lifecycle.foundation.1.0.0-rc.10";
-    repositoryContract: "lifecycle.repository.v15";
-    runtimeProtocol: "lifecycle.runtime.foundation.v10";
+    interfaceProtocol: "lifecycle.interface.foundation.v17";
+    providerAdapter: "lifecycle.provider-adapter.v7";
+    qualificationRevision: "lifecycle.foundation.1.0.0-rc.17";
+    repositoryContract: "lifecycle.repository.v22";
+    runtimeProtocol: "lifecycle.runtime.foundation.v17";
   }>;
   distribution: Readonly<{
     nodeMinimum: "24.14.0";
@@ -46,7 +46,7 @@ export type DistributionManifest = Readonly<{
   images: Readonly<{
     execution: Readonly<{
       agentAdapterImplementationDigest: `sha256:${string}`;
-      codexVersion: "0.151.0";
+      codexVersion: "0.153.4";
       imageId: string;
       indexDigest: `sha256:${string}`;
       nonRootUser: "65532:65532";
@@ -260,11 +260,11 @@ export function parseDistributionManifestValue(value: unknown): DistributionMani
     "repositoryContract",
     "runtimeProtocol",
   ], "manifest.coordinates");
-  exactString(coordinates.interfaceProtocol, "lifecycle.interface.foundation.v10", "interface protocol");
-  exactString(coordinates.providerAdapter, "lifecycle.provider-adapter.v6", "provider adapter");
-  exactString(coordinates.qualificationRevision, "lifecycle.foundation.1.0.0-rc.10", "qualification revision");
-  exactString(coordinates.repositoryContract, "lifecycle.repository.v15", "repository contract");
-  exactString(coordinates.runtimeProtocol, "lifecycle.runtime.foundation.v10", "runtime protocol");
+  exactString(coordinates.interfaceProtocol, "lifecycle.interface.foundation.v17", "interface protocol");
+  exactString(coordinates.providerAdapter, "lifecycle.provider-adapter.v7", "provider adapter");
+  exactString(coordinates.qualificationRevision, "lifecycle.foundation.1.0.0-rc.17", "qualification revision");
+  exactString(coordinates.repositoryContract, "lifecycle.repository.v22", "repository contract");
+  exactString(coordinates.runtimeProtocol, "lifecycle.runtime.foundation.v17", "runtime protocol");
 
   const distribution = object(root.distribution, "manifest.distribution");
   exactKeys(distribution, [
@@ -304,7 +304,7 @@ export function parseDistributionManifestValue(value: unknown): DistributionMani
     "runnerImplementationDigest",
   ], "Execution Image");
   exactString(execution.repository, EXECUTION_IMAGE_REPOSITORY, "Execution Image repository");
-  exactString(execution.codexVersion, "0.151.0", "Execution Image Codex version");
+  exactString(execution.codexVersion, "0.153.4", "Execution Image Codex version");
   exactString(execution.nonRootUser, "65532:65532", "Execution Image user");
   exactString(execution.runnerContractId, "lifecycle.execution-cell-runner.v1", "runner contract");
   if (typeof execution.imageId !== "string" || !OPAQUE_ID.test(execution.imageId)) {
@@ -327,11 +327,11 @@ export function parseDistributionManifestValue(value: unknown): DistributionMani
 
   return Object.freeze({
     coordinates: Object.freeze({
-      interfaceProtocol: "lifecycle.interface.foundation.v10" as const,
-      providerAdapter: "lifecycle.provider-adapter.v6" as const,
-      qualificationRevision: "lifecycle.foundation.1.0.0-rc.10" as const,
-      repositoryContract: "lifecycle.repository.v15" as const,
-      runtimeProtocol: "lifecycle.runtime.foundation.v10" as const,
+      interfaceProtocol: "lifecycle.interface.foundation.v17" as const,
+      providerAdapter: "lifecycle.provider-adapter.v7" as const,
+      qualificationRevision: "lifecycle.foundation.1.0.0-rc.17" as const,
+      repositoryContract: "lifecycle.repository.v22" as const,
+      runtimeProtocol: "lifecycle.runtime.foundation.v17" as const,
     }),
     distribution: Object.freeze({
       nodeMinimum: "24.14.0" as const,
@@ -344,7 +344,7 @@ export function parseDistributionManifestValue(value: unknown): DistributionMani
       execution: Object.freeze({
         agentAdapterImplementationDigest:
           execution.agentAdapterImplementationDigest as `sha256:${string}`,
-        codexVersion: "0.151.0" as const,
+        codexVersion: "0.153.4" as const,
         imageId: execution.imageId,
         indexDigest: execution.indexDigest as `sha256:${string}`,
         nonRootUser: "65532:65532" as const,
@@ -391,11 +391,11 @@ export function platformSelection(
 
 const TEMPLATE_VALUE = Object.freeze({
   coordinates: Object.freeze({
-    interfaceProtocol: "lifecycle.interface.foundation.v10",
-    providerAdapter: "lifecycle.provider-adapter.v6",
-    qualificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-    repositoryContract: "lifecycle.repository.v15",
-    runtimeProtocol: "lifecycle.runtime.foundation.v10",
+    interfaceProtocol: "lifecycle.interface.foundation.v17",
+    providerAdapter: "lifecycle.provider-adapter.v7",
+    qualificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+    repositoryContract: "lifecycle.repository.v22",
+    runtimeProtocol: "lifecycle.runtime.foundation.v17",
   }),
   distribution: Object.freeze({
     nodeMinimum: "24.14.0",

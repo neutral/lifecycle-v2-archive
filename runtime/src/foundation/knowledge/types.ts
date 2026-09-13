@@ -7,7 +7,7 @@ import type {
 } from "../repository/types.js";
 import type { FoundationValidationResult } from "../validation/result.js";
 
-export const FOUNDATION_KNOWLEDGE_KINDS = ["behavior", "assurance", "blueprint", "description", "check"] as const;
+export const FOUNDATION_KNOWLEDGE_KINDS = ["behavior", "assurance", "blueprint", "description", "check", "discipline"] as const;
 export type FoundationKnowledgeKind = (typeof FOUNDATION_KNOWLEDGE_KINDS)[number];
 export type FoundationKnowledgeStatus = "draft" | "current" | "superseded" | "retired";
 export type FoundationRelationshipType = "refines" | "constrains" | "realizes" | "verified-by" | "depends-on" | "related-to";
@@ -42,11 +42,19 @@ export type FoundationDeclaredConflict = Readonly<{
   targetFact: string;
 }>;
 
-export type FoundationSupersession = Readonly<{
+/** One exact revision of an enduring Knowledge identity. */
+export type FoundationKnowledgeRevisionIdentity = Readonly<{
   id: string;
   revision: number;
   sourceDigest: Sha256;
   semanticDigest: Sha256;
+}>;
+
+export type FoundationSupersession = FoundationKnowledgeRevisionIdentity;
+
+/** The same exact revision can occur in each independently identified review basis. */
+export type FoundationKnowledgeOccurrence = FoundationKnowledgeRevisionIdentity & Readonly<{
+  basis: "base" | "integration-parent" | "candidate";
 }>;
 
 export type FoundationRelationship = Readonly<{
@@ -129,10 +137,24 @@ export type FoundationCheckSpec = Readonly<{
   falsifiers: readonly string[];
 }>;
 
-export type FoundationKnowledgeSpec = FoundationBehaviorSpec | FoundationAssuranceSpec | FoundationBlueprintSpec | FoundationDescriptionSpec | FoundationCheckSpec;
+export type FoundationDisciplineSpec = Readonly<{
+  practice: string;
+  appliesWhen: readonly string[];
+  doesNotApplyWhen: readonly string[];
+  guidance: readonly string[];
+  verification: readonly string[];
+}>;
+
+export type FoundationKnowledgeSpec =
+  | FoundationBehaviorSpec
+  | FoundationAssuranceSpec
+  | FoundationBlueprintSpec
+  | FoundationDescriptionSpec
+  | FoundationCheckSpec
+  | FoundationDisciplineSpec;
 
 export type FoundationKnowledgeFrontMatter = Readonly<{
-  schema: "lifecycle.knowledge-record.v1";
+  schema: "lifecycle.knowledge-record.v2";
   kind: FoundationKnowledgeKind;
   id: string;
   title: string;
@@ -148,6 +170,39 @@ export type FoundationKnowledgeFrontMatter = Readonly<{
   spec: FoundationKnowledgeSpec;
   extensions: Readonly<Record<string, unknown>>;
   canonicalValue: Readonly<Record<string, unknown>>;
+}>;
+
+export type FoundationDisciplinePackRegistration = Readonly<{
+  id: string;
+  publisher: string;
+  version: string;
+  source: string;
+  revision: string;
+  manifestDigest: Sha256;
+}>;
+
+export type FoundationDisciplineAdoption = Readonly<{
+  id: string;
+  revision: number;
+  path: string;
+  sourceDigest: Sha256;
+  semanticDigest: Sha256;
+  packId: string;
+}>;
+
+export type FoundationDisciplineWorkType = Readonly<{
+  id: string;
+  title: string;
+  description: string;
+  disciplineIds: readonly string[];
+}>;
+
+export type FoundationDisciplineRegistry = Readonly<{
+  schema: "lifecycle.discipline-registry.v1";
+  packs: readonly FoundationDisciplinePackRegistration[];
+  adoptions: readonly FoundationDisciplineAdoption[];
+  workTypes: readonly FoundationDisciplineWorkType[];
+  digest: Sha256;
 }>;
 
 export type FoundationMarkdownHeading = Readonly<{
@@ -228,10 +283,11 @@ export type FoundationCoverageExemptionResult = Readonly<{
 }>;
 
 export type FoundationKnowledgeSetManifest = Readonly<{
-  schema: "lifecycle.knowledge-set.v1";
+  schema: "lifecycle.knowledge-set.v2";
   specificationRevision: string;
-  profile: "knowledge-set-v1";
+  profile: "knowledge-set-v2";
   repository: FoundationRepositorySnapshotBasis;
+  disciplineRegistry: FoundationDisciplineRegistry;
   records: readonly Readonly<{
     kind: FoundationKnowledgeKind;
     id: string;
@@ -291,6 +347,7 @@ export type FoundationKnowledgeObservation = Readonly<{
   records: readonly FoundationKnowledgeRecord[];
   currentRecords: readonly FoundationKnowledgeRecord[];
   historicalRecords: readonly FoundationKnowledgeRecord[];
+  disciplineRegistry: FoundationDisciplineRegistry;
   relationships: readonly FoundationRelationshipEdge[];
   coverage: readonly FoundationCoverageEntry[];
   exemptions: readonly FoundationCoverageExemptionResult[];

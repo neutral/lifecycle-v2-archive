@@ -8,7 +8,7 @@
   "properties": {
     "schema": { "const": "lifecycle.publication-manifest.v1" },
     "specificationId": { "const": "lifecycle" },
-    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "specificationRevision": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "status": {
       "description": "The common maturity of the inventoried specification documents, distinct from publication lifecycle status in an authenticated publication statement.",
       "type": "string",
@@ -32,7 +32,7 @@
       "maxItems": 10000,
       "items": { "$ref": "#/$defs/entry" }
     },
-    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "publicationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "entry": {
@@ -40,9 +40,9 @@
       "additionalProperties": false,
       "required": ["path", "digest", "role", "normative"],
       "properties": {
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
-        "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "role": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
+        "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "role": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
         "normative": { "type": "boolean" }
       }
     }

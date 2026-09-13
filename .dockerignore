@@ -10,9 +10,12 @@
 !protocol/**
 !runtime/
 !runtime/**
-!clients/
-!clients/tui/
-!clients/tui/**
+!third-party/
+!third-party/atlas-reference-validator/
+!third-party/atlas-reference-validator/LICENSE
+!third-party/atlas-reference-validator/PROVENANCE.json
+!third-party/atlas-reference-validator/package/
+!third-party/atlas-reference-validator/package/**
 !distribution/
 !distribution/package/
 !distribution/package/package.json

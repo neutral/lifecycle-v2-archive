@@ -1,19 +1,25 @@
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   mkdtemp,
+  realpath,
   rm,
+  writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { after, before } from "node:test";
+import { FOUNDATION_DIRECTOR_BRIEF_PAYLOAD_SCHEMA } from "../../src/foundation/constants.js";
 import { createDeliveryControlRecordStore } from "../../src/foundation/control/delivery-custody.js";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
 import type { ControlRecordStore } from "../../src/foundation/control/store.js";
 import {
   CONTROL_RECORD_STORE_SCHEMA,
+  type ControlJsonObject,
   type ControlRecordRevision,
 } from "../../src/foundation/control/types.js";
 import type { FoundationInstalledRuntimeConfigurationV7 } from "../../src/foundation/installed-configuration-v7.js";
+import { FoundationError } from "../../src/foundation/error.js";
 import type {
   FoundationAgentOperationSupportV7,
   FoundationPreparationAgentOperationV7Input,
@@ -26,6 +32,7 @@ import {
 } from "../../src/foundation/process/preparation-context-v7.js";
 import {
   operateFoundationPreparationRuntimeV7,
+  openFoundationPreparationRuntimeV7,
   recoverFoundationPreparationRuntimeV7,
 } from "../../src/foundation/process/preparation-runtime-v7.js";
 import { git } from "../../src/foundation/repository/git.js";
@@ -84,8 +91,8 @@ function result(activityId: string): FoundationPreparationAgentOperationV7Result
 }
 
 before(async () => {
-  const target = await mkdtemp(join(tmpdir(), "lifecycle-preparation-runtime-target-"));
-  const machineHome = await mkdtemp(join(tmpdir(), "lifecycle-preparation-runtime-home-"));
+  const target = await realpath(await mkdtemp(join(tmpdir(), "lifecycle-preparation-runtime-target-")));
+  const machineHome = await realpath(await mkdtemp(join(tmpdir(), "lifecycle-preparation-runtime-home-")));
   await git(target, ["init", "-b", "main"]);
   await git(target, ["config", "user.name", "Lifecycle Test"]);
   await git(target, ["config", "user.email", "lifecycle@example.invalid"]);
@@ -94,9 +101,9 @@ before(async () => {
   await git(target, ["commit", "-m", "Initialize target"]);
   await initializeRepository(target, {
     targetId: "preparation-runtime-v7-target",
-    founderPrincipal: "founder-preparation-runtime",
+    directorPrincipal: "director-preparation-runtime",
     home: machineHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: FOUNDATION_GENERATED_PUBLICATION_DIGEST,
     stage: true,
   });
@@ -132,7 +139,7 @@ test("preflight compiles one complete exact preparation basis before Store creat
     basis.providerCapability.externalEffects,
     basis.epoch.contract.capabilityProfiles[basis.epoch.contract.defaults.capabilityProfileId]!.externalEffects,
   );
-  assert.equal(basis.providerInput.founderDirection.markdown, basis.semanticMarkdown);
+  assert.equal(basis.providerInput.directorDirection.markdown, basis.semanticMarkdown);
 });
 
 test("fresh owner consumes the preflight basis and delegates one common Agent Activity", async () => {
@@ -161,7 +168,7 @@ test("fresh owner consumes the preflight basis and delegates one common Agent Ac
         machineHome: fixture.machineHome,
       },
       async assertEpochUnmoved(repository, epoch) {
-        assert.equal(repository, fixture.basis.epoch.repository);
+        assert.notEqual(repository, fixture.basis.epoch.repository);
         assert.deepEqual(epoch, fixture.basis.epoch.epoch);
         epochGuarded = true;
       },
@@ -187,11 +194,11 @@ test("fresh owner consumes the preflight basis and delegates one common Agent Ac
     assert.equal(captured.boundary, null);
     assert.equal(captured.candidate, null);
     assert.equal(captured.seal, null);
-    assert.equal(captured.targetRepository, fixture.basis.epoch.repository);
-    assert.equal(captured.opening.founderId, fixture.basis.epoch.contract.authority.principalId);
+    assert.notEqual(captured.targetRepository, fixture.basis.epoch.repository);
+    assert.equal(captured.opening.directorId, fixture.basis.epoch.contract.authority.principalId);
     assert.equal(captured.investment.rationale, "fresh-reconnaissance");
     assert.equal(captured.investment.model, "gpt-foundation-current");
-    assert.equal(captured.providerInput, fixture.basis.providerInput);
+    assert.deepEqual(captured.providerInput, fixture.basis.providerInput);
     assert.equal(epochGuarded, true);
   } finally {
     opened.store.close();
@@ -203,20 +210,21 @@ function retainedBrief(
   basis: FoundationPreparationBasisV7,
   rawMarkdown: string,
 ): ControlRecordRevision {
-  const source = validDeliveryControlPayload("founder-brief");
+  const source = validDeliveryControlPayload("director-brief");
   return compileControlRecordRevision(processId, {
-    recordId: "founder-brief-prepare-recovery",
-    recordKind: "founder-brief",
+    recordId: "director-brief-prepare-recovery",
+    recordKind: "director-brief",
     revision: 1,
     producer: Object.freeze({ kind: "runtime", id: RUNTIME }),
-    semanticAuthor: Object.freeze({ kind: "founder", id: basis.epoch.contract.authority.principalId }),
-    semanticAuthority: "founder-supplied",
+    semanticAuthor: Object.freeze({ kind: "director", id: basis.epoch.contract.authority.principalId }),
+    semanticAuthority: "director-supplied",
     createdAt: SUBMITTED,
     semanticMarkdown: basis.semanticMarkdown,
     payload: Object.freeze({
       ...source,
+      scope: { kind: "activity", activityId: "prepare-recovery" },
       inputProfile: "delivery.prepare",
-      templateProfileId: "founder-brief.direction-v1",
+      templateProfileId: "director-brief.direction-v1",
       semanticMarkdownDigest: sha256Bytes(basis.semanticMarkdown),
       submission: Object.freeze({
         rawDigest: sha256Bytes(rawMarkdown),
@@ -259,6 +267,8 @@ function support(
     stage: "activity-opened",
     coordinate: null,
     execution: null,
+    executionSelection: null,
+    candidateRejection: null,
     brief: Object.freeze({ id: brief.recordId, revision: brief.revision, digest: brief.digest }),
     attempt: null,
     boundary: null,
@@ -267,16 +277,17 @@ function support(
     opening: Object.freeze({
       agentId: AGENT,
       runtimeId: RUNTIME,
-      founderId: basis.epoch.contract.authority.principalId,
+      directorId: basis.epoch.contract.authority.principalId,
       submittedAt: SUBMITTED,
       startedAt: SUBMITTED,
-      founderSubmissionRawDigest: sha256Bytes(rawMarkdown),
-      founderSubmissionRawByteLength: Buffer.byteLength(rawMarkdown, "utf8"),
-      founderSemanticDigest: sha256Bytes(basis.semanticMarkdown),
-      founderSemanticByteLength: Buffer.byteLength(basis.semanticMarkdown, "utf8"),
+      directorSubmissionRawDigest: sha256Bytes(rawMarkdown),
+      directorSubmissionRawByteLength: Buffer.byteLength(rawMarkdown, "utf8"),
+      directorSemanticDigest: sha256Bytes(basis.semanticMarkdown),
+      directorSemanticByteLength: Buffer.byteLength(basis.semanticMarkdown, "utf8"),
       investment,
     }),
     plan: Object.freeze({
+      preparationBasis: Object.freeze({ snapshot: basis.snapshot.snapshot, basisDigest: basis.digest }),
       attemptCreatedAt: ATTEMPTED,
       preDispatchStateDigest: sha256Bytes("pre-dispatch"),
       projection: Object.freeze({
@@ -314,6 +325,8 @@ test("recovery rehydrates normalized Brief semantics and the retained immutable 
   const processId = "preparation-runtime-v7-recovery";
   const rawMarkdown = `  ${fixture.basis.semanticMarkdown}  `;
   const brief = retainedBrief(processId, fixture.basis, rawMarkdown);
+  assert.equal(brief.payload.schema, FOUNDATION_DIRECTOR_BRIEF_PAYLOAD_SCHEMA);
+  assert.deepEqual(brief.payload.scope, { kind: "activity", activityId: "prepare-recovery" });
   const revisions = new Map([[`${brief.recordId}\0${brief.revision}`, brief]]);
   const store = {
     identity: Object.freeze({
@@ -333,6 +346,7 @@ test("recovery rehydrates normalized Brief semantics and the retained immutable 
         candidateCondition: "none" as const,
         activities: Object.freeze([]),
         subjects: Object.freeze({
+          integrationAssessment: null,
           proposedBoundary: null,
           activeBoundary: null,
           candidate: null,
@@ -341,6 +355,7 @@ test("recovery rehydrates normalized Brief semantics and the retained immutable 
           evidence: null,
           closure: null,
         }),
+        delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
         journal: Object.freeze({ eventCount: 0, headDigest: null }),
         eligibleOperations: Object.freeze([]),
       });
@@ -361,7 +376,7 @@ test("recovery rehydrates normalized Brief semantics and the retained immutable 
       machineHome: fixture.machineHome,
     },
     inspectAgentActivity() { return retained; },
-    async preflightBasis(input) {
+    async reopenBasis(input) {
       preflightSemantic = input.semanticMarkdown;
       assert.equal(input.target, fixture.target);
       return fixture.basis;
@@ -380,5 +395,82 @@ test("recovery rehydrates normalized Brief semantics and the retained immutable 
   assert.equal(captured.configuration.model, "gpt-foundation-retained");
   assert.equal(captured.configuration.reasoning, "xhigh");
   assert.equal(captured.investment, retained.opening.investment);
-  assert.equal(captured.providerInput, fixture.basis.providerInput);
+  assert.deepEqual(captured.providerInput, fixture.basis.providerInput);
+  // Reconstructed fixture revisions and their support refs stay internally
+  // digested. Each scope mutation must refuse before context/provider recovery,
+  // rather than being caught only by a stale revision digest.
+  const invalidScopes: readonly ControlJsonObject[] = [
+    { ...brief.payload, schema: "lifecycle.director-brief-payload.v1" },
+    { ...brief.payload, scope: { kind: "activity", activityId: "prepare-other" } },
+    { ...brief.payload, scope: { kind: "delegation", delegationId: "delegation.one", delegationRevision: 1, operation: "delivery.continue" } },
+    { ...brief.payload, scope: { kind: "activity", activityId: retained.activityId, extra: true } },
+    { ...brief.payload, scope: null },
+  ];
+  for (const payload of invalidScopes) {
+    const changed = compileControlRecordRevision(processId, { ...brief, payload });
+    revisions.set(`${changed.recordId}\0${changed.revision}`, changed);
+    await assert.rejects(() => recoverFoundationPreparationRuntimeV7({
+      target: fixture.target, store, configuration: configuration(fixture.machineHome),
+      activityId: retained.activityId, runtimeId: RUNTIME,
+    }, {
+      boundaryFinalization: { machineHome: fixture.machineHome },
+      inspectAgentActivity() { return support(changed, rawMarkdown); },
+      async reopenBasis() { assert.fail("Wrong retained scope must refuse before reopening context"); },
+      async recoverAgentActivity() { assert.fail("Wrong retained scope cannot resume a provider"); },
+    }), (error: unknown) => error instanceof FoundationError && error.code === "lifecycle.preparation-runtime-v7.retained-brief");
+  }
+  revisions.set(`${brief.recordId}\0${brief.revision}`, brief);
+  assert.deepEqual(store.getRevision(brief.recordId, brief.revision), brief);
+});
+
+
+test("preparation retains its exact basis before publication and recovers after live canonical advances", async () => {
+  const activityId = "prepare-retained-canonical-moved";
+  const options = { boundaryFinalization: { machineHome: fixture.machineHome } };
+  const lostOpeningReturn = new Error("first Activity committed before caller interruption");
+  const opened = await createDeliveryControlRecordStore({
+    machineHome: fixture.machineHome, targetId: fixture.basis.epoch.contract.targetId,
+    deliveryId: "preparation-retained-canonical-moved", createdAt: CREATED, runtimeActorId: RUNTIME,
+    initializeBeforePublication: async (store) => {
+      await openFoundationPreparationRuntimeV7({
+      store, configuration: configuration(fixture.machineHome), activityId, runtimeId: RUNTIME, agentId: AGENT,
+      submittedAt: SUBMITTED, startedAt: SUBMITTED, attemptCreatedAt: ATTEMPTED, basis: fixture.basis,
+    }, options);
+      throw lostOpeningReturn;
+    },
+  });
+  assert.equal(opened.initializationError, lostOpeningReturn);
+  assert.equal(opened.disposition, "active");
+  const head = fixture.basis.snapshot.snapshot.commit;
+  try {
+    const retained = opened.store.getOperationSupport(activityId);
+    assert(retained !== null);
+    assert.equal(opened.store.state().activities[0]?.id, activityId);
+    await writeFile(join(fixture.target, "canonical-progress.txt"), "Canonical work moved independently.\n");
+    await git(fixture.target, ["add", "--", "canonical-progress.txt"]);
+    await git(fixture.target, ["commit", "-m", "Advance canonical independently"]);
+    await writeFile(join(fixture.target, "canonical-progress.txt"), "Further dirty canonical work.\n");
+    let recovered = 0;
+    await recoverFoundationPreparationRuntimeV7({
+      target: fixture.target, store: opened.store, configuration: configuration(fixture.machineHome),
+      activityId, runtimeId: RUNTIME,
+    }, {
+      ...options,
+      async recoverAgentActivity(input) {
+        recovered += 1;
+        assert.equal(input.preparationBasis.snapshot.commit, head);
+        assert.equal(input.preparationBasis.basisDigest, fixture.basis.digest);
+        assert.notEqual(input.targetRepository, fixture.target);
+        await input.revalidateBeforeIntent({ store: input.store, activityId, operation: "delivery.prepare", role: "reconnaissance",
+          brief: null as unknown as ControlRecordRevision, boundary: null, candidate: null, seal: null, projection: input.projection });
+        return result(activityId);
+      },
+      async operateAgentActivity() { assert.fail("recovery must not open or dispatch a replacement Activity"); },
+    });
+    assert.equal(recovered, 1);
+    assert.equal(opened.store.listEvents(0, 100).some(({ eventKind }) => eventKind === "provider-effect-intended"), false);
+  } finally {
+    opened.store.close();
+    await git(fixture.target, ["reset", "--hard", head]);
+  }
 });

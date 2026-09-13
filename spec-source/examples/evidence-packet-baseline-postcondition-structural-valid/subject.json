@@ -1,0 +1,123 @@
+{
+  "schema": "lifecycle.evidence-packet-payload.v2",
+  "profileId": "lifecycle.evidence-packet.foundation-v2",
+  "ruleSet": {
+    "id": "rules.evidence",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "evaluatedAt": "2026-08-29T12:00:00.000Z",
+  "artifacts": [],
+  "descriptionCoverage": [],
+  "receiptUse": [
+    {
+      "id": "receipt-use.baseline",
+      "checkId": "selection.check.demo",
+      "phase": "baseline",
+      "receiptId": "receipt.check.demo.baseline",
+      "use": "excluded",
+      "freshness": "not-applicable",
+      "subjectEquivalence": "exact",
+      "ageMs": null,
+      "maximumAgeMs": null,
+      "reasonCode": "baseline-postcondition-not-run",
+      "provenance": "runtime-derived"
+    },
+    {
+      "id": "receipt-use.final",
+      "checkId": "selection.check.demo",
+      "phase": "final",
+      "receiptId": "receipt.check.demo.final",
+      "use": "executed",
+      "freshness": "fresh",
+      "subjectEquivalence": "exact",
+      "ageMs": 0,
+      "maximumAgeMs": null,
+      "reasonCode": "final-receipt-current",
+      "provenance": "runtime-derived"
+    }
+  ],
+  "invalidations": [],
+  "reviewerIndependence": [
+    {
+      "id": "independence.1",
+      "ruleId": "rule.independent-review",
+      "attemptId": "attempt.review.1",
+      "workProductId": "work-product.review.1",
+      "receiptId": "receipt.review.1",
+      "capabilityDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "projectionDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "providerSession": "fresh",
+      "subjectDisposition": "exact-read-only",
+      "state": "satisfied",
+      "provenance": "runtime-derived"
+    }
+  ],
+  "propositionDecisions": [
+    {
+      "id": "proposition-decision.1",
+      "propositionId": "proposition.1",
+      "reviewerDisposition": "accepted",
+      "reviewWorkProductId": "work-product.review.1",
+      "fragmentDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "citationIds": [
+        "citation.receipt.check.demo.final"
+      ],
+      "inspectedSubjectIds": [
+        "candidate-seal.demo"
+      ],
+      "limitationIds": [],
+      "uncertainty": "none",
+      "provenance": "agent-proposed",
+      "validation": "valid"
+    }
+  ],
+  "obligations": [
+    {
+      "id": "obligation-state.1",
+      "obligationId": "obligation.1",
+      "state": "satisfied",
+      "checkIds": [
+        "selection.check.demo"
+      ],
+      "receiptIds": [
+        "receipt.check.demo.baseline",
+        "receipt.check.demo.final"
+      ],
+      "propositionDecisionIds": [
+        "proposition-decision.1"
+      ],
+      "artifactLedgerIds": [],
+      "reasonCode": "evidence-satisfied",
+      "provenance": "runtime-derived"
+    }
+  ],
+  "diagnostics": [],
+  "uncertainty": {
+    "level": "none",
+    "itemIds": []
+  },
+  "validator": {
+    "id": "runtime.evidence-validator",
+    "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "readiness": "acceptance-ready",
+  "integrationApplicability": {
+    "assessment": {
+      "kind": "integration-assessment",
+      "id": "integration.demo",
+      "revision": 1,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "mandate": {
+      "disposition": "applicable",
+      "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "baselines": [
+      {
+        "receiptId": "receipt.check.demo.baseline",
+        "disposition": "applicable",
+        "fragmentDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  }
+}

@@ -114,6 +114,7 @@ function state(input: Readonly<{
       }),
     ]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: Object.freeze({
         id: input.boundary.id,
@@ -130,6 +131,7 @@ function state(input: Readonly<{
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: 0, headDigest: null }),
     eligibleOperations: Object.freeze([]),
   });

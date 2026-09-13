@@ -538,6 +538,7 @@ function outputReader(
           byteLength: file.bytes.byteLength,
           digest: entry.digest,
           async *read() {
+            if (file.bytes.byteLength === 0) return;
             const splitAt = Math.max(1, Math.floor(file.bytes.byteLength / 2));
             yield Uint8Array.from(file.bytes.subarray(0, splitAt));
             if (interruptAfterFirstChunk !== null) interruptAfterFirstChunk();

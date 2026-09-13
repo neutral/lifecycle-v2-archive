@@ -1,0 +1,21 @@
+{
+  "schema": "lifecycle.control-record-event.v6",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 2,
+  "eventId": "event.delegation.demo",
+  "eventKind": "activity-started",
+  "occurredAt": "2026-09-06T20:00:00.000Z",
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
+  "subject": null,
+  "payload": {
+    "activityId": "activity.integration.demo",
+    "operation": "delivery.integrate",
+    "reservation": null
+  },
+  "predecessorDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "digest": "sha256:06fb4b39105aad05257110e613b0d67791c51e27ad1d25f7c3a932a4e8cca21c"
+}

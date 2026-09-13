@@ -4,6 +4,7 @@ import {
   FOUNDATION_DELIVERY_REDUCER_ID,
 } from "@neutral/lifecycle-protocol";
 import { FoundationError } from "../error.js";
+import { isFoundationAuthorizedBaselinePostconditionV1 } from "../evidence/assessment-v1.js";
 import {
   DELIVERY_EVENT_KINDS,
   type DeliveryEventKind,
@@ -22,7 +23,7 @@ import type {
   DeliveryStanding,
 } from "../process/delivery-state.js";
 import { foundationDockerExecutionBackendProfileV1 } from "../execution/docker-profile-v1.js";
-import { compileFoundationInstalledAgentExecutionPolicyV1 } from "../execution/installed-agent-runtime-v1.js";
+import { compileFoundationInstalledAgentExecutionPolicyV1 } from "../execution/installed-agent-policy-v1.js";
 import {
   canonicalJson,
   digestCanonical,
@@ -90,8 +91,8 @@ const VIEW_PROFILE = Object.freeze({
       "runtime-observed",
       "runtime-derived",
       "agent-proposed",
-      "founder-supplied",
-      "founder-authenticated",
+      "director-supplied",
+      "director-authenticated",
     ]),
     diagnostics: ATTEMPT_VIEW_DIAGNOSTICS,
   })),
@@ -117,7 +118,7 @@ type FoundationAttemptViewExecutionSelection = Readonly<{
   }>;
   image: Readonly<{ imageId: string; imageDigest: Sha256 }>;
   inputSet: Readonly<{
-    profileId: "lifecycle.execution-input-set.v1";
+    profileId: "lifecycle.execution-input-set.v2";
     digest: Sha256;
   }>;
   network: Readonly<{
@@ -266,7 +267,7 @@ export type FoundationAttemptView = Readonly<{
     role: AttemptRole;
     invocationId: string;
     preDispatchStateDigest: Sha256;
-    brief: FoundationAttemptViewReference<"founder-brief">;
+    brief: FoundationAttemptViewReference<"director-brief">;
     boundary: FoundationAttemptViewReference<"work-boundary"> | null;
     candidate: FoundationAttemptViewReference<"candidate-revision"> | null;
     seal: FoundationAttemptViewReference<"candidate-seal"> | null;
@@ -472,7 +473,7 @@ function attemptExecutionSelection(
   });
   const inputSet = objectValue(execution.inputSet, "Agent Attempt Input Set selection");
   const inputSetProfileId = stringValue(inputSet.profileId, "Agent Attempt Input Set profile");
-  if (inputSetProfileId !== "lifecycle.execution-input-set.v1") {
+  if (inputSetProfileId !== "lifecycle.execution-input-set.v2") {
     fail("binding", "Agent Attempt does not select the Foundation Input Set profile");
   }
   const selectedInputSet = Object.freeze({
@@ -663,7 +664,7 @@ function checkExecutionView(
     fail("binding", `${label} has an unsupported Backend Profile identity`);
   }
   const inputSetProfile = stringValue(inputSet.profileId, `${label} Input Set profile`);
-  if (inputSetProfile !== "lifecycle.execution-input-set.v1") {
+  if (inputSetProfile !== "lifecycle.execution-input-set.v2") {
     fail("binding", `${label} has an unsupported Input Set profile`);
   }
   return Object.freeze({
@@ -938,9 +939,9 @@ function candidateViewBinding(
 ): NonNullable<FoundationAttemptView["candidateTransition"]["input"]> {
   if (
     revision.recordKind !== "candidate-revision" ||
-    revision.payload.schema !== "lifecycle.candidate-revision-payload.v2"
+    revision.payload.schema !== "lifecycle.candidate-revision-payload.v3"
   ) {
-    fail("binding", "Attempt View Candidate binding requires one Candidate Revision v2");
+    fail("binding", "Attempt View Candidate binding requires one Candidate Revision v3");
   }
   const carrier = objectValue(
     revision.payload.carrierManifest,
@@ -980,7 +981,9 @@ function candidateView(input: Readonly<{
   if (input.receipt !== null && !sameTarget(successorTarget, receiptSuccessor)) {
     fail("binding", "Execution Receipt does not bind the exact Candidate successor observation");
   }
-  const inputCandidate = input.attemptCandidate === null
+  // Resolution retains the frozen Candidate as an Attempt subject. Its
+  // reconnaissance Receipt observes no Candidate input or transition.
+  const inputCandidate = input.role === "reconnaissance" || input.attemptCandidate === null
     ? null
     : exactRevision(input.store, input.attemptCandidate, "candidate-revision");
   const successor = successorTarget === null
@@ -1205,8 +1208,15 @@ function checkViews(input: Readonly<{
   boundary: ControlRecordRevision | null;
   seal: ControlRecordRevision | null;
   receipts: readonly ControlRecordRevision[];
-}>): readonly FoundationAttemptViewCheck[] {
-  if (input.boundary === null) return Object.freeze([]);
+}>): Readonly<{
+  checks: readonly FoundationAttemptViewCheck[];
+  authorizedBaselineReceiptDigests: ReadonlySet<Sha256>;
+}> {
+  // This compile-local derivation never enters the public Check or Attempt View.
+  const authorizedBaselineReceiptDigests = new Set<Sha256>();
+  if (input.boundary === null) return Object.freeze({
+    checks: Object.freeze([]), authorizedBaselineReceiptDigests,
+  });
   const mandate = objectValue(input.boundary.payload.mandate, "Work Boundary mandate");
   const selections = arrayValue(mandate.checks, "Work Boundary Checks");
   const boundaryTarget = revisionReference(input.boundary, "work-boundary");
@@ -1235,6 +1245,17 @@ function checkViews(input: Readonly<{
     const projectedFinal = sealTarget === null
       ? null
       : projectedCheckReceipt(final, selection, "final", sealTarget);
+    const projectedBaseline = projectedCheckReceipt(baseline, selection, "baseline", boundaryTarget);
+    if (baseline !== null && isFoundationAuthorizedBaselinePostconditionV1({
+      phase: baseline.payload.phase,
+      modality: baseline.payload.modality,
+      disposition: baseline.payload.disposition,
+      notRunAuthorization: baseline.payload.notRunAuthorization === null ? null
+        : objectValue(baseline.payload.notRunAuthorization, "Baseline non-execution authorization").kind,
+      allocation: objectValue(baseline.payload.execution, "Baseline execution").allocation,
+      startedAt: baseline.payload.startedAt,
+      finishedAt: baseline.payload.finishedAt,
+    })) authorizedBaselineReceiptDigests.add(baseline.digest);
     return Object.freeze({
       selectionId,
       definitionId: stringValue(definition.id, `Check ${selectionId} Definition identity`),
@@ -1244,14 +1265,17 @@ function checkViews(input: Readonly<{
       obligationIds: stringArray(selection.obligationIds, `Check ${selectionId} obligation identities`),
       baselineRequired,
       finalRequired,
-      baseline: projectedCheckReceipt(baseline, selection, "baseline", boundaryTarget),
+      baseline: projectedBaseline,
       final: projectedFinal,
       freshExecutionRequired: finalRequired &&
         (projectedFinal === null || projectedFinal.disposition !== "pass"),
     });
   });
-  return Object.freeze([...views].sort((left, right) =>
-    compareCodePoints(left.selectionId, right.selectionId)));
+  return Object.freeze({
+    checks: Object.freeze([...views].sort((left, right) =>
+      compareCodePoints(left.selectionId, right.selectionId))),
+    authorizedBaselineReceiptDigests,
+  });
 }
 
 function relatedClaimIds(input: Readonly<{
@@ -1310,6 +1334,7 @@ function evidenceArtifactState(
 
 function standingFromChecks(input: Readonly<{
   checks: readonly FoundationAttemptViewCheck[];
+  authorizedBaselineReceiptDigests: ReadonlySet<Sha256>;
   seal: ControlRecordRevision | null;
 }>): FoundationAttemptViewObligationStanding {
   if (input.checks.length === 0) return "not-evaluated";
@@ -1324,7 +1349,9 @@ function standingFromChecks(input: Readonly<{
   }
   const baseline = input.checks.filter(({ baselineRequired }) => baselineRequired);
   if (baseline.some(({ baseline: receipt }) => receipt?.disposition === "fail")) return "check-failed";
-  if (baseline.some(({ baseline: receipt }) => receipt !== null && checkDispositionIncomplete(receipt.disposition))) {
+  if (baseline.some(({ baseline: receipt }) => receipt !== null &&
+      !input.authorizedBaselineReceiptDigests.has(receipt.reference.digest) &&
+      checkDispositionIncomplete(receipt.disposition))) {
     return "check-incomplete";
   }
   if (baseline.some(({ baseline: receipt }) => receipt === null)) return "check-not-run";
@@ -1374,6 +1401,11 @@ function conditionFalsifiers(
 ): ReadonlySet<string> {
   if (material === null) return new Set();
   const source = objectValue(material.payload.source, "Material Condition source");
+  // Runtime context and integration refusals require resolution without
+  // claiming that an Agent falsified any particular mandate obligation.
+  if (source.kind === "projection-compilation" || source.kind === "integration-assessment") {
+    return new Set();
+  }
   if (source.kind !== "agent-proposal") {
     fail("binding", "Material Condition has an unsupported source kind");
   }
@@ -1396,6 +1428,7 @@ function obligationViews(input: Readonly<{
   seal: ControlRecordRevision | null;
   evidence: ControlRecordRevision | null;
   checks: readonly FoundationAttemptViewCheck[];
+  authorizedBaselineReceiptDigests: ReadonlySet<Sha256>;
   claims: readonly ControlJsonValue[];
 }>): readonly FoundationAttemptViewObligation[] {
   if (input.boundary === null) return Object.freeze([]);
@@ -1428,7 +1461,8 @@ function obligationViews(input: Readonly<{
     }
     const artifactState = evidenceArtifactState(input.evidence, id);
     let standing = evidenceEntry === null
-      ? standingFromChecks({ checks, seal: input.seal })
+      ? standingFromChecks({ checks, seal: input.seal,
+        authorizedBaselineReceiptDigests: input.authorizedBaselineReceiptDigests })
       : evidenceStanding(stringValue(evidenceEntry.state, `Evidence obligation ${id} state`));
     if (artifactState === "absent") standing = "artifact-absent";
     else if (artifactState === "present-uninspected") standing = "artifact-present-uninspected";
@@ -1677,8 +1711,8 @@ export function compileFoundationAttemptView(input: Readonly<{
   if (activity === undefined || activity.operation !== operation || activity.family !== "agent") {
     fail("binding", "Agent Attempt does not join its exact reducer activity");
   }
-  const briefTarget = relationship(selected.revision, "uses-brief", "founder-brief", true)!;
-  exactRevision(input.store, briefTarget, "founder-brief");
+  const briefTarget = relationship(selected.revision, "uses-brief", "director-brief", true)!;
+  exactRevision(input.store, briefTarget, "director-brief");
   const boundaryTarget = relationship(selected.revision, "uses-boundary", "work-boundary", false);
   const candidateTarget = relationship(selected.revision, "uses-candidate", "candidate-revision", false);
   const sealTarget = relationship(selected.revision, "uses-seal", "candidate-seal", false);
@@ -1764,7 +1798,7 @@ export function compileFoundationAttemptView(input: Readonly<{
     "check-receipt-recorded",
     "check-receipt",
   );
-  const checks = checkViews({ boundary, seal, receipts });
+  const { checks, authorizedBaselineReceiptDigests } = checkViews({ boundary, seal, receipts });
   const obligations = obligationViews({
     store: input.store,
     boundary,
@@ -1772,6 +1806,7 @@ export function compileFoundationAttemptView(input: Readonly<{
     seal,
     evidence,
     checks,
+    authorizedBaselineReceiptDigests,
     claims: semantics.claims,
   });
   const active = before.activities.filter(({ stage }) => stage !== "completed");
@@ -1842,7 +1877,7 @@ export function compileFoundationAttemptView(input: Readonly<{
         selected.revision.payload.preDispatchStateDigest,
         "Agent pre-dispatch state digest",
       ),
-      brief: reference("founder-brief", briefTarget),
+      brief: reference("director-brief", briefTarget),
       boundary: boundaryTarget === null ? null : reference("work-boundary", boundaryTarget),
       candidate: candidateTarget === null ? null : reference("candidate-revision", candidateTarget),
       seal: sealTarget === null ? null : reference("candidate-seal", sealTarget),

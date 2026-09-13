@@ -48,7 +48,7 @@ export const FOUNDATION_EXECUTION_RECLAMATION_CLAIM_SCHEMA =
 const DATABASE_FILENAME = "execution-reclamation-ledger-v1.sqlite";
 const LEDGER_ROOT_DIRECTORY = "execution-reclamation";
 const DATABASE_APPLICATION_ID = 0x4c455852;
-const DATABASE_USER_VERSION = 1;
+const DATABASE_USER_VERSION = 2;
 const MAXIMUM_HANDOFFS = 10_000;
 const MAXIMUM_OUTSTANDING_HANDOFFS = 64;
 const MAXIMUM_JSON_BYTES = 1024 * 1024;
@@ -172,8 +172,8 @@ export type FoundationExecutionReclamationTerminalEventReferenceV1 = Readonly<{
 
 /**
  * One Control-derived terminal execution subject. The Receipt reference is
- * stable Control identity; the owner is the exact private ledger owner that
- * must have handed off one retired allocation.
+ * stable Control identity; the owner binds its proof subject, while the exact
+ * Retirement identifies the distinct allocation handed to the private ledger.
  */
 export type FoundationExecutionReclamationTerminalSubjectV1 = Readonly<{
   receipt: FoundationExecutionReclamationTerminalReceiptV1;
@@ -358,15 +358,18 @@ function normalizedTerminalSubjects(input: Readonly<{
     });
   }).sort((left, right) => compareCodePoints(canonicalJson(left), canonicalJson(right)));
   const receiptKeys = new Set<string>();
-  const ownerKeys = new Set<string>();
+  const retirementKeys = new Set<Sha256>();
+  const agentOwnerKeys = new Set<string>();
   for (const subject of subjects) {
     const receiptKey = canonicalJson(subject.receipt);
     const ownerKey = canonicalJson(subject.owner);
-    if (receiptKeys.has(receiptKey) || ownerKeys.has(ownerKey)) {
-      fail("terminal-subject-set", "Terminal execution subjects repeat a Receipt or ledger owner");
+    if (receiptKeys.has(receiptKey) || retirementKeys.has(subject.retirementFactsDigest) ||
+        subject.owner.kind === "agent-attempt" && agentOwnerKeys.has(ownerKey)) {
+      fail("terminal-subject-set", "Terminal execution subjects repeat a Receipt, Retirement, or Agent owner");
     }
     receiptKeys.add(receiptKey);
-    ownerKeys.add(ownerKey);
+    retirementKeys.add(subject.retirementFactsDigest);
+    if (subject.owner.kind === "agent-attempt") agentOwnerKeys.add(ownerKey);
   }
   return Object.freeze(subjects);
 }
@@ -744,10 +747,10 @@ FoundationExecutionReclamationClaimV1 {
   return exactClone(Object.freeze({ ...subject, digest: selfDigest(subject) }));
 }
 
-function schemaSql(): string {
+function schemaSql(physicalVersion: 1 | 2 = DATABASE_USER_VERSION): string {
   return `
     PRAGMA application_id = ${DATABASE_APPLICATION_ID};
-    PRAGMA user_version = ${DATABASE_USER_VERSION};
+    PRAGMA user_version = ${physicalVersion};
 
     CREATE TABLE ledger_metadata (
       singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -771,8 +774,7 @@ function schemaSql(): string {
       retirement_digest TEXT NOT NULL UNIQUE,
       dispatch_authority_consumed INTEGER NOT NULL CHECK (dispatch_authority_consumed IN (0, 1)),
       accepted_at TEXT NOT NULL,
-      handoff_json TEXT NOT NULL CHECK (length(handoff_json) BETWEEN 2 AND ${MAXIMUM_JSON_BYTES}),
-      UNIQUE (store_id, process_id, activity_id, owner_kind, owner_subject_digest)
+      handoff_json TEXT NOT NULL CHECK (length(handoff_json) BETWEEN 2 AND ${MAXIMUM_JSON_BYTES})${physicalVersion === 1 ? ",\n      UNIQUE (store_id, process_id, activity_id, owner_kind, owner_subject_digest)" : ""}
     ) STRICT;
 
     CREATE TABLE standings (
@@ -801,6 +803,7 @@ function schemaSql(): string {
 
     CREATE INDEX standings_schedule ON standings (state, next_attempt_at, claim_expires_at, obligation_digest);
     CREATE INDEX handoffs_process ON handoffs (store_id, process_id, obligation_digest);
+    ${physicalVersion === 2 ? "CREATE UNIQUE INDEX handoffs_agent_owner ON handoffs (store_id, process_id, activity_id, owner_subject_digest) WHERE owner_kind = 'agent-attempt';" : ""}
 
     CREATE TRIGGER ledger_metadata_immutable_update BEFORE UPDATE ON ledger_metadata BEGIN
       SELECT RAISE(ABORT, 'ledger_metadata is immutable');
@@ -835,10 +838,11 @@ function retainedSchemaSubject(db: DatabaseSync): readonly ControlJsonObject[] {
   })));
 }
 
-let expectedSchemaSubject: readonly ControlJsonObject[] | null = null;
+const expectedSchemaSubjects = new Map<number, readonly ControlJsonObject[]>();
 
-function assertExactSchema(db: DatabaseSync): void {
-  if (expectedSchemaSubject === null) {
+function expectedSchema(physicalVersion: 1 | 2): readonly ControlJsonObject[] {
+  let expected = expectedSchemaSubjects.get(physicalVersion);
+  if (expected === undefined) {
     const reference = new DatabaseSync(":memory:", {
       enableForeignKeyConstraints: true,
       enableDoubleQuotedStringLiterals: false,
@@ -846,14 +850,94 @@ function assertExactSchema(db: DatabaseSync): void {
       defensive: true,
     });
     try {
-      reference.exec(schemaSql());
-      expectedSchemaSubject = retainedSchemaSubject(reference);
+      reference.exec(schemaSql(physicalVersion));
+      expected = retainedSchemaSubject(reference);
+      expectedSchemaSubjects.set(physicalVersion, expected);
     } finally {
       reference.close();
     }
   }
-  if (canonicalJson(retainedSchemaSubject(db)) !== canonicalJson(expectedSchemaSubject)) {
+  return expected;
+}
+
+function assertExactSchema(db: DatabaseSync, physicalVersion: 1 | 2 = DATABASE_USER_VERSION): void {
+  if (canonicalJson(retainedSchemaSubject(db)) !== canonicalJson(expectedSchema(physicalVersion))) {
     fail("database-schema", "Execution Reclamation ledger schema or invariant set is not exact");
+  }
+}
+
+function assertLedgerIntegrity(
+  db: DatabaseSync,
+  readEntries: () => readonly FoundationExecutionReclamationLedgerEntryV1[],
+  physicalVersion: 1 | 2,
+): void {
+  const result = db.prepare("PRAGMA integrity_check(1)").get() as SqlRow | undefined;
+  if (result === undefined || Object.values(result).length !== 1 ||
+      Object.values(result)[0] !== "ok") {
+    fail("database-integrity", "Execution Reclamation ledger failed SQLite integrity checking");
+  }
+  assertExactSchema(db, physicalVersion);
+  const foreignKeys = db.prepare("PRAGMA foreign_key_check").all();
+  if (foreignKeys.length !== 0) {
+    fail("database-integrity", "Execution Reclamation ledger has an invalid foreign-key binding");
+  }
+  const counts = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM handoffs) AS handoff_count,
+      (SELECT COUNT(*) FROM standings) AS standing_count
+  `).get() as SqlRow;
+  const handoffCount = integer(counts.handoff_count, "Execution Reclamation handoff count");
+  const standingCount = integer(counts.standing_count, "Execution Reclamation standing count");
+  const entries = readEntries();
+  if (handoffCount !== standingCount || handoffCount !== entries.length) {
+    fail("database-integrity", "Execution Reclamation ledger has an incomplete handoff standing");
+  }
+}
+
+/**
+ * Correct the original Foundation ledger's overbroad Check owner index. This
+ * one physical layout repair preserves every immutable handoff and mutable
+ * standing byte; it does not interpret another product generation or rewrite
+ * any Execution, Control, or Reclamation subject.
+ */
+function repairFoundationCheckOwnerIndex(db: DatabaseSync, verifyRows: (physicalVersion: 1 | 2) => void): void {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const version = (db.prepare("PRAGMA user_version").get() as SqlRow).user_version;
+    if (version === DATABASE_USER_VERSION) {
+      // Another opener may have completed the same repair before this lock.
+      assertExactSchema(db);
+    } else {
+      if (version !== 1) fail("database-version", "Execution Reclamation ledger has unsupported database coordinates");
+      assertExactSchema(db, 1);
+      verifyRows(1);
+      db.exec("ALTER TABLE standings RENAME TO repair_standings;");
+      db.exec("ALTER TABLE handoffs RENAME TO repair_handoffs;");
+      const schema = expectedSchema(DATABASE_USER_VERSION);
+      for (const table of ["handoffs", "standings"]) {
+        const definition = schema.find((entry) => entry.type === "table" && entry.name === table)!;
+        db.exec(string(definition.sql, "Repaired table SQL"));
+        db.exec(`INSERT INTO ${table} SELECT * FROM repair_${table}`);
+        if (db.prepare(`SELECT * FROM ${table} EXCEPT SELECT * FROM repair_${table} LIMIT 1`).get() !== undefined ||
+            db.prepare(`SELECT * FROM repair_${table} EXCEPT SELECT * FROM ${table} LIMIT 1`).get() !== undefined) {
+          fail("database-integrity", "Reclamation index repair changed retained row bytes");
+        }
+      }
+      db.exec("DROP TABLE repair_standings; DROP TABLE repair_handoffs;");
+      for (const entry of schema) {
+        if ((entry.type === "index" || entry.type === "trigger") &&
+            (entry.table === "handoffs" || entry.table === "standings")) {
+          db.exec(string(entry.sql, "Repaired invariant SQL"));
+        }
+      }
+      db.exec(`PRAGMA user_version = ${DATABASE_USER_VERSION}`);
+      assertExactSchema(db);
+    }
+    verifyRows(DATABASE_USER_VERSION);
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* the original repair refusal wins */ }
+    throw error;
   }
 }
 
@@ -1309,8 +1393,8 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
    * Reconcile every retained terminal Receipt and undispatched refusal with every
    * immutable Reclamation handoff owned by this Store and Process. A
    * subjectless refusal resolves only one never-dispatched, retired Agent
-   * allocation for its exact Activity. Omission, extra handoff, duplicate owner/event, and
-   * same-count substitution all fail closed.
+   * allocation for its exact Activity. Omission, extra handoff, duplicate Agent
+   * owner, repeated Receipt or Retirement, and same-count substitution fail closed.
    */
   verifyTerminalSubjects(input: Readonly<{
     storeId: string;
@@ -1348,19 +1432,18 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
       rowStanding(row, handoff);
       return handoff;
     });
-    const handoffByOwner = new Map<string, FoundationExecutionReclamationHandoffV1>();
+    const handoffByRetirement = new Map<Sha256, FoundationExecutionReclamationHandoffV1>();
     for (const handoff of handoffs) {
-      const ownerKey = canonicalJson(handoff.owner);
-      if (handoffByOwner.has(ownerKey)) {
-        fail("terminal-subject-set", "Immutable Reclamation handoffs repeat one exact owner");
+      if (handoffByRetirement.has(handoff.retirementDigest)) {
+        fail("terminal-subject-set", "Immutable Reclamation handoffs repeat one exact Retirement");
       }
-      handoffByOwner.set(ownerKey, handoff);
+      handoffByRetirement.set(handoff.retirementDigest, handoff);
     }
     const matchedObligations = new Set<Sha256>();
     for (const subject of subjects) {
-      const handoff = handoffByOwner.get(canonicalJson(subject.owner));
+      const handoff = handoffByRetirement.get(subject.retirementFactsDigest);
       if (handoff === undefined || matchedObligations.has(handoff.obligation.digest) ||
-          handoff.retirementDigest !== subject.retirementFactsDigest ||
+          canonicalJson(handoff.owner) !== canonicalJson(subject.owner) ||
           (subject.receipt.kind === "execution-receipt" &&
             handoff.dispatchAuthorityConsumed !== true)) {
         fail(
@@ -1427,14 +1510,17 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
     });
   }
 
-  claimNext(leaseMilliseconds = 60_000): FoundationExecutionReclamationClaimV1 | null {
+  claimNext(
+    leaseMilliseconds = 60_000,
+    eligible?: (handoff: FoundationExecutionReclamationHandoffV1) => boolean,
+  ): FoundationExecutionReclamationClaimV1 | null {
     if (!Number.isSafeInteger(leaseMilliseconds) ||
         leaseMilliseconds < MINIMUM_LEASE_MILLISECONDS ||
         leaseMilliseconds > MAXIMUM_LEASE_MILLISECONDS) {
       fail("claim", "Execution Reclamation lease is outside its bounded duration");
     }
     const sampledAt = this.#now("Execution Reclamation claim time");
-    const selected = this.#db.prepare(`
+    const candidates = this.#db.prepare(`
       SELECT h.*, s.generation, s.state, s.attempt_count, s.next_attempt_at,
         s.claim_token, s.claim_expires_at, s.last_observation_digest,
         s.last_observation_json, s.updated_at, s.standing_digest
@@ -1442,8 +1528,24 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
       WHERE (s.state = 'pending' AND s.next_attempt_at <= ?) OR
         (s.state = 'claimed' AND s.claim_expires_at <= ?)
       ORDER BY h.accepted_at, h.obligation_digest
-      LIMIT 1
-    `).get(sampledAt, sampledAt) as SqlRow | undefined;
+      LIMIT ?
+    `).iterate(sampledAt, sampledAt, MAXIMUM_HANDOFFS + 1);
+    let selected: SqlRow | undefined;
+    let inspected = 0;
+    for (const candidate of candidates) {
+      if (++inspected > MAXIMUM_HANDOFFS) {
+        fail("bound", "Execution Reclamation selection exceeds its retained handoff bound");
+      }
+      const row = candidate as SqlRow;
+      const retained = rowHandoff(row, this.#installationId);
+      rowStanding(row, retained);
+      // Compatibility is checked before taking a lease. An owner must not
+      // claim an older allocation merely to discover that it cannot reclaim it.
+      if (eligible === undefined || eligible(retained)) {
+        selected = row;
+        break;
+      }
+    }
     if (selected === undefined) return null;
     const handoff = rowHandoff(selected, this.#installationId);
     const prior = rowStanding(selected, handoff);
@@ -1621,6 +1723,7 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
 
   async runNext(input: Readonly<{
     leaseMilliseconds?: number;
+    eligible?: (handoff: FoundationExecutionReclamationHandoffV1) => boolean;
     reclaim(
       handoff: FoundationExecutionReclamationHandoffV1,
     ): Promise<FoundationExecutionReclamationObservationV1>;
@@ -1628,7 +1731,7 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
     claim: FoundationExecutionReclamationClaimV1;
     standing: FoundationExecutionReclamationStandingV1;
   }> | null> {
-    const claim = this.claimNext(input.leaseMilliseconds);
+    const claim = this.claimNext(input.leaseMilliseconds, input.eligible);
     if (claim === null) return null;
     const observation = await input.reclaim(claim.handoff);
     const standing = this.completeClaim({ claim, observation });
@@ -1636,27 +1739,7 @@ class FoundationExecutionReclamationLedgerOwnerV1 {
   }
 
   verifyIntegrity(): void {
-    const result = this.#db.prepare("PRAGMA integrity_check(1)").get() as SqlRow | undefined;
-    if (result === undefined || Object.values(result).length !== 1 ||
-        Object.values(result)[0] !== "ok") {
-      fail("database-integrity", "Execution Reclamation ledger failed SQLite integrity checking");
-    }
-    assertExactSchema(this.#db);
-    const foreignKeys = this.#db.prepare("PRAGMA foreign_key_check").all();
-    if (foreignKeys.length !== 0) {
-      fail("database-integrity", "Execution Reclamation ledger has an invalid foreign-key binding");
-    }
-    const counts = this.#db.prepare(`
-      SELECT
-        (SELECT COUNT(*) FROM handoffs) AS handoff_count,
-        (SELECT COUNT(*) FROM standings) AS standing_count
-    `).get() as SqlRow;
-    const handoffCount = integer(counts.handoff_count, "Execution Reclamation handoff count");
-    const standingCount = integer(counts.standing_count, "Execution Reclamation standing count");
-    const entries = this.list();
-    if (handoffCount !== standingCount || handoffCount !== entries.length) {
-      fail("database-integrity", "Execution Reclamation ledger has an incomplete handoff standing");
-    }
+    assertLedgerIntegrity(this.#db, () => this.list(), DATABASE_USER_VERSION);
   }
 }
 
@@ -1755,10 +1838,10 @@ export async function openFoundationExecutionReclamationLedgerV1(input: Readonly
       (db.prepare("PRAGMA user_version").get() as SqlRow).user_version,
       "Execution Reclamation database version",
     );
-    if (applicationId !== DATABASE_APPLICATION_ID || userVersion !== DATABASE_USER_VERSION) {
+    if (applicationId !== DATABASE_APPLICATION_ID || (userVersion !== 1 && userVersion !== DATABASE_USER_VERSION)) {
       fail("database-version", "Execution Reclamation ledger has unsupported database coordinates");
     }
-    assertExactSchema(db);
+    assertExactSchema(db, userVersion);
     const metadata = db.prepare(`
       SELECT schema_id, installation_id, created_at FROM ledger_metadata ORDER BY singleton LIMIT 2
     `).all() as readonly SqlRow[];
@@ -1777,7 +1860,10 @@ export async function openFoundationExecutionReclamationLedgerV1(input: Readonly
       createClaimToken: input.createClaimToken ?? (() =>
         `reclamation-claim-v1:${randomBytes(32).toString("hex")}`),
     });
-    ledger.verifyIntegrity();
+    if (userVersion === 1) {
+      repairFoundationCheckOwnerIndex(db, (physicalVersion) =>
+        assertLedgerIntegrity(db, () => ledger.list(), physicalVersion));
+    } else ledger.verifyIntegrity();
     await exactDatabaseFile(paths.database);
     await assertRootEntries(root);
     return ledger;

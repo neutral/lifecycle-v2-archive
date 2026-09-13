@@ -6,6 +6,69 @@ import { canonicalJson, digestCanonical, type Sha256 } from "../validation/canon
 import { atomicWrite, ensureDirectory } from "../support/filesystem.js";
 import { opaqueId, text } from "../validation/value.js";
 import type { FoundationAuthorityIdentity, FoundationRepositoryContract } from "./types.js";
+import { compileDirectorDecisionOpening } from "../control/director-decision.js";
+
+declare const authorityCredentialBrand: unique symbol;
+/** Invocation-only credential custody. It exposes neither bytes nor signing. */
+export type FoundationAuthorityCredential = Readonly<{ [authorityCredentialBrand]: true }>;
+type AuthorityCredentialPurpose = "initialize" | "director-decision";
+const credentials = new WeakMap<FoundationAuthorityCredential, Readonly<{
+  secret: string;
+  purpose: AuthorityCredentialPurpose;
+}>>();
+
+/** Trusted CLI/channel ingress only; never a public request or retained value. */
+export function receiveFoundationAuthorityCredential(
+  authoritySecret: string,
+  purpose: AuthorityCredentialPurpose,
+): FoundationAuthorityCredential {
+  if (purpose !== "initialize" && purpose !== "director-decision") {
+    throw new FoundationError("lifecycle.authority.credential", "Authority credential purpose is invalid");
+  }
+  const credential = Object.freeze(Object.create(null)) as FoundationAuthorityCredential;
+  credentials.set(credential, Object.freeze({ secret: validateAuthoritySecret(authoritySecret), purpose }));
+  return credential;
+}
+
+export function assertFoundationAuthorityCredential(
+  credential: FoundationAuthorityCredential | undefined,
+  purpose: AuthorityCredentialPurpose,
+): asserts credential is FoundationAuthorityCredential {
+  if (credential === undefined || credentials.get(credential)?.purpose !== purpose) {
+    throw new FoundationError("lifecycle.authority.credential", "Authority requires one live credential for the exact purpose");
+  }
+}
+
+/** Refuse authority material at every non-authority dispatch boundary. */
+export function assertFoundationAuthorityExecutionContext(
+  context: unknown,
+  operation: string,
+): asserts context is Readonly<{ authorityCredential?: FoundationAuthorityCredential }> {
+  const purpose = operation === "repository.initialize" ? "initialize"
+    : operation === "delivery.admit" || operation === "delivery.accept" || operation === "delivery.no-ship"
+      ? "director-decision" : null;
+  if (
+    typeof context !== "object" || context === null ||
+    (Object.getPrototypeOf(context) !== Object.prototype && Object.getPrototypeOf(context) !== null) ||
+    Reflect.ownKeys(context).some((key) => key !== "authorityCredential") ||
+    (purpose === null && Reflect.ownKeys(context).length !== 0)
+  ) throw new FoundationError("lifecycle.authority.context", "Only an authority operation may receive opaque Director credential custody");
+  if (Object.hasOwn(context, "authorityCredential")) {
+    assertFoundationAuthorityCredential((context as { authorityCredential?: FoundationAuthorityCredential }).authorityCredential, purpose!);
+  }
+}
+
+function consumeCredential(credential: FoundationAuthorityCredential, purpose: AuthorityCredentialPurpose): string {
+  assertFoundationAuthorityCredential(credential, purpose);
+  const retained = credentials.get(credential)!;
+  credentials.delete(credential);
+  return retained.secret;
+}
+
+/** End ingress custody even when validation stopped before authentication. */
+export function discardFoundationAuthorityCredential(credential: FoundationAuthorityCredential | undefined): void {
+  if (credential !== undefined) credentials.delete(credential);
+}
 
 function authorityDirectory(home: string, targetId: string): string {
   return join(home, "authorities", opaqueId(targetId, "Authority target identity"));
@@ -15,18 +78,18 @@ function privateKeyPath(home: string, targetId: string, keyId: string): string {
   return join(authorityDirectory(home, targetId), `${opaqueId(keyId, "Authority key identity")}.pem`);
 }
 
-export function validateAuthoritySecret(value: string | undefined): string {
+function validateAuthoritySecret(value: string | undefined): string {
   if (value === undefined || Buffer.byteLength(value, "utf8") < 32 || Buffer.byteLength(value, "utf8") > 4096 || value.includes("\0")) {
     throw new FoundationError("lifecycle.authority.secret", "Authority operation requires 32 to 4096 secret bytes from an owner-private carrier");
   }
   return value;
 }
 
-export async function createFoundationAuthority(home: string, targetId: string, authoritySecret: string, principalId = "founder"): Promise<FoundationAuthorityIdentity> {
-  const secret = validateAuthoritySecret(authoritySecret);
+export async function createFoundationAuthority(home: string, targetId: string, authorityCredential: FoundationAuthorityCredential, principalId = "director"): Promise<FoundationAuthorityIdentity> {
+  const secret = consumeCredential(authorityCredential, "initialize");
   const pair = generateKeyPairSync("ed25519");
   const publicDer = pair.publicKey.export({ type: "spki", format: "der" }) as Buffer;
-  const keyId = `founder-${digestCanonical(publicDer.toString("base64")).slice("sha256:".length, "sha256:".length + 20)}`;
+  const keyId = `director-${digestCanonical(publicDer.toString("base64")).slice("sha256:".length, "sha256:".length + 20)}`;
   const directory = authorityDirectory(home, targetId);
   await ensureDirectory(directory);
   const path = privateKeyPath(home, targetId, keyId);
@@ -41,8 +104,8 @@ async function unlock(options: { home: string; contract: FoundationRepositoryCon
   let pem: string;
   try {
     pem = await readFile(path, "utf8");
-  } catch (error) {
-    throw new FoundationError("lifecycle.authority.private-key", "Machine authority key is unavailable", { observedFacts: { path, cause: error instanceof Error ? error.message : String(error) } });
+  } catch {
+    throw new FoundationError("lifecycle.authority.private-key", "Machine authority key is unavailable");
   }
   let privateKey: KeyObject;
   try {
@@ -55,14 +118,27 @@ async function unlock(options: { home: string; contract: FoundationRepositoryCon
   return privateKey;
 }
 
-export async function authenticateFoundationAuthority(options: { home: string; contract: FoundationRepositoryContract; authoritySecret: string }): Promise<void> {
-  await unlock(options);
-}
-
-export async function signFoundationSubject(options: { home: string; contract: FoundationRepositoryContract; authoritySecret: string; subject: unknown }): Promise<{ subjectDigest: Sha256; signature: `ed25519:${string}` }> {
-  const privateKey = await unlock(options);
-  const encoded = canonicalJson(options.subject);
-  return { subjectDigest: digestCanonical(options.subject), signature: `ed25519:${sign(null, Buffer.from(encoded), privateKey).toString("base64url")}` };
+/** Derive and authenticate one exact eligible Decision opening; never sign caller-supplied subjects. */
+export async function authenticateDirectorDecisionOpening(input: Omit<
+  Parameters<typeof compileDirectorDecisionOpening>[0], "authenticateSubject"
+> & Readonly<{ authorityHome: string; authorityCredential: FoundationAuthorityCredential }>): ReturnType<typeof compileDirectorDecisionOpening> {
+  assertFoundationAuthorityCredential(input.authorityCredential, "director-decision");
+  const { authorityHome, authorityCredential, ...opening } = input;
+  return compileDirectorDecisionOpening({
+    ...opening,
+    authenticateSubject: async (subject) => {
+      const privateKey = await unlock({
+        home: authorityHome,
+        contract: input.contract,
+        authoritySecret: consumeCredential(authorityCredential, "director-decision"),
+      });
+      const encoded = canonicalJson(subject);
+      return {
+        subjectDigest: digestCanonical(subject),
+        signature: `ed25519:${sign(null, Buffer.from(encoded), privateKey).toString("base64url")}`,
+      };
+    },
+  });
 }
 
 export function verifyFoundationSubject(options: { contract: FoundationRepositoryContract; subject: unknown; subjectDigest: Sha256; signature: `ed25519:${string}` }): void {

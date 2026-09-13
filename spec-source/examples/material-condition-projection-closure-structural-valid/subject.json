@@ -1,0 +1,43 @@
+{
+  "schema": "lifecycle.material-condition-payload.v4",
+  "profileId": "lifecycle.material-condition.foundation-v3",
+  "conditionClass": "projection-closure-exceeded",
+  "source": {
+    "kind": "projection-compilation",
+    "requestDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "profile": {
+      "id": "projection.foundation-reviewer",
+      "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    },
+    "compiler": {
+      "id": "compiler.projection.foundation",
+      "version": "1.0.0",
+      "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "refusalFactsDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "measurement": {
+      "kind": "complete-closure",
+      "mandatoryItems": 2,
+      "mandatoryBytes": 300,
+      "sourceBytes": 0,
+      "maximumMandatoryItems": 1,
+      "maximumMandatoryBytes": 200,
+      "maximumItemBytes": 200,
+      "maximumSourceBytes": 200,
+      "oversized": {
+        "count": 0,
+        "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "witness": null
+      }
+    }
+  },
+  "observedFactsDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "blocking": true,
+  "ruleSet": {
+    "id": "rules.material-condition",
+    "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "implementationId": "runtime.reducer",
+    "implementationDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "limitations": []
+}

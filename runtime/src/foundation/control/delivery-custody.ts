@@ -6,6 +6,7 @@ import {
   opendir,
   readdir,
   rename,
+  rm,
 } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -22,6 +23,8 @@ import {
 } from "./archive.js";
 import { controlIdentifier, controlTimestamp } from "./model.js";
 import {
+  CONTROL_RECORD_STORE_DATABASE_APPLICATION_ID,
+  CONTROL_RECORD_STORE_DATABASE_USER_VERSION,
   controlRecordStorePaths,
   openControlRecordStore,
   type ControlRecordStore,
@@ -35,8 +38,6 @@ const REGISTRY_DIRECTORY = "control-record-stores";
 const ACTIVE_DIRECTORY = "active";
 const ARCHIVE_DIRECTORY = "archive";
 const STAGING_DIRECTORY = "staging";
-const DATABASE_APPLICATION_ID = 0x4c435253;
-const DATABASE_USER_VERSION = 1;
 const DIGEST_SEGMENT_PATTERN = /^sha256-[a-f0-9]{64}$/u;
 const MAXIMUM_TARGETS_PER_AREA = 10_000;
 const MAXIMUM_DELIVERIES_PER_TARGET = 10_000;
@@ -77,6 +78,8 @@ export type DeliveryControlRecordStoreEntry = Readonly<{
 export type OpenedDeliveryControlRecordStore = DeliveryControlRecordStoreEntry & Readonly<{
   archiveManifestDigest: Sha256 | null;
   store: ControlRecordStore;
+  /** Private first-opening failure, retained only when a named Activity survived. */
+  initializationError?: unknown;
 }>;
 
 function fail(code: string, message: string, observedFacts?: unknown): never {
@@ -373,7 +376,8 @@ async function discoverStoreIdentity(root: string): Promise<ControlRecordStoreId
       Readonly<{ application_id: number }>).application_id;
     const userVersion = (connection.prepare("PRAGMA user_version").get() as
       Readonly<{ user_version: number }>).user_version;
-    if (applicationId !== DATABASE_APPLICATION_ID || userVersion !== DATABASE_USER_VERSION) {
+    if (applicationId !== CONTROL_RECORD_STORE_DATABASE_APPLICATION_ID
+      || userVersion !== CONTROL_RECORD_STORE_DATABASE_USER_VERSION) {
       fail("metadata", "Selected database has unsupported Control Record Store coordinates", {
         applicationId,
         userVersion,
@@ -590,13 +594,24 @@ async function assertFreshStore(store: ControlRecordStore): Promise<void> {
     integrity.eventCount !== 1 ||
     integrity.recordCount !== 0 ||
     integrity.revisionCount !== 0 ||
-    integrity.referencedFileCount !== 0
+    integrity.referencedFileCount !== 0 ||
+    store.hasRetainedOperationSupport()
   ) {
     fail("staging", "A staged Control Record Store is not the exact fresh Delivery inventory", integrity);
   }
   if ((await readdir(store.paths.files)).length !== 0 ||
       (await readdir(store.paths.drafts)).length !== 0) {
     fail("staging", "A staged Control Record Store contains files or authoring workspaces");
+  }
+}
+
+function assertUnexecutedPreparationOpening(store: ControlRecordStore): void {
+  const activities = store.state().activities;
+  if (activities.length !== 1 || activities[0]!.operation !== "delivery.prepare" ||
+      activities[0]!.stage !== "started" || activities[0]!.recovery?.resumesAt !== "agent-attempt-prepared" ||
+      !store.hasRetainedOperationSupport(activities[0]!.id) ||
+      store.listEvents(0, 10).some(({ eventKind }) => eventKind === "agent-attempt-prepared" || eventKind === "provider-effect-intended")) {
+    fail("staging", "Preparation publication requires one exact first Activity with no execution allocation or intent");
   }
 }
 
@@ -614,6 +629,7 @@ export async function createDeliveryControlRecordStore(input: Readonly<{
   createdAt: string;
   runtimeActorId: string;
   onStage?: (stage: DeliveryCustodyCreationStage) => void | Promise<void>;
+  initializeBeforePublication?: (store: ControlRecordStore) => Promise<void>;
 }>): Promise<OpenedDeliveryControlRecordStore> {
   const identity = creationIdentity(input);
   const runtimeActorId = controlIdentifier(input.runtimeActorId, "Runtime actor identity");
@@ -675,6 +691,8 @@ export async function createDeliveryControlRecordStore(input: Readonly<{
     create: true,
   });
   let appendedCreation = false;
+  let initializationError: unknown;
+  let discardFresh = false;
   try {
     if (!databaseExisted) await notifyStage(input.onStage, "store-created");
     const integrity = await staged.verifyIntegrity();
@@ -690,11 +708,33 @@ export async function createDeliveryControlRecordStore(input: Readonly<{
       });
       appendedCreation = true;
     }
-    assertExactCreationEvent(staged, runtimeActorId, true);
-    await assertFreshStore(staged);
+    const hasOpening = staged.state().activities.length > 0;
+    assertExactCreationEvent(staged, runtimeActorId, !hasOpening);
+    if (hasOpening) {
+      if (input.initializeBeforePublication === undefined) fail("staging", "An initialized Store requires its preparation creation route");
+      assertUnexecutedPreparationOpening(staged);
+    } else await assertFreshStore(staged);
+    if (input.initializeBeforePublication !== undefined && !hasOpening) {
+      try {
+        await input.initializeBeforePublication(staged);
+        assertUnexecutedPreparationOpening(staged);
+      } catch (error) {
+        initializationError = error;
+        // A failed exact pin/open may be discarded only while it is unexposed
+        // and the owner proves there is no Activity, support, record, or file.
+        try { await assertFreshStore(staged); discardFresh = true; } catch {
+          assertUnexecutedPreparationOpening(staged);
+        }
+      }
+    }
     staged.checkpoint();
   } finally {
     staged.close();
+  }
+  if (discardFresh) {
+    await rm(paths.staging, { recursive: true });
+    await syncDirectory(paths.stagingTarget);
+    throw initializationError;
   }
   if (appendedCreation) await notifyStage(input.onStage, "delivery-created");
 
@@ -738,7 +778,7 @@ export async function createDeliveryControlRecordStore(input: Readonly<{
     fail("conflict", "Published Store identity does not equal its exact staged identity");
   }
   assertExactCreationEvent(published.store, runtimeActorId, false);
-  return published;
+  return initializationError === undefined ? published : Object.freeze({ ...published, initializationError });
 }
 
 async function selectedDeliveryControlRecordStore(input: Readonly<{

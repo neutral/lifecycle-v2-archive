@@ -1,3 +1,5 @@
+import type { FoundationRepositorySnapshot } from "../repository/types.js";
+import { parseFoundationIntegrationAssessmentPayloadV1, resolveCandidateIntegrationProvenanceV1 } from "./integration-assessment.js";
 import { FoundationError } from "../error.js";
 import {
   canonicalJson,
@@ -24,11 +26,14 @@ export type WorkBoundaryOperation =
   | "delivery.reaffirm";
 
 type WorkBoundaryRecordKind =
-  | "founder-brief"
+  | "director-brief"
   | "agent-work-product"
   | "execution-receipt"
   | "work-boundary"
-  | "material-condition";
+  | "material-condition"
+  | "agent-attempt"
+  | "candidate-revision"
+  | "candidate-seal";
 
 export type WorkBoundaryReference<
   Kind extends WorkBoundaryRecordKind,
@@ -57,6 +62,12 @@ export type WorkBoundaryKnowledgeFact = Readonly<{
   revision: number;
   sourceDigest: Sha256;
   semanticDigest: Sha256;
+}>;
+
+export type WorkBoundaryDisciplineRegistryFact = Readonly<{
+  digest: Sha256;
+  adoptions: readonly WorkBoundaryKnowledgeFact[];
+  workTypes: readonly Readonly<{ id: string; disciplineIds: readonly string[] }>[];
 }>;
 
 export type WorkBoundaryExternalSourceFact = Readonly<{
@@ -104,6 +115,15 @@ const SEMANTIC_REFUSAL_CODES = new Set([
 
 function fail(code: string, message: string): never {
   throw new FoundationError(`lifecycle.control-work-boundary.${code}`, message);
+}
+
+/** DELIVERY requires a nonempty required Check set at each proof phase. */
+export function missingWorkBoundaryRequiredCheckPhase(
+  checks: readonly Readonly<{ baselineRequired: boolean; finalRequired: boolean }>[],
+): "baseline" | "final" | null {
+  if (!checks.some(({ baselineRequired }) => baselineRequired)) return "baseline";
+  if (!checks.some(({ finalRequired }) => finalRequired)) return "final";
+  return null;
 }
 
 /**
@@ -276,8 +296,8 @@ function retainedAttempt(
     attempt.payload.activityId !== activityId || attempt.payload.operation !== operation ||
     attempt.payload.role !== "reconnaissance"
   ) fail("source", "Agent Attempt does not match the exact reconnaissance activity");
-  if (!sameReference(oneRelationship(attempt, "uses-brief", "founder-brief"), reference(brief))) {
-    fail("relationship", "Reconnaissance Agent Attempt does not use the exact Founder Brief");
+  if (!sameReference(oneRelationship(attempt, "uses-brief", "director-brief"), reference(brief))) {
+    fail("relationship", "Reconnaissance Agent Attempt does not use the exact Director Brief");
   }
   if (!sameReference(oneRelationship(receipt, "observes-attempt", "agent-attempt"), reference(attempt))) {
     fail("relationship", "Execution Receipt does not observe the exact reconnaissance Agent Attempt");
@@ -305,25 +325,40 @@ function retainedAttempt(
   return attempt;
 }
 
-function citationsBySubject(workProduct: ControlRecordRevision): ReadonlyMap<string, readonly ControlJsonObject[]> {
-  const output = new Map<string, ControlJsonObject[]>();
+type WorkBoundaryCitations = Readonly<{
+  bySubject: ReadonlyMap<string, readonly ControlJsonObject[]>;
+  knowledgeSources: ReadonlySet<Sha256>;
+}>;
+
+function citationsBySubject(workProduct: ControlRecordRevision): WorkBoundaryCitations {
+  const bySubject = new Map<string, ControlJsonObject[]>();
+  const knowledgeSources = new Set<Sha256>();
   for (const citation of objects(workProduct.payload.citations, "Agent Work Product citations")) {
     const subjectId = string(citation.subjectId, "Agent Work Product citation subject identity");
-    const current = output.get(subjectId) ?? [];
+    const current = bySubject.get(subjectId) ?? [];
     current.push(citation);
-    output.set(subjectId, current);
+    bySubject.set(subjectId, current);
+    if (citation.subjectKind === "knowledge") {
+      knowledgeSources.add(digest(citation.subjectDigest, "Knowledge citation source digest"));
+    }
   }
-  return output;
+  return Object.freeze({ bySubject, knowledgeSources });
 }
 
 function exactCitation(
-  citations: ReadonlyMap<string, readonly ControlJsonObject[]>,
+  citations: WorkBoundaryCitations,
   id: string,
   kind: "knowledge" | "source",
   expectedDigest: Sha256,
 ): void {
-  const matches = citations.get(id) ?? [];
-  if (!matches.some((citation) => citation.subjectKind === kind && citation.subjectDigest === expectedDigest)) {
+  // The Work Product compiler resolves occurrence handles against the frozen
+  // citation registry. Trusted Knowledge source bytes bind the enduring id and
+  // revision; a qualified occurrence handle need not repeat that id.
+  const present = kind === "knowledge"
+    ? citations.knowledgeSources.has(expectedDigest)
+    : (citations.bySubject.get(id) ?? []).some((citation) =>
+      citation.subjectKind === "source" && citation.subjectDigest === expectedDigest);
+  if (!present) {
     fail("citation", `Selected ${kind} ${id} lacks an exact retained citation`);
   }
 }
@@ -331,12 +366,14 @@ function exactCitation(
 function normalizeMandate(input: Readonly<{
   workProduct: ControlRecordRevision;
   knowledge: readonly WorkBoundaryKnowledgeFact[];
+  disciplineRegistry: WorkBoundaryDisciplineRegistryFact;
   externalSources: readonly WorkBoundaryExternalSourceFact[];
   capabilityProfile: WorkBoundaryProfileFact;
   projectionProfile: WorkBoundaryProjectionProfileFact;
   checkBindings: readonly WorkBoundaryCheckBindingFact[];
 }>): Readonly<{
   knowledge: readonly ControlJsonObject[];
+  disciplines: ControlJsonObject;
   externalSources: readonly ControlJsonObject[];
   capabilityProfile: ControlJsonObject;
   projectionProfile: ControlJsonObject;
@@ -351,6 +388,7 @@ function normalizeMandate(input: Readonly<{
   }
   const source = object(semantics.workBoundary, "Reconnaissance Work Boundary semantics");
   const selectedKnowledgeIds = stringSet(source.selectedKnowledgeIds, "Selected Knowledge", 1);
+  const selectedWorkTypeIds = stringSet(source.selectedWorkTypeIds, "Selected Discipline work types");
   const selectedSourceIds = stringSet(source.selectedSourceIds, "Selected external sources");
   const citations = citationsBySubject(input.workProduct);
 
@@ -362,13 +400,38 @@ function normalizeMandate(input: Readonly<{
   const knowledge = selectedKnowledgeIds.map((id) => {
     const item = knowledgeRegistry.get(id);
     if (item === undefined) fail("basis", `Selected Knowledge ${id} is absent from the current Knowledge basis`);
-    exactCitation(citations, id, "knowledge", item.semanticDigest);
+    exactCitation(citations, id, "knowledge", item.sourceDigest);
     return Object.freeze({
       id: item.id,
       revision: item.revision,
       sourceDigest: item.sourceDigest,
       semanticDigest: item.semanticDigest,
     });
+  });
+
+  const workTypes = new Map(input.disciplineRegistry.workTypes.map((entry) => [entry.id, entry]));
+  for (const id of selectedWorkTypeIds) {
+    if (!workTypes.has(id)) fail("basis", `Selected Discipline work type ${id} is absent from the exact registry`);
+  }
+  const adopted = new Map(input.disciplineRegistry.adoptions.map((entry) => [entry.id, entry]));
+  const disciplineRecords = knowledge.filter((entry) => adopted.has(String(entry.id)))
+    .map((entry) => Object.freeze({ ...entry }));
+  for (const entry of disciplineRecords) {
+    const exact = adopted.get(String(entry.id))!;
+    if (
+      exact.revision !== entry.revision || exact.sourceDigest !== entry.sourceDigest ||
+      exact.semanticDigest !== entry.semanticDigest
+    ) fail("basis", `Selected Discipline ${String(entry.id)} differs from its exact registry adoption`);
+  }
+  for (const entry of knowledge) {
+    if (String(entry.id).startsWith("discipline.") && !adopted.has(String(entry.id))) {
+      fail("basis", `Selected Discipline ${String(entry.id)} is not adopted in the exact registry`);
+    }
+  }
+  const disciplines: ControlJsonObject = Object.freeze({
+    registryDigest: input.disciplineRegistry.digest,
+    workTypeIds: selectedWorkTypeIds,
+    records: Object.freeze(disciplineRecords),
   });
 
   const sourceRegistry = new Map<string, WorkBoundaryExternalSourceFact>();
@@ -512,11 +575,12 @@ function normalizeMandate(input: Readonly<{
       fragmentDigest: digest(value.fragmentDigest, "Boundary Check fragment digest"),
     });
   }), "Boundary checks");
-  if (!checks.some((check) => check.baselineRequired === true)) {
-    fail("semantic-coverage", "A Work Boundary requires at least one baseline Check");
-  }
-  if (!checks.some((check) => check.finalRequired === true)) {
-    fail("semantic-coverage", "A Work Boundary requires at least one final Check");
+  const missingCheckPhase = missingWorkBoundaryRequiredCheckPhase(checks.map((check) => ({
+    baselineRequired: boolean(check.baselineRequired, "Boundary Check baseline requirement"),
+    finalRequired: boolean(check.finalRequired, "Boundary Check final requirement"),
+  })));
+  if (missingCheckPhase !== null) {
+    fail("semantic-coverage", `A Work Boundary requires at least one ${missingCheckPhase} Check`);
   }
 
   const propositions = sortedObjectsById(objects(source.propositions, "Boundary propositions").map((value) => Object.freeze({
@@ -546,6 +610,7 @@ function normalizeMandate(input: Readonly<{
   });
   return Object.freeze({
     knowledge: Object.freeze(knowledge),
+    disciplines,
     externalSources: Object.freeze(externalSources),
     capabilityProfile: Object.freeze({ id: input.capabilityProfile.id, digest: input.capabilityProfile.digest }),
     projectionProfile: Object.freeze({ id: input.projectionProfile.id, digest: input.projectionProfile.digest }),
@@ -555,6 +620,7 @@ function normalizeMandate(input: Readonly<{
 
 const COMPARED_FIELDS = Object.freeze([
   "knowledge",
+  "disciplines",
   "externalSources",
   "capabilityProfile",
   "mandate/objective",
@@ -568,11 +634,13 @@ const COMPARED_FIELDS = Object.freeze([
 ] as const);
 
 function comparedValue(payload: ControlJsonObject, field: typeof COMPARED_FIELDS[number]): ControlJsonValue {
-  if (!field.startsWith("mandate/")) return payload[field]!;
-  return object(payload.mandate, "Prior Work Boundary mandate")[field.slice("mandate/".length)]!;
+  const selected = field.startsWith("mandate/")
+    ? object(payload.mandate, "Work Boundary mandate")[field.slice("mandate/".length)] : payload[field];
+  if (selected === undefined) fail("resolution-kind", `Work Boundary omits compared field ${field}`);
+  return selected;
 }
 
-function changedMandateFields(
+export function changedWorkBoundaryMandateFields(
   prior: ControlRecordRevision,
   next: ControlJsonObject,
 ): readonly string[] {
@@ -620,6 +688,7 @@ function markdown(payload: ControlJsonObject): string {
     `- Proposal: ${String(payload.proposalKind)}`,
     `- Target: ${String(payload.targetId)}`,
     `- Selected Knowledge: ${(payload.knowledge as readonly unknown[]).length}`,
+    `- Selected Discipline: ${objects(object(payload.disciplines, "Work Boundary Disciplines").records, "Work Boundary Discipline records").length}`,
     "",
     "## Objective",
     "",
@@ -640,6 +709,113 @@ function markdown(payload: ControlJsonObject): string {
   ].join("\n");
 }
 
+/** Select immutable governing context for one exact Material Condition resolution. */
+export function resolveWorkBoundaryResolutionSnapshotV1(input: Readonly<{
+  store: ControlRecordStore;
+  boundary: ControlRecordRevision;
+  materialCondition: ControlRecordRevision;
+}>): FoundationRepositorySnapshot {
+  const boundary = exactRevision(input.store, reference(input.boundary) as WorkBoundaryReference<"work-boundary">, "work-boundary", "Resolution Boundary");
+  const condition = exactRevision(input.store, reference(input.materialCondition) as WorkBoundaryReference<"material-condition">, "material-condition", "Resolution Material Condition");
+  if (!sameReference(oneRelationship(condition, "governed-by", "work-boundary"), reference(boundary))) {
+    fail("basis", "Resolution Condition must be governed by its exact predecessor Boundary");
+  }
+  const source = object(condition.payload.source, "Material Condition source");
+  if (source.kind === "integration-assessment") {
+    const selected = oneRelationship(condition, "reported-by", "integration-assessment");
+    const assessment = input.store.getRevision(selected.id, selected.revision);
+    const frozen = oneRelationship(condition, "freezes", "candidate-revision");
+    const candidate = input.store.getRevision(frozen.id, frozen.revision);
+    if (assessment === null || assessment.recordKind !== "integration-assessment" || assessment.digest !== selected.digest ||
+      candidate === null || candidate.recordKind !== "candidate-revision" || candidate.digest !== frozen.digest ||
+      condition.relationships.some((item) => item.relation === "observed-in")) {
+      fail("basis", "Integration resolution must bind one exact Assessment and frozen Candidate without an Agent Receipt");
+    }
+    const payload = parseFoundationIntegrationAssessmentPayloadV1(assessment.payload);
+    const provenance = resolveCandidateIntegrationProvenanceV1({ store: input.store, candidate });
+    if (payload.canonicalParent.targetId !== input.store.identity.targetId ||
+      condition.payload.conditionClass !== "integration-context-change" || payload.outcome !== "constructed" ||
+      payload.contextualApplicability.disposition !== "requires-readmission" ||
+      condition.payload.observedFactsDigest !== digestCanonical(payload.contextualApplicability) ||
+      candidate.payload.observation !== "integration-successor" || provenance === null ||
+      !sameReference(reference(provenance.assessment), reference(assessment)) ||
+      !sameReference(oneRelationship(assessment, "governed-by", "work-boundary"), reference(boundary))) {
+      fail("basis", "Integration resolution does not reproduce its exact frozen context-change provenance");
+    }
+    return payload.canonicalParent;
+  }
+  if (source.kind === "projection-compilation") {
+    const candidate = exactRevision(input.store, oneRelationship(condition, "freezes", "candidate-revision") as WorkBoundaryReference<"candidate-revision">,
+      "candidate-revision", "Projection resolution Candidate");
+    const seal = condition.relationships.some(({ relation }) => relation === "observed-in")
+      ? exactRevision(input.store, oneRelationship(condition, "observed-in", "candidate-seal") as WorkBoundaryReference<"candidate-seal">,
+        "candidate-seal", "Projection resolution Seal") : null;
+    if (condition.payload.conditionClass !== "projection-closure-exceeded" ||
+        condition.relationships.some(({ relation }) => relation === "reported-by") ||
+        !sameReference(oneRelationship(candidate, "governed-by", "work-boundary"), reference(boundary)) ||
+        (seal !== null && (!sameReference(oneRelationship(seal, "governed-by", "work-boundary"), reference(boundary)) ||
+          !sameReference(oneRelationship(seal, "seals", "candidate-revision"), reference(candidate))))) {
+      fail("basis", "Projection resolution must preserve its exact frozen Candidate, Seal, and governing Boundary");
+    }
+  } else if (source.kind !== "agent-proposal") fail("basis", "Resolution Condition has an unsupported context source");
+  const report = condition.relationships.find((item) => item.relation === "reported-by");
+  if (report?.target.kind === "agent-work-product") {
+    const workProduct = exactRevision(input.store,
+      oneRelationship(condition, "reported-by", "agent-work-product") as WorkBoundaryReference<"agent-work-product">,
+      "agent-work-product", "Condition Work Product");
+    if (workProduct.payload.role === "reviewer") {
+      const semantics = object(workProduct.payload.roleSemantics, "Reviewer role semantics");
+      const mandate = object(semantics.mandateApplicability, "Reviewer mandate applicability");
+      const baselines = objects(semantics.baselineApplicability, "Reviewer baseline applicability");
+      if (mandate.disposition === "requires-readmission" || baselines.some((item) => item.disposition === "insufficient")) {
+        const resolve = <Kind extends WorkBoundaryRecordKind>(revision: ControlRecordRevision, relation: string, kind: Kind) =>
+          exactRevision(input.store, oneRelationship(revision, relation, kind) as WorkBoundaryReference<Kind>, kind, `Reviewer resolution ${kind}`);
+        const candidate = resolve(condition, "freezes", "candidate-revision");
+        const attempt = resolve(workProduct, "result-of", "agent-attempt");
+        const seal = resolve(attempt, "uses-seal", "candidate-seal");
+        const receipt = resolve(condition, "observed-in", "execution-receipt");
+        const matches = (record: ControlRecordRevision, relation: string, target: ControlRecordRevision) =>
+          sameReference(oneRelationship(record, relation, target.recordKind), reference(target));
+        if (attempt.payload.role !== "reviewer" || attempt.payload.operation !== "delivery.evaluate" ||
+          receipt.payload.activityId !== attempt.payload.activityId ||
+          !matches(attempt, "uses-boundary", boundary) || !matches(attempt, "uses-candidate", candidate) ||
+          !matches(candidate, "governed-by", boundary) || !matches(seal, "seals", candidate) ||
+          !matches(seal, "governed-by", boundary) || !matches(receipt, "observes-attempt", attempt) ||
+          !matches(receipt, "observes-work-product", workProduct)) {
+          fail("basis", "Reviewer resolution must preserve its exact Work Product, Receipt, Seal, Candidate, and governing Boundary");
+        }
+        const provenance = resolveCandidateIntegrationProvenanceV1({ store: input.store, candidate });
+        if (provenance === null || provenance.canonicalParent.targetId !== input.store.identity.targetId) {
+          fail("basis", "Reviewer applicability resolution requires the frozen Candidate's exact integration parent");
+        }
+        return provenance.canonicalParent;
+      }
+    }
+  }
+  const basis = object(boundary.payload.basis, "Resolution Work Boundary basis");
+  const commit = string(basis.productBaseCommit, "Resolution Work Boundary commit");
+  return Object.freeze({
+    targetId: input.store.identity.targetId, commit, tree: string(basis.productBaseTree, "Resolution Work Boundary tree"),
+    objectFormat: commit.length === 40 ? "sha1" : "sha256",
+    contractDigest: digest(basis.repositoryContractDigest, "Resolution contract digest"),
+    productStateDigest: digest(basis.productStateDigest, "Resolution Product State digest"),
+    atlasStateDigest: digest(basis.atlasStateDigest, "Resolution Atlas State digest"),
+    atlasResolutionDigest: digest(basis.atlasResolutionDigest, "Resolution Atlas Resolution digest"),
+    atlasNormalizedModelDigest: digest(basis.atlasNormalizedModelDigest, "Resolution Atlas model digest"),
+    atlasResourceBindingsDigest: digest(basis.atlasResourceBindingsDigest, "Resolution Atlas Resource digest"),
+    knowledgeSetDigest: digest(basis.knowledgeSetDigest, "Resolution Knowledge Set digest"),
+    digest: digest(basis.repositorySnapshotDigest, "Resolution repository Snapshot digest"),
+  });
+}
+
+export function workBoundaryRepositoryBasisFromSnapshot(snapshot: FoundationRepositorySnapshot): WorkBoundaryRepositoryBasis {
+  return Object.freeze({ productBaseCommit: snapshot.commit, productBaseTree: snapshot.tree,
+    productStateDigest: snapshot.productStateDigest, atlasStateDigest: snapshot.atlasStateDigest,
+    atlasResolutionDigest: snapshot.atlasResolutionDigest, atlasNormalizedModelDigest: snapshot.atlasNormalizedModelDigest,
+    atlasResourceBindingsDigest: snapshot.atlasResourceBindingsDigest, repositoryContractDigest: snapshot.contractDigest,
+    knowledgeSetDigest: snapshot.knowledgeSetDigest, repositorySnapshotDigest: snapshot.digest });
+}
+
 /**
  * Compile and atomically retain one complete immutable Work Boundary revision
  * from exact retained reconnaissance semantics and current runtime facts.
@@ -648,11 +824,12 @@ export function retainWorkBoundary(input: Readonly<{
   store: ControlRecordStore;
   activityId: string;
   operation: WorkBoundaryOperation;
-  founderBrief: WorkBoundaryReference<"founder-brief">;
+  directorBrief: WorkBoundaryReference<"director-brief">;
   workProduct: WorkBoundaryReference<"agent-work-product">;
   executionReceipt: WorkBoundaryReference<"execution-receipt">;
   repository: WorkBoundaryRepositoryBasis;
   knowledge: readonly WorkBoundaryKnowledgeFact[];
+  disciplineRegistry: WorkBoundaryDisciplineRegistryFact;
   externalSources: readonly WorkBoundaryExternalSourceFact[];
   capabilityProfile: WorkBoundaryProfileFact;
   projectionProfile: WorkBoundaryProjectionProfileFact;
@@ -666,11 +843,11 @@ export function retainWorkBoundary(input: Readonly<{
   const activityId = controlIdentifier(input.activityId, "Work Boundary activity identity");
   const operation = operationFacts(input.operation);
   validateActivity(input.store, activityId, input.operation);
-  const brief = exactRevision(input.store, input.founderBrief, "founder-brief", "Founder Brief");
+  const brief = exactRevision(input.store, input.directorBrief, "director-brief", "Director Brief");
   const workProduct = exactRevision(input.store, input.workProduct, "agent-work-product", "Agent Work Product");
   const receipt = exactRevision(input.store, input.executionReceipt, "execution-receipt", "Execution Receipt");
   if (brief.payload.inputProfile !== input.operation) {
-    fail("source", "Founder Brief does not fund the exact Work Boundary operation");
+    fail("source", "Director Brief does not fund the exact Work Boundary operation");
   }
   retainedAttempt(input.store, input.operation, activityId, brief, workProduct, receipt);
 
@@ -693,8 +870,14 @@ export function retainWorkBoundary(input: Readonly<{
   if (active !== null && active.recordId !== boundaryIdentity(input.store)) {
     fail("succession", "Active Work Boundary does not have the deterministic Delivery Boundary identity");
   }
-  if (conditionInput !== null) {
-    exactRevision(input.store, conditionInput, "material-condition", "Material Condition");
+  if (conditionInput !== null && active !== null) {
+    const condition = exactRevision(input.store, conditionInput, "material-condition", "Material Condition");
+    const expected = workBoundaryRepositoryBasisFromSnapshot(resolveWorkBoundaryResolutionSnapshotV1({
+      store: input.store, boundary: active, materialCondition: condition,
+    }));
+    if (canonicalJson(input.repository) !== canonicalJson(expected)) {
+      fail("basis", "Resolved Boundary must retain the exact context selected by its Material Condition");
+    }
   }
   if (!GIT_OBJECT.test(input.repository.productBaseCommit) || !GIT_OBJECT.test(input.repository.productBaseTree)) {
     fail("basis", "Work Boundary product base commit and tree must be exact Git object identities");
@@ -703,24 +886,26 @@ export function retainWorkBoundary(input: Readonly<{
   const normalized = normalizeMandate({
     workProduct,
     knowledge: input.knowledge,
+    disciplineRegistry: input.disciplineRegistry,
     externalSources: input.externalSources,
     capabilityProfile: input.capabilityProfile,
     projectionProfile: input.projectionProfile,
     checkBindings: input.checkBindings,
   });
   const basis: ControlJsonObject = Object.freeze({
-    specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-    repositoryContract: "lifecycle.repository.v15",
-    providerAdapter: "lifecycle.provider-adapter.v6",
+    specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+    repositoryContract: "lifecycle.repository.v22",
+    providerAdapter: "lifecycle.provider-adapter.v7",
     ...input.repository,
   });
   const prospective: ControlJsonObject = Object.freeze({
     knowledge: normalized.knowledge,
+    disciplines: normalized.disciplines,
     externalSources: normalized.externalSources,
     capabilityProfile: normalized.capabilityProfile,
     mandate: normalized.mandate,
   });
-  const changed = active === null ? Object.freeze([]) : changedMandateFields(active, prospective);
+  const changed = active === null ? Object.freeze([]) : changedWorkBoundaryMandateFields(active, prospective);
   if (
     (operation.proposalKind === "revision" && changed.length === 0) ||
     (operation.proposalKind === "reaffirmation" && changed.length !== 0)
@@ -729,16 +914,17 @@ export function retainWorkBoundary(input: Readonly<{
     ? null
     : Object.freeze({
         kind: operation.resolutionKind,
-        rationaleDigest: digest(brief.payload.semanticMarkdownDigest, "Founder resolution rationale digest"),
+        rationaleDigest: digest(brief.payload.semanticMarkdownDigest, "Director resolution rationale digest"),
         changedMandateFields: changed,
       });
   const payload: ControlJsonObject = Object.freeze({
-    schema: "lifecycle.work-boundary-payload.v4",
-    profileId: "lifecycle.work-boundary.foundation-v1",
+    schema: "lifecycle.work-boundary-payload.v6",
+    profileId: "lifecycle.work-boundary.foundation-v3",
     targetId: input.store.identity.targetId,
     proposalKind: operation.proposalKind,
     basis,
     knowledge: normalized.knowledge,
+    disciplines: normalized.disciplines,
     externalSources: normalized.externalSources,
     capabilityProfile: normalized.capabilityProfile,
     projectionProfile: normalized.projectionProfile,

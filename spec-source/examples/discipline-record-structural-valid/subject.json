@@ -1,0 +1,31 @@
+{
+  "schema": "lifecycle.knowledge-record.v2",
+  "kind": "discipline",
+  "id": "discipline.go.context-cancellation",
+  "title": "Context and cancellation",
+  "status": "current",
+  "revision": 1,
+  "supersedes": null,
+  "summary": "Keep cancellation ownership explicit in concurrent Go work.",
+  "owners": ["neutral-lifecycle-disciplines"],
+  "sources": [
+    {
+      "id": "go-context-guidance",
+      "required": false,
+      "reference": "urn:example:go-context-guidance",
+      "revision": "v1",
+      "digest": null,
+      "role": "external-standard"
+    }
+  ],
+  "relationships": [],
+  "conflicts": [],
+  "tags": ["concurrency", "go"],
+  "spec": {
+    "practice": "Make cancellation ownership explicit at every concurrent boundary.",
+    "appliesWhen": ["Work starts goroutines or accepts context.Context."],
+    "doesNotApplyWhen": ["The code is purely synchronous and has no cancellable operation."],
+    "guidance": ["Pass context explicitly and make the owner responsible for cancellation."],
+    "verification": ["Inspect shutdown and cancellation paths when they are material to the change."]
+  }
+}

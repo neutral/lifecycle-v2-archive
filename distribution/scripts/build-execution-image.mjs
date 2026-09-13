@@ -74,7 +74,7 @@ await withExactSourceSnapshot(values.get("--source-revision"), async (sourceRoot
     "--provenance=false",
     "--sbom=false",
     "--platform", `linux/${architecture}`,
-    "--file", "execution-image/Dockerfile.agent-cell",
+    "--file", "runtime/execution-image/Dockerfile.agent-cell",
     "--tag", values.get("--tag"),
     "--build-arg", `LIFECYCLE_NODE_IMAGE=${values.get("--node-image")}`,
     "--build-arg", `LIFECYCLE_SOURCE_REVISION=${values.get("--source-revision")}`,
@@ -86,6 +86,6 @@ await withExactSourceSnapshot(values.get("--source-revision"), async (sourceRoot
     "--build-arg", `LIFECYCLE_BUBBLEWRAP_VERSION=${values.get("--bubblewrap-version")}`,
     "--build-arg", `LIFECYCLE_CA_CERTIFICATES_VERSION=${values.get("--ca-certificates-version")}`,
     "--build-arg", `LIFECYCLE_GIT_VERSION=${values.get("--git-version")}`,
-    runtimeRoot,
-  ], { cwd: runtimeRoot, stdio: "inherit" });
+    sourceRoot,
+  ], { cwd: sourceRoot, stdio: "inherit" });
 });

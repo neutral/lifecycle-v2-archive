@@ -108,9 +108,9 @@ function boundedRevisionPage<Cursor extends string | number>(input: Readonly<{
 }
 
 /**
- * Inspect one reducer-derived Attempt View without creating a thirteenth
- * Control family or retaining a view cache. The protocol adapter can expose
- * this bounded query once its exact v7 carrier selects the same shape.
+ * Inspect one reducer-derived Attempt View without creating another Control
+ * family or retaining a view cache. The protocol adapter presents this bounded
+ * observation through its selected public inspection contract.
  */
 export function inspectDeliveryAttemptView(
   store: ControlRecordStore,
@@ -126,7 +126,8 @@ export function inspectDeliveryControl(
   query: FoundationRuntimeInspectRequest["input"],
   context?: Readonly<{
     repository?: FoundationRepositoryObservation;
-    investment?: Readonly<{ model: string; reasoning: string }>;
+    investment?: Readonly<{ model: string; reasoning: string }> | null;
+    observedAt?: string;
     generation: FoundationDeliveryGeneration;
   }>,
 ): FoundationInspectionResult {
@@ -178,7 +179,7 @@ export function inspectDeliveryControl(
     });
   }
   if (query.kind === "delivery-view") {
-    if (context?.repository === undefined || context.investment === undefined) {
+    if (context?.repository === undefined || context.investment === undefined || context.observedAt === undefined) {
       throw new FoundationError(
         "lifecycle.control-inspection.delivery-view-context",
         "Delivery View inspection requires its exact repository and Investment context",
@@ -191,6 +192,7 @@ export function inspectDeliveryControl(
         physical,
         repository: context.repository,
         investment: context.investment,
+        observedAt: context.observedAt,
       }),
     });
   }

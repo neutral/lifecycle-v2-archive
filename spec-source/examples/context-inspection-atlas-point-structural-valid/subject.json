@@ -1,0 +1,28 @@
+{
+  "kind": "atlas-point",
+  "context": {
+    "schema": "lifecycle.context-selection.v1",
+    "targetId": "target.one",
+    "storeId": "store.one",
+    "processId": "delivery.one",
+    "origin": {
+      "sequence": 1,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "boundary": {
+      "role": "active",
+      "reference": {
+        "kind": "work-boundary",
+        "id": "boundary-1",
+        "revision": 1,
+        "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    },
+    "digest": "sha256:e483e2ab0bda687e72075243430a76f137543d4616c8713e9a5cf2e5e7fac5e4"
+  },
+  "pointCursor": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "afterRecordCursor": null,
+  "recordLimit": 100,
+  "afterRelationCursor": null,
+  "relationLimit": 200
+}

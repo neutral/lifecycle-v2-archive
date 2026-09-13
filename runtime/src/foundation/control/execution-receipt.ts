@@ -1,4 +1,5 @@
 import { FoundationError } from "../error.js";
+import { assertFoundationBuilderRepairMaterialsV1 } from "../candidate/repair-output.js";
 import {
   canonicalJson,
   digestCanonical,
@@ -95,6 +96,29 @@ export type ExecutionReceiptRawMaterial =
   | Readonly<{ availability: "retained"; file: ControlRecordFileInput }>
   | Readonly<{ availability: "not-retained" | "unavailable"; purpose: string }>;
 
+/** Retain the exact bounded provider report bytes already validated by the Cell output owner. */
+export function compileExecutionReceiptProviderFailureMaterial(input: Readonly<{
+  store: ControlRecordStore;
+  bytes: Uint8Array;
+  createdAt: string;
+}>): ExecutionReceiptRawMaterial {
+  if (!(input.bytes instanceof Uint8Array) || input.bytes.byteLength === 0 || input.bytes.byteLength > 16 * 1024) {
+    fail("raw-material", "Provider failure material exceeds its bounded adjacent-file profile");
+  }
+  const existing = input.store.listRetainedFiles().find(({ digest }) => digest === sha256Bytes(input.bytes));
+  const file = Object.freeze({
+    bytes: Uint8Array.from(input.bytes),
+    mediaType: "application/json",
+    purpose: "raw-provider-output",
+    createdAt: existing?.createdAt ?? input.createdAt,
+  });
+  const compiled = compileControlRecordFile(file);
+  if (existing !== undefined && canonicalJson(existing) !== canonicalJson(compiled)) {
+    fail("raw-material", "Provider failure material conflicts with its retained file descriptor");
+  }
+  return Object.freeze({ availability: "retained", file });
+}
+
 export type ExecutionReceiptProviderObservation = Readonly<{
   preparedAt: string;
   startedAt: string | null;
@@ -119,7 +143,7 @@ export type ExecutionReceiptExecutionFacts = Readonly<{
   }>;
   image: Readonly<{ imageId: string; imageDigest: Sha256 }>;
   inputSet: Readonly<{
-    profileId: "lifecycle.execution-input-set.v1";
+    profileId: "lifecycle.execution-input-set.v2";
     digest: Sha256;
   }>;
   specificationDigest: Sha256;
@@ -414,9 +438,18 @@ function activityRecords(store: ControlRecordStore, exactActivityId: string): Ac
     inputCandidate = retainedTarget(store, attempted);
   } else if (role === "reconnaissance") {
     if (candidateEvent !== null) fail("journal", "Reconnaissance activity cannot create a Candidate observation");
-    if (relationshipTarget(attempt, "uses-candidate", "candidate-revision", false) !== null) {
-      fail("relationship", "Reconnaissance Attempt cannot bind an input Candidate");
+    const resolution = attempt.payload.operation === "delivery.revise" ||
+      attempt.payload.operation === "delivery.reaffirm";
+    if (!resolution && attempt.payload.operation !== "delivery.prepare") {
+      fail("relationship", "Reconnaissance Attempt does not select a preparation or resolution operation");
     }
+    const attempted = relationshipTarget(attempt, "uses-candidate", "candidate-revision", resolution);
+    if (!resolution && attempted !== null) {
+      fail("relationship", "Initial preparation Attempt cannot bind an input Candidate");
+    }
+    // Resolution retains the frozen input through its observed Attempt. It
+    // does not produce Receipt Candidate observation or successor facts.
+    if (attempted !== null) retainedTarget(store, attempted);
   } else {
     fail("retained-fact", "Agent Attempt role is unsupported");
   }
@@ -454,7 +487,7 @@ function attemptFacts(attempt: ControlRecordRevision): AttemptFacts {
   if (attempt.payload.schema !== "lifecycle.agent-attempt-payload.v3") {
     fail("retained-fact", "Agent Attempt does not use the Foundation v3 payload");
   }
-  if (provider.adapter !== "lifecycle.provider-adapter.v6") {
+  if (provider.adapter !== "lifecycle.provider-adapter.v7") {
     fail("retained-fact", "Agent Attempt does not bind provider adapter v6");
   }
   return Object.freeze({
@@ -811,8 +844,8 @@ function normalizedExecution(
 
 function candidateBinding(revision: ControlRecordRevision): ControlJsonObject {
   if (revision.recordKind !== "candidate-revision" ||
-      revision.payload.schema !== "lifecycle.candidate-revision-payload.v2") {
-    fail("candidate", "Execution Receipt Candidate binding requires one Foundation v2 Candidate Revision");
+      revision.payload.schema !== "lifecycle.candidate-revision-payload.v3") {
+    fail("candidate", "Execution Receipt Candidate binding requires one Candidate Revision with the selected v3 payload");
   }
   const carrier = object(revision.payload.carrierManifest, "Candidate Revision Carrier manifest");
   return Object.freeze({
@@ -890,6 +923,36 @@ function normalizedCandidate(input: Readonly<{
   });
 }
 
+/** Reopen the Receipt-owned input/optional-successor facts for builder finalization. */
+export function assertBuilderExecutionReceiptCandidateSubjects(input: Readonly<{
+  receipt: ControlRecordRevision;
+  inputCandidate: ControlRecordRevision;
+  resultCandidate: ControlRecordRevision;
+}>): "promoted" | "invalid" | "unavailable" | "not-produced" {
+  if (input.receipt.recordKind !== "execution-receipt" || input.receipt.payload.role !== "builder") {
+    fail("candidate", "Builder Candidate finalization requires its exact builder Receipt");
+  }
+  const candidate = object(input.receipt.payload.candidate, "Builder Receipt Candidate outcome");
+  if (canonicalJson(candidate.input) !== canonicalJson(candidateBinding(input.inputCandidate))) {
+    fail("candidate", "Builder Receipt does not bind the exact input Candidate and Carrier");
+  }
+  const observed = relationshipTarget(input.receipt, "observes-candidate", "candidate-revision", false);
+  const disposition = candidate.successorDisposition;
+  if (disposition === "promoted") {
+    if (observed === null || !sameReference(observed, reference(input.resultCandidate)) ||
+      canonicalJson(candidate.successor) !== canonicalJson(candidateBinding(input.resultCandidate))) {
+      fail("candidate", "Builder Receipt does not bind the exact promoted Candidate and Carrier");
+    }
+  } else if (
+    (disposition !== "invalid" && disposition !== "unavailable" && disposition !== "not-produced") ||
+    candidate.successor !== null || candidate.contentDisposition !== null || observed !== null ||
+    !sameReference(reference(input.inputCandidate), reference(input.resultCandidate))
+  ) {
+    fail("candidate", "A non-promoted builder Receipt must preserve its exact input Candidate");
+  }
+  return disposition;
+}
+
 function normalizedContainment(
   containment: ExecutionReceiptContainment,
   provider: ExecutionReceiptProviderObservation,
@@ -959,6 +1022,7 @@ function semanticMarkdown(input: Readonly<{
   workProductAvailable: boolean;
   candidateSuccessorDisposition: string | null;
   submissionDiagnostic: ExecutionReceiptSubmissionDiagnostic | null;
+  rawProviderMaterialRetained: boolean;
 }>): string {
   return [
     "# Execution Receipt",
@@ -975,6 +1039,10 @@ function semanticMarkdown(input: Readonly<{
     "- Execution Retirement: retired",
     "",
     "This Receipt is the runtime-observed terminal account of one exact Agent Attempt.",
+    ...(input.rawProviderMaterialRetained ? [
+      "",
+      "Bounded provider-reported material is retained through the rawMaterials file descriptor. Its contents are untrusted operational material, not Runtime terminal facts or an Agent Work Product.",
+    ] : []),
     "",
   ].join("\n");
 }
@@ -1068,6 +1136,8 @@ export async function retainExecutionReceipt(input: Readonly<{
   });
   const containment = normalizedContainment(input.containment, input.provider);
   const retirement = normalizedRetirement(input.retirement);
+  assertFoundationBuilderRepairMaterialsV1({ store: input.store, attempt: records.attempt, candidate: records.inputCandidate,
+    successorDisposition: input.candidateSuccessorDisposition, materials: input.rawMaterials ?? [] });
   const rawMaterials = normalizedRawMaterials(
     input.rawMaterials ?? [],
     facts.adjacentFilePurposes,
@@ -1089,7 +1159,7 @@ export async function retainExecutionReceipt(input: Readonly<{
     provider: Object.freeze({
       descriptorId: facts.descriptorId,
       descriptorDigest: facts.descriptorDigest,
-      adapter: "lifecycle.provider-adapter.v6",
+      adapter: "lifecycle.provider-adapter.v7",
       installedIdentityDigest: facts.installedIdentityDigest,
       observedExecutableIdentity: input.provider.executableIdentity,
       model: facts.model,
@@ -1145,6 +1215,7 @@ export async function retainExecutionReceipt(input: Readonly<{
       workProductAvailable: records.workProduct !== null,
       candidateSuccessorDisposition: input.candidateSuccessorDisposition,
       submissionDiagnostic: input.workspace.submissionDiagnostic,
+      rawProviderMaterialRetained: rawMaterials.files.some(({ purpose }) => purpose === "raw-provider-output"),
     }),
     payload,
     relationships,

@@ -19,7 +19,7 @@ export const FOUNDATION_ADMISSION_TRANSACTION_OBSERVATION_FACTS_V1 =
 export const FOUNDATION_TERMINAL_REPOSITORY_OBSERVATION_FACTS_V1 =
   "lifecycle.terminal-repository-effect-observation.v1" as const;
 export const FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1 =
-  "lifecycle.terminal-acceptance-effect-observation.v1" as const;
+  "lifecycle.terminal-acceptance-effect-observation.v2" as const;
 export const FOUNDATION_TERMINAL_DETACHED_OBSERVATION_FACTS_V1 =
   "lifecycle.terminal-detached-canonical-effect-observation.v1" as const;
 export const FOUNDATION_TERMINAL_FAILURE_OBSERVATION_FACTS_V1 =
@@ -54,6 +54,8 @@ export type FoundationTerminalAcceptanceObservationFactsV1 = ControlJsonObject &
   TerminalRepositoryCoordinate & Readonly<{
     schema: typeof FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1;
     canonicalResultDigest: Sha256;
+    observedTip: Readonly<{ commit: string; tree: string }>;
+    recognition: "at-tip" | "ancestor";
   }>;
 
 export type FoundationTerminalDetachedObservationFactsV1 = ControlJsonObject & Readonly<{
@@ -230,12 +232,22 @@ export function parseFoundationTransactionObservationFactsV7(
     }), "Terminal repository coordinate");
   } else if (schema === FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1) {
     exactKeys(facts, [
-      "schema", "ref", "commit", "tree", "objectFormat", "canonicalResultDigest",
+      "schema", "ref", "commit", "tree", "objectFormat", "canonicalResultDigest", "observedTip", "recognition",
     ], "Terminal acceptance observation facts");
     repositoryCoordinate(Object.freeze({
       ref: facts.ref!, commit: facts.commit!, tree: facts.tree!, objectFormat: facts.objectFormat!,
     }), "Terminal acceptance repository coordinate");
     digest(facts.canonicalResultDigest, "Terminal acceptance canonical-result digest");
+    const tip = object(facts.observedTip, "Terminal acceptance observed canonical tip");
+    exactKeys(tip, ["commit", "tree"], "Terminal acceptance observed canonical tip");
+    repositoryCoordinate(Object.freeze({
+      ref: facts.ref!, commit: tip.commit!, tree: tip.tree!, objectFormat: facts.objectFormat!,
+    }), "Terminal acceptance observed canonical tip");
+    if (!(facts.recognition === "at-tip" || facts.recognition === "ancestor") ||
+      (facts.recognition === "at-tip" && (tip.commit !== facts.commit || tip.tree !== facts.tree)) ||
+      (facts.recognition === "ancestor" && tip.commit === facts.commit)) {
+      fail("acceptance-recognition", "Acceptance recognition must distinguish exact accepted commit from its observed canonical tip");
+    }
   } else if (schema === FOUNDATION_TERMINAL_DETACHED_OBSERVATION_FACTS_V1) {
     exactKeys(facts, [
       "schema", "attached", "canonicalRef", "canonicalCommit", "canonicalTree",
@@ -296,7 +308,7 @@ export function assertFoundationTransactionObservationFactsV7(input: Readonly<{
     (input.operation === "delivery.accept" && input.decisionKind !== "accept") ||
     (input.operation === "delivery.no-ship" && input.decisionKind !== "no-ship")
   ) {
-    fail("operation", "Terminal observation facts differ from their Founder Decision");
+    fail("operation", "Terminal observation facts differ from their Director Decision");
   }
   if (facts.schema === FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1 && (
     input.operation !== "delivery.accept" || input.outcome !== "applied"

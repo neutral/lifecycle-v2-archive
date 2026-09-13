@@ -31,17 +31,17 @@
       "additionalProperties": false,
       "required": ["implementationId", "implementationDigest", "ruleSetId", "ruleSetDigest"],
       "properties": {
-        "implementationId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/controlId" },
-        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+        "implementationId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "implementationDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+        "ruleSetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/controlId" },
+        "ruleSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
       }
     },
     "limitations": {
       "type": "array",
       "maxItems": 128,
       "uniqueItems": true,
-      "items": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/singleLine" }
+      "items": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/singleLine" }
     }
   }
 }

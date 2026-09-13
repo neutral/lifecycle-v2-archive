@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:lifecycle:schema:common:v1",
+  "$id": "urn:lifecycle:schema:common:v2",
   "title": "Lifecycle Common Definitions",
   "type": "object",
   "$defs": {
@@ -45,15 +45,15 @@
       "additionalProperties": false,
       "required": ["kind", "id"],
       "properties": {
-        "kind": { "enum": ["agent", "founder", "runtime"] },
+        "kind": { "enum": ["agent", "director", "runtime"] },
         "id": { "$ref": "#/$defs/controlId" }
       }
     },
     "controlSemanticAuthority": {
       "enum": [
         "agent-proposed",
-        "founder-supplied",
-        "founder-authenticated",
+        "director-supplied",
+        "director-authenticated",
         "runtime-observed",
         "runtime-derived"
       ]
@@ -115,7 +115,7 @@
       "type": "string",
       "minLength": 3,
       "maxLength": 160,
-      "pattern": "^(?:behavior|assurance|blueprint|description|check)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
+      "pattern": "^(?:behavior|assurance|blueprint|description|check|discipline)(?:\\.[a-z0-9]+(?:-[a-z0-9]+)*)+$"
     },
     "ownerId": {
       "type": "string",
@@ -133,6 +133,13 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 16384,
+      "pattern": "^[^\\u0000]+$"
+    },
+    "orientationObjective": {
+      "description": "The complete Orientation objective is nonempty NUL-free semantic text of at most 1,048,576 UTF-8 bytes. This structural character ceiling is necessary but not sufficient: the Projection owner independently enforces the UTF-8 byte bound on request and completed core content.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576,
       "pattern": "^[^\\u0000]+$"
     },
     "normalizedPath": {
@@ -163,8 +170,8 @@
         "runtime-observed",
         "runtime-derived",
         "agent-proposed",
-        "founder-supplied",
-        "founder-authenticated"
+        "director-supplied",
+        "director-authenticated"
       ]
     },
     "identityReference": {

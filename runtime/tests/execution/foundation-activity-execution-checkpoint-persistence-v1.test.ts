@@ -182,7 +182,7 @@ function activityHarness(input: Readonly<{
       parse: (value: ControlJsonObject) => parseFoundationExecutionOperationCheckpoint({
         value,
         specification: input.specification,
-        backend: input.backend,
+        backendProfile: input.backend.profile,
       }),
     }),
     assertContext(selected, value) {

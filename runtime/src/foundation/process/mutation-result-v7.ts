@@ -9,13 +9,19 @@ import {
   type FoundationControlReference,
   type FoundationDiagnostic,
   type FoundationRuntimeOperationResult,
+  type FoundationRuntimePrepareRequest,
+  type FoundationWorkControlResult,
+  type FoundationRuntimeWorkRequest,
 } from "@neutral/lifecycle-protocol";
 import type { DeliveryControlPhysicalDisposition } from "../control/public-view.js";
-import { publicDeliveryState } from "../control/public-view.js";
+import { publicDeliveryState, publicObservedDeliveryState } from "../control/public-view.js";
 import type { ExecutionReceiptSubmissionDiagnostic } from "../control/execution-receipt.js";
 import type { ControlRecordStore } from "../control/store.js";
 import type { ControlRecordEvent, ControlRecordRevision } from "../control/types.js";
 import { FoundationError } from "../error.js";
+import { foundationExecutionBackendDiagnosticFacts } from "../execution/backend-diagnostic.js";
+import { foundationProjectionDiagnosticFacts } from "../projection/diagnostic.js";
+import { foundationMandatoryProjectionRefusalV1 } from "../projection/mandatory-refusal.js";
 import type { FoundationRuntimeMutationRequest } from "../facade.js";
 import {
   observeFoundationRepositoryForRead,
@@ -90,7 +96,7 @@ function publicDiagnostic(error: unknown, recovery: boolean): FoundationDiagnost
       ? "The Delivery operation stopped at one exact retained recovery coordinate"
       : "The Delivery operation could not establish its exact result",
     retryable: recovery || (error instanceof FoundationError && error.retryable),
-    facts: {},
+    facts: foundationExecutionBackendDiagnosticFacts(error) ?? foundationProjectionDiagnosticFacts(error) ?? {},
   });
 }
 
@@ -108,6 +114,62 @@ function publicSubmissionDiagnostic(
       stage: diagnostic.stage,
       factsDigest: diagnostic.factsDigest,
     },
+  });
+}
+
+/** Project a conclusive, read-only preparation failure before Store creation. */
+export async function foundationPreparationRefusalResultV7(input: Readonly<{
+  request: FoundationRuntimePrepareRequest;
+  error: FoundationError;
+  observedAt: string;
+}>): Promise<FoundationRuntimeOperationResult> {
+  const observed = await observeFoundationRepositoryForRead(input.request.target, input.observedAt);
+  const measurement = foundationMandatoryProjectionRefusalV1(input.error)?.measurement;
+  const excess: string[] = [];
+  if (measurement?.kind === "complete-closure") {
+    if (measurement.mandatoryItems > measurement.maximumMandatoryItems) {
+      excess.push(`${measurement.mandatoryItems} mandatory items exceed the ${measurement.maximumMandatoryItems} item limit`);
+    }
+    if (measurement.mandatoryBytes > measurement.maximumMandatoryBytes) {
+      excess.push(`${measurement.mandatoryBytes} mandatory bytes exceed the ${measurement.maximumMandatoryBytes} byte limit`);
+    }
+    if (measurement.sourceBytes > measurement.maximumSourceBytes) {
+      excess.push(`${measurement.sourceBytes} source bytes exceed the ${measurement.maximumSourceBytes} byte limit`);
+    }
+    if (measurement.oversized.count > 0) {
+      excess.push(`${measurement.oversized.count} mandatory items exceed the ${measurement.maximumItemBytes} byte per-item limit`);
+    }
+  } else if (measurement?.kind === "mandatory-item") {
+    excess.push(`${measurement.observedBytes} mandatory item bytes exceed the ${measurement.maximumItemBytes} byte per-item limit`);
+  }
+  const reason = input.error.code === "lifecycle.projection.mandatory-too-large"
+    ? ` Required context exceeds the selected Projection profile.${excess.length === 0 ? "" : ` ${excess.join("; ")}.`}`
+    : " The required preparation context could not be established.";
+  const commit = observed.repository.headCommit;
+  return createFoundationRuntimeOperationResult({
+    request: input.request,
+    observedAt: input.observedAt,
+    status: "refused",
+    targetId: observed.repository.targetId,
+    deliveryId: null,
+    observation: {
+      schema: "lifecycle.foundation-runtime-observation.v17",
+      observedAt: input.observedAt,
+      repository: observed.repository,
+      delivery: null,
+    },
+    changes: {
+      repository: { changed: false, beforeCommit: commit, afterCommit: commit },
+      candidate: { changed: false, before: null, after: null },
+      control: { advanced: false, beforeHead: null, afterHead: null },
+    },
+    diagnostics: [{
+      code: input.error.code,
+      severity: "error",
+      message: `Preparation was refused before creating a Delivery or starting Agent execution.${reason}`,
+      retryable: input.error.retryable,
+      facts: foundationProjectionDiagnosticFacts(input.error) ?? {},
+    }, ...observed.diagnostics],
   });
 }
 
@@ -151,6 +213,67 @@ export function foundationMutationBeforeV7(
 }
 
 /**
+ * A Stop acknowledgment is captured synchronously after its durable commit.
+ * Another writer may already be advancing the Journal; an immutable head at
+ * this captured sequence remains the exact acknowledgment boundary. There is
+ * no awaited repository or Store reread after claiming the request was saved.
+ */
+export function foundationWorkStopAcknowledgmentV7(input: Readonly<{
+  request: FoundationRuntimeWorkRequest;
+  identity: ControlRecordStore["identity"];
+  acknowledgment: ReturnType<ControlRecordStore["requestWorkDelegationStop"]>;
+  observed: Awaited<ReturnType<typeof observeFoundationRepositoryIdentityForRead>>;
+  observedAt: string;
+  before?: FoundationMutationBeforeV7;
+}>): FoundationRuntimeOperationResult {
+  if (input.request.input.action !== "stop") {
+    fail("work-stop-acknowledgment", "Stop acknowledgment requires its committed exact request");
+  }
+  const { request, disposition, observation } = input.acknowledgment;
+  const delivery = publicObservedDeliveryState({ identity: input.identity, state: observation.state,
+    seal: observation.seal, physical: { disposition: "active", archiveManifestDigest: null } });
+  const selected = observation.head;
+  if (selected === null || selected.sequence !== delivery.journal.headSequence || selected.digest !== delivery.journal.headDigest) {
+    fail("work-stop-head", "Stop acknowledgment requires its exact committed Journal prefix");
+  }
+  const head = eventReference(publicControlEvent(selected));
+  const candidate = delivery.subjects.candidate;
+  const before = input.before ?? { repositoryCommit: input.observed.repository.headCommit,
+    candidate, controlHead: head };
+  return createFoundationRuntimeOperationResult({ request: input.request, observedAt: input.observedAt,
+    status: "completed", targetId: input.identity.targetId, deliveryId: input.identity.processId,
+    observation: FoundationRuntimeObservationSchema.parse({ schema: "lifecycle.foundation-runtime-observation.v17",
+      observedAt: input.observedAt, repository: input.observed.repository, delivery }),
+    changes: FoundationChangeFactsSchema.parse({
+      repository: { changed: before.repositoryCommit !== input.observed.repository.headCommit,
+        beforeCommit: before.repositoryCommit, afterCommit: input.observed.repository.headCommit },
+      candidate: { changed: !sameControlReference(before.candidate, candidate), before: before.candidate, after: candidate },
+      control: { advanced: before.controlHead?.digest !== head.digest, beforeHead: before.controlHead, afterHead: head },
+    }),
+    events: [], control: [], value: { kind: "work-control", action: "stop",
+      delegation: request.delegation, eventProjection: "journal-coordinates-only",
+      completedOperations: 0, lastActivity: null, stop: { request, disposition },
+      reason: disposition === "pending" ? "stop-pending" : "delegation-stopped" },
+    diagnostics: input.observed.diagnostics,
+  });
+}
+
+/** Preserve a known committed acknowledgment when optional folding cannot be observed. */
+export function foundationWorkStopFoldFailureV7(input: Readonly<{
+  request: FoundationRuntimeWorkRequest;
+  acknowledgment: FoundationRuntimeOperationResult;
+  error: unknown;
+}>): FoundationRuntimeOperationResult {
+  const result = input.acknowledgment;
+  return createFoundationRuntimeOperationResult({ request: input.request, observedAt: result.observedAt,
+    status: result.status, targetId: result.targetId, deliveryId: result.deliveryId,
+    observation: result.observation, changes: result.changes, events: result.events, control: result.control,
+    value: result.value, diagnostics: [...result.diagnostics, { ...publicDiagnostic(input.error, false),
+      message: "The stop request is retained; its final stopped observation remains unavailable" }],
+  });
+}
+
+/**
  * Project one already-retained mutation boundary into the public protocol.
  * This owner never decides operation eligibility or changes Control.
  */
@@ -165,6 +288,8 @@ export async function foundationMutationResultV7(input: Readonly<{
   physical?: DeliveryControlPhysicalDisposition;
   submissionDiagnostic?: ExecutionReceiptSubmissionDiagnostic | null;
   repositoryObservation?: "complete-current" | "identity-current";
+  /** A foreground work request reports an exact Journal range, not an unbounded event list. */
+  work?: FoundationWorkControlResult;
 }>): Promise<FoundationRuntimeOperationResult> {
   const observationMode = input.repositoryObservation ?? "complete-current";
   const observed = observationMode === "complete-current"
@@ -189,7 +314,7 @@ export async function foundationMutationResultV7(input: Readonly<{
     disposition: "active",
     archiveManifestDigest: null,
   });
-  const events = operationEvents(input.store, input.afterSequence);
+  const events = input.work === undefined ? operationEvents(input.store, input.afterSequence) : Object.freeze([]);
   const head = currentControlHead(input.store);
   const before = input.before ?? Object.freeze({
     repositoryCommit: observed.repository.headCommit,
@@ -198,7 +323,7 @@ export async function foundationMutationResultV7(input: Readonly<{
   });
   const candidate = delivery.subjects.candidate;
   const observation = FoundationRuntimeObservationSchema.parse({
-    schema: "lifecycle.foundation-runtime-observation.v10",
+    schema: "lifecycle.foundation-runtime-observation.v17",
     observedAt: input.observedAt,
     repository: observed.repository,
     delivery,
@@ -215,7 +340,8 @@ export async function foundationMutationResultV7(input: Readonly<{
       after: candidate,
     },
     control: {
-      advanced: events.length > 0,
+      advanced: input.work === undefined ? events.length > 0
+        : before.controlHead?.digest !== head?.digest,
       beforeHead: before.controlHead,
       afterHead: head,
     },
@@ -230,6 +356,7 @@ export async function foundationMutationResultV7(input: Readonly<{
     changes,
     events,
     control: operationControl(input.store, events),
+    ...(input.work === undefined ? {} : { value: input.work }),
     diagnostics: input.error === undefined
       ? [
           ...observed.diagnostics,

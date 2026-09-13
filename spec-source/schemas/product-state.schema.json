@@ -22,7 +22,7 @@
       "minContains": 1,
       "maxContains": 1
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   },
   "$defs": {
     "entry": {
@@ -30,9 +30,9 @@
       "additionalProperties": false,
       "required": ["path", "mode", "objectId", "role"],
       "properties": {
-        "path": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/normalizedPath" },
+        "path": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/normalizedPath" },
         "mode": { "type": "string", "enum": ["100644", "100755"] },
-        "objectId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+        "objectId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
         "role": {
           "type": "string",
           "enum": [

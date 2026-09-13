@@ -1,3 +1,4 @@
+import { parseFoundationDeliveryGitContextV1, FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1 } from "../repository/delivery-git-context-manifest.js";
 import { FoundationError } from "../error.js";
 import {
   FOUNDATION_CANDIDATE_REVISION_CARRIER_LIMITS_V1,
@@ -15,16 +16,17 @@ import { compareCodePoints } from "../validation/ordering.js";
 import { assertFoundationSchema } from "../validation/schema-engine.js";
 
 const EXECUTION_INPUT_SET_SCHEMA_ID =
-  "urn:lifecycle:schema:execution-input-set:v1";
+  "urn:lifecycle:schema:execution-input-set:v2";
 
 const SUBJECT_KINDS = Object.freeze([
   "candidate-revision",
   "candidate-revision-carrier-manifest",
+  "delivery-git-context",
   "product-base",
   "product-base-object-closure-manifest",
   "projection",
   "role-subject",
-  "founder-direction",
+  "director-direction",
   "role-brief",
   "semantic-template",
   "capability-profile",
@@ -40,7 +42,7 @@ const SUBJECT_KINDS = Object.freeze([
 const AGENT_SINGLETON_KINDS = Object.freeze([
   "projection",
   "role-subject",
-  "founder-direction",
+  "director-direction",
   "role-brief",
   "semantic-template",
   "capability-profile",
@@ -54,6 +56,12 @@ const CHECK_COMMON_SINGLETON_KINDS = Object.freeze([
   "check-binding",
   "check-proof-subject",
   "runner",
+] as const);
+
+const AGENT_CANDIDATE_KINDS = Object.freeze([
+  "delivery-git-context",
+  "candidate-revision",
+  "candidate-revision-carrier-manifest",
 ] as const);
 
 export type FoundationExecutionInputSubjectKindV1 = typeof SUBJECT_KINDS[number];
@@ -102,7 +110,7 @@ export type FoundationExecutionInputEntryV1 = Readonly<{
 }>;
 
 export type FoundationExecutionInputSetV1 = Readonly<{
-  schema: "lifecycle.execution-input-set.v1";
+  schema: "lifecycle.execution-input-set.v2";
   owner: FoundationExecutionInputSetOwnerV1;
   inputMaterialDigest: Sha256;
   subjects: readonly FoundationExecutionInputSubjectV1[];
@@ -292,18 +300,12 @@ function assertOwnerSubjectPolicy(value: FoundationExecutionInputSetV1): void {
     if ((grouped.get("policy")?.length ?? 0) < 1) {
       fail("subject-policy", "Agent Execution Input Sets require at least one policy subject");
     }
-    if (value.owner.role === "reconnaissance") {
-      if (grouped.has("candidate-revision") ||
-          grouped.has("candidate-revision-carrier-manifest")) {
-        fail("candidate-policy", "Reconnaissance Input Sets cannot bind Candidate subjects");
-      }
-    } else {
-      allowed.add("candidate-revision");
-      allowed.add("candidate-revision-carrier-manifest");
-      requireSingletonKinds(grouped, [
-        "candidate-revision",
-        "candidate-revision-carrier-manifest",
-      ]);
+    // Reconnaissance can resolve a frozen Candidate or prepare without one.
+    // The Agent owner binds that choice to the exact Attempt operation.
+    if (value.owner.role !== "reconnaissance" ||
+        AGENT_CANDIDATE_KINDS.some((kind) => grouped.has(kind))) {
+      for (const kind of AGENT_CANDIDATE_KINDS) allowed.add(kind);
+      requireSingletonKinds(grouped, AGENT_CANDIDATE_KINDS);
     }
   } else {
     for (const kind of CHECK_COMMON_SINGLETON_KINDS) allowed.add(kind);
@@ -363,7 +365,7 @@ function assertEntrySources(value: FoundationExecutionInputSetV1): void {
   );
   const needsCandidate = value.owner.kind === "check"
     ? value.owner.phase === "final"
-    : value.owner.role === "builder" || value.owner.role === "reviewer";
+    : value.subjects.some(({ kind }) => kind === "candidate-revision");
   if (needsCandidate ? artifacts.length !== 1 : artifacts.length !== 0) {
     fail(
       "candidate-policy",
@@ -536,6 +538,37 @@ function assertCandidateBinding(
   }
 }
 
+function assertDeliveryGitContextBinding(
+  value: FoundationExecutionInputSetV1,
+  subjects: ReadonlyMap<Sha256, VerifiedSubject>,
+): void {
+  if (value.owner.kind !== "agent-attempt") return;
+  const subject = value.subjects.find(({ kind }) => kind === "delivery-git-context");
+  if (subject === undefined) return;
+  const proof = subjects.get(subject.digest)!;
+  const context = parseFoundationDeliveryGitContextV1(proof.bytes);
+  const candidate = value.subjects.find(({ kind }) => kind === "candidate-revision")!;
+  const candidateProof = subjects.get(candidate.digest)!;
+  let candidateRecord: Record<string, unknown>;
+  try { candidateRecord = JSON.parse(Buffer.from(candidateProof.bytes).toString("utf8")) as Record<string, unknown>; }
+  catch { fail("git-context-binding", "Delivery Git context requires the exact Candidate record bytes"); }
+  if (candidateRecord === null || typeof candidateRecord !== "object" || Array.isArray(candidateRecord)) fail("git-context-binding", "Delivery Git context requires one Candidate record");
+  if (sha256Bytes(proof.bytes) !== subject.digest || context.candidate.recordId !== candidate.id ||
+      context.candidate.revision !== candidate.revision || context.candidate.digest !== candidate.digest ||
+      context.rootTree !== candidateProof.candidateBinding?.rootTree || context.identity.processId !== candidateRecord.processId) {
+    fail("git-context-binding", "Delivery Git context differs from the exact Candidate subject");
+  }
+  const entries = value.entries.filter((entry) => entry.sourceSubjectDigest === subject.digest);
+  const manifest = entries.find(({ path }) => path === FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.manifest);
+  const artifact = entries.find(({ path }) => path === FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.artifact);
+  if (entries.length !== 2 || manifest?.purpose !== "operation-input" || manifest.modeClass !== "regular" || manifest.mediaType !== "application/json" ||
+      manifest.digest !== subject.digest || manifest.byteLength !== proof.bytes.byteLength ||
+      artifact?.purpose !== "operation-input" || artifact.modeClass !== "regular" || artifact.mediaType !== "application/octet-stream" ||
+      artifact.digest !== context.artifact.digest || artifact.byteLength !== context.artifact.byteLength) {
+    fail("git-context-binding", "Delivery Git context entries differ from their exact immutable manifest");
+  }
+}
+
 function exactCanonicalJson(bytes: Uint8Array, label: string): Record<string, unknown> {
   let value: unknown;
   try {
@@ -623,6 +656,7 @@ async function verifyCompleteInputSet(
     }, resolver, entry);
   }
   assertCandidateBinding(value, subjects);
+  assertDeliveryGitContextBinding(value, subjects);
   assertProductBaseBinding(value, subjects);
 }
 
@@ -644,7 +678,7 @@ export async function compileFoundationExecutionInputSet(
     0,
   );
   const subject = {
-    schema: "lifecycle.execution-input-set.v1" as const,
+    schema: "lifecycle.execution-input-set.v2" as const,
     owner,
     inputMaterialDigest: input.inputMaterialDigest,
     subjects,
@@ -660,6 +694,7 @@ export async function compileFoundationExecutionInputSet(
   semanticInputSet(value);
   const verified = await verifiedSubjects(value.subjects, resolver);
   assertCandidateBinding(value, verified);
+  assertDeliveryGitContextBinding(value, verified);
   assertProductBaseBinding(value, verified);
   return value;
 }

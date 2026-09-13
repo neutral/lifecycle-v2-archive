@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "Lifecycle Foundation runtime.",
-  "license": "CC0-1.0 OR 0BSD",
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -34,6 +33,8 @@
     "check:self": "npm run check:schemas && tsc -p tsconfig.json --noEmit",
     "test": "npm run build && npm run test:built",
     "test:built": "node scripts/run-tests.mjs",
+    "test:connected:built": "node scripts/run-tests.mjs connected-fast",
+    "test:connected-bounded:built": "node scripts/run-tests.mjs connected-bounded",
     "test:delivery-exploration:built": "node --test dist/tests/process/exploration/foundation-delivery-reducer-exploration.test.js",
     "prepack": "node scripts/stage-bundled-dependencies.mjs prepare",
     "postpack": "node scripts/stage-bundled-dependencies.mjs cleanup",
@@ -43,6 +44,7 @@
     "@neutral/lifecycle-protocol": "1.0.0",
     "ajv": "8.18.0",
     "ajv-formats": "3.0.1",
+    "atlas-reference-validator": "0.8.0",
     "commonmark": "0.31.2",
     "semver": "7.7.2"
   },
@@ -50,6 +52,7 @@
     "@neutral/lifecycle-protocol",
     "ajv",
     "ajv-formats",
+    "atlas-reference-validator",
     "commonmark",
     "semver"
   ],
@@ -57,5 +60,6 @@
     "@types/commonmark": "0.27.10",
     "@types/semver": "7.7.1",
     "typescript": "5.8.3"
-  }
+  },
+  "license": "CC0-1.0 OR 0BSD"
 }

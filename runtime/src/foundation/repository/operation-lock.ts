@@ -8,6 +8,7 @@ import {
   type FoundationDescriptorLockProvider,
 } from "../support/descriptor-lock.js";
 import { canonicalRepository, gitCommonDirectory } from "./git.js";
+import { assertIndependentGitRepository } from "./independent-git.js";
 
 export type FoundationTargetOperationLockProvider = FoundationDescriptorLockProvider;
 
@@ -28,6 +29,7 @@ export function foundationTargetOperationLockProvider(
 
 async function operationLockPath(target: string): Promise<string> {
   const root = await canonicalRepository(target);
+  await assertIndependentGitRepository(root);
   const requestedGitDirectory = await gitCommonDirectory(root);
   const gitDirectory = await realpath(requestedGitDirectory);
   const gitMetadata = await lstat(gitDirectory);
@@ -55,8 +57,8 @@ async function operationLockPath(target: string): Promise<string> {
 
 /**
  * Serialize every guarded operation with the kernel lock held on one permanent,
- * Git-common-directory-private support file. Linked worktrees therefore share
- * one operation domain. The selected macOS lockf or Linux util-linux flock
+ * support file inside the independent target's local Git directory. The
+ * selected macOS lockf or Linux util-linux flock
  * descriptor form locks the inherited open file description; closing it or
  * losing the process releases the lock without stale-PID deletion or a
  * race-prone recovery protocol.
@@ -88,10 +90,10 @@ export async function withTargetOperationLock<T>(target: string, operation: stri
     if (acquired.status === provider.contentionExitCode) {
       throw new FoundationError(
         "operation.busy",
-        `Another Lifecycle operation owns this Git common-directory operation domain, possibly through a linked worktree; ${operation} did not start`,
+        `Another Lifecycle operation owns this target Git operation domain; ${operation} did not start`,
         {
           retryable: true,
-          recoveryActions: [{ action: "retry", detail: "Retry after the active Lifecycle operation in this Git common-directory domain finishes." }],
+          recoveryActions: [{ action: "retry", detail: "Retry after the active Lifecycle operation in this target Git operation domain finishes." }],
           observedFacts: { operationDomain: "git-common-directory" },
         },
       );

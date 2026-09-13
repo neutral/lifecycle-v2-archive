@@ -6,11 +6,11 @@
     "coordinates": {
       "additionalProperties": false,
       "properties": {
-        "interfaceProtocol": { "const": "lifecycle.interface.foundation.v10" },
-        "providerAdapter": { "const": "lifecycle.provider-adapter.v6" },
-        "qualificationRevision": { "const": "lifecycle.foundation.1.0.0-rc.10" },
-        "repositoryContract": { "const": "lifecycle.repository.v15" },
-        "runtimeProtocol": { "const": "lifecycle.runtime.foundation.v10" }
+        "interfaceProtocol": { "const": "lifecycle.interface.foundation.v17" },
+        "providerAdapter": { "const": "lifecycle.provider-adapter.v7" },
+        "qualificationRevision": { "const": "lifecycle.foundation.1.0.0-rc.17" },
+        "repositoryContract": { "const": "lifecycle.repository.v22" },
+        "runtimeProtocol": { "const": "lifecycle.runtime.foundation.v17" }
       },
       "required": [
         "interfaceProtocol",
@@ -61,7 +61,7 @@
       "additionalProperties": false,
       "properties": {
         "agentAdapterImplementationDigest": { "$ref": "#/$defs/digest" },
-        "codexVersion": { "const": "0.151.0" },
+        "codexVersion": { "const": "0.153.4" },
         "imageId": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$", "type": "string" },
         "indexDigest": { "$ref": "#/$defs/digest" },
         "nonRootUser": { "const": "65532:65532" },

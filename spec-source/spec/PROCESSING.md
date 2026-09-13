@@ -121,9 +121,51 @@ The header parser MUST reject:
 General YAML is not a Lifecycle Document format. JSON avoids implicit dates,
 booleans, aliases, duplicate-key variance, and parser-dependent scalar typing.
 
-Repository-authored Knowledge uses `lifecycle.knowledge-record.v1`. It accepts
+Repository-authored Knowledge uses `lifecycle.knowledge-record.v2`. It accepts
 LF or CRLF, preserves otherwise valid source layout and exact source bytes, and
 uses the Knowledge source and semantic digests.
+
+For `kind: "discipline"`, structural processing requires every
+`sources[].required` value to be `false`. A true value produces
+`lifecycle.discipline.source-required`; it is never carried forward as a
+required source-resolution input. Optional Discipline sources retain their
+ordinary ordered resolution and disposition facts.
+
+The Discipline Registry is strict JSON under
+`lifecycle.discipline-registry.v1`, not a Lifecycle Document. Its self-digest
+omits only `digest`. A processor reads it from the same bound repository tree
+as adopted Discipline Markdown, orders Pack, adoption, Work Type, and identity
+sets by Unicode scalar value, and validates exact cross-references before the
+Knowledge Set can complete. The Registry's Work Type and tag text is discovery
+metadata and cannot seed mandatory selection.
+
+A Discipline Pack manifest is strict JSON under
+`lifecycle.discipline-pack.v1`. Pack validation recomputes the manifest
+self-digest, every inventoried record digest, publisher equality, and Set
+membership from the exact supplied Pack tree. Adoption copies validated record
+bytes and records immutable Pack provenance. Runtime processing never reads an
+ambient or remote Pack to fill missing target bytes.
+
+Pack record inventory entries MUST be unique and ordered by exact record id.
+Every inventory path names normalized Markdown beneath the Pack
+`records/` directory. Each Set's `recordIds` is unique and code-point ordered.
+The outer `sets` array is a publisher presentation sequence: Set ids MUST be
+unique, but their sequence MUST be preserved rather than lexically sorted.
+That sequence participates unchanged in the manifest self-digest.
+
+`contract.specificationRevision` is retained authoring provenance. It MUST NOT
+be compared to the active runtime qualification revision as an adoption gate.
+The Pack's record schema selection and every adopted byte MUST satisfy the
+current selected Knowledge v2 and target contracts. Manifest validation neither
+converts records nor erases the exact authoring coordinate.
+
+Target Knowledge processing validates one current adopted Discipline against
+its exact Registry binding. Publisher revisions need not form a complete local
+chain beginning at 1. The processor retains the declared exact supersession
+reference as provenance and does not fetch predecessors or rewrite previously
+adopted bytes. Complete local revision-chain validation remains required for
+Product Knowledge; exact occurrence and source/semantic digest rules remain
+unchanged for both kinds of Knowledge.
 
 Delivery Control is not retained as a graph of Lifecycle Document files. One
 Control Record revision stores typed JSON payload and normalized semantic
@@ -160,9 +202,15 @@ carries an exact body or fragment digest and provenance rather than a second
 prose copy.
 
 The standard provenance classes are `repository-authored`,
-`runtime-observed`, `runtime-derived`, `agent-proposed`, `founder-supplied`, and
-`founder-authenticated`. Normalization, compilation, storage, or export MUST
+`runtime-observed`, `runtime-derived`, `agent-proposed`, `director-supplied`, and
+`director-authenticated`. Normalization, compilation, storage, or export MUST
 NOT relabel one class as another.
+
+Director provenance records the source's role, not whether the principal is
+human or software. `agent-proposed` remains the provenance of Worker semantics
+submitted through an Agent Attempt. Parsing a Worker proposal cannot make it a
+Director Brief or authenticated Decision; the owning input or authentication
+transition must establish that distinct provenance.
 
 ### Canonical runtime rendering
 
@@ -193,7 +241,7 @@ seal coordinate; its rendered byte digest never replaces that source identity.
 Agent Work Product canonical body rendering is a distinct selected Control
 profile. The Agent edits body-only Markdown rather than a Lifecycle Document.
 The parser accepts the harmless layout and ordering variation declared by its
-v2 role grammar, emits one normalized typed semantic value, and the runtime
+v4 role grammar, emits one normalized typed semantic value, and the runtime
 renders the retained body from that value. For two valid drafts with the same
 typed meaning, the renderer produces byte-identical section order, metadata
 order, local-item order, anchors, token spelling, omitted-empty policy, and
@@ -220,7 +268,7 @@ level-two sections, their accepted and rendered ordering rules, whether other
 sections are legal, and every addressable fragment. The level-one title is the
 first body line and occurs exactly once. Required level-two sections occur
 exactly once. A Knowledge or Lifecycle Document profile can require source
-order. Agent Work Product v2 accepts its supported sections in any source order
+order. Agent Work Product v4 accepts its supported sections in any source order
 and the runtime renderer assigns canonical retained order. A lower-level
 heading, raw HTML heading, or visually similar Unicode text cannot satisfy a
 required section.
@@ -331,7 +379,17 @@ sha256:<64 lowercase hexadecimal digits>
 ```
 
 A **byte digest** is SHA-256 over exact bytes. A **canonical-value digest** is
-SHA-256 over RFC 8785 canonical JSON bytes.
+SHA-256 over RFC 8785 canonical JSON bytes. The algorithm name alone does not
+identify a subject: the owning rule decides which complete bytes or fields
+enter it and what, if anything, is omitted.
+
+For example, two Knowledge files can differ only in header layout and share a
+semantic digest while retaining different source digests. Two valid Agent
+drafts can likewise compile to the same canonical Work Product body while
+their observed-submission digests differ. A Control revision digest covers a
+logical value; an archive's SQLite digest covers physical retrieval bytes.
+These equalities and differences preserve useful distinctions rather than
+provide interchangeable checksums.
 
 ### Lifecycle Document digest subjects
 
@@ -409,7 +467,7 @@ The Control logical-inventory digest covers the canonical JSON bytes of exactly:
 {
   "schema": "lifecycle.control-record-store-logical-inventory.v1",
   "store": {
-    "schema": "lifecycle.control-record-store.v1",
+    "schema": "lifecycle.control-record-store.v2",
     "storeId": "<store identity>",
     "targetId": "<target identity>",
     "processKind": "delivery",
@@ -455,6 +513,26 @@ identify a revision, event, standing, Delivery result, or logical inventory.
 Each adjacent content-addressed file uses a byte digest over its exact original
 bytes before media decoding or normalization.
 
+### Code inspection source subjects
+
+Code inspection preserves the exact active governing Context W(B) separately
+from its Candidate's application parent. Before integration that parent is B;
+after integration it is exact retained P. The Runtime derives and reopens the
+same-target parent through retained Candidate lineage before computing P→I
+differences or returning source bytes. A public Code basis binds `before.commit`
+and `before.tree` independently from the embedded Context's repository epoch.
+
+For a before-side `canonical-blob` Source Reference, the `repository-blob`
+subject id is the exact Git blob object id. Its subject digest is the canonical
+digest of `{repositorySnapshotDigest, applicationBaseCommit,
+applicationBaseTree, path, type, mode, objectId}`: the Snapshot digest is the
+governing Context's exact Snapshot, the application-base commit/tree are the
+Code basis's before identities, and the remaining values identify the selected
+before entry. This binds an unchanged blob to the exact selected P as well as
+W(B). The after-side subject remains the exact Candidate revision. Each Source
+Reference keeps its own exact generation, Context basis, content digest, and
+byte bounds; a Context refresh or equal content cannot substitute these joins.
+
 ### Self-digesting JSON carriers
 
 Where an owning schema defines a top-level self-digest, its subject is the
@@ -490,7 +568,9 @@ Standard set keys include:
 - Receipts: phase order, Check identity, Binding identity, Receipt identity.
 
 Relationship paths, transaction steps, event chains, revision histories, and
-other declared sequences retain semantic order and MUST NOT be sorted.
+other declared sequences retain semantic order and MUST NOT be sorted. A Pack's
+outer `sets` array is such a sequence; its member `recordIds` arrays remain
+identity sets.
 
 Two members with the same complete set-ordering key are invalid. Input order
 cannot break a tie. Unicode scalar-value order is not locale collation or a
@@ -501,7 +581,7 @@ ordering rule.
 
 The `journal_events` relation in one Control Record Store is the sole retained
 Delivery event source. It is not a Markdown journal, Git ref, transcript,
-checkpoint file, or thirteenth Control record family.
+checkpoint file, or another Control record family.
 
 The first event has sequence `1` and null predecessor. Each later event is the
 prior sequence plus one and binds the exact prior event logical digest. All
@@ -633,11 +713,11 @@ untracked authority, ignored authority, and a Candidate containing Control
 Store material are invalid.
 
 An extension cannot remove a standard Product State source from exact identity
-and validation. The owning Process defines how path partitions participate in
-operation conservation. Delivery treats the admitted Atlas partition as
-historical context, prohibits every Candidate Atlas delta, and uses one full-
-tree branch lease. Acceptance applies the exact sealed Candidate tree over the
-exact admitted parent; Atlas has no separate terminal preservation rule.
+and validation. Delivery retains immutable governing snapshots and prohibits
+Candidate Atlas and Discipline deltas relative to each revision's application
+parent. Explicit integration preserves the selected parent's protected roots;
+upstream changes do not become Delivery contribution. Acceptance applies the
+exact integrated sealed tree over that parent without terminal composition.
 
 ## Atlas State
 
@@ -699,14 +779,92 @@ after repository observation and again immediately before final Snapshot
 binding. Ref movement at either boundary or a basis mismatch fails rather than
 combining epochs.
 
-After a Work Boundary admits that Snapshot, execution processors reopen the
-same commit and tree as historical Git objects. Before each active operation,
-the epoch-coherence guard also requires the canonical branch to name that exact
-commit and tree and the authoritative target checkout to be completely clean.
-A later repository or Atlas snapshot is a distinct coherent epoch and can
-participate only in a fresh Delivery after Closure; it cannot be mixed into an
-active Execution Projection, Check, Evidence observation, readmission, or
-terminal transaction.
+After a Boundary admits a Snapshot, execution processors reopen the same exact
+historical objects from runtime custody. The complete Snapshot is immutable;
+live canonical movement does not replace it. Explicit integration selects a
+separate full parent Snapshot, and context-change readmission can activate a
+successor Boundary over that retained epoch. Every consumer distinguishes
+historical governing, integration-parent, and result subjects; no mixed epoch or
+live-worktree fallback is permitted.
+
+## Integration Canonicalization
+
+An Integration Assessment uses the common immutable Control envelope and
+canonical JSON/digest rules. Its source base and Carrier are resolved through
+its exact `integrates` Candidate relationship. The parent is a complete,
+self-digested Repository Snapshot. The successor Candidate owns result state;
+no Assessment field or recovery plan substitutes for a published valid Carrier.
+
+`validation.factsDigest` is the canonical-value digest of one exact tagged
+preimage. A constructed result uses
+`{schema: "lifecycle.integration-validation-facts.v1", manifestFileDigest,
+state, observer}` from the independently verified Carrier observation. An
+invalid result uses
+`{schema: "lifecycle.integration-validation-refusal.v1", rootTree,
+diagnosticCode}`. A conflicted result uses
+`{schema: "lifecycle.integration-conflict-facts.v1", conflicts}`. The tags do
+not create additional Control record families. The exact Carrier is published
+and reopened before a constructed Assessment is retained. If interruption
+separates that Assessment from successor selection, recovery reruns the fixed
+merge from retained B/C/P and compares the same verified facts digest before
+selecting I; it does not substitute a later parent or a checkpoint's mutable tree.
+
+Conflict facts are ordered by normalized path, then kind, with unique complete
+keys. Diagnostic codes are lexically ordered and unique. Context change entries
+are ordered by the fixed subject sequence repository-contract, atlas,
+discipline-registry, knowledge-closure, required-sources, with at most one entry
+per subject and unequal admitted/parent digests. Limitations preserve their
+bounded canonical sequence. The assessed time is an exact retained runtime
+observation; recovery MUST NOT resample it.
+
+Context comparisons use domain-separated canonical content values under the
+fixed integration rule. Knowledge closure includes exact selected records,
+required and inverse relationships, Check/Binding closure, and capability
+identities; required sources preserve exact identity and required disposition.
+Exact Description records bind their coverage selectors, and the repository
+contract binds exemption policy. Observed per-file coverage rows and matched
+exemption occurrences are physical inventory, not additional governing
+selections. Adding or removing a file under unchanged selected ownership does
+not alone change this fingerprint. Each Snapshot still validates actual
+coverage independently; a newly selected owner, changed selector or exemption
+policy, or unresolved ownership cannot pass as unchanged governing context.
+Atlas compares the governing semantic closure selected by the Work Boundary,
+under the explicit consumer partition in [Atlas](ATLAS.md#governing-context-and-discovery).
+Selected Discipline adoption and publisher facts retain exact digests; unrelated
+Registry entries and Work Type discovery descriptions are not governing inputs.
+A different commit or unselected discovery entry alone is not a different
+governing selection.
+Full raw Snapshot digests remain independently retained and are not replaced by
+these comparison fingerprints. Admitted source bytes are reopened from B
+independently of whether P retains B in its Git ancestry; parent context is
+reopened from P, and result bytes come from the exact Candidate Carrier.
+
+The fixed merge selection binds its implementation id and a digest of the
+selected executable identity/version and exact fixed flags before construction.
+Repository hooks, custom merge drivers, or mutable user configuration MUST NOT
+alter that behavior. Recovery requires the same selection and exact B/C/P
+inputs. Unsupported behavior or incomplete input retention is refusal, not a
+new policy choice.
+
+### Private Delivery Git context
+
+The private `lifecycle.delivery-git-context.private.v1` manifest binds exact
+Target/Store/Delivery identity, Candidate record identity/revision/digest,
+branch, tip commit, root tree, object format, complete ordered object inventory,
+counts, inventory digest, and exact Git-pack artifact format/digest/byte length.
+The branch is `refs/heads/lifecycle/delivery/` followed by the lowercase digest
+hex of the canonical identity object. Inventory entries are ordered uniquely by
+object id and carry object type and byte length; counts and total bytes are
+recomputed, `objectInventoryDigest` digests the complete inventory, and the
+manifest self-digest omits only its top-level `digest`. Canonical UTF-8 JSON
+plus one LF defines manifest file bytes and the Input Set subject digest.
+The manifest parser refuses empty input or more than 268,435,456 serialized
+bytes; the runner further caps intake by selected Cell storage under
+[Execution](EXECUTION.md#execution-input-set). The complete inventory has at most
+1,000,000 entries and is never truncated to satisfy those bounds.
+The `candidate/git-context.json` and `candidate/git-context.pack` entries each
+bind their exact bytes. This private manifest is immutable operation support,
+not another Product State or Control record.
 
 ## External References and Retrieval
 
@@ -771,7 +929,7 @@ They MUST NOT:
 - raise instruction priority;
 - grant filesystem, network, credential, tool, daemon, SQL, or external-effect
   capability;
-- request or receive Founder secret bytes;
+- request or receive Director secret bytes;
 - authorize a canonical transition;
 - change the active Work Boundary or Projection;
 - waive an obligation, Check, or proposition;
@@ -785,7 +943,7 @@ The Agent Work Product compiler can retain only parsed semantic values; it
 supplies fixed bindings, identities, references, canonical semantic rendering,
 order, digests, record envelope, and event from runtime-owned inputs.
 
-Foundation rc.10 exposes no invocation-local semantic-validation request,
+Foundation rc.17 exposes no invocation-local semantic-validation request,
 callback, endpoint, or response to the provider or Execution Cell. Final
 Control compilation parses and validates only the exact runtime-observed
 semantic output after provider Containment; provisional output and provider

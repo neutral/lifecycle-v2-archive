@@ -20,8 +20,9 @@ import {
   type ControlRecordStoreIdentity,
 } from "../../src/foundation/control/types.js";
 import type { ReducedDeliveryState } from "../../src/foundation/process/delivery-reducer.js";
-import { digestCanonical, sha256Bytes } from "../../src/foundation/validation/canonical.js";
+import { digestCanonical, selfDigest, sha256Bytes } from "../../src/foundation/validation/canonical.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
+import { foundationIntegrationValidationFactsDigestV1 } from "../../src/foundation/control/integration-assessment.js";
 
 const RUNTIME = "foundation-runtime";
 const OBSERVED = "2026-08-29T21:00:00.000Z";
@@ -59,13 +60,14 @@ function relationship(
 function revision(input: Readonly<{
   id: string;
   kind: string;
+  revision?: number;
   payload?: ControlJsonObject;
   relationships?: readonly ControlRecordRelationship[];
 }>): ControlRecordRevision {
   return compileControlRecordRevision(identity.processId, {
     recordId: input.id,
     recordKind: input.kind,
-    revision: 1,
+    revision: input.revision ?? 1,
     producer: { kind: "runtime", id: RUNTIME },
     semanticAuthor: { kind: "runtime", id: RUNTIME },
     semanticAuthority: "runtime-derived",
@@ -102,12 +104,14 @@ function transactionEvents(
   const facts = options.observationFacts ?? (
     decision.payload.decision === "accept" && options.canonicalResult !== undefined
       ? Object.freeze({
-          schema: "lifecycle.terminal-acceptance-effect-observation.v1",
+          schema: "lifecycle.terminal-acceptance-effect-observation.v2",
           ref: "refs/heads/main",
           commit: options.canonicalResult.commit,
           tree: options.canonicalResult.tree,
           objectFormat: "sha1",
           canonicalResultDigest: digestCanonical(options.canonicalResult),
+          observedTip: { commit: options.canonicalResult.commit, tree: options.canonicalResult.tree },
+          recognition: "at-tip",
         })
       : repositoryFacts
   );
@@ -124,6 +128,7 @@ function transactionEvents(
       payload: Object.freeze({
         activityId,
         diagnosticCode: "provider-input-invalid",
+        resolution: "none",
         refusalFactsDigest: digest(`pre-intent-refusal-${index + 1}`),
       }),
       subject: null,
@@ -133,7 +138,7 @@ function transactionEvents(
     ...refusalInputs,
     {
       eventId: "event-decision",
-      eventKind: "founder-decision-authenticated",
+      eventKind: "director-decision-authenticated",
       occurredAt: "2026-08-29T20:59:58.000Z",
       payload: Object.freeze({ activityId: ACTIVITY }),
       subject: decisionSubject,
@@ -220,6 +225,7 @@ function fakeStore(input: Readonly<{
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: reference(input.boundary ?? null),
       candidate: reference(input.candidate ?? null),
@@ -228,6 +234,7 @@ function fakeStore(input: Readonly<{
       evidence: reference(input.evidence ?? null),
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({
       eventCount: events.length,
       headDigest: events.at(-1)?.digest ?? null,
@@ -265,36 +272,51 @@ function fakeStore(input: Readonly<{
 
 function acceptedFixture() {
   const candidatePayload = validDeliveryControlPayload("candidate-revision");
+  const integratedPayload: ControlJsonObject = {
+    ...candidatePayload, observation: "integration-successor", candidateBaseCommit: "0".repeat(40),
+    state: { ...(candidatePayload.state as ControlJsonObject), tree: "1".repeat(40),
+      candidateDigest: digest("candidate"), productStateDigest: digest("product-state"), knowledgeSetDigest: digest("knowledge-set") },
+  };
   const boundary = revision({
     id: "boundary-one",
     kind: "work-boundary",
     payload: Object.freeze({
       basis: Object.freeze({
-        productBaseCommit: "0".repeat(40),
-        productBaseTree: "0".repeat(40),
+        productBaseCommit: "3".repeat(40),
+        productBaseTree: "3".repeat(40),
       }),
     }),
+  });
+  const sourceCandidate = revision({
+    id: "candidate-one", kind: "candidate-revision",
+    payload: { ...candidatePayload, observation: "initialization", candidateBaseCommit: "3".repeat(40) },
+    relationships: [relationship("governed-by", boundary)],
+  });
+  const assessmentPayload = validDeliveryControlPayload("integration-assessment");
+  const canonicalParent = { ...(assessmentPayload.canonicalParent as ControlJsonObject),
+    targetId: identity.targetId, commit: "0".repeat(40), tree: "0".repeat(40),
+  };
+  const assessment = revision({
+    id: "integration-one", kind: "integration-assessment",
+    payload: { ...assessmentPayload, canonicalParent: { ...canonicalParent, digest: selfDigest(canonicalParent) },
+      validation: { ...(assessmentPayload.validation as ControlJsonObject), factsDigest: foundationIntegrationValidationFactsDigestV1({
+        manifestFileDigest: (integratedPayload.carrierManifest as ControlJsonObject).digest as ReturnType<typeof digest>,
+        state: integratedPayload.state, observer: integratedPayload.observer,
+      }) } },
+    relationships: [relationship("governed-by", boundary), relationship("integrates", sourceCandidate)],
   });
   const candidate = revision({
     id: "candidate-one",
     kind: "candidate-revision",
-    payload: Object.freeze({
-      ...candidatePayload,
-      candidateBaseCommit: "0".repeat(40),
-      state: Object.freeze({
-        ...(candidatePayload.state as ControlJsonObject),
-        tree: "1".repeat(40),
-        candidateDigest: digest("candidate"),
-        productStateDigest: digest("product-state"),
-        knowledgeSetDigest: digest("knowledge-set"),
-      }),
-    }),
+    revision: 2,
+    payload: integratedPayload,
+    relationships: [relationship("governed-by", boundary), relationship("revises", sourceCandidate), relationship("integrated-from", assessment)],
   });
   const seal = revision({ id: "seal-one", kind: "candidate-seal" });
   const evidence = revision({ id: "evidence-one", kind: "evidence-packet" });
   const decision = revision({
     id: "decision-accept",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "accept" },
     relationships: [
       relationship("selects-boundary", boundary),
@@ -312,7 +334,7 @@ function acceptedFixture() {
     productStateDigest: digest("product-state"),
     knowledgeSetDigest: digest("knowledge-set"),
   });
-  return Object.freeze({ boundary, candidate, seal, evidence, decision, canonical });
+  return Object.freeze({ boundary, sourceCandidate, assessment, candidate, seal, evidence, decision, canonical });
 }
 
 const runtime = Object.freeze({
@@ -345,7 +367,7 @@ const terminalFacts = Object.freeze({ terminalExecutions, reclamationHandoff });
 test("Closure refuses fewer Reclamation obligations than terminal executions", () => {
   const decision = revision({
     id: "decision-no-ship-count-mismatch",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "no-ship" },
   });
   const store = fakeStore({
@@ -365,13 +387,13 @@ test("Closure refuses fewer Reclamation obligations than terminal executions", (
     runtime,
     terminalAt: CLOSED,
     runtimeId: RUNTIME,
-  }), /exactly one Reclamation obligation per terminal execution and pre-intent refusal/u);
+  }), /exactly one Reclamation obligation per terminal execution and allocated pre-intent refusal/u);
 });
 
 test("Closure permits an additional obligation for an undispatched pre-intent allocation", () => {
   const decision = revision({
     id: "decision-no-ship-pre-intent-allocation",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "no-ship" },
   });
   const store = fakeStore({
@@ -404,7 +426,7 @@ test("Closure permits an additional obligation for an undispatched pre-intent al
 test("Closure refuses an unexplained extra Reclamation obligation", () => {
   const decision = revision({
     id: "decision-no-ship-unexplained-reclamation",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "no-ship" },
   });
   const store = fakeStore({
@@ -424,14 +446,14 @@ test("Closure refuses an unexplained extra Reclamation obligation", () => {
     runtime,
     terminalAt: CLOSED,
     runtimeId: RUNTIME,
-  }), /exactly one Reclamation obligation per terminal execution and pre-intent refusal/u);
+  }), /exactly one Reclamation obligation per terminal execution and allocated pre-intent refusal/u);
 });
 
 test("Closure derives exact acceptance authority, subjects, result, and terminal execution facts", () => {
   const fixture = acceptedFixture();
   const store = fakeStore({
     operation: "delivery.accept",
-    revisions: [fixture.boundary, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
+    revisions: [fixture.boundary, fixture.sourceCandidate, fixture.assessment, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
     decision: fixture.decision,
     boundary: fixture.boundary,
     candidate: fixture.candidate,
@@ -454,7 +476,7 @@ test("Closure derives exact acceptance authority, subjects, result, and terminal
   const transaction = retained.revision.payload.transaction as ControlJsonObject;
   assert.equal(
     transaction.observationFactsSchema,
-    "lifecycle.terminal-acceptance-effect-observation.v1",
+    "lifecycle.terminal-acceptance-effect-observation.v2",
   );
   assert.equal(transaction.canonicalResultDigest, digestCanonical(fixture.canonical));
   assert.equal(transaction.observationFactsDigest, store.events[2]!.payload.factsDigest);
@@ -473,7 +495,7 @@ test("Closure derives exact acceptance authority, subjects, result, and terminal
 test("Closure supports truthful no-ship before any Boundary or Candidate exists", () => {
   const decision = revision({
     id: "decision-no-ship",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "no-ship" },
   });
   const store = fakeStore({
@@ -508,7 +530,7 @@ test("Closure abandons the exact Candidate without claiming physical deletion", 
   const candidate = revision({ id: "candidate-no-ship", kind: "candidate-revision" });
   const decision = revision({
     id: "decision-no-ship-candidate",
-    kind: "founder-decision",
+    kind: "director-decision",
     payload: { decision: "no-ship" },
     relationships: [
       relationship("selects-boundary", boundary),
@@ -548,7 +570,7 @@ test("Closure refuses a canonical result that differs from the exact Candidate R
   const fixture = acceptedFixture();
   const store = fakeStore({
     operation: "delivery.accept",
-    revisions: [fixture.boundary, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
+    revisions: [fixture.boundary, fixture.sourceCandidate, fixture.assessment, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
     decision: fixture.decision,
     boundary: fixture.boundary,
     candidate: fixture.candidate,
@@ -591,7 +613,7 @@ test("accepted Closure requires exact final acceptance facts bound to its canoni
   const fixture = acceptedFixture();
   const common = {
     operation: "delivery.accept" as const,
-    revisions: [fixture.boundary, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
+    revisions: [fixture.boundary, fixture.sourceCandidate, fixture.assessment, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
     decision: fixture.decision,
     boundary: fixture.boundary,
     candidate: fixture.candidate,
@@ -617,11 +639,13 @@ test("accepted Closure requires exact final acceptance facts bound to its canoni
   const missingDigest = fakeStore({
     ...common,
     observationFacts: Object.freeze({
-      schema: "lifecycle.terminal-acceptance-effect-observation.v1",
+      schema: "lifecycle.terminal-acceptance-effect-observation.v2",
       ref: "refs/heads/main",
       commit: fixture.canonical.commit,
       tree: fixture.canonical.tree,
       objectFormat: "sha1",
+      observedTip: { commit: fixture.canonical.commit, tree: fixture.canonical.tree },
+      recognition: "at-tip",
     }),
   });
   assert.throws(
@@ -632,12 +656,14 @@ test("accepted Closure requires exact final acceptance facts bound to its canoni
   const mismatched = fakeStore({
     ...common,
     observationFacts: Object.freeze({
-      schema: "lifecycle.terminal-acceptance-effect-observation.v1",
+      schema: "lifecycle.terminal-acceptance-effect-observation.v2",
       ref: "refs/heads/main",
       commit: fixture.canonical.commit,
       tree: fixture.canonical.tree,
       objectFormat: "sha1",
       canonicalResultDigest: digest("different-canonical-result"),
+      observedTip: { commit: fixture.canonical.commit, tree: fixture.canonical.tree },
+      recognition: "at-tip",
     }),
   });
   assert.throws(
@@ -650,7 +676,7 @@ test("Closure payload schema preserves the acceptance observation binding", () =
   const fixture = acceptedFixture();
   const store = fakeStore({
     operation: "delivery.accept",
-    revisions: [fixture.boundary, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
+    revisions: [fixture.boundary, fixture.sourceCandidate, fixture.assessment, fixture.candidate, fixture.seal, fixture.evidence, fixture.decision],
     decision: fixture.decision,
     boundary: fixture.boundary,
     candidate: fixture.candidate,

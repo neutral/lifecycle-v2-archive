@@ -8,9 +8,13 @@ This document defines the typed relationships between governed Knowledge
 records, their admissible source and target kinds, authority meaning, graph
 constraints, projection effects, and conflict behavior.
 
-Relationships make the semantic waist navigable and compilable. They do not
-transfer ownership. A target remains governed by its own record kind and
-revision.
+A relationship answers why another record must be considered when selected
+meaning is interpreted. Direction matters: an Assurance constrains a Behavior,
+so selecting the Behavior can require the incoming Assurance. A Description
+realizes product meaning, so reading it can require its outgoing owners. The
+compiler follows these declared consequences; it does not infer authority from
+proximity or a prose resemblance. A target remains governed by its own record
+kind and revision.
 
 ## Edge Form
 
@@ -120,7 +124,8 @@ includes one member through a required dependency.
 The source and target have useful navigational overlap that does not fit another
 standard relationship.
 
-Any governed kind can relate to any other governed kind. `related-to` is
+Any governed kind, including Discipline, can relate to any other governed kind.
+Discipline records can use only this standard relationship. `related-to` is
 non-authoritative and MUST have `required: false`. It never enters mandatory
 closure by itself and MUST NOT substitute for a precise relationship.
 
@@ -138,9 +143,14 @@ supersession.
 | `refines` | Behavior, Assurance, Blueprint, Check | same kind | no | include target; include selected incoming refinements when boundary selects a family |
 | `constrains` | Assurance | Behavior, Assurance, Blueprint, Description | no | include source when target is selected and edge is applicable |
 | `realizes` | Blueprint, Description | Behavior, Assurance, Blueprint, Description | no | role-dependent; builder/reviewer include applicable realizations |
-| `verified-by` | any governed kind | Check | no | include target and compatible bindings |
+| `verified-by` | Behavior, Assurance, Blueprint, Description, Check | Check | no | include target and compatible bindings |
 | `depends-on` | Blueprint, Description | Blueprint, Description | no | include target and complete required dependency component |
 | `related-to` | any | any | no | reachable context only |
+
+Discipline has no standard refinement, constraint, realization, verification,
+or dependency edge. This keeps practice guidance independently selectable and
+prevents a Pack from manufacturing Product Knowledge authority or Evidence
+requirements through graph shape.
 
 ## Direction and Inverse Indexes
 
@@ -195,6 +205,11 @@ the relationship stage incomplete rather than authorizing a partial graph.
 
 Projection begins from exact roots declared by the Work Boundary, affected
 artifacts, and role. It then applies a fixed-point traversal.
+
+A Discipline record enters mandatory Execution material only when its exact
+identity is selected by the Work Boundary. Its `related-to` edges remain
+reachable context and never pull Product Knowledge or another Discipline into
+mandatory closure.
 
 The universal mandatory closure includes:
 

@@ -19,17 +19,17 @@
     "digest"
   ],
   "properties": {
-    "targetId": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
-    "commit": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
-    "tree": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/gitObject" },
+    "targetId": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
+    "commit": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
+    "tree": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/gitObject" },
     "objectFormat": { "type": "string", "enum": ["sha1", "sha256"] },
-    "contractDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "atlasResolutionDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "atlasNormalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "atlasResourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "contractDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "productStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "atlasStateDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "atlasResolutionDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "atlasNormalizedModelDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "atlasResourceBindingsDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "knowledgeSetDigest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" },
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   }
 }

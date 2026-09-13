@@ -104,8 +104,26 @@ test("Terminal observation facts are closed, operation-compatible, and bounded",
     ...repository,
     schema: FOUNDATION_TERMINAL_ACCEPTANCE_OBSERVATION_FACTS_V1,
     canonicalResultDigest: sha256Bytes("canonical-result"),
+    observedTip: Object.freeze({ commit: repository.commit, tree: repository.tree }),
+    recognition: "at-tip",
+
   });
   retained("delivery.accept", "accept", "applied", acceptance);
+  retained("delivery.accept", "accept", "applied", {
+    ...acceptance, recognition: "ancestor", observedTip: { commit: "d".repeat(40), tree: "e".repeat(40) },
+  });
+  for (const mutation of [
+    { recognition: "ancestor" },
+    { recognition: "at-tip", observedTip: { commit: "d".repeat(40), tree: repository.tree } },
+    { recognition: "at-tip", observedTip: { commit: repository.commit, tree: "e".repeat(40) } },
+    { recognition: "unobserved" },
+  ]) {
+    rejects("acceptance-recognition", () => parseFoundationTransactionObservationFactsV7({ ...acceptance, ...mutation }));
+  }
+  rejects("git-object-format", () => parseFoundationTransactionObservationFactsV7({
+    ...acceptance, observedTip: { commit: "d".repeat(64), tree: "e".repeat(64) },
+  }));
+  rejects("shape", () => parseFoundationTransactionObservationFactsV7({ ...acceptance, observedTip: { commit: repository.commit, tree: repository.tree, repository: "/private/path" } }));
   rejects("operation", () => retained("delivery.admit", "admit", "applied", repository));
 
   const detached = Object.freeze({

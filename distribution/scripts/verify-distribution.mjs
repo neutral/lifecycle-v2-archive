@@ -52,17 +52,21 @@ for (const required of [
   "/usr/bin/docker",
   "/usr/bin/flock",
   "/usr/bin/git",
+  "third-party/atlas-reference-validator/PROVENANCE.json",
+  "third-party/atlas-reference-validator/LICENSE",
   "verify-tool-versions.mjs --build",
   "verify-tool-versions.mjs --runtime",
 ]) {
   if (!dockerfile.includes(required)) throw new TypeError(`Runtime Image omits ${required}`);
 }
-if (dockerfile.includes("third-party/atlas-reference-validator")) {
-  throw new TypeError("Runtime Image must not vendor the separately published Atlas processor");
-}
 const dockerignore = await readFile(resolve(repositoryRoot, ".dockerignore"), "utf8");
-if (dockerignore.split("\n").some((line) => line.startsWith("!third-party/"))) {
-  throw new TypeError("Runtime Image context must not expose separately published Atlas source");
+for (const required of [
+  "!third-party/atlas-reference-validator/PROVENANCE.json",
+  "!third-party/atlas-reference-validator/LICENSE",
+]) {
+  if (!dockerignore.split("\n").includes(required)) {
+    throw new TypeError(`Runtime Image context omits ${required.slice(1)}`);
+  }
 }
 const executionDockerfile = await readFile(
   resolve(repositoryRoot, "runtime", "execution-image", "Dockerfile.agent-cell"),
@@ -75,6 +79,10 @@ for (const required of [
   "execution-image/package-lock.json",
   "execution-image/tool-inventory.mjs",
   "tool-inventory.mjs verify",
+  "AS runtime-build",
+  "npm pack --workspace @neutral/lifecycle-runtime",
+  "/opt/lifecycle/runtime-package.tgz",
+  "/opt/lifecycle-runtime/package/dist/src/foundation/draft/cli.js",
   'test "$(node --version)" = "v24.14.0"',
 ]) {
   if (!executionDockerfile.includes(required)) {
@@ -86,17 +94,22 @@ for (const forbidden of ["COPY dist/", "npm install --global"]) {
     throw new TypeError(`Execution Image build consumes a forbidden ambient input: ${forbidden}`);
   }
 }
-const executionDockerignore = await readFile(resolve(repositoryRoot, "runtime", ".dockerignore"), "utf8");
+const executionDockerignore = await readFile(resolve(repositoryRoot, "runtime", "execution-image", "Dockerfile.agent-cell.dockerignore"), "utf8");
 for (const required of [
-  "!src/util/execution-cell-runner-v1.ts",
-  "!execution-image/package-lock.json",
-  "!execution-image/runner-build/package-lock.json",
-  "!execution-image/tool-inventory.linux-amd64.json",
-  "!execution-image/tool-inventory.linux-arm64.json",
+  "!package-lock.json",
+  "!protocol/**",
+  "!runtime/**",
+  "!third-party/atlas-reference-validator/package/**",
+  "**/node_modules/",
+  "**/dist/",
+  "**/*.tgz",
 ]) {
   if (!executionDockerignore.split("\n").includes(required)) {
     throw new TypeError(`Execution Image context omits ${required.slice(1)}`);
   }
+}
+if (executionDockerignore.split("\n").includes("!clients/**") || executionDockerignore.split("\n").includes("!distribution/**")) {
+  throw new TypeError("Execution Image context admits interface or launcher source outside the Runtime package");
 }
 const executionBuilder = await readFile(
   resolve(distributionRoot, "scripts", "build-execution-image.mjs"),
@@ -114,7 +127,7 @@ if ("postinstall" in (packageMetadata.scripts ?? {})) {
   throw new TypeError("@neutral/lifecycle must not have a postinstall effect");
 }
 if (packageMetadata.repository?.type !== "git" ||
-    packageMetadata.repository?.url !== "https://github.com/neutral/lifecycle.git" ||
+    packageMetadata.repository?.url !== "https://github.com/neutral/lifecycle-v2-archive.git" ||
     packageMetadata.repository?.directory !== "distribution/package") {
   throw new TypeError("@neutral/lifecycle repository metadata does not select its exact GitHub source");
 }

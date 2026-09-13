@@ -1,3 +1,7 @@
+import { settleFoundationUnallocatedReviewV7 } from "../../src/foundation/process/agent-operation-v7.js";
+import { bindFoundationMandatoryProjectionRefusalV1, completeMandatoryProjectionSizeErrorV1, mandatoryProjectionItemSizeErrorV1 } from "../../src/foundation/projection/mandatory-refusal.js";
+import type { FoundationExecutionProjectionRequest } from "../../src/foundation/projection/types.js";
+import { defaultProjectionProfiles } from "../../src/foundation/repository/contract.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AgentAttemptInvestment } from "../../src/foundation/control/agent-attempt.js";
@@ -126,7 +130,10 @@ type Fixture = Readonly<{
   ): Readonly<{ revision: ControlRecordRevision; event: ControlRecordEvent }>;
 }>;
 
-function fixture(options: Readonly<{ multipleBindings?: boolean }> = {}): Fixture {
+function fixture(options: Readonly<{
+  multipleBindings?: boolean;
+  priorCandidateCondition?: "needs-correction" | "sealed-under-evaluation";
+}> = {}): Fixture {
   const identity: ControlRecordStoreIdentity = Object.freeze({
     schema: CONTROL_RECORD_STORE_SCHEMA,
     storeId: "store-evaluation-preparation",
@@ -223,23 +230,39 @@ function fixture(options: Readonly<{ multipleBindings?: boolean }> = {}): Fixtur
     [`${boundary.recordId}\0${boundary.revision}`, boundary],
     [`${candidate.recordId}\0${candidate.revision}`, candidate],
   ]);
+  const priorSeal = options.priorCandidateCondition === undefined ? null :
+    compileControlRecordRevision(DELIVERY, {
+      recordId: "candidate-seal-prior-evaluation",
+      recordKind: "candidate-seal",
+      revision: 1,
+      producer: { kind: "runtime", id: RUNTIME },
+      semanticAuthor: { kind: "runtime", id: RUNTIME },
+      semanticAuthority: "runtime-observed",
+      createdAt: CREATED,
+      semanticMarkdown: "# Prior Candidate Seal\n",
+      payload: validDeliveryControlPayload("candidate-seal"),
+      relationships: [relationship("seals", candidate), relationship("governed-by", boundary)],
+    });
+  if (priorSeal !== null) revisions.set(`${priorSeal.recordId}\0${priorSeal.revision}`, priorSeal);
   const retainedEvents: ControlRecordEvent[] = [];
   let sequence = 0;
   let predecessorDigest: Sha256 | null = null;
   let operationSupport: ControlRecordOperationSupport | null = null;
   let currentState: ReducedDeliveryState = Object.freeze({
     standing: "active",
-    candidateCondition: "ready-for-work",
+    candidateCondition: options.priorCandidateCondition ?? "ready-for-work",
     activities: Object.freeze([]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: ref(boundary),
       candidate: ref(candidate),
       materialCondition: null,
-      seal: null,
+      seal: priorSeal === null ? null : ref(priorSeal),
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: 0, headDigest: null }),
     eligibleOperations: Object.freeze([
       "delivery.continue" as const,
@@ -327,6 +350,17 @@ function fixture(options: Readonly<{ multipleBindings?: boolean }> = {}): Fixtur
         subjects: Object.freeze({ ...currentState.subjects, seal: ref(revision) }),
         journal: Object.freeze({ eventCount: sequence, headDigest: event.digest }),
       });
+    } else if (event.eventKind === "agent-pre-intent-refused" || event.eventKind === "material-condition-frozen" || event.eventKind === "activity-completed") {
+      const completed = event.eventKind === "activity-completed";
+      currentState = Object.freeze({ ...currentState,
+        activities: Object.freeze([{ ...currentState.activities[0]!, stage: completed ? "completed" as const : "finalizing" as const,
+          recovery: completed ? null : Object.freeze({ kind: "finalization" as const,
+            resumesAt: event.eventKind === "agent-pre-intent-refused" ? "activity-finalization" as const : "activity-completed" as const,
+            exactEffectDigest: null }) }]),
+        subjects: Object.freeze({ ...currentState.subjects,
+          ...(event.eventKind === "material-condition-frozen" ? { materialCondition: ref(revision!) } : {}) }),
+        journal: Object.freeze({ eventCount: sequence, headDigest: event.digest }),
+      });
     } else {
       currentState = Object.freeze({
         ...currentState,
@@ -359,8 +393,13 @@ function fixture(options: Readonly<{ multipleBindings?: boolean }> = {}): Fixtur
     ): ControlRecordStoreOperationBatchResult => {
       assert.equal(batch.supportMutations.length, 1);
       const mutation = batch.supportMutations[0]!;
-      assert.equal(mutation.action, "put");
-      if (mutation.action !== "put") throw new Error("fixture accepts only support puts");
+      if (mutation.action === "delete") {
+        assert(operationSupport !== null);
+        assert.deepEqual(supportCoordinate(operationSupport), mutation.expected);
+        const appends = Object.freeze(batch.appends.map(retain));
+        operationSupport = null;
+        return Object.freeze({ appends, supportMutations: Object.freeze([{ action: "delete" as const, activityId: mutation.activityId, support: null }]) });
+      }
       const appends = Object.freeze(batch.appends.map(retain));
       const support = putSupport(mutation.value);
       return Object.freeze({
@@ -476,7 +515,7 @@ test("evaluation preparation seals before every deterministic final Check and re
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview the exact Candidate.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
@@ -509,7 +548,7 @@ test("evaluation preparation seals before every deterministic final Check and re
     ],
   );
   assert.deepEqual(selected.events.map(({ eventKind }) => eventKind), [
-    "founder-brief-submitted",
+    "director-brief-submitted",
     "activity-started",
     "candidate-sealed",
     "check-receipt-recorded",
@@ -538,6 +577,45 @@ test("evaluation preparation seals before every deterministic final Check and re
   assert.deepEqual(recovered.finalChecks, result.finalChecks);
 });
 
+for (const priorCandidateCondition of ["needs-correction", "sealed-under-evaluation"] as const) {
+  test(`eligible reevaluation from ${priorCandidateCondition} retains the prior Seal and selects one new exact Seal`, async () => {
+    const selected = fixture({ priorCandidateCondition });
+    const previous = selected.store.state().subjects.seal!;
+    const previousRevision = selected.store.getRevision(previous.id, previous.revision);
+    const order: string[] = [];
+    const result = await prepareDeliveryEvaluationV7({
+      target: "/target",
+      machineHome: "/machine-home",
+      store: selected.store,
+      contract: selected.contract,
+      semanticMarkdown: "# Review direction\n\nEvaluate the exact Candidate again under the same mandate.\n",
+      directorId: "director:test",
+      agentId: AGENT,
+      investment: investment(),
+      runtimeId: RUNTIME,
+    }, {
+      now: times(),
+      createActivityId: () => `activity-reevaluate-${priorCandidateCondition}`,
+      sealCandidate: async ({ activityId }) => {
+        order.push("new-seal");
+        assert.deepEqual(selected.store.state().subjects.seal, previous);
+        return selected.appendSeal(activityId);
+      },
+      operateCheck: async ({ activityId, selectionId, bindingId }) => {
+        order.push(selectionId);
+        assert.notDeepEqual(selected.store.state().subjects.seal, previous);
+        return selected.appendCheck(activityId, selectionId, bindingId).revision;
+      },
+    });
+    assert.deepEqual(order, ["new-seal", "selection-a", "selection-b"]);
+    assert.notEqual(result.seal.id, previous.id);
+    assert.deepEqual(selected.store.state().subjects.seal, result.seal);
+    assert.deepEqual(selected.store.state().subjects.candidate, ref(selected.candidate));
+    assert.deepEqual(selected.store.state().subjects.activeBoundary, ref(selected.boundary));
+    assert.deepEqual(selected.store.getRevision(previous.id, previous.revision), previousRevision);
+  });
+}
+
 test("evaluation sealing retains only one stage-free time fact and reuses it on recovery", async () => {
   const selected = fixture();
   let samples = 0;
@@ -551,7 +629,7 @@ test("evaluation sealing retains only one stage-free time fact and reuses it on 
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview exact proof.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
@@ -601,7 +679,7 @@ test("evaluation recovery continues after a Seal append whose caller did not obs
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview exact proof.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
@@ -644,7 +722,7 @@ test("evaluation recovery routes a live final-Check checkpoint without reparsing
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview exact proof.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
@@ -728,7 +806,7 @@ test("evaluation recovery does not repeat a final Check retained before caller l
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview exact proof.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
@@ -781,11 +859,82 @@ test("evaluation refuses unsupported Check Binding cardinality before opening ac
     store: selected.store,
     contract: selected.contract,
     semanticMarkdown: "# Review direction\n\nReview.\n",
-    founderId: "founder:test",
+    directorId: "director:test",
     agentId: AGENT,
     investment: investment(),
     runtimeId: RUNTIME,
   }), (error: unknown) => error instanceof FoundationError &&
     error.code === "lifecycle.evaluation-preparation-v7.check-binding-cardinality");
   assert.equal(selected.events.length, 0);
+});
+
+
+test("aggregate Projection refusal cannot mint a witness from non-excess, malformed counts, or another profile's limits", () => {
+  const profile = defaultProjectionProfiles()["execution-standard-v1"]!;
+  const request = { profile, digest: digest("aggregate-refusal-request") } as FoundationExecutionProjectionRequest;
+  const facts = { mandatoryItems: 1, mandatoryBytes: 1, sourceBytes: 0,
+    maximumMandatoryItems: profile.maximumMandatoryItems, maximumMandatoryBytes: profile.maximumMandatoryBytes,
+    maximumItemBytes: profile.maximumItemBytes, maximumSourceBytes: profile.maximumSourceBytes, oversized: [] };
+  for (const invalid of [facts, { ...facts, mandatoryItems: -1 },
+    { ...facts, mandatoryBytes: Number.MAX_SAFE_INTEGER + 1 },
+    { ...facts, mandatoryItems: profile.maximumMandatoryItems + 1, maximumMandatoryItems: 0 },
+    { ...facts, oversized: [{ id: "source", bytes: profile.maximumItemBytes }] }]) {
+    assert.throws(() => completeMandatoryProjectionSizeErrorV1(request, invalid), /exact measured excess/);
+  }
+  const error = completeMandatoryProjectionSizeErrorV1(request, { ...facts, mandatoryItems: profile.maximumMandatoryItems + 1 });
+  const refusal = bindFoundationMandatoryProjectionRefusalV1(error, request);
+  assert.equal(refusal?.measurement.kind, "complete-closure");
+});
+
+for (const interrupted of [false, true]) test(`measured reviewer refusal retains a Condition and settles without an Attempt (completion interruption ${interrupted})`, async () => {
+  const selected = fixture();
+  const activityId = "evaluation-measured-refusal";
+  await prepareDeliveryEvaluationV7({ target: "/target", machineHome: "/machine-home", store: selected.store,
+    contract: selected.contract, semanticMarkdown: "# Review\n", directorId: "director:test", agentId: AGENT,
+    investment: investment(), runtimeId: RUNTIME,
+  }, { now: times(), createActivityId: () => activityId,
+    sealCandidate: async ({ activityId: id }) => selected.appendSeal(id),
+    operateCheck: async ({ activityId: id, selectionId, bindingId }) => selected.appendCheck(id, selectionId, bindingId).revision,
+  });
+  const state = selected.store.state();
+  const profile = defaultProjectionProfiles()["execution-standard-v1"]!;
+  // Exact compiler selection is injected here; real compiler measurement and
+  // refusal classification are separately exercised by Projection fixtures.
+  const request = { class: "execution", role: "reviewer", target: { id: TARGET, generation: 1 }, profile,
+    digest: digest("exact-reviewer-request"), subject: { class: "execution",
+      workBoundary: { kind: "work-boundary", ...state.subjects.activeBoundary },
+      candidate: { revision: { kind: "candidate-revision", ...state.subjects.candidate },
+        seal: { kind: "candidate-seal", ...state.subjects.seal } } },
+  } as unknown as FoundationExecutionProjectionRequest;
+  const error = mandatoryProjectionItemSizeErrorV1({ profile, category: "implementation", id: "mandatory.source",
+    locator: "src/large.ts", objectId: "a".repeat(40), observedBytes: profile.maximumItemBytes + 1 });
+  const refusal = bindFoundationMandatoryProjectionRefusalV1(error, request);
+  assert(refusal !== null);
+  const originalBatch = selected.store.appendBatch.bind(selected.store);
+  let refusalBatches = 0;
+  selected.store.appendBatch = (appends) => {
+    assert.deepEqual(appends.map(({ event }) => event.eventKind), ["agent-pre-intent-refused", "material-condition-frozen"]);
+    refusalBatches += 1;
+    const result = originalBatch(appends);
+    if (interrupted) throw new Error("lost return after atomic refusal and Condition");
+    return result;
+  };
+  assert.throws(() => settleFoundationUnallocatedReviewV7({ store: selected.store, activityId, runtimeId: RUNTIME, refusal,
+    now: () => "2026-08-29T20:01:00.000Z" }), interrupted ? /lost return/ : /requires boundary resolution/);
+  assert.equal(refusalBatches, 1);
+  const frozen = selected.store.state().subjects.materialCondition;
+  assert(frozen !== null);
+  const condition = selected.store.getRevision(frozen.id, frozen.revision)!;
+  assert.equal(condition.payload.conditionClass, "projection-closure-exceeded");
+  assert.equal((condition.payload.source as ControlJsonObject).requestDigest, request.digest);
+  assert.equal(selected.events.some(({ eventKind }) => eventKind === "agent-attempt-prepared" || eventKind === "provider-effect-intended"), false);
+  if (interrupted) {
+    assert(selected.store.getOperationSupport(activityId) !== null);
+    assert.throws(() => settleFoundationUnallocatedReviewV7({ store: selected.store, activityId, runtimeId: RUNTIME, refusal: null,
+      now: () => "2026-08-29T20:01:01.000Z" }), /requires boundary resolution/);
+    assert.equal(refusalBatches, 1);
+  }
+  assert.equal(selected.store.state().activities[0]?.stage, "completed");
+  assert.equal(selected.store.getOperationSupport(activityId), null);
+  assert.equal(selected.events.at(-1)?.payload.outcome, "abandoned");
 });

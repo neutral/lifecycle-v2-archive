@@ -9,12 +9,12 @@ completeness, validity, result objects, diagnostics, deterministic ordering,
 semantic checks, fixture expectations, and validation security.
 
 Validation establishes whether one exact subject satisfies one selected
-contract. It does not supply missing Product Knowledge, perform Founder
+contract. It does not supply missing Product Knowledge, perform Director
 judgment, grant capability, accept a Candidate, or move canonical state.
 [Execution](EXECUTION.md) owns the exact private Candidate Carrier and
 Execution Backend subjects whose validation facts are consumed by the profiles
 below. Those mechanics do not create a public Validation Result profile or a
-Founder-facing operation.
+Director-facing operation.
 
 ## Validation Result
 
@@ -42,8 +42,18 @@ contains:
 - `observedAt`; and
 - the standard result `digest`.
 
+Completeness answers whether the validator finished the selected profile;
+validity answers what that completed work found about its exact subject.
+Neither field says whether a Delivery can continue, whether Evidence is
+sufficient, or whether an effect applied. Those conclusions belong to their
+operation owners.
+
 `complete: false` requires `valid: false`. An incomplete result does not show
-that unperformed checks passed or failed.
+that unperformed checks passed or failed. For example, unavailable required
+bytes leave an observation incomplete. Completely observed bytes that violate
+a schema can support a conclusive invalid result. Recovery and correction need
+that distinction: restoration can complete the former observation, while the
+latter supplies a definite defect to repair.
 
 `complete: true, valid: false` means every required stage finished and at least
 one error diagnostic exists.
@@ -119,7 +129,9 @@ The profile validates:
   Manifest, Fixture Manifest, repository-contract fixtures, Release Notes, and
   Publication Statement;
 - exact specification-revision equality across every non-negative publication
-  carrier that binds the revision;
+  carrier that selects the active qualification revision; a Discipline Pack
+  authoring revision is separately retained provenance and is not such a
+  selection;
 - complete code-point-ordered document, schema, and fixture inventories and
   exact file byte digests;
 - declared document status equality and the distinction between document
@@ -159,11 +171,11 @@ For every Lifecycle Document it performs:
   bytes supplied as the validation subject.
 
 Repository-authored Knowledge preserves its source layout and body bytes under
-the Knowledge v1 source and semantic digest rules. This profile does not parse,
+the Knowledge v2 source and semantic digest rules. This profile does not parse,
 validate, or confer standing on a Control Record Store revision or a derived
 Markdown export of one.
 
-### `lifecycle.agent-work-product-parser.v2`
+### `lifecycle.agent-work-product-parser.v4`
 
 Validates one submitted governed `semantic.md` value against the exact
 Attempt-bound body profile for `reconnaissance`, `builder`, or `reviewer`.
@@ -181,7 +193,7 @@ not a public schema, fixture carrier, retained Control revision, or
 Agent-authored protocol envelope. Invalid Agent semantics produce
 `invalid-submission`; parser failure does not create an Agent Work Product.
 
-### `lifecycle.agent-work-product-compiler.v2`
+### `lifecycle.agent-work-product-compiler.v4`
 
 Validates deterministic compilation from one valid parser value and the exact
 frozen Agent Attempt bindings into the `agent-work-product` Control payload and
@@ -205,12 +217,15 @@ payload, non-reproducible body binding, or retained-revision invariant failure
 is `runtime-failure`. The compiler MUST NOT repair invalid Agent semantics,
 invent a claim, or relabel agent-proposed content as a runtime fact.
 
-Foundation rc.10 exposes no provider-invoked live semantic validator and no
-Cell validity claim. The parser and compiler basis runs only after Cell
-Containment and exact Output Carrier retrieval, when the Runtime reopens the
-final governed workspace independently. A later publication may introduce a
-bounded authoring aid under its own exact contract, but it cannot weaken or
-replace this final parser/compiler execution.
+The selected [local draft assistance profile](ATTEMPTS.md#local-draft-assistance)
+reuses this parser and semantic compiler for advisory inspection of explicit
+draft bytes against a compact immutable basis. It reports the observed source
+digest, checked basis digest and scope, with bounded correction diagnostics.
+A local success does not authenticate the basis or establish currentness,
+Candidate validity, or submission. Runtime MUST independently run the frozen
+parser/compiler basis after Containment and exact Output Carrier retrieval.
+Missing or invalid basis is a runtime-failure of that local observation, never
+a fabricated empty context or a claim that the draft is valid.
 
 The durable Execution Receipt diagnostic is narrower. It contains exactly
 `code`, `stage`, and `factsDigest` for the final observed submission failure.
@@ -219,21 +234,21 @@ provider output, and correction advice. That projection supplies stable
 failure identity for recovery and inspection without retaining Agent draft
 content.
 
-### `foundation-delivery-control-lifecycle-v4`
+### `foundation-delivery-control-lifecycle-v7`
 
-Validates one complete `lifecycle.control-record-store.v1` subject under the
+Validates one complete `lifecycle.control-record-store.v2` subject under the
 closed Foundation Delivery lifecycle profile.
 
 It performs:
 
 - exact Store metadata, physical profile, schema, application identifier, and
   custody validation;
-- common `lifecycle.control-record-revision.v1` shape, payload-schema,
+- common `lifecycle.control-record-revision.v2` shape, payload-schema,
   semantic-Markdown binding, authority, producer, semantic-author,
   relationship, revision-policy, and logical-digest validation;
-- complete twelve-kind family-registry correspondence;
-- complete `lifecycle.control-record-event.v2` envelope, the same closed
-  twenty-two-kind vocabulary, closed-kind payload,
+- complete fourteen-kind family-registry correspondence;
+- complete `lifecycle.control-record-event.v6` envelope, the same closed
+  twenty-five-kind vocabulary, closed-kind payload,
   contiguous sequence, immediate-predecessor, subject, atomic-finalization,
   and logical-digest validation;
 - fail-closed gap, fork, duplicate, unknown-kind, cross-Delivery, illegal-order,
@@ -252,9 +267,9 @@ It performs:
   selected by Closure without mutable Reclamation progress;
 - for acceptance, one same-Decision intent and effect digest with one terminal
   observation: applied facts bind the exact canonical-result digest, any
-  canonical or authoritative-worktree movement is `not-applied`, and no
+  pre-effect canonical or authoritative-worktree movement is `not-applied`, and no
   replacement parent, intent, or plan is legal;
-- pure deterministic replay into one `lifecycle.delivery-reduction.v2` value,
+- pure deterministic replay into one `lifecycle.delivery-reduction.v5` value,
   with `active` standing immediately after an applied initial-admission effect,
   `absent` Candidate condition whenever no current Candidate exists, and the
   terminal Candidate condition unchanged by Store-disposition recovery; an
@@ -264,7 +279,7 @@ It performs:
   projection applies, then projects `terminal-recovery` after advancing beyond
   that preparatory stage;
 - exact Store logical inventory, seal, terminal head, adjacent-file set, and
-  archive correspondence, preserving twelve record families and twenty-two
+  archive correspondence, preserving fourteen record families and twenty-five
   event kinds; and
 - deletion-and-rebuild equivalence for every cache and derived Attempt View.
 
@@ -273,7 +288,7 @@ reduction is never replay input. The validator does not infer a missing event,
 choose a branch, substitute a latest revision, or treat operation support as a
 second event source.
 
-### `knowledge-structural-v1`
+### `knowledge-structural-v2`
 
 Validates one governed Knowledge file without discovering other records or
 repository implementation.
@@ -287,6 +302,8 @@ It performs:
 - identifier prefix and field-level lifecycle syntax;
 - CommonMark parsing;
 - required title and section checks;
+- Discipline's advisory-only field and section shape, including optional-only
+  source declarations;
 - relationship syntax but not target resolution;
 - coverage selector syntax but not target expansion;
 - URI-reference syntax but not external retrieval; and
@@ -295,25 +312,31 @@ It performs:
 This profile does not establish currentness, graph validity, Description
 coverage, Check Binding compatibility, or repository conformance.
 
-### `knowledge-set-v1`
+### `knowledge-set-v2`
 
-Includes `knowledge-structural-v1` for every discovered record and validates one
+Includes `knowledge-structural-v2` for every discovered record and validates one
 complete Knowledge Set at an exact repository tree.
 
 It performs:
 
 - fixed-locator discovery;
 - stable identity uniqueness;
-- revision chains and supersession;
+- complete Product Knowledge revision chains and exact supersession, while
+  Discipline retains structurally valid publisher revision provenance without
+  requiring unadopted publisher predecessors in the target;
 - current-record index construction;
-- owner resolution required by the repository contract;
+- Discipline Registry shape, self-digest, adopted-record correspondence, Pack
+  provenance, and Work Type references;
+- Product Knowledge owner resolution required by the repository contract and
+  exact Discipline publisher resolution through the adoption's Pack entry;
 - typed relationship target and kind validation;
 - cycle and dependency-component checks;
 - current Behavior and Assurance Check requirements;
 - exact reciprocal Assurance and Blueprint conflict validation plus derived
   structured Behavior conflicts;
 - one ordered source-resolution result for every declaration under the selected
-  retrieval policy, including explicit requiredness and disposition;
+  retrieval policy, including explicit requiredness and disposition, while
+  requiring every Discipline declaration to remain optional;
 - Description primary coverage over governed implementation roots;
 - Check Definition to Binding compatibility over the complete exact subject
   selector set, evidence kinds, and four-state parser model;
@@ -324,9 +347,9 @@ It performs:
 A complete valid result proves correspondence and internal contract validity. It
 does not prove that product judgment is wise or that implementation conforms.
 
-### `repository-v7`
+### `repository-v9`
 
-Includes `knowledge-set-v1` and validates the complete Lifecycle repository
+Includes `knowledge-set-v2` and validates the complete Lifecycle repository
 profile at one exact canonical commit and tree.
 
 It performs:
@@ -334,7 +357,8 @@ It performs:
 - fresh-project contract selection and predecessor or mixed-state refusal;
 - repository-contract schema and semantic validation;
 - exact `records/behavior` selection as the sole Behavior Knowledge root,
-  alongside the fixed Assurance, Blueprint, Check, and Description locators;
+  alongside the fixed Assurance, Blueprint, Check, Discipline, Discipline
+  Registry, and Description locators;
 - target, canonical ref, generation, specification publication, runtime
   compatibility, owner-registry, exact-tree source-policy, installed-schema-registry,
   supported-profile, runtime, provider, interface-protocol, and interpreted
@@ -359,17 +383,17 @@ It performs:
 - governed implementation root and exemption validation;
 - Check Binding and Capability Profile registry validation;
 - exclusion and refusal of every repository-visible Delivery Control carrier;
-- exact repository-v15 selection of Control Store v1, revision v1, event v2,
-  file v1, seal v1, archive v1, Delivery reduction v2,
-  `foundation-delivery-control-lifecycle-v4`, runtime-v10, interface-v10,
-  Provider Adapter v6,
+- exact repository-v22 selection of Control Store v2, revision v2, event v6,
+  file v1, seal v1, archive v1, Delivery reduction v5,
+  `foundation-delivery-control-lifecycle-v7`, runtime-v17, interface-v17,
+  Provider Adapter v7,
   `lifecycle.execution-backend-profile.docker-local.v1`,
   `lifecycle.execution-cell-runner.v1`, Candidate Revision Carrier Manifest v1,
-  Execution Specification v1, Input Set v1, Image v1, Observation v1, Output
+  Execution Specification v1, Input Set v2, Image v1, Observation v1, Output
   Manifest v1, and exact Atlas integration coordinates; and
 - one coherent repository-epoch result.
 
-The Knowledge input is one separately completed valid `knowledge-set-v1` result
+The Knowledge input is one separately completed valid `knowledge-set-v2` result
 and manifest whose subject digest, publication digest, commit, tree, Product
 State, Atlas State, Atlas Resolution, and normalized-model bases match the
 repository snapshot. Snapshot binding derives the Knowledge Set digest from
@@ -379,13 +403,13 @@ Atlas meaning from the mutable worktree, or mutate either completed result.
 
 Non-authoritative live worktree dirt can be reported separately. A tracked
 authoritative modification, or untracked or ignored material below an
-authoritative root, makes `repository-v7` invalid. It never replaces or changes
+authoritative root, makes `repository-v9` invalid. It never replaces or changes
 the exact canonical snapshot subject reported by the result.
 
-### `lifecycle.work-boundary.foundation-v1`
+### `lifecycle.work-boundary.foundation-v3`
 
 Validates one immutable `work-boundary` Control revision against a complete
-`repository-v7` result, the exact reconnaissance Work Product, and the selected
+`repository-v9` result, the exact reconnaissance Work Product, and the selected
 Foundation Control lifecycle profile. Proposal readiness and active standing
 are reducer-derived; they are not separate records or variants.
 
@@ -429,8 +453,8 @@ It performs:
 
 This profile does not compile a Projection or prove a final Candidate.
 
-Preparation compiles the exact revision from one Founder Brief, reconnaissance
-Agent Work Product, complete Repository Snapshot and `repository-v7` result,
+Preparation compiles the exact revision from one Director Brief, reconnaissance
+Agent Work Product, complete Repository Snapshot and `repository-v9` result,
 Knowledge Set, Orientation Projection, and selected profiles. The runtime then
 runs every selected baseline Check against that same revision. The event fold
 derives proposal readiness only when the complete modality-valid Receipt set is
@@ -439,9 +463,9 @@ required Check, unknown citation or path, incompatible profile, material
 uncertainty, or incomplete Containment or Retirement makes preparation fail
 closed without inventing another Boundary carrier.
 
-### `lifecycle.founder-decision.foundation-v1`
+### `lifecycle.director-decision.foundation-v1`
 
-Validates one immutable `founder-decision` Control revision and its exact
+Validates one immutable `director-decision` Control revision and its exact
 `admit`, `readmit`, `accept`, or `no-ship` authenticated subject.
 
 It performs:
@@ -455,7 +479,7 @@ It performs:
   for `readmit`;
 - exact active Boundary, Candidate Revision, Candidate Seal, and
   acceptance-ready Evidence Packet selection for `accept`;
-- for `accept`, the exact admitted parent commit and tree, exact sealed
+- for `accept`, the exact integration parent commit and tree, exact sealed
   Candidate tree, Candidate no-Atlas-delta proof, and authority for no alternate
   parent, Atlas selection, merge, rebase, or composition;
 - exact available Boundary, Candidate, Condition, and supported disposition
@@ -473,32 +497,50 @@ A valid Decision authenticates only its exact subject. Admission, readmission,
 acceptance, and no-ship standing change only after the retained transaction
 effect is truthfully observed and the event fold applies it.
 
-### `lifecycle.material-condition.foundation-v1`
+The configured principal may represent a human or an agent Director. Validation
+MUST apply the same exact identity, signature, subject, and currentness rules;
+it MUST NOT infer authority from a role label or require an additional human
+decision because the caller is an agent. A Worker proposal remains outside this
+authentication contract until the responsible Director supplies an exact
+authorized decision through its owning route.
 
-Validates one runtime-frozen Delivery Material Condition.
+### `lifecycle.integration-assessment.foundation-v1`
 
-It performs:
+Validates one runtime-owned Assessment and its exact governed-by/integrates
+relationships, complete self-digested parent Snapshot, fixed retained merge rule,
+ordered conflict/diagnostic/context facts, and supported outcome. Constructed
+requires complete valid result observation with no conflicts. Failed assembly
+selects no Candidate. Integration successors require the exact Assessment/source
+join and P application base; ordinary successors cannot change that base.
 
-- exact target, Delivery, event-head, source Work Product and Receipt, active
-  Work Boundary, and Candidate Revision binding;
-- coherent repository epoch, Product State, and Knowledge Set basis;
-- standard condition kind and exact detail;
-- complete ordered affected-obligation and affected-plane sets;
-- exact builder, reviewer, runtime, Check, Founder, or repository source
-  identity and digest;
-- advisory response and required-Founder-response marker; and
-- typed payload, semantic Markdown, relationships, ordering, and logical
-  revision digest.
+The structural fixture profile
+`integration-assessment-payload-structural-fixture-v1` checks bounded payload
+shape and conditional outcome fields only. Exact relationship, currentness,
+Carrier, merge execution, and contextual fingerprint validation require semantic
+and physical owners; schema success is not operated integration evidence.
 
-This profile authenticates the runtime's condition classification and bindings.
-It does not make the source statement Product Knowledge, supply Founder
-rationale, or revise the active Work Boundary.
+### `lifecycle.material-condition.foundation-v3`
+
+Validates the exact active Boundary, frozen Candidate, common immutable record,
+and source-specific joins. Agent proposals require a Work Product and Execution
+Receipt. Integration context change requires its exact constructed Assessment,
+requires-readmission comparison, and successor Candidate, with no fake Agent
+record. Its observedFactsDigest binds contextualApplicability. The Projection
+compilation variant requires an exact compiler-owned complete-closure or
+mandatory-item measurement, its request/profile/compiler binding, an explicit
+pre-intent refusal requiring a Condition, and the exact Boundary/Candidate/Seal
+joins. It forbids invented Agent provenance. All variants preserve source
+provenance and exact currentness; none supplies Director rationale or activates
+a new mandate. Source-specific relationships fail under
+`lifecycle.control-record-policy.relationship-cardinality`; mismatched refusal
+provenance fails under `lifecycle.delivery.condition.binding` or the exact
+reducer reference/payload diagnostic before retention.
 
 ### `orientation-projection-v1`
 
 Validates one Orientation Projection against one exact loaded repository epoch,
 deterministic Knowledge observation, repository and Knowledge validation
-results, and exact Founder objective. Knowledge observation can be incomplete
+results, and exact Director objective. Knowledge observation can be incomplete
 or invalid; Orientation exists to expose those conditions and therefore does
 not require a usable Repository Snapshot or Knowledge Set. Atlas is different:
 the request still requires one complete valid Atlas Resolution and normalized
@@ -508,6 +550,9 @@ context system.
 It performs:
 
 - coherent repository and objective basis;
+- the complete Orientation objective's semantic-text UTF-8 byte bound and its
+  exact reproduction in the attention core, as owned by
+  [Projection Request](PROJECTION.md#projection-request);
 - complete deterministic observation index and validation-condition exposure,
   including every readable current Knowledge record and relationship;
 - governed implementation roots, Description coverage and exemptions, every
@@ -568,7 +613,7 @@ It performs:
   subset;
 - no unauthorized writes for read-only roles;
 - Investment allocation bounds fixed before dispatch;
-- Provider Descriptor v6, adapter rendering, protocol, and compatibility
+- Provider Descriptor v7, adapter rendering, protocol, and compatibility
   identity;
 - exact Execution Backend Profile, Execution Specification, Execution Input
   Set, Execution Image, fixed Cell-runner contract, and idempotent allocation
@@ -588,6 +633,10 @@ It performs:
 - exact immutable bounded Input Set inventory and digest, including the selected
   Candidate Revision Carrier or proof subject, Projection mounts, Role Brief,
   semantic template, and Cell-runner command without a cyclic output digest;
+- exact compiled Role Brief identification of Worker, technical assignment,
+  and Director counterpart, with the selected Director Brief and
+  [operating guidance](AUTHORITY.md#operating-roles), without authority credentials
+  or a new human approval requirement;
 - cancellation, parent-loss, Cell Containment, workspace, submission,
   Retirement, and Reclamation policy; and
 - typed payload, semantic Markdown, relationships, ordering, and logical
@@ -683,7 +732,7 @@ It performs:
   Boundary, and activity binding;
 - one coherent coordinate with no mixture of stale and current projections;
 - strict separation of runtime observations, runtime-derived conclusions,
-  agent-proposed semantics, and Founder-supplied or authenticated values;
+  agent-proposed semantics, and Director-supplied or authenticated values;
 - complete active-Boundary obligation and Evidence-state coverage;
 - exact Candidate, Material Condition, Check, review, and Evidence standing;
 - exact provider outcome, Work Product disposition, and Candidate successor
@@ -717,7 +766,7 @@ It performs:
   Output Manifest, mechanism lifecycle, timeout, cancellation, parser, and
   mutation facts;
 - exact Binding-requested condition derivation;
-- closed runtime-enforced conditions and Founder-managed host assumptions;
+- closed runtime-enforced conditions and Director-managed host assumptions;
 - verified Cell Containment and Runtime-owned Retirement after natural return,
   timeout, or cancellation;
 - protected runtime environment construction;
@@ -758,7 +807,7 @@ It performs:
 - typed payload, semantic Markdown, relationships, ordering, and logical
   revision digest.
 
-### `lifecycle.evidence-packet.foundation-v1`
+### `lifecycle.evidence-packet.foundation-v2`
 
 Includes the current Check Receipt, Candidate Seal, reviewer Attempt, reviewer
 Agent Work Product, and Execution Receipt validation and validates one
@@ -767,11 +816,20 @@ Receipt reuse, invalidation, reviewer independence, review decisions, and
 obligation standing are typed ledgers inside this one Packet payload; they are
 not separate current carriers.
 
+The [Evidence verifier](EVIDENCE.md#evidence-verifier) owns this interpretation
+independently of Packet assembly. It validates exact retained justification
+after evaluation as well as during finalization, preserving required Activity
+and event provenance. Reducer-derived currentness and fresh physical
+observations remain separately required when that justification is selected
+for a new canonical effect.
+
 It performs:
 
 - exact Work Boundary, admitted canonical Product State and Knowledge Set,
   Candidate Seal result Product State and Knowledge Set, and reviewer Projection
   basis, without requiring the canonical and Candidate states to be equal;
+- exact current Candidate integration lineage and parent Snapshot, required
+  Condition/readmission provenance, and reviewer mandate/baseline applicability;
 - required artifact and Description coverage results;
 - baseline and final Receipt completeness by selected Check, Binding, phase,
   and modality;
@@ -796,30 +854,31 @@ Boundary, Candidate Seal, and reviewer coordinate. A missing, duplicate,
 altered, wrong-kind, or cross-subject revision is invalid even when the Packet
 payload alone passes JSON Schema.
 
-`acceptanceReady: true` is invalid unless every required obligation is
+`readiness: acceptance-ready` is invalid unless every required obligation is
 `satisfied`, every required proposition is accepted or legally not applicable,
 and no material uncertainty remains.
 
 ### `lifecycle.delivery-closure.foundation-v1`
 
 Validates one sufficient accepted or no-ship `closure` Control revision after
-an applied Founder-authenticated terminal transaction.
+an applied Director-authenticated terminal transaction.
 
 It performs:
 
 - exact active Work Boundary and accepted or no-ship terminal subject;
-- exact Founder Decision, applied effect digest, outcome, and observation time;
+- exact Director Decision, applied effect digest, outcome, and observation time;
 - disposition-specific Work Boundary, Candidate Revision, Candidate Seal, and
   Evidence Packet relationship cardinality;
-- exact sealed Candidate integration over the exact admitted parent, or
-  verified no-ship non-integration;
-- exact admitted parent commit and tree plus accepted commit and tree when
+- exact sealed Candidate publication over the exact integration parent, or
+  verified no-ship non-publication;
+- exact integration parent commit and tree plus accepted commit and tree when
   accepted;
 - equality of accepted tree, Candidate digest, Product State digest, and
   Knowledge Set digest with the selected Candidate Revision, Seal, and Evidence
   subject;
-- proof that the Candidate contains no Atlas delta and therefore carries the
-  admitted Atlas subtree byte-identically into the accepted tree;
+- proof that the Candidate contains no Atlas delta relative to its exact
+  application parent and carries that parent's Atlas subtree byte-identically
+  into the accepted tree;
 - legal `integrated`, `abandoned`, or `not-created` Candidate
   treatment;
 - complete Containment and Runtime-owned Retirement facts, empty Store drafts,
@@ -840,29 +899,71 @@ condition, Closure subject, completed Activities, and Journal head. A runtime
 checkpoint, exported view, operation result, or repository file is not
 substitute terminal evidence.
 
-### `runtime-interface-v10`
+### `runtime-interface-v17`
 
-Validates the exact public runtime and interface protocol v10 boundary.
+Validates the exact public runtime and interface protocol v17 boundary.
 `delivery.prepare` has only `schema`, `target`, `operation`, and `input`.
 Every mutation of an existing Delivery additionally has exactly `deliveryId`.
-It requires 1 through 65,536 NUL-free UTF-8 bytes of semantic Markdown for
-prepare, continue, evaluate, revise, reaffirm, and no-ship, and requires null
-input for admit, accept, and recover. Founder authentication remains an
-operation-owned machine-custodied channel outside the public request. The
-profile rejects a caller-selected
+It requires 1 through 1,048,576 NUL-free UTF-8 bytes of semantic Markdown for
+prepare and no-ship, and requires null input for admit, accept, and recover.
+Continue, evaluate, revise, and reaffirm require an input with both that
+semantic Markdown and the exact positive `expectedGeneration` returned by the
+complete read on which it was authored. Integration instead requires exactly
+the generation-only input defined by [Delivery](DELIVERY.md#semantic-operation-input),
+with no semantic Markdown, Agent role, or Investment. A missing, malformed, or
+stale generation is refused before an Activity, Cell allocation, dispatch, record,
+event, or effect. Director authentication remains an operation-owned
+machine-custodied channel outside the public request. The profile rejects a caller-selected
 identity, expected target or Process, package reference, observed time, machine
 configuration, Investment mechanics, authority bytes, or any additional field.
-Continue, evaluate, revise, and reaffirm additionally bind the expected public
-read generation against which their complete fresh semantic input was authored.
-That value is a runtime-issued staleness precondition, not caller-authored state.
+The generation is a runtime-issued staleness precondition, not caller-authored
+Process state.
+
+The separate `delivery.work` request validates the closed set/run/stop union in
+[Control](CONTROL.md#explicit-resource-controls). Set requires exact permitted
+operation/direction/Agent-choice correspondence and finite safe-integer
+ceilings. Set and run require the reviewed generation; run and stop bind an
+exact existing grant reference. Stop rejects a generation precondition and
+uses only required machine custody. A work result binds its exact action,
+selected grant, observed Journal range, settled-operation count and any
+transaction-observed Stop acknowledgment. Empty event and Control lists do not
+mean an unchanged Journal when the selected projection is coordinates-only.
 
 The protocol exposes the bounded Delivery Inbox, one coherent selected Delivery
 View, typed semantic sections, Decision Readiness, exact Candidate difference,
 durable-generation watch, exact Control inspection, reducer facts, eligible
-operations, recovery coordinate, and export. Every read result discloses its
-generation, completeness, bounds, and typed unavailability or truncation. It cannot
-accept caller-authored state, event, revision, digest, time, machine path,
-checkpoint, or transaction mechanics.
+operations, recovery coordinate, export, and the closed nine-member context
+inspection selector union: Knowledge index, Knowledge record, Code index, Code
+file, Atlas overview, Atlas Point, Atlas Resource, Source, and Authorization
+Review. Every selector is structurally exact; every paged result uses a
+Runtime-issued selector-bound cursor; mutable views and Authorization Review
+bind a complete generation, while immutable artifact inspection binds its
+retained provenance and exact historical dependencies; and every returned collection, source range, text,
+diff, Atlas value, and authorization review stays within the bounds in
+[Control](CONTROL.md#closed-context-inspection-selector-union). Arbitrary
+repository paths, query languages, caller-selected result shapes, and
+caller-authored cursors are invalid. Every read result discloses its applicable selection, observation,
+completeness, bounds, and typed unavailability or truncation. Exact artifact
+selectors name retained references and a Journal origin; the Runtime MUST
+reproduce that origin and subject combination with the sole reducer, reopen
+each immutable dependency, and verify final custody and the original Journal
+prefix. A caller cannot manufacture valid provenance by hashing a different
+combination. Later checkpoints or subject advancement do not invalidate an
+unchanged selected artifact. These selectors accept no caller-authored Process
+state, events, record bodies, observed time, machine paths, checkpoint payloads,
+or transaction mechanics.
+
+An Authorization Review is read-only deterministic presentation of the exact
+current admit, accept, or no-ship subject. It is valid only when all review
+facts rederive from one Store head and its `authorizationReviewDigest`
+reproduces. It cannot
+carry authority bytes, signature, challenge, secret location, transaction
+mechanics, or proof of approval. A Runtime may issue the invocation-private
+challenge selected by [Authority](AUTHORITY.md#invocation-private-challenge-handoff)
+only after producing that exact review. Challenge bytes are volatile,
+single-use, session- and subject-bound, and never a schema, retained Control
+record, Evidence fact, or public authorization result. Expired, consumed,
+stale, substituted, or ambiguous challenges are refused without effect.
 
 The protocol exposes no Execution Backend, Cell, Handle, allocation, dispatch,
 retrieval, Retirement, Reclamation, Docker, or Candidate materialization
@@ -885,8 +986,8 @@ Standard profiles use these conceptual stages in dependency order:
 5. **Carrier integrity** — Knowledge source and semantic digests, or Control
    payload, semantic body, fragments, relationships, ordering, and logical
    revision digests.
-6. **Discovery** — Knowledge locators, implementation roots, Atlas inputs,
-   registries, and Control records.
+6. **Discovery** — Knowledge locators, Discipline Registry and Work Types,
+   implementation roots, Atlas inputs, registries, and Control records.
 7. **Atlas resolution** — exact supported selection, raw State, qualified
    processor, resolved external result, normalized model, Resource bindings,
    provenance preservation, and no partial output.
@@ -898,12 +999,13 @@ Standard profiles use these conceptual stages in dependency order:
    requirements, Binding compatibility, and capability.
 11. **Repository epoch** — exact Git tree, Product State, unbound material, and
    repository contract.
-12. **Boundary** — selected Knowledge, mandate, obligations, artifacts, effects,
+12. **Boundary** — selected Knowledge, advisory Discipline subset and Work Types,
+    mandate, obligations, artifacts, effects,
     risks, Checks, propositions, baseline, and authority.
 13. **Projection** — deterministic closure, role additions, source availability,
     provenance, bounds, omission, and digest.
 14. **Attempt and execution** — exact subject, capability, investment,
-    Provider Adapter v6, Backend Profile, Specification, Input Set, Image,
+    Provider Adapter v7, Backend Profile, Specification, Input Set, Image,
     allocation and one-time dispatch, Cell runner, cancellation, Containment,
     Retirement, semantic parser, compiler, Output Manifest, and result contract.
 15. **Store events and reduction** — immutable event continuity, legal order,
@@ -931,6 +1033,12 @@ source, or resource limit that prevents a required stage sets the stage and
 overall result to `complete: false`. An unavailable optional source or source on
 a historical record is a warning and does not make the source stage incomplete.
 A completed stage can be invalid.
+
+A Discipline declaration with `sources[].required: true` is a completed invalid
+record, not a required-source completeness condition. Validation emits
+`lifecycle.discipline.source-required`, does not pass that declaration to source
+resolution as required, and does not make the source stage incomplete solely
+because the cited bytes are unavailable.
 
 Stage completeness is an explicit processing fact. A validator MUST preserve
 the typed failure and bounded machine facts that explain an incomplete stage;
@@ -962,8 +1070,13 @@ least:
 - stable identity prefix and uniqueness;
 - one current revision per identity;
 - complete revision and supersession chains;
-- owner registry resolution;
+- owner registry resolution, with Discipline's sole publisher resolved through
+  its exact Registry Pack entry instead of target Product Knowledge owners;
 - body title and section uniqueness;
+- exact Discipline Registry self-digest, adoption-to-record equality, Pack
+  provenance, and Work Type reference validity without implicit selection;
+- `required: false` on every Discipline source declaration, without treating
+  an invalid true value as a required source-resolution input;
 - relationship source/target kind rules and mandatory closure effects;
 - refinement and Check-dependency cycle detection;
 - required dependency strongly connected component completeness;
@@ -982,6 +1095,8 @@ least:
   bounds with fail-closed stage completeness;
 - Product State membership and unbound-authority rejection;
 - Work Boundary obligation and proposition coverage;
+- exact equality between the Work Boundary Discipline subset and its selected
+  Discipline Knowledge identities, without deriving obligations or Evidence;
 - Work Boundary evidence identities resolve only to declared required
   artifacts;
 - portable lexical normalization of `local-read` and `local-write` Work
@@ -1008,11 +1123,11 @@ least:
 - exact Receipt freshness and reuse;
 - reviewer independence and complete proposition decisions;
 - obligation ledger derivation without weighted substitution;
-- admitted historical Atlas reproduction, exclusive active-Delivery branch
-  leasing, exact canonical commit and tree plus clean authoritative-checkout
-  guards for every active route, no-ship availability after lease violation,
-  and exact sealed-Candidate acceptance over the admitted parent;
-- exact Founder authorization and replay prevention;
+- exact retained governing and integration-parent Snapshots, independent
+  Delivery repositories and locks, original-baseline applicability, guarded
+  context-change finalization/readmission, protected-root validation over P→I,
+  and conditional acceptance with fresh integration after conclusive stale CAS;
+- exact Director authorization and replay prevention;
 - transaction recovery identity;
 - exact Closure revision loading, final-event correspondence, synchronous
   Containment and Retirement, Store sealing, archive verification, terminal
@@ -1076,17 +1191,33 @@ additional codes in the same family.
 | `lifecycle.document.profile-unsupported` | error | The selected Knowledge document profile is unavailable or mismatched. |
 | `lifecycle.document.header-body-conflict` | error | Knowledge body prose contradicts an operative typed header value or attempts to add authority. |
 | `lifecycle.document.digest-mismatch` | error | A Knowledge source, semantic, body, fragment, or selected external digest does not reproduce. |
+| `lifecycle.interface.request-invalid` | error | A public Runtime request fails its exact interface schema, including a productive semantic operation with an omitted or malformed expected generation. |
 | `lifecycle.path.invalid` | error | A repository path violates normalization, length, kind, or ownership rules. |
 | `lifecycle.source.unbound` | error | Required authority bytes are ignored, untracked, mutable, or from another epoch. |
 | `lifecycle.source.inaccessible` | error | A required source cannot be read or verified under the authorized policy. |
-| `lifecycle.repository.contract-invalid` | error | Repository-v15 contract shape or semantic selection is invalid. |
-| `lifecycle.repository.predecessor-unsupported` | error | An unsupported-generation or mixed repository carrier is presented to the fresh-only rc.10 route. |
+| `lifecycle.repository.contract-invalid` | error | Repository-v22 contract shape or semantic selection is invalid. |
+| `lifecycle.repository.predecessor-unsupported` | error | An unsupported-generation or mixed repository carrier is presented to the fresh-only rc.17 route. |
 | `lifecycle.repository.epoch-mixed` | error | One result combines incompatible repository epochs. |
 | `lifecycle.repository.product-state` | error | Product State membership or digest is invalid. |
 | `lifecycle.repository.untracked-authority` | error | Untracked or ignored material appears under an authoritative root. |
 | `lifecycle.repository.knowledge-invalid` | error | The supplied Knowledge Set result is incomplete, invalid, publication-mismatched, or bound to another snapshot. |
-| `lifecycle.repository.control-present` | error | Repository-visible Delivery Control or runtime custody material is present in the fresh repository-v15 subject. |
-| `lifecycle.read-model.generation-stale` | error | A read or mutation binds a superseded runtime-issued generation. |
+| `lifecycle.repository.control-present` | error | Repository-visible Delivery Control or runtime custody material is present in the fresh repository-v22 subject. |
+| `lifecycle.read-model.generation-stale` | error | A mutable read, Authorization Review, or mutation binds a superseded runtime-issued generation. |
+| `lifecycle.work-delegation.invalid` | error | Resource permission lacks an exact settled admission, original direction, permitted operation/selection combination, valid expiry or adequate lifetime ceiling. |
+| `lifecycle.work-delegation.resource-limit` | error | The complete reservation cannot fit the existing bounded Control opening without dropping required resource facts. |
+| `lifecycle.work-delegation.reservation-context` | error | A proposed reservation lacks its exact current decision, grant, admission, permitted operation, available retained resource selection or remaining allowance. |
+| `lifecycle.work-delegation.policy-binding` | error | A useful-work decision cannot bind the retained Candidate, Attempt, integration or proof facts on which it relies. |
+| `lifecycle.work-delegation.runtime-binding` | error | Foreground composition cannot establish one exact reserved Activity, its single charge, original direction or settled continuation. |
+| `lifecycle.work-delegation.runtime-interrupted` | error | A foreground invocation cannot establish its operation return; retained effects require observation before any fresh explicit course. |
+| `lifecycle.work-delegation.current-subject` | error | An explicit run selects a different grant from the current retained Work Delegation. |
+| `lifecycle.work-delegation.stop-request-invalid` | error | Stop request shape, exact Store/Process/grant/Director bindings, timestamp or self-digest is invalid. |
+| `lifecycle.read-model.inspection-selection` | error | An artifact selection does not reproduce its exact Target, Store, Process, retained Journal prefix, Boundary role, or Candidate/Seal combination. |
+| `lifecycle.context-inspection.selector-invalid` | error | A context inspection selector is outside the closed nine-member union, contains extra fields, or violates a selector bound. |
+| `lifecycle.context-inspection.cursor-invalid` | error | A cursor is malformed, expired, replays against another selector, target, Delivery, context basis, or retained selection, or cannot be reopened exactly. |
+| `lifecycle.context-inspection.result-bound` | warning | An otherwise valid Code, Knowledge, Atlas, or Source result reaches a declared returned-item, text, diff, or range bound and reports exact truncation or continuation. |
+| `lifecycle.context-inspection.source-invalid` | error | A Source Reference or requested range is unbound, inaccessible, outside its selected historical basis, or exceeds the exact source bounds. |
+| `lifecycle.authorization-review.binding` | error | Authorization Review facts or digest do not rederive from one exact current Store head and authority subject. |
+| `lifecycle.authorization-challenge.invalid` | error | An invocation-private challenge is malformed, expired, consumed, stale, substituted, ambiguous, cross-session, or bound to another exact review or authority subject. |
 | `lifecycle.delivery-inbox.member-invalid` | error | A discovered Delivery Store is unreadable, corrupt, duplicated, or changes during bounded enumeration. |
 | `lifecycle.delivery-view.incoherent` | error | Selected Delivery sections do not bind one exact read generation. |
 | `lifecycle.candidate-diff.unavailable` | error | The exact runtime-selected Candidate Revision Carriers needed for the difference are unavailable. |
@@ -1106,11 +1237,32 @@ additional codes in the same family.
 | `lifecycle.atlas.resource-unbound` | error | A repository-local Atlas Resource used by resolution or Projection lacks an exact authorized same-epoch binding. |
 | `lifecycle.atlas.result-invalid` | error | The external Atlas Validation Result fails its selected schema, profile, revision, implementation, state, or digest contract. |
 | `lifecycle.atlas.selection-unsupported` | error | The target Atlas selection differs from Foundation's exact release, revisions, format, profile, schemas, or consumer profile. |
+| `lifecycle.candidate.repair-output-invalid` | error | Receipt-bound repair descriptors, exact source joins, rejection, paired manifest, or Candidate continuity do not satisfy the closed repair contract. |
+| `lifecycle.candidate.repair-output-unavailable` | error | Exact selected repair bytes cannot currently be reopened from retained custody; they cannot be silently omitted. |
 | `lifecycle.knowledge.kind-location` | error | Knowledge kind and physical locator disagree. |
 | `lifecycle.knowledge.id-duplicate` | error | Two Knowledge records use the same stable identity and revision. |
 | `lifecycle.knowledge.current-duplicate` | error | More than one current revision exists for one Knowledge identity. |
+| `lifecycle.knowledge.current-not-latest` | error | A current Product Knowledge revision has a later non-Draft revision, or a current Discipline has a later local revision. |
 | `lifecycle.knowledge.revision-gap` | error | A Knowledge revision sequence is incomplete. |
 | `lifecycle.knowledge.authority-conflict` | error | Applicable current Knowledge sources conflict materially. |
+| `lifecycle.discipline.pack-invalid` | error | A supplied Pack manifest self-digest, ordered inventory, exact record bytes or digests, sole publisher, or curated Set membership is invalid. |
+
+| `lifecycle.discipline.registry` | error | The Discipline Registry envelope or exact keys are invalid. |
+| `lifecycle.discipline.registry-encoding` | error | The Registry is not valid UTF-8 JSON. |
+| `lifecycle.discipline.registry-source` | error | The Registry source cannot supply exact supported authoritative content. |
+| `lifecycle.discipline.registry-missing` | error | The selected tracked Discipline Registry is absent. |
+| `lifecycle.discipline.registry-pack` | error | A Registry Pack entry has invalid fields or shape. |
+| `lifecycle.discipline.registry-adoption` | error | An adoption entry has invalid fields, a non-Discipline identity, or an unsupported target path. |
+| `lifecycle.discipline.registry-work-type` | error | A Work Type has invalid fields or cites a non-Discipline identity. |
+| `lifecycle.discipline.registry-duplicate` | error | A Registry identity is repeated. |
+| `lifecycle.discipline.registry-pack-missing` | error | An adoption cites a Pack absent from the Registry. |
+| `lifecycle.discipline.registry-adoption-missing` | error | A Work Type cites a Discipline absent from the adoption inventory. |
+| `lifecycle.discipline.registry-digest` | error | The Registry self-digest does not reproduce its canonical subject. |
+| `lifecycle.discipline.registry-coverage` | error | Adoptions do not exactly cover current adopted Discipline records. |
+| `lifecycle.discipline.registry-adoption-mismatch` | error | An adoption does not bind the exact current record identity, revision, path, source digest, and semantic digest. |
+| `lifecycle.discipline.publisher-owner` | error | An adopted Discipline does not retain its sole Registry Pack publisher owner. |
+| `lifecycle.discipline.candidate-mutation` | error | A proposed Boundary write scope or Candidate change intersects the frozen Discipline root. |
+| `lifecycle.discipline.source-required` | error | A Discipline source declares `required: true`; Discipline provenance must remain optional and cannot affect Knowledge Set completeness. |
 | `lifecycle.relationship.target-missing` | error | A required Knowledge relationship target does not resolve. |
 | `lifecycle.relationship.kind-invalid` | error | Knowledge relationship source and target kinds are invalid. |
 | `lifecycle.relationship.cycle` | error | A Knowledge relationship that must be acyclic contains a cycle. |
@@ -1124,10 +1276,13 @@ additional codes in the same family.
 | `lifecycle.boundary.relationship-invalid` | error | Work Boundary Brief, Work Product, predecessor, or Material Condition relationships violate the closed registry. |
 | `lifecycle.boundary.baseline-invalid` | error | The selected baseline Receipt set is missing, duplicated, stale, cross-subject, or modality-invalid. |
 | `lifecycle.boundary.authority-invalid` | error | Admission authentication does not bind the exact proposal-ready Boundary and basis. |
+| `lifecycle.projection.discipline-invalid` | error | Discipline discovery or selected guidance does not bind the exact Registry, Work Types, and selected advisory records. |
+| `lifecycle.projection.request-invalid` | error | A Projection request violates semantic requirements, including the Orientation objective's UTF-8 byte bound. Structural schema failures retain the schema diagnostic. |
 | `lifecycle.projection.basis-mismatch` | error | Projection request bases do not identify one coherent subject. |
 | `lifecycle.projection.profile-mismatch` | error | Projection class, role, profile identity, profile digest, or selected bounds disagree. |
 | `lifecycle.projection.mandatory-omission` | error | Mandatory Projection closure was omitted, truncated, or summarized. |
 | `lifecycle.projection.source-inaccessible` | error | Required projected source is inaccessible under current authority. |
+| `lifecycle.projection.citation-identity-conflict` | error | Knowledge occurrences sharing exact source bytes disagree on revision identity; differing admitted and Candidate revisions alone are valid. |
 | `lifecycle.projection.authority-conflict` | error | Applicable mandatory authority conflicts. |
 | `lifecycle.projection.reviewer-seal` | error | Reviewer Projection does not bind the exact current Candidate Seal and sealed Candidate Revision. |
 | `lifecycle.control.store-invalid` | error | Store metadata, SQLite profile, custody, or selected lifecycle profile is invalid. |
@@ -1146,7 +1301,7 @@ additional codes in the same family.
 | `lifecycle.attempt.role-incompatible` | error | Role, Projection, subject, capability, or Work Product contract are incompatible. |
 | `lifecycle.attempt.capability-escalation` | error | Attempt capability exceeds or weakens the selected Capability Profile. |
 | `lifecycle.attempt.investment-invalid` | error | Investment is absent, out of bounds, changed after dispatch, or not fresh for the invocation. |
-| `lifecycle.attempt.provider-unsupported` | error | Provider Adapter v6 or the selected Backend cannot enforce required compatibility, control-plane separation, workspace, or capability. |
+| `lifecycle.attempt.provider-unsupported` | error | Provider Adapter v7 or the selected Backend cannot enforce required compatibility, control-plane separation, workspace, or capability. |
 | `lifecycle.attempt.input-invalid` | error | Execution Input Set, selected Carrier, Projection material, semantic template, inventory, or digest is incomplete, mutable, cyclic, or mismatched. |
 | `lifecycle.agent-work-product.template-invalid` | error | Submitted semantic Markdown violates the exact Attempt-selected role body profile. |
 | `lifecycle.agent-work-product.mechanics-authored` | error | Agent semantics attempt to author a runtime binding, identity, relationship, ordering, digest, header, or envelope. |
@@ -1156,7 +1311,11 @@ additional codes in the same family.
 | `lifecycle.execution.binding` | error | Receipt does not bind the exact Attempt, provider, Investment, capability, Backend Profile, Specification, Input Set, or Image. |
 | `lifecycle.execution.backend-unsupported` | error | The selected production Backend Profile, Engine relationship, Image, runner, capability, or effective limit cannot be enforced. |
 | `lifecycle.execution.control-plane-unseparated` | error | Provider control-plane authentication or network access cannot be separated from Agent product capability before dispatch. |
-| `lifecycle.execution.cell-authority-exposed` | error | A Cell can reach the Docker Engine socket, Runtime-private target mount, Founder authority, Control Store, canonical Git write authority, or another Cell. |
+| `lifecycle.execution.provider-credential-custody-v1.busy` | error | Another execution or unfinished private transition retains the installed provider credential claim; retrying must preserve the exact selection. |
+| `lifecycle.execution.provider-credential-custody-v1.unavailable` | error | Exact private credential custody is temporarily unavailable; restoration permits the retained obligation to continue. |
+| `lifecycle.execution.provider-credential-custody-v1.changed-auth` | error | The installed credential generation changed during an active claim or settlement; the Runtime cannot overwrite either generation. |
+| `lifecycle.execution.provider-credential-custody-v1.reprovision-required` | error | A conclusively lost final credential generation has settled; future execution requires separately provisioned different private credentials. |
+| `lifecycle.execution.cell-authority-exposed` | error | A Cell can reach the Docker Engine socket, Runtime-private target mount, Director authority, Control Store, canonical Git write authority, or another Cell. |
 | `lifecycle.execution.private-fact-disclosed` | error | A public Receipt, record, result, diagnostic, log, CLI response, or interface view exposes a Handle, Cell identity, allocation key, Engine endpoint, credential, private path, environment value, or Reclamation coordinate. |
 | `lifecycle.execution.public-workflow` | error | A Control carrier, public protocol, CLI, TUI, read model, or recovery route adds a Cell, job, container, Backend, Retirement, or Reclamation operation, state machine, stage, selectable identity, or operator action alongside Delivery. |
 | `lifecycle.execution.allocation-conflict` | error | One allocation key resolves to a different Specification, Cell, or Handle, creates more than one productive allocation, or recreates or substitutes a Cell after its retained Handle is authoritatively absent. |
@@ -1173,7 +1332,7 @@ additional codes in the same family.
 | `lifecycle.attempt-view.binding` | error | Attempt View subjects do not join at one exact Store head. |
 | `lifecycle.attempt-view.stale` | error | The displayed coordinate is no longer current. |
 | `lifecycle.attempt-view.obligation-missing` | error | An active-Boundary obligation is absent from the view. |
-| `lifecycle.attempt-view.provenance` | error | Agent semantics are represented as runtime facts or Founder authority. |
+| `lifecycle.attempt-view.provenance` | error | Agent semantics are represented as runtime facts or Director authority. |
 | `lifecycle.attempt-view.eligibility` | error | A displayed operation is not in the exact reducer result. |
 | `lifecycle.attempt-view.incomplete` | error | A limit, race, or unavailable source prevents complete derivation. |
 | `lifecycle.receipt.subject-mismatch` | error | Check Receipt does not bind the exact Check subject. |
@@ -1187,13 +1346,35 @@ additional codes in the same family.
 | `lifecycle.evidence.review-incomplete` | error | Proposition decision ledger is missing, duplicate, or illegal. |
 | `lifecycle.evidence.obligation-unsatisfied` | error | A required obligation is not satisfied. |
 | `lifecycle.evidence.acceptance-ready-invalid` | error | Packet claims readiness while a required condition remains. |
+| `lifecycle.evidence.unsupported-verifier` | error | The exact selected Evidence rule set or validator is unsupported. |
+| `lifecycle.evidence.observation-subject` | error | Runtime observation does not bind the exact evaluation Boundary, Candidate, and Seal. |
+| `lifecycle.evidence.packet-mismatch` | error | The retained Packet differs from the justification derived from its exact supporting inputs. |
+| `lifecycle.evidence.not-ready` | error | Verified Evidence does not justify acceptance readiness. |
+| `lifecycle.evidence.superseded-boundary` | error | The evaluated Work Boundary is not the exact current active Boundary. |
+| `lifecycle.evidence.wrong-candidate` | error | The evaluated Candidate Revision is not the exact current Candidate Revision. |
+| `lifecycle.evidence.wrong-seal` | error | The evaluated Seal is not the exact current Seal. |
+| `lifecycle.evidence.wrong-evidence` | error | The verified Packet is not the exact current Evidence Packet. |
+| `lifecycle.evidence.current-material-condition` | error | A current Material Condition prevents acceptance of the selected justification. |
+| `lifecycle.evidence.integration-required` | error | The selected Candidate lacks exact retained integration provenance required for evaluation or acceptance. |
+| `lifecycle.evidence.stale-parent` | error | The selected acceptance parent differs from the exact integration parent. |
+| `lifecycle.evidence.wrong-director-subject` | error | A supplied Director subject does not select the exact verified acceptance justification. |
 | `lifecycle.delivery.operation-ineligible` | error | A requested operation is not eligible at the exact current Store head. |
 | `lifecycle.delivery.condition.binding` | error | Material Condition does not bind its exact Boundary, Candidate Revision, Work Product, Receipt, or source facts. |
 | `lifecycle.delivery.admission.binding` | error | Admission or readmission does not bind the exact Decision, Boundary, baseline, repository basis, Candidate, or Condition. |
-| `lifecycle.delivery.repository-drift` | error | The canonical branch no longer names the exact admitted commit and tree, or the authoritative target checkout is not completely clean under the active branch lease. |
+| `lifecycle.integration.assessment-invalid` | error | An Integration Assessment has invalid exact Snapshot, source/currentness, outcome, ordering, digest, or contextual comparison facts. |
+| `lifecycle.integration.merge-invalid` | error | The fixed exact B/C/P merge cannot establish supported, complete, correctly bound integration facts or its retained implementation selection. |
+| `lifecycle.repository.git-basis-invalid` | error | Private retained Git basis identity, topology, or immutable binding is invalid. |
+| `lifecycle.repository.git-basis-unavailable` | error | The exact retained historical Git subject cannot be reopened. |
+| `lifecycle.repository.git-basis-incomplete` | error | Required exact historical Git objects or complete Snapshot inputs are unavailable. |
+| `lifecycle.repository.git-context-invalid` | error | Private Delivery Git context has an invalid exact identity, topology, history, or Candidate binding. |
+| `lifecycle.repository.git-context-incomplete` | error | Required exact Delivery work history cannot be completely retained or reopened. |
+| `lifecycle.execution.input-set.git-context-binding` | error | A builder or reviewer Input Set lacks one exact canonical Delivery Git context, complete pack, or matching Candidate binding. |
+| `lifecycle.delivery.repository-drift` | error | The selected new canonical effect cannot establish its exact integration parent or required clean target checkout. Historical admission and productive continuation do not require live HEAD equality. |
 | `lifecycle.delivery.candidate-drift` | error | Candidate differs from the exact subject of the requested operation. |
-| `lifecycle.authority.subject-mismatch` | error | Founder Decision authentication binds a different exact subject. |
+| `lifecycle.authority.subject-mismatch` | error | Director Decision authentication binds a different exact subject. |
 | `lifecycle.authority.signature-invalid` | error | Principal, key, algorithm, signature, expiry, or replay validation failed. |
+| `lifecycle.authority.credential` | error | The invocation-private authority credential is missing, forged, consumed, discarded, or bound to another purpose. |
+| `lifecycle.authority.context` | error | The private execution context is invalid, carries legacy raw-secret fields, or supplies authority material to a non-authority operation; refusal precedes owner dispatch. |
 | `lifecycle.transaction.subject-mismatch` | error | A retained transaction plan is not the exact plan permitted by the authenticated Decision and deterministic variant rule. |
 | `lifecycle.transaction.recovery-invalid` | error | Recovery would reconstruct, redispatch, or substitute another effect subject. |
 | `lifecycle.delivery.closure.binding` | error | Closure disposition, Decision, transaction, final observation facts or digest, canonical result digest, Boundary, Candidate, Seal, or Evidence relationships disagree. |
@@ -1233,14 +1414,14 @@ An implementation publishes every material limit in its conformance claim and
 validation result. Standard profiles require minimum capacities published with
 the release metadata.
 
-For `knowledge-set-v1`, the repository contract selects the exact positive
+For `knowledge-set-v2`, the repository contract selects the exact positive
 limits up to the ceilings in [Knowledge](KNOWLEDGE.md). The Validation Result
 echoes every selected Knowledge limit plus bounded observed record and source
 counts and bytes. Count and aggregate-byte limits are preflight conditions;
 crossing one makes the affected stage incomplete even when already-parsed items
 would otherwise form a valid subset.
 
-For `repository-v7`, the exact Foundation Atlas limits are those owned by
+For `repository-v9`, the exact Foundation Atlas limits are those owned by
 [Atlas Integration](ATLAS.md): installed-processor inventory is limited to
 1,024 filesystem entries, depth 16, 16 MiB per file, 64 MiB aggregate, and
 15,000 ms; the processor Worker and the strict-JSON parser share one 64 MiB
@@ -1305,11 +1486,11 @@ A fixture directory contains every source required for its claimed profile or
 an exact adapter declaration. A fixture requiring Git identity includes the
 canonical fixture tree manifest used to reproduce that identity.
 
-`repository-contract-fixture-v7` is the narrow publication-integrity profile
-for repository contract v15. It validates the exact repository contract,
-selected rc.10 coordinates, fresh-only reserved-path rules, environment bounds,
+`repository-contract-fixture-v9` is the narrow publication-integrity profile
+for repository contract v22. It validates the exact repository contract,
+selected rc.17 coordinates, fresh-only reserved-path rules, environment bounds,
 and fixed predecessor discriminators. Passing this fixture profile is not
-`repository-v7` observation evidence and does not substantiate a Repository
+`repository-v9` observation evidence and does not substantiate a Repository
 Validator conformance claim.
 
 Predecessor fixture bytes retain only the minimum discriminator and
@@ -1324,36 +1505,41 @@ archive, reduction, and each closed family payload. The required current
 fixture profiles are:
 
 - `agent-attempt-payload-structural-fixture-v3`;
-- `agent-work-product-payload-structural-fixture-v2`;
+- `agent-work-product-payload-structural-fixture-v5`;
 - `atlas-resolution-structural-fixture-v2`;
 - `capability-profile-structural-fixture-v2`;
 - `candidate-revision-carrier-manifest-structural-fixture-v1`;
-- `candidate-revision-payload-structural-fixture-v2`;
+- `candidate-revision-payload-structural-fixture-v3`;
 - `candidate-seal-payload-structural-fixture-v2`;
-- `check-receipt-payload-structural-fixture-v2`;
-- `closure-payload-structural-fixture-v4`;
-- `control-lifecycle-profile-structural-fixture-v4`;
-- `control-record-event-structural-fixture-v2`;
+- `check-receipt-payload-structural-fixture-v3`;
+- `closure-payload-structural-fixture-v6`;
+- `control-lifecycle-profile-structural-fixture-v7`;
+- `control-record-event-structural-fixture-v6`;
 - `control-record-file-structural-fixture-v1`;
-- `control-record-revision-structural-fixture-v1`;
+- `control-record-revision-structural-fixture-v2`;
 - `control-record-store-archive-structural-fixture-v1`;
 - `control-record-store-seal-structural-fixture-v1`;
-- `control-record-store-structural-fixture-v1`;
-- `delivery-reduction-structural-fixture-v2`;
-- `evidence-packet-payload-structural-fixture-v1`;
+- `control-record-store-structural-fixture-v2`;
+- `context-inspection-selector-structural-fixture-v3`;
+- `delivery-reduction-structural-fixture-v5`;
+- `discipline-pack-structural-fixture-v1`;
+- `discipline-registry-structural-fixture-v1`;
+- `evidence-packet-payload-structural-fixture-v2`;
 - `execution-backend-profile-structural-fixture-v1`;
 - `execution-image-structural-fixture-v1`;
-- `execution-input-set-structural-fixture-v1`;
+- `execution-input-set-structural-fixture-v2`;
 - `execution-observation-structural-fixture-v1`;
 - `execution-output-manifest-structural-fixture-v1`;
 - `execution-receipt-payload-structural-fixture-v3`;
 - `execution-specification-structural-fixture-v1`;
-- `founder-brief-payload-structural-fixture-v1`;
-- `founder-decision-payload-structural-fixture-v4`;
-- `material-condition-payload-structural-fixture-v1`;
-- `provider-descriptor-structural-fixture-v6`;
-- `repository-contract-fixture-v7`; and
-- `work-boundary-payload-structural-fixture-v4`.
+- `director-brief-payload-structural-fixture-v2`;
+- `director-decision-payload-structural-fixture-v5`;
+- `knowledge-record-structural-fixture-v2`;
+- `material-condition-payload-structural-fixture-v4`;
+- `provider-descriptor-structural-fixture-v7`;
+- `repository-contract-fixture-v9`;
+- `work-boundary-payload-structural-fixture-v6`; and
+- `work-delegation-payload-structural-fixture-v2`.
 
 The Atlas Resolution fixture family includes one complete valid exact
 selection, one incomplete result that illegally exposes a partial model, one
@@ -1361,15 +1547,29 @@ substituted processor version that must fail structurally, and one same-format
 unsupported-release selection that must fail structurally; the latter two are
 refusal fixtures, not compatibility carriers. The event fixture family
 includes a negative subject proving that event payloads cannot duplicate
-record-owned facts. Repository fixtures cover a valid fresh v15 selection, an
-unsupported-generation discriminators,
+record-owned facts. Discipline record fixtures prove that optional source
+provenance is valid while an obligation field or required source is invalid.
+The Pack fixture retains its exact rc.9 authoring provenance; current schema
+validation is separate from that historical coordinate. Repository fixtures
+cover a valid fresh v22 selection, unsupported-generation discriminators,
 prohibited migration input, mixed state, and bounded environment overflow.
+The [v21 refusal fixture](../examples/repository-v21-predecessor-invalid/.lifecycle/repository.json)
+retains only the exact predecessor schema discriminators needed to prove
+fresh-only refusal. It supplies no predecessor role, authority, or record
+compatibility.
 
 Agent semantic parser/compiler behavior, Store replay, recovery, transactions,
 and derived Attempt Views require focused implementation and operated evidence;
 the payload fixtures do not prove those routes. No independently retained
-Attempt View or predecessor Delivery-document fixture is a current rc.10
+Attempt View or predecessor Delivery-document fixture is a current rc.17
 carrier.
+
+Director–Worker coverage checks the compiled operating guidance for every
+Worker assignment, exact Director Brief provenance, identical configured-
+principal validation for human and agent Directors, and refusal of a Worker
+claim as authentication. Existing assignment, input-integrity, provenance, and
+authority diagnostics retain those boundaries; a role label adds no new
+authentication mechanism or diagnostic class.
 
 Execution fixtures cover idempotent allocation, one-time dispatch, observation,
 cancellation, allocation after creation before return, dispatch after start
@@ -1387,7 +1587,7 @@ a structural JSON rule. `Effect.target` remains `plainText` because only
 `local-read` and `local-write` kinds denote repository path scopes, while a
 standalone Work Boundary payload does not carry the Repository Contract's
 authoritative Atlas root as schema input. Therefore no
-`work-boundary-payload-structural-fixture-v4` subject can prove the required
+`work-boundary-payload-structural-fixture-v6` subject can prove the required
 post-normalization intersection. Conformance instead requires focused compiler
 or finalization evidence covering `.`, dot components, repeated separators,
 backslash separators, lexical `..`, the exact Atlas root, a descendant, a safe

@@ -2,13 +2,13 @@ import {
   FoundationChangeFactsSchema,
   FoundationDeliveryInboxRowSchema,
   FoundationDiagnosticSchema,
-  FoundationGitObjectSchema,
   FoundationRepositoryObservationSchema,
   FoundationRfc3339Schema,
   FoundationRuntimeObservationSchema,
   createFoundationRuntimeOperationResult,
   parseFoundationRuntimeOperationRequest,
   type FoundationChangeFacts,
+  type FoundationContextInspectionSelector,
   type FoundationControlEventReference,
   type FoundationDeliveryState,
   type FoundationDeliveryInboxRow,
@@ -34,6 +34,8 @@ import {
   compileDeliveryView,
 } from "./control/delivery-view.js";
 import { compileDeliveryDiff } from "./candidate/diff-view.js";
+import { compileFoundationContextInspection, foundationArtifactInspectionSelection } from "./read-model/context-inspection-runtime.js";
+import { resolveFoundationInspectionSelection } from "./read-model/inspection-selection.js";
 import {
   exportDeliveryControl,
   inspectDeliveryControl,
@@ -73,6 +75,18 @@ const READ_OPERATIONS = new Set([
   "delivery.export",
 ] as const);
 
+const CONTEXT_INSPECTION_KINDS = new Set<FoundationContextInspectionSelector["kind"]>([
+  "knowledge-index",
+  "knowledge-record",
+  "code-index",
+  "code-file",
+  "atlas-overview",
+  "atlas-point",
+  "atlas-resource",
+  "source",
+  "authorization-review",
+]);
+
 type FoundationRuntimeReadOperation =
   | "repository.validate"
   | "delivery.inbox"
@@ -86,6 +100,17 @@ export type FoundationRuntimeReadRequest = Extract<
   FoundationRuntimeOperationRequest,
   { operation: FoundationRuntimeReadOperation }
 >;
+
+type FoundationRuntimeInspectSelector = Extract<
+  FoundationRuntimeReadRequest,
+  { operation: "delivery.inspect" }
+>["input"];
+
+function isContextInspectionSelector(
+  selector: FoundationRuntimeInspectSelector,
+): selector is FoundationContextInspectionSelector {
+  return CONTEXT_INSPECTION_KINDS.has(selector.kind as FoundationContextInspectionSelector["kind"]);
+}
 
 export type FoundationRepositoryReadObservation = Readonly<{
   repository: FoundationRepositoryObservation;
@@ -171,7 +196,7 @@ function publicValidationDiagnostics(
 
 function emptyRepositoryObservation(): FoundationRepositoryObservation {
   return FoundationRepositoryObservationSchema.parse({
-    schema: "lifecycle.repository-observation.v10",
+    schema: "lifecycle.repository-observation.v17",
     initialized: false,
     valid: false,
     targetId: null,
@@ -190,11 +215,11 @@ function repositoryIdentityObservation(
   epoch: Awaited<ReturnType<typeof loadRepositoryIdentityEpoch>>,
 ): FoundationRepositoryObservation {
   return FoundationRepositoryObservationSchema.parse({
-    schema: "lifecycle.repository-observation.v10",
+    schema: "lifecycle.repository-observation.v17",
     initialized: true,
     valid: false,
     targetId: epoch.contract.targetId,
-    repositoryContract: "lifecycle.repository.v15",
+    repositoryContract: "lifecycle.repository.v22",
     repositoryContractDigest: epoch.contract.digest,
     headCommit: epoch.epoch.commit,
     headTree: epoch.epoch.tree,
@@ -218,8 +243,8 @@ function repositoryObservation(input: Readonly<{
   checkBindingsDigest: Sha256;
 }>): FoundationRepositoryObservation {
   return FoundationRepositoryObservationSchema.parse({
-    schema: "lifecycle.repository-observation.v10",
-    repositoryContract: "lifecycle.repository.v15",
+    schema: "lifecycle.repository-observation.v17",
+    repositoryContract: "lifecycle.repository.v22",
     ...input,
   });
 }
@@ -258,7 +283,7 @@ function partialRepositoryObservation(
 }
 
 /**
- * Observe one repository-v15 epoch and compile only its bounded v10 public
+ * Observe one repository-v22 epoch and compile only its bounded v17 public
  * facts. The exact loaded epoch, Knowledge values, and validation carrier stay
  * internal to the runtime.
  */
@@ -380,7 +405,7 @@ function normalizedRepositoryRead(
     repository.checkBindingsDigest,
   ];
   const coreComplete = repository.targetId !== null &&
-    repository.repositoryContract === "lifecycle.repository.v15" &&
+    repository.repositoryContract === "lifecycle.repository.v22" &&
     repository.repositoryContractDigest !== null &&
     repository.headCommit !== null &&
     repository.headTree !== null &&
@@ -388,7 +413,7 @@ function normalizedRepositoryRead(
     repository.atlas !== null &&
     repository.checkBindingsDigest !== null;
   const identityComplete = repository.targetId !== null &&
-    repository.repositoryContract === "lifecycle.repository.v15" &&
+    repository.repositoryContract === "lifecycle.repository.v22" &&
     repository.repositoryContractDigest !== null &&
     repository.headCommit !== null &&
     repository.headTree !== null &&
@@ -400,19 +425,19 @@ function normalizedRepositoryRead(
   if (repository.valid && (!repository.initialized || !complete)) {
     throw new FoundationError(
       "lifecycle.runtime-read.repository-observation",
-      "A valid repository observation must bind one complete initialized repository-v15 epoch",
+      "A valid repository observation must bind one complete initialized repository-v22 epoch",
     );
   }
   if (repository.initialized && !coreComplete && !identityComplete) {
     throw new FoundationError(
       "lifecycle.runtime-read.repository-observation",
-      "An initialized repository observation must bind either its complete repository-v15 core or exact raw identity",
+      "An initialized repository observation must bind either its complete repository-v22 core or exact raw identity",
     );
   }
   if (!repository.initialized && boundValues.some((value) => value !== null)) {
     throw new FoundationError(
       "lifecycle.runtime-read.repository-observation",
-      "An uninitialized repository observation cannot expose repository-v15 epoch fields",
+      "An uninitialized repository observation cannot expose repository-v22 epoch fields",
     );
   }
   if (repository.valid && diagnostics.some(({ severity }) => severity === "error")) {
@@ -465,7 +490,7 @@ function runtimeObservation(
   delivery: FoundationDeliveryState | null,
 ) {
   return FoundationRuntimeObservationSchema.parse({
-    schema: "lifecycle.foundation-runtime-observation.v10",
+    schema: "lifecycle.foundation-runtime-observation.v17",
     observedAt,
     repository,
     delivery,
@@ -553,93 +578,6 @@ function physicalDisposition(
   });
 }
 
-function activeDeliveryLeaseDiagnostic(input: Readonly<{
-  store: ControlRecordStore;
-  physical: DeliveryControlPhysicalDisposition;
-  delivery: FoundationDeliveryState;
-  repository: FoundationRepositoryObservation;
-}>): FoundationDiagnostic | null {
-  const selected = input.delivery.subjects.activeBoundary;
-  if (input.physical.disposition !== "active" || selected === null) return null;
-  const boundary = input.store.getRevision(selected.id, selected.revision);
-  if (
-    boundary === null || boundary.recordKind !== "work-boundary" ||
-    boundary.digest !== selected.digest
-  ) {
-    throw new FoundationError(
-      "lifecycle.runtime-read.active-delivery-lease",
-      "Active Delivery lease does not resolve its exact Work Boundary",
-    );
-  }
-  const basis = boundary.payload.basis;
-  if (basis === null || typeof basis !== "object" || Array.isArray(basis)) {
-    throw new FoundationError(
-      "lifecycle.runtime-read.active-delivery-lease",
-      "Active Work Boundary does not retain its exact repository basis",
-    );
-  }
-  const repositoryBasis = basis as Readonly<Record<string, unknown>>;
-  let expectedCommit = FoundationGitObjectSchema.parse(repositoryBasis.productBaseCommit);
-  let expectedTree = FoundationGitObjectSchema.parse(repositoryBasis.productBaseTree);
-  let expectedState = "admitted repository basis";
-  if (input.delivery.standing === "closed") {
-    const selectedClosure = input.delivery.subjects.closure;
-    if (selectedClosure === null) {
-      throw new FoundationError(
-        "lifecycle.runtime-read.active-delivery-lease",
-        "Closed Delivery lease does not resolve its exact Closure",
-      );
-    }
-    const closure = input.store.getRevision(selectedClosure.id, selectedClosure.revision);
-    if (
-      closure === null || closure.recordKind !== "closure" ||
-      closure.digest !== selectedClosure.digest
-    ) {
-      throw new FoundationError(
-        "lifecycle.runtime-read.active-delivery-lease",
-        "Closed Delivery lease does not resolve its exact Closure",
-      );
-    }
-    if (closure.payload.disposition === "accepted") {
-      const canonicalResult = closure.payload.canonicalResult;
-      if (
-        canonicalResult === null || typeof canonicalResult !== "object" ||
-        Array.isArray(canonicalResult)
-      ) {
-        throw new FoundationError(
-          "lifecycle.runtime-read.active-delivery-lease",
-          "Accepted Closure does not retain its exact canonical result",
-        );
-      }
-      const accepted = canonicalResult as Readonly<Record<string, unknown>>;
-      expectedCommit = FoundationGitObjectSchema.parse(accepted.commit);
-      expectedTree = FoundationGitObjectSchema.parse(accepted.tree);
-      expectedState = "accepted canonical result";
-    } else if (closure.payload.disposition !== "no-ship") {
-      throw new FoundationError(
-        "lifecycle.runtime-read.active-delivery-lease",
-        "Closed Delivery lease has an unsupported Closure disposition",
-      );
-    }
-  }
-  if (
-    input.repository.headCommit === expectedCommit &&
-    input.repository.headTree === expectedTree
-  ) return null;
-  return FoundationDiagnosticSchema.parse({
-    code: "lifecycle.delivery.branch-lease-violation",
-    severity: "error",
-    message: `The canonical branch moved from the active Delivery's ${expectedState}`,
-    retryable: false,
-    facts: {
-      expectedCommit,
-      expectedTree,
-      observedCommit: input.repository.headCommit,
-      observedTree: input.repository.headTree,
-    },
-  });
-}
-
 function assertStableStoreRead(input: Readonly<{
   before: Awaited<ReturnType<ControlRecordStore["verifyIntegrity"]>>;
   after: Awaited<ReturnType<ControlRecordStore["verifyIntegrity"]>>;
@@ -679,14 +617,119 @@ function assertStableRepositoryRead(
   }
 }
 
+type StableInspectionSelector = Extract<FoundationRuntimeInspectSelector, { kind: "record" }> |
+  Exclude<FoundationContextInspectionSelector, { kind: "authorization-review" }>;
+
+/** An exact retained artifact is independent of later operation checkpoints and Journal appends. */
+async function readStableInspection(input: Readonly<{
+  request: Extract<FoundationRuntimeReadRequest, { operation: "delivery.inspect" }> & Readonly<{
+    input: StableInspectionSelector;
+  }>;
+  machineHome: string;
+  owners: FoundationRuntimeReadOwners;
+  opened: OpenedDeliveryControlRecordStore;
+  delivery: FoundationDeliveryState;
+  repository: FoundationRepositoryReadObservation;
+  now: () => string;
+}>): Promise<FoundationRuntimeOperationResult> {
+  const physical = physicalDisposition(input.opened);
+  const originalHead = headReference(input.opened.store, input.delivery);
+  const value = input.request.input.kind === "record"
+    ? inspectDeliveryControl(input.opened.store, physical, input.request.input)
+    : await compileFoundationContextInspection({
+        machineHome: input.machineHome, target: input.request.target, store: input.opened.store,
+        state: input.delivery, selector: input.request.input,
+        generation: compileDeliveryGeneration({ store: input.opened.store, physical, repository: input.repository.repository, state: input.delivery }),
+      });
+
+  const observedAt = FoundationRfc3339Schema.parse(input.now());
+  const repository = await observeDeliveryRepositoryForRead({
+    owners: input.owners, target: input.request.target, observedAt,
+  });
+  if (
+    repository.repository.targetId !== input.repository.repository.targetId ||
+    repository.repository.repositoryContract !== input.repository.repository.repositoryContract ||
+    !repository.repository.initialized
+  ) {
+    throw new FoundationError(
+      "lifecycle.runtime-read.repository-epoch-mixed",
+      "Exact artifact inspection lost the selected target and repository contract identity",
+      { retryable: true },
+    );
+  }
+
+  const final = await input.owners.openDeliveryStore({
+    machineHome: input.machineHome,
+    targetId: repository.repository.targetId!,
+    deliveryId: input.request.deliveryId,
+    readOnly: true,
+  });
+  if (final === null) {
+    throw new FoundationError(
+      "lifecycle.runtime-read.delivery-absent",
+      "Exact artifact inspection lost its selected Control Record Store custody",
+      { retryable: true },
+    );
+  }
+  try {
+    const finalPhysical = physicalDisposition(final);
+    if (
+      canonicalJson(final.identity) !== canonicalJson(input.opened.identity) ||
+      canonicalJson(finalPhysical) !== canonicalJson(physical)
+    ) {
+      throw new FoundationError(
+        "lifecycle.runtime-read.control-epoch-mixed",
+        "Exact artifact inspection requires unchanged Store identity and physical custody",
+        { retryable: true },
+      );
+    }
+    // verifyIntegrity updates the Store-owned replay. Read its state afterwards;
+    // the first connection's replay cannot establish the final selection.
+    await final.store.verifyIntegrity();
+    const delivery = publicDeliveryState(final.store, finalPhysical);
+    const retainedHead = originalHead === null ? null
+      : final.store.listEvents(originalHead.sequence - 1, 1)[0] ?? null;
+    if (
+      delivery.journal.eventCount < input.delivery.journal.eventCount ||
+      (originalHead !== null && (
+        retainedHead === null || retainedHead.sequence !== originalHead.sequence ||
+        retainedHead.eventId !== originalHead.eventId || retainedHead.digest !== originalHead.digest
+      ))
+    ) {
+      throw new FoundationError(
+        "lifecycle.runtime-read.control-epoch-mixed",
+        "Exact artifact inspection requires the original Journal head to remain an exact prefix",
+        { retryable: true },
+      );
+    }
+    if (input.request.input.kind === "record") {
+      const retained = inspectDeliveryControl(final.store, finalPhysical, input.request.input);
+      if (retained.kind !== "record" || value.kind !== "record" || canonicalJson(retained.record) !== canonicalJson(value.record)) {
+        throw new FoundationError("lifecycle.control-inspection.reference", "Exact artifact inspection does not reproduce the original complete retained revision");
+      }
+    } else {
+      const selection = foundationArtifactInspectionSelection(input.request.input);
+      if (selection === null) throw new TypeError("Stable inspection requires an artifact selection");
+      resolveFoundationInspectionSelection(final.store, selection);
+    }
+    return readResult({
+      request: input.request, observedAt, repository: repository.repository,
+      delivery, head: headReference(final.store, delivery), status: "completed",
+      diagnostics: repository.diagnostics, value,
+    });
+  } finally {
+    final.store.close();
+  }
+}
+
 function readOperation(value: FoundationRuntimeOperationRequest): value is FoundationRuntimeReadRequest {
   return READ_OPERATIONS.has(value.operation as FoundationRuntimeReadOperation);
 }
 
 function readInvestment(
-  value: Readonly<{ model: string; reasoning: string }> | undefined,
-): Readonly<{ model: string; reasoning: string }> {
-  return Object.freeze(value ?? { model: "installed-provider", reasoning: "installed-selection" });
+  value: Readonly<{ model: string; reasoning: string }> | null | undefined,
+): Readonly<{ model: string; reasoning: string }> | null {
+  return value == null ? null : Object.freeze(value);
 }
 
 async function compileInboxSnapshot(input: Readonly<{
@@ -798,13 +841,13 @@ const DEFAULT_READ_OWNERS: FoundationRuntimeReadOwners = Object.freeze({
 });
 
 /**
- * Construct the read-only v10 operation surface. Store discovery is exact and
+ * Construct the read-only v17 operation surface. Store discovery is exact and
  * no read path appends an event, creates a revision, or changes repository
  * state.
  */
 export function createFoundationRuntimeReadSurface(options: Readonly<{
   machineHome: string | null;
-  investment?: Readonly<{ model: string; reasoning: string }>;
+  investment?: Readonly<{ model: string; reasoning: string }> | null;
   owners?: Partial<FoundationRuntimeReadOwners>;
   now?: () => string;
 }>): FoundationRuntimeReadSurface {
@@ -820,7 +863,7 @@ export function createFoundationRuntimeReadSurface(options: Readonly<{
       if (!readOperation(request)) {
         throw new FoundationError(
           "lifecycle.runtime-read.operation",
-          "The read surface accepts only repository validation, Delivery status, inspection, and export",
+          "The read surface accepts only repository validation and Delivery read operations",
         );
       }
       if (request.operation !== "repository.validate" && options.machineHome === null) {
@@ -997,12 +1040,13 @@ export function createFoundationRuntimeReadSurface(options: Readonly<{
           const before = await opened.store.verifyIntegrity();
           const physical = physicalDisposition(opened);
           const delivery = publicDeliveryState(opened.store, physical);
-          const leaseDiagnostic = activeDeliveryLeaseDiagnostic({
-            store: opened.store,
-            physical,
-            delivery,
-            repository: observed.repository,
-          });
+          if (request.operation === "delivery.inspect" && (request.input.kind === "record" ||
+              (isContextInspectionSelector(request.input) && request.input.kind !== "authorization-review"))) {
+            return await readStableInspection({
+              request: { ...request, input: request.input }, machineHome: machineHome!,
+              owners, opened, delivery, repository: observed, now,
+            });
+          }
           const generation = compileDeliveryGeneration({
             store: opened.store,
             physical,
@@ -1010,11 +1054,21 @@ export function createFoundationRuntimeReadSurface(options: Readonly<{
             state: delivery,
           });
           const value = request.operation === "delivery.inspect"
-            ? inspectDeliveryControl(opened.store, physical, request.input, {
-                repository: observed.repository,
-                investment: readInvestment(options.investment),
-                generation,
-              })
+            ? isContextInspectionSelector(request.input)
+              ? await compileFoundationContextInspection({
+                  machineHome: machineHome!,
+                  target: request.target,
+                  store: opened.store,
+                  state: delivery,
+                  generation,
+                  selector: request.input,
+                })
+              : inspectDeliveryControl(opened.store, physical, request.input, {
+                  repository: observed.repository,
+                  investment: readInvestment(options.investment),
+                  generation,
+                  observedAt,
+                })
             : request.operation === "delivery.export"
               ? exportDeliveryControl(opened.store, physical, request.input)
               : request.operation === "delivery.diff"
@@ -1043,6 +1097,7 @@ export function createFoundationRuntimeReadSurface(options: Readonly<{
                         physical,
                         repository: observed.repository,
                         investment: readInvestment(options.investment),
+                        observedAt,
                       }),
                     })
                   : null;
@@ -1083,7 +1138,6 @@ export function createFoundationRuntimeReadSurface(options: Readonly<{
               status: "completed",
               diagnostics: Object.freeze([
                 ...observed.diagnostics,
-                ...(leaseDiagnostic === null ? [] : [leaseDiagnostic]),
               ]),
               value,
             });

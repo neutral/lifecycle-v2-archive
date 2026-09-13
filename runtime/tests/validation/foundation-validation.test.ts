@@ -131,7 +131,7 @@ test("validation implementation identity cannot substitute another installed sch
 });
 
 test("schema validation is prototype-independent inside the strict JSON value domain", () => {
-  const schemaId = "urn:lifecycle:schema:provider-descriptor:v6";
+  const schemaId = "urn:lifecycle:schema:provider-descriptor:v7";
   const ordinary = structuredClone(FOUNDATION_INSTALLED_PROVIDER_DESCRIPTOR);
   const withoutPrototypes = nullPrototypeJson(ordinary);
   assert.deepEqual(

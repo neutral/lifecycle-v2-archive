@@ -17,6 +17,16 @@ function property(
  * acceptable.
  */
 export const deliveryProperties = Object.freeze({
+  workDelegation: property(
+    "LK.WORK-DELEGATION.SET-STOP",
+    "spec-source/spec/ATTEMPT_VIEW.md#work-delegation",
+    "safety",
+    "Setting and stopping exact finite resource permission preserves admitted work topology and operation eligibility; Stop changes only the selected permission's stopped state and does not reset lifetime charges.",
+  ),
+  integrationOrdering: property(
+    "LK.INTEGRATION.EXACT-SUBJECT", "spec-source/spec/DELIVERY.md#explicit-integration", "safety",
+    "Only a constructed Assessment advances its exact source Candidate against its selected parent; changed context requires a Condition before completion, while conflict or invalidity preserves the Candidate and evaluation remains unavailable before successful integration.",
+  ),
   candidateAbsence: property(
     "LK.CANDIDATE.ABSENCE",
     "spec-source/spec/DELIVERY.md#candidate-condition",
@@ -64,6 +74,12 @@ export const deliveryProperties = Object.freeze({
     "spec-source/spec/DELIVERY.md#eligibility",
     "bounded-deadlock-freedom",
     "A modeled nonterminal Journal head exposes at least one eligible operation.",
+  ),
+  boundedContinuation: property(
+    "LK.PROGRESS.BOUNDED-CONTINUATION",
+    "spec-source/spec/DELIVERY.md#productive-completeness",
+    "bounded-conditional-progress",
+    "Each declared feasible retained prefix reaches its exact productive Journal outcome within its stated finite supplied-response schedule; recovery eligibility and no-ship do not satisfy that outcome.",
   ),
   terminalOrdering: property(
     "LK.TERMINAL.ORDERING",

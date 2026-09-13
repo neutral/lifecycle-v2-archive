@@ -4,6 +4,7 @@ import {
 } from "../control/kind-registry.js";
 import { compileControlRecordRevision } from "../control/model.js";
 import { assertDeliveryControlRecordPayload } from "../control/payload-registry.js";
+import { resolveFailedIntegrationCorrectionV1, type FoundationFailedIntegrationCorrectionV1 } from "../control/integration-assessment.js";
 import type {
   ControlJsonObject,
   ControlJsonValue,
@@ -11,15 +12,17 @@ import type {
   ControlRecordRevision,
 } from "../control/types.js";
 import { FoundationError } from "../error.js";
+import { knowledgeOrControlPath } from "../knowledge/coverage.js";
+import { knowledgeOccurrence, knowledgeOccurrenceItemId } from "../knowledge/identity.js";
 import type {
-  FoundationDescriptionSpec,
   FoundationEvidenceKind,
   FoundationKnowledgeRecord,
+  FoundationKnowledgeOccurrence,
   FoundationKnowledgeSet,
   FoundationKnowledgeSourceResolution,
-  FoundationRelationshipEdge,
 } from "../knowledge/types.js";
-import { exactTreeEntries, objectBlobBytes } from "../repository/git.js";
+import { exactBlobSizes, exactTreeEntries, objectBlobBytes } from "../repository/git.js";
+import type { FoundationBuilderRepairRepositoryV1 } from "../candidate/repair-output.js";
 import { buildProductState } from "../repository/product-state.js";
 import type {
   FoundationCheckBinding,
@@ -32,6 +35,7 @@ import {
   canonicalJson,
   canonicalPrettyJson,
   digestCanonical,
+  selfDigest,
   sha256Bytes,
   type Sha256,
 } from "../validation/canonical.js";
@@ -42,7 +46,6 @@ import {
   ProjectionByteInventoryBuilder,
   projectionIndexBytes,
 } from "./content.js";
-import { exactBlobSizes } from "./objects.js";
 import { foundationRepositorySourceMaterials } from "./source-context.js";
 import type {
   FoundationExecutionProjectionRequest,
@@ -61,7 +64,10 @@ import type {
   FoundationProjectionSourceRoot,
   FoundationProjectionUnresolved,
 } from "./types.js";
+import { buildClosure, descriptionsForPath, requireOneDescription, governedPath, seedSubject,
+  type ClosureEntry, type ClosureSeed } from "./execution-closure.js";
 import { assertProjectionPropositionOrder } from "./verification.js";
+import { mandatoryProjectionItemSizeErrorV1 } from "./mandatory-refusal.js";
 
 const KIND_ORDER = new Map([
   ["behavior", 0],
@@ -69,6 +75,7 @@ const KIND_ORDER = new Map([
   ["blueprint", 2],
   ["description", 3],
   ["check", 4],
+  ["discipline", 5],
 ]);
 
 const REACHABLE_CATEGORIES: readonly FoundationProjectionReachableCategory[] = Object.freeze([
@@ -93,6 +100,22 @@ export type FoundationReviewerProjectionObservation = Readonly<{
   treeEntries: readonly FoundationGitTreeEntry[];
   knowledge: FoundationKnowledgeSet;
   diff: Readonly<{ digest: Sha256; bytes: Uint8Array }>;
+}>;
+
+/** A separately reopened, complete exact integration-parent observation. */
+export type FoundationIntegrationProjectionRecords = Readonly<{
+  assessment: ControlRecordRevision;
+  sourceCandidate: ControlRecordRevision;
+}>;
+
+export type FoundationIntegrationParentProjectionInput = Readonly<{
+  loaded: FoundationLoadedRepositorySnapshot;
+  knowledge: FoundationKnowledgeSet;
+}>;
+
+export type FoundationFailedIntegrationProjectionInput = Readonly<{
+  correction: FoundationFailedIntegrationCorrectionV1;
+  parent: FoundationIntegrationParentProjectionInput;
 }>;
 
 /** Exact retained Agent claim and the Attempt subject it results from. */
@@ -131,53 +154,6 @@ export type FoundationExecutionCompilation = Readonly<{
   omission: FoundationProjectionOmission;
   inventory: readonly FoundationProjectionByteInventoryEntry[];
 }>;
-
-type ClosureEntry = {
-  record: FoundationKnowledgeRecord;
-  reasons: Set<string>;
-  paths: Map<string, readonly string[]>;
-};
-
-type ClosureSeed = Readonly<{ id: string; reason: string }>;
-
-function copyClosureEntry(entry: ClosureEntry): ClosureEntry {
-  return {
-    record: entry.record,
-    reasons: new Set(entry.reasons),
-    paths: new Map(entry.paths),
-  };
-}
-
-function reconcileReviewerKnowledgeClosures(options: {
-  base: ReadonlyMap<string, ClosureEntry>;
-  candidate: ReadonlyMap<string, ClosureEntry>;
-}): Readonly<{
-  base: ReadonlyMap<string, ClosureEntry>;
-  candidate: ReadonlyMap<string, ClosureEntry>;
-}> {
-  const base = new Map([...options.base].map(([id, entry]) => [
-    id,
-    copyClosureEntry(entry),
-  ]));
-  const candidate = new Map<string, ClosureEntry>();
-  for (const [id, candidateEntry] of options.candidate) {
-    const baseEntry = base.get(id);
-    if (baseEntry === undefined) {
-      candidate.set(id, copyClosureEntry(candidateEntry));
-      continue;
-    }
-    if (canonicalJson(baseEntry.record) !== canonicalJson(candidateEntry.record)) {
-      throw new FoundationError(
-        "lifecycle.projection.citation-identity-conflict",
-        `Reviewer Projection cannot expose different base and Candidate Knowledge under identity ${id}`,
-        { observedFacts: { identity: id } },
-      );
-    }
-    for (const reason of candidateEntry.reasons) baseEntry.reasons.add(reason);
-    for (const [key, path] of candidateEntry.paths) baseEntry.paths.set(key, path);
-  }
-  return Object.freeze({ base, candidate });
-}
 
 type ReachableCandidate = Readonly<{
   id: string;
@@ -391,17 +367,8 @@ async function mandatoryBlobBytes(options: {
     });
   }
   if (observedBytes > options.profile.maximumItemBytes) {
-    throw new FoundationError("lifecycle.projection.mandatory-too-large", `Mandatory ${options.category} ${options.locator} exceeds the selected per-item bound`, {
-      observedFacts: {
-        category: options.category,
-        id: options.id,
-        locator: options.locator,
-        objectId: options.objectId,
-        observedBytes,
-        maximumItemBytes: options.profile.maximumItemBytes,
-        profile: options.profile.id,
-      },
-    });
+    throw mandatoryProjectionItemSizeErrorV1({ profile: options.profile, category: options.category,
+      id: options.id, locator: options.locator, objectId: options.objectId, observedBytes });
   }
   return objectBlobBytes(options.repository, options.objectId, observedBytes);
 }
@@ -429,277 +396,6 @@ function recordOrder(left: FoundationKnowledgeRecord, right: FoundationKnowledge
     compareCodePoints(left.path, right.path);
 }
 
-function edgeOrder(left: FoundationRelationshipEdge, right: FoundationRelationshipEdge): number {
-  return compareCodePoints(
-    `${left.source}\0${left.type}\0${left.target}\0${left.digest}`,
-    `${right.source}\0${right.type}\0${right.target}\0${right.digest}`,
-  );
-}
-
-function currentEdges(knowledge: FoundationKnowledgeSet): readonly FoundationRelationshipEdge[] {
-  return Object.freeze(knowledge.relationships.filter((edge) => {
-    const source = knowledge.index.currentByIdentity.get(edge.source);
-    const target = knowledge.index.currentByIdentity.get(edge.target);
-    return source !== undefined && target !== undefined &&
-      edge.sourceRevision === source.frontMatter.revision &&
-      edge.targetRevision === target.frontMatter.revision;
-  }).sort(edgeOrder));
-}
-
-/** Iterative Kosaraju traversal over required dependency edges. */
-function dependencyComponents(
-  current: ReadonlyMap<string, FoundationKnowledgeRecord>,
-  edges: readonly FoundationRelationshipEdge[],
-): ReadonlyMap<string, readonly string[]> {
-  const adjacency = new Map<string, string[]>();
-  for (const id of current.keys()) adjacency.set(id, []);
-  for (const edge of edges) {
-    if (edge.type === "depends-on" && edge.required) adjacency.get(edge.source)?.push(edge.target);
-  }
-  for (const values of adjacency.values()) values.sort(compareCodePoints);
-  const nodes = [...adjacency.keys()].sort(compareCodePoints);
-  const visited = new Set<string>();
-  const order: string[] = [];
-  for (const start of nodes) {
-    if (visited.has(start)) continue;
-    visited.add(start);
-    const stack: Array<{ node: string; next: number }> = [{ node: start, next: 0 }];
-    while (stack.length > 0) {
-      const frame = stack.at(-1)!;
-      const neighbors = adjacency.get(frame.node) ?? [];
-      if (frame.next < neighbors.length) {
-        const next = neighbors[frame.next]!;
-        frame.next += 1;
-        if (!visited.has(next)) {
-          visited.add(next);
-          stack.push({ node: next, next: 0 });
-        }
-      } else {
-        order.push(frame.node);
-        stack.pop();
-      }
-    }
-  }
-  const reverse = new Map(nodes.map((node) => [node, [] as string[]]));
-  for (const [source, targets] of adjacency) for (const target of targets) reverse.get(target)?.push(source);
-  for (const values of reverse.values()) values.sort(compareCodePoints);
-  visited.clear();
-  const byIdentity = new Map<string, readonly string[]>();
-  for (let index = order.length - 1; index >= 0; index -= 1) {
-    const start = order[index]!;
-    if (visited.has(start)) continue;
-    const component: string[] = [];
-    const stack = [start];
-    visited.add(start);
-    while (stack.length > 0) {
-      const node = stack.pop()!;
-      component.push(node);
-      const neighbors = reverse.get(node) ?? [];
-      for (let neighbor = neighbors.length - 1; neighbor >= 0; neighbor -= 1) {
-        const next = neighbors[neighbor]!;
-        if (!visited.has(next)) {
-          visited.add(next);
-          stack.push(next);
-        }
-      }
-    }
-    component.sort(compareCodePoints);
-    const frozen = Object.freeze(component);
-    for (const id of component) byIdentity.set(id, frozen);
-  }
-  return byIdentity;
-}
-
-function buildClosure(options: {
-  knowledge: FoundationKnowledgeSet;
-  seeds: readonly ClosureSeed[];
-  role: FoundationExecutionProjectionRequest["role"];
-  maximumDepth: number;
-}): ReadonlyMap<string, ClosureEntry> {
-  const current = options.knowledge.index.currentByIdentity;
-  const edges = currentEdges(options.knowledge);
-  const outgoing = new Map<string, FoundationRelationshipEdge[]>();
-  const incoming = new Map<string, FoundationRelationshipEdge[]>();
-  for (const edge of edges) {
-    const out = outgoing.get(edge.source) ?? [];
-    out.push(edge);
-    outgoing.set(edge.source, out);
-    const into = incoming.get(edge.target) ?? [];
-    into.push(edge);
-    incoming.set(edge.target, into);
-  }
-  const components = dependencyComponents(current, edges);
-  const closure = new Map<string, ClosureEntry>();
-  const minimumDepth = new Map<string, number>();
-  const queue: Array<Readonly<{ id: string; reason: string; depth: number; path: readonly string[] }>> = [];
-
-  const include = (id: string, reason: string, depth: number, path: readonly string[]): void => {
-    const record = current.get(id);
-    if (record === undefined) {
-      throw new FoundationError("lifecycle.projection.root-unresolved", `Execution Projection requires missing current Knowledge ${id}`, {
-        observedFacts: { id, reason },
-      });
-    }
-    if (depth > options.maximumDepth) {
-      throw new FoundationError("lifecycle.projection.bounds-invalid", `Knowledge closure exceeds the selected ${options.maximumDepth}-edge relationship bound`, {
-        observedFacts: { id, path, depth, maximumRelationshipDepth: options.maximumDepth },
-      });
-    }
-    let entry = closure.get(id);
-    if (entry === undefined) {
-      entry = { record, reasons: new Set(), paths: new Map() };
-      closure.set(id, entry);
-    }
-    entry.reasons.add(reason);
-    entry.paths.set(path.join("\0"), Object.freeze([...path]));
-    const priorDepth = minimumDepth.get(id);
-    if (priorDepth === undefined || depth < priorDepth) {
-      minimumDepth.set(id, depth);
-      queue.push(Object.freeze({ id, reason, depth, path: Object.freeze([...path]) }));
-    }
-  };
-
-  for (const seed of [...options.seeds].sort((left, right) => compareCodePoints(`${left.id}\0${left.reason}`, `${right.id}\0${right.reason}`))) {
-    include(seed.id, seed.reason, 0, [seed.id]);
-  }
-  for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    const item = queue[cursor]!;
-    const addEdge = (target: string, label: string): void => {
-      include(target, label, item.depth + 1, [...item.path, target]);
-    };
-    for (const edge of outgoing.get(item.id) ?? []) {
-      if (!edge.required || !["refines", "verified-by", "depends-on"].includes(edge.type)) continue;
-      addEdge(edge.target, `${edge.type}:${edge.source}->${edge.target}`);
-    }
-    for (const edge of incoming.get(item.id) ?? []) {
-      if (edge.type === "constrains" && edge.required) {
-        addEdge(edge.source, `incoming-constrains:${edge.source}->${edge.target}`);
-      } else if (edge.type === "realizes" && (options.role === "builder" || options.role === "reviewer")) {
-        // Format v1 scopes are prose. Including every current realization is the
-        // deterministic conservative role addition; no model judges scope here.
-        addEdge(edge.source, `incoming-realizes:${edge.source}->${edge.target}`);
-      }
-    }
-    for (const member of components.get(item.id) ?? []) {
-      if (member !== item.id) include(member, `dependency-component:${item.id}`, item.depth + 1, [...item.path, member]);
-    }
-  }
-  return closure;
-}
-
-function matchesDescription(path: string, selector: FoundationDescriptionSpec["coverage"][number]): boolean {
-  if (selector.mode === "file") return selector.path === path;
-  return path !== selector.path && atOrBelow(path, selector.path) && !selector.exclude.some((entry) => atOrBelow(path, entry));
-}
-
-function descriptionsForPath(knowledge: FoundationKnowledgeSet, path: string): readonly string[] {
-  const exact = knowledge.coverage.filter((entry) => entry.path === path).map((entry) => entry.descriptionId);
-  if (exact.length > 0) return Object.freeze(sortUniqueCodePoints(exact));
-  const candidates = knowledge.currentRecords.filter((record) => record.frontMatter.kind === "description" &&
-    (record.frontMatter.spec as FoundationDescriptionSpec).coverage.some((selector) => matchesDescription(path, selector)))
-    .map((record) => record.frontMatter.id);
-  return Object.freeze(sortUniqueCodePoints(candidates));
-}
-
-function requireOneDescription(knowledge: FoundationKnowledgeSet, path: string): string {
-  const descriptions = descriptionsForPath(knowledge, path);
-  const exempt = knowledge.exemptions.some((entry) => entry.matched && atOrBelow(path, entry.path));
-  if (descriptions.length === 0 && exempt) return "";
-  if (descriptions.length !== 1) {
-    throw new FoundationError(
-      descriptions.length === 0 ? "lifecycle.projection.description-missing" : "lifecycle.projection.description-ambiguous",
-      `Execution Projection requires exactly one primary Description for ${path}`,
-      { observedFacts: { path, descriptionIds: descriptions } },
-    );
-  }
-  return descriptions[0]!;
-}
-
-function governedPath(loaded: FoundationLoadedRepositorySnapshot, path: string): boolean {
-  return loaded.contract.productState.governedImplementationRoots.some((root) => atOrBelow(path, root));
-}
-
-function knowledgeRole(role: string): role is "behavior" | "assurance" | "blueprint" | "description" | "check" {
-  return ["behavior", "assurance", "blueprint", "description", "check"].includes(role);
-}
-
-function seedSubject(options: {
-  loaded: FoundationLoadedRepositorySnapshot;
-  knowledge: FoundationKnowledgeSet;
-  subject: FoundationExecutionProjectionSubject;
-  boundary: ControlRecordRevision;
-}): Readonly<{ seeds: readonly ClosureSeed[]; implementationReasons: ReadonlyMap<string, readonly string[]> }> {
-  const seeds: ClosureSeed[] = [];
-  const reasons = new Map<string, Set<string>>();
-  const addPath = (path: string, reason: string): void => {
-    const values = reasons.get(path) ?? new Set<string>();
-    values.add(reason);
-    reasons.set(path, values);
-  };
-  for (const root of options.subject.knowledgeRoots) {
-    const record = options.knowledge.index.currentByIdentity.get(root.id);
-    if (record === undefined || record.frontMatter.revision !== root.revision ||
-        record.sourceDigest !== root.sourceDigest || record.semanticDigest !== root.semanticDigest) {
-      throw new FoundationError("lifecycle.projection.root-unresolved", `Work Boundary Knowledge root ${root.id} is stale or mismatched`, {
-        observedFacts: { root, currentRevision: record?.frontMatter.revision ?? null },
-      });
-    }
-    seeds.push({ id: root.id, reason: `work-boundary:${root.reason}` });
-  }
-  const sourceRootIds = new Set(options.subject.sourceRoots.map(({ sourceId }) => sourceId));
-  const knowledgeRootIds = new Set(options.subject.knowledgeRoots.map(({ id }) => id));
-  const boundaryMandate = controlObject(options.boundary.payload.mandate, "Work Boundary mandate");
-  const boundaryDirection = controlObject(boundaryMandate.direction, "Work Boundary direction");
-  const boundaryDirectionId = controlString(boundaryDirection.id, "Work Boundary direction identity");
-  for (const obligation of options.subject.core.obligations) {
-    for (const id of obligation.sourceIds) {
-      const isKnowledge = knowledgeRootIds.has(id);
-      const isSource = sourceRootIds.has(id);
-      const isBoundaryMandate = id === boundaryDirectionId;
-      if (Number(isKnowledge) + Number(isSource) + Number(isBoundaryMandate) !== 1) {
-        throw new FoundationError("lifecycle.projection.root-unresolved", `Obligation ${obligation.id} source ${id} does not resolve to exactly one Knowledge, source, or fixed-mandate subject`, {
-          observedFacts: {
-            obligationId: obligation.id,
-            sourceId: id,
-            knowledgeMatches: isKnowledge ? 1 : 0,
-            sourceMatches: isSource ? 1 : 0,
-            fixedMandateMatches: isBoundaryMandate ? 1 : 0,
-          },
-        });
-      }
-      if (isKnowledge) seeds.push({ id, reason: `obligation:${obligation.id}` });
-    }
-  }
-  for (const check of options.subject.core.checks) seeds.push({ id: check.checkId, reason: `check:${check.id}` });
-  for (const root of options.subject.implementationRoots) {
-    const matches = options.loaded.productState.entries.filter((entry) =>
-      entry.role === "governed-implementation" && atOrBelow(entry.path, root.path));
-    if (matches.length === 0) addPath(root.path, `work-boundary:${root.reason}`);
-    for (const match of matches) addPath(match.path, `work-boundary:${root.reason}`);
-  }
-  for (const artifact of options.subject.core.requiredArtifacts) {
-    if (knowledgeRole(artifact.role)) {
-      const record = options.knowledge.currentRecords.find((entry) => entry.path === artifact.path || entry.frontMatter.id === artifact.id);
-      if (record === undefined) {
-        throw new FoundationError("lifecycle.projection.root-unresolved", `Required ${artifact.role} artifact ${artifact.id} has no current Knowledge record`);
-      }
-      seeds.push({ id: record.frontMatter.id, reason: `required-artifact:${artifact.id}` });
-    } else if (governedPath(options.loaded, artifact.path)) {
-      addPath(artifact.path, `required-artifact:${artifact.id}`);
-    }
-  }
-  for (const path of reasons.keys()) {
-    const descriptionId = requireOneDescription(options.knowledge, path);
-    if (descriptionId !== "") seeds.push({ id: descriptionId, reason: `description-coverage:${path}` });
-  }
-  return Object.freeze({
-    seeds: Object.freeze(seeds),
-    implementationReasons: new Map([...reasons].sort(([left], [right]) => compareCodePoints(left, right)).map(([path, values]) => [
-      path,
-      Object.freeze([...values].sort(compareCodePoints)),
-    ])),
-  });
-}
 
 function sameTreeEntry(
   left: FoundationGitTreeEntry | undefined,
@@ -823,7 +519,7 @@ async function verifyCandidateObservation(options: {
   if (
     candidateRevision.processId !== options.boundary.processId ||
     seal.processId !== options.boundary.processId ||
-    candidateRevision.payload.schema !== "lifecycle.candidate-revision-payload.v2" ||
+    candidateRevision.payload.schema !== "lifecycle.candidate-revision-payload.v3" ||
     !sameControlReference(sealedCandidate, controlRevisionReference(candidateRevision)) ||
     !sameControlReference(sealBoundary, controlRevisionReference(options.boundary)) ||
     !sameControlReference(candidateBoundary, controlRevisionReference(options.boundary)) ||
@@ -925,11 +621,12 @@ async function verifyCandidateObservation(options: {
 
 async function mandatoryRecordItem(options: {
   record: FoundationKnowledgeRecord;
-  basis: "base" | "candidate";
+  basis: FoundationKnowledgeOccurrence["basis"];
   closure: ClosureEntry;
   inventory: ProjectionByteInventoryBuilder;
 }): Promise<FoundationProjectionMandatoryItem> {
   const bytes = Buffer.from(options.record.sourceText, "utf8");
+  const occurrence = knowledgeOccurrence(options.record, options.basis);
   const key = `knowledge:${options.basis}:${options.record.frontMatter.id}:r${options.record.frontMatter.revision}`;
   const stored = options.inventory.add({
     tier: "mandatory",
@@ -940,11 +637,11 @@ async function mandatoryRecordItem(options: {
     encoding: "utf-8",
   });
   return buildMandatoryItem({
-    id: stableId("knowledge", { basis: options.basis, id: options.record.frontMatter.id, revision: options.record.frontMatter.revision, sourceDigest: options.record.sourceDigest }),
+    id: knowledgeOccurrenceItemId(occurrence),
     category: "knowledge",
     sourceIdentity: options.record.frontMatter.id,
     kind: options.record.frontMatter.kind,
-    authority: "product-knowledge",
+    authority: options.record.frontMatter.kind === "discipline" ? "discipline-guidance" : "product-knowledge",
     locator: options.record.path,
     revision: options.record.frontMatter.revision,
     sourceDigest: options.record.sourceDigest,
@@ -953,7 +650,9 @@ async function mandatoryRecordItem(options: {
     relationshipPaths: [...options.closure.paths.values()],
     content: stored.content,
     presentationHint: "markdown",
-    useLimit: "The record retains its declared kind and owner authority; inclusion does not transfer ownership.",
+    useLimit: `${options.basis === "base" ? "Admitted" : "Candidate"} basis occurrence of ${occurrence.id} revision ${occurrence.revision}. ${options.record.frontMatter.kind === "discipline"
+      ? "Advisory Discipline guidance supports agent judgment; it does not create product meaning, mandatory proof, capability, or authority."
+      : "The record retains its declared kind and owner authority; inclusion does not transfer ownership."}`,
   });
 }
 
@@ -1075,7 +774,7 @@ async function sourceItems(options: {
   objectRepository: string;
   profile: FoundationProjectionProfile;
   knowledge: FoundationKnowledgeSet;
-  basis: "base" | "candidate";
+  basis: FoundationKnowledgeOccurrence["basis"];
   includedIds: ReadonlySet<string>;
   roots: readonly FoundationExecutionProjectionSubject["sourceRoots"][number][];
   candidateDiff?: Readonly<{ digest: Sha256; bytes: Uint8Array }>;
@@ -1257,15 +956,17 @@ async function sourceItems(options: {
       mediaType: current.mediaType,
       encoding: current.encoding,
     });
+    const occurrenceId = options.basis === "base" ? root.sourceId
+      : stableId("source.anchor", { basis: options.basis, sourceId: root.sourceId, digest: root.digest });
     items.push(buildTierTwoItem({
-      id: root.sourceId,
+      id: occurrenceId,
       reference: root.reference,
       revision: root.revision,
       digest: root.digest,
       authority: root.authority,
       semantic: Object.freeze({
         class: "source" as const,
-        subjectId: root.sourceId,
+        subjectId: occurrenceId,
         subjectDigest: root.digest,
         evidenceKind: null,
       }),
@@ -1321,7 +1022,7 @@ async function sourceItems(options: {
       inclusionReasons: Object.freeze(["reviewer-sealed-candidate"]),
       presentationHint: "json" as const,
       content: stored.content,
-      useLimit: "The exact Candidate Product State inventory is a runtime-authenticated fact; acceptance judgment remains with the reviewer and Founder.",
+      useLimit: "The exact Candidate Product State inventory is a runtime-authenticated fact; acceptance judgment remains with the reviewer and Director.",
     }));
   }
   return Object.freeze({
@@ -1425,7 +1126,10 @@ function checkReceiptItems(options: {
     const selection = selections
       .map((value) => controlObject(value, "Work Boundary Check selection"))
       .find((value) => value.id === selectionId);
-    const sealTarget = exactRelationship(receipt, "checks-seal", "candidate-seal");
+    const phase = receipt.payload.phase;
+    const subject = phase === "baseline"
+      ? exactRelationship(receipt, "checks-boundary", "work-boundary")
+      : exactRelationship(receipt, "checks-seal", "candidate-seal");
     const selectedBindings = selection === undefined
       ? Object.freeze([])
       : controlArray(selection.bindings, "Work Boundary Check Bindings");
@@ -1435,16 +1139,17 @@ function checkReceiptItems(options: {
     if (
       seal === null ||
       receipt.processId !== seal.processId ||
-      !sameControlReference(sealTarget, controlRevisionReference(seal)) ||
-      receipt.payload.phase !== "final" ||
+      !sameControlReference(subject, controlRevisionReference(phase === "baseline" ? options.boundary : seal)) ||
+      (phase !== "baseline" && phase !== "final") ||
       selection === undefined ||
       canonicalJson(selection.definition) !== canonicalJson(receipt.payload.definition) ||
       selection.modality !== receipt.payload.modality ||
+      (phase === "baseline" ? selection.baselineRequired !== true : selection.finalRequired !== true) ||
       !exactBinding
     ) {
       throw new FoundationError(
         "lifecycle.projection.evidence-invalid",
-        `Reviewer Check Receipt ${receipt.recordId} does not bind the exact final Candidate Seal and admitted Check selection`,
+        `Reviewer Check Receipt ${receipt.recordId} does not bind its exact original baseline Boundary or final Candidate Seal and admitted Check selection`,
       );
     }
     const bytes = controlProjectionBytes(receipt);
@@ -1517,7 +1222,7 @@ function agentWorkProductItems(options: {
     if (
       workProduct.processId !== options.boundary.processId ||
       attempt.processId !== options.boundary.processId ||
-      workProduct.payload.schema !== "lifecycle.agent-work-product-payload.v2" ||
+      workProduct.payload.schema !== "lifecycle.agent-work-product-payload.v5" ||
       attempt.payload.schema !== "lifecycle.agent-attempt-payload.v3" ||
       workProduct.semanticAuthority !== "agent-proposed" ||
       workProduct.semanticAuthor.kind !== "agent" ||
@@ -1556,7 +1261,7 @@ function agentWorkProductItems(options: {
       inclusionReasons: Object.freeze(["delivery-applicable-agent-work-product"]),
       presentationHint: "markdown" as const,
       content: stored.content,
-      useLimit: "The Work Product is one exact Agent proposal, not a runtime fact or acceptance judgment.",
+      useLimit: "The Work Product contains Agent-authored claims and judgments; it is not a Runtime observation or Director acceptance decision.",
     }));
   }
   return Object.freeze(values.sort((left, right) =>
@@ -1827,6 +1532,147 @@ async function reachableItems(options: {
   return Object.freeze({ items: Object.freeze(items), omission: omission(options.request.profile, candidates, selected) });
 }
 
+async function failedIntegrationItems(options: Readonly<{
+  input: FoundationFailedIntegrationProjectionInput;
+  request: FoundationExecutionProjectionRequest;
+  boundary: ControlRecordRevision;
+  inventory: ProjectionByteInventoryBuilder;
+}>): Promise<readonly FoundationProjectionSourceItem[]> {
+  const { correction, parent } = options.input;
+  const current = correction.candidateLineage[0];
+  if (options.request.role !== "builder" || current === undefined || options.request.subject.candidate === null ||
+      !sameControlReference(controlRevisionReference(current), options.request.subject.candidate.revision)) {
+    throw new FoundationError("lifecycle.projection.control-invalid", "Failed integration correction must bind the exact current builder Candidate");
+  }
+  const records = [options.boundary, correction.assessment, ...correction.candidateLineage].map((record) =>
+    exactControlRevision(record, record.recordKind, "Failed integration correction record"));
+  const retained = new Map(records.map((record) => [`${record.recordId}\0${record.revision}`, record]));
+  const verified = resolveFailedIntegrationCorrectionV1({
+    store: { identity: { targetId: options.request.target.id, storeId: "projection-correction", processId: options.boundary.processId },
+      getRevision: (id, revision) => retained.get(`${id}\0${revision}`) ?? null },
+    assessment: controlRevisionReference(correction.assessment), boundary: options.boundary, candidate: current,
+  });
+  if (verified === null || canonicalJson(verified) !== canonicalJson(correction) ||
+      !parent.knowledge.validation.complete || !parent.knowledge.validation.valid ||
+      canonicalJson(parent.loaded.snapshot) !== canonicalJson(verified.canonicalParent) ||
+      selfDigest(parent.loaded.snapshot) !== verified.canonicalParent.digest ||
+      parent.loaded.epoch.commit !== verified.canonicalParent.commit || parent.loaded.epoch.tree !== verified.canonicalParent.tree ||
+      parent.knowledge.manifest.digest !== verified.canonicalParent.knowledgeSetDigest) {
+    throw new FoundationError("lifecycle.projection.basis-mismatch", "Failed integration correction requires the exact complete retained attempted parent");
+  }
+  const entries = await exactTreeEntries(parent.loaded.repository, verified.canonicalParent.tree, verified.canonicalParent.objectFormat);
+  if (canonicalJson(entries) !== canonicalJson(parent.loaded.treeEntries)) {
+    throw new FoundationError("lifecycle.projection.content-digest", "Attempted parent inventory differs from its exact retained tree");
+  }
+  const selectedEntries = new Map<string, FoundationGitTreeEntry>();
+  const payload = correction.assessment.payload;
+  const conflicts = payload.conflicts as readonly Readonly<{ path: string; kind: string }>[];
+  const paths = sortUniqueCodePoints(conflicts.map(({ path }) => path)).map((path) => {
+    const exact = entries.find((entry) => entry.path === path);
+    const descendants = entries.filter((entry) => entry.path.startsWith(`${path}/`));
+    const blockingAncestor = entries.find((entry) => path.startsWith(`${entry.path}/`)) ?? null;
+    for (const entry of [...(exact === undefined ? [] : [exact]), ...descendants, ...(blockingAncestor === null ? [] : [blockingAncestor])]) {
+      selectedEntries.set(entry.path, entry);
+    }
+    return Object.freeze({ path, disposition: exact !== undefined ? "entry" : descendants.length > 0 ? "directory" : "absent",
+      exact: exact ?? null, descendants: Object.freeze(descendants.map(({ path }) => path)), blockingAncestor });
+  });
+  const result: FoundationProjectionSourceItem[] = [];
+  const sourceReference = (key: string) => `candidate:integration-correction:${key.startsWith("parent:")
+    ? `parent:${sha256Bytes(key.slice(7)).slice(7)}` : key}`;
+  const useLimit = "Read-only failed integration correction input. The attempted parent does not replace the governing Work Boundary or the selected Candidate application base; a fresh integration must assess the corrected Candidate.";
+  const add = (key: string, bytes: Uint8Array, options: Readonly<{ authority: FoundationProjectionSourceItem["authority"];
+    subjectId: string; subjectDigest: Sha256; presentationHint: FoundationProjectionPresentationHint;
+    mediaType: string; encoding: "utf-8" | "binary" }>) => {
+    const stored = optionsInventory.add({ tier: "mandatory", key: `source:failed-integration:${key}`, bytes,
+      mediaType: options.mediaType, encoding: options.encoding });
+    result.push(buildTierTwoItem({ id: stableId("source.integration-correction", { key, digest: stored.digest }),
+      reference: sourceReference(key), revision: correction.assessment.digest, digest: stored.digest,
+      authority: options.authority, semantic: { class: options.authority === "runtime-authenticated-fact" ? "candidate" : "source", subjectId: options.subjectId,
+        subjectDigest: options.subjectDigest, evidenceKind: null }, inclusionReasons: ["builder-failed-integration-correction"],
+      presentationHint: options.presentationHint, content: stored.content, useLimit }));
+  };
+  const optionsInventory = options.inventory;
+  for (const [name, record] of [["assessment", verified.assessment], ["source-candidate", verified.sourceCandidate]] as const) {
+    add(name, controlProjectionBytes(record), { authority: "runtime-authenticated-fact", subjectId: record.recordId,
+      subjectDigest: record.digest, presentationHint: "markdown", mediaType: "text/markdown", encoding: "utf-8" });
+  }
+  const selected = [...selectedEntries.values()].sort((a, b) => compareCodePoints(a.path, b.path));
+  const descriptor = { schema: "lifecycle.integration-correction-input.v1", assessment: controlRevisionReference(verified.assessment),
+    workBoundary: controlRevisionReference(options.boundary), currentCandidate: controlRevisionReference(current),
+    sourceCandidate: controlRevisionReference(verified.sourceCandidate), parent: verified.canonicalParent,
+    completeConflictPaths: true, paths, entries: selected.map((entry) => ({ ...entry,
+      sourceReference: entry.type === "blob" ? sourceReference(`parent:${entry.path}`) : null })) };
+  const descriptorDigest = digestCanonical(descriptor);
+  add("parent-paths", projectionIndexBytes(descriptor), { authority: "runtime-authenticated-fact",
+    subjectId: stableId("integration-correction.paths", descriptorDigest), subjectDigest: descriptorDigest,
+    presentationHint: "plain-text", mediaType: "application/json", encoding: "utf-8" });
+  for (const entry of selected) {
+    if (entry.type !== "blob") continue; // The exact non-blob entry remains explicit in the complete path descriptor.
+    const id = stableId("integration-correction.parent", { assessment: verified.assessment.digest, path: entry.path, objectId: entry.objectId });
+    const bytes = await mandatoryBlobBytes({ repository: parent.loaded.repository, profile: options.request.profile,
+      objectId: entry.objectId, id, locator: entry.path, category: "source" });
+    const presentation = gitMaterialPresentation(bytes, "source");
+    add(`parent:${entry.path}`, bytes, { authority: "repository-reality", subjectId: id,
+      subjectDigest: sha256Bytes(bytes), ...presentation });
+  }
+  return Object.freeze(result);
+}
+
+async function builderRepairItems(options: Readonly<{
+  input: FoundationBuilderRepairRepositoryV1; request: FoundationExecutionProjectionRequest;
+  boundary: ControlRecordRevision; inventory: ProjectionByteInventoryBuilder;
+}>): Promise<readonly FoundationProjectionSourceItem[]> {
+  const { retained, repository, closure } = options.input;
+  const current = controlRevisionReference(retained.currentCandidate);
+  if (options.request.role !== "builder" || options.request.subject.candidate === null ||
+      !sameControlReference(current, options.request.subject.candidate.revision) ||
+      canonicalJson(retained.currentBoundary) !== canonicalJson(options.boundary) ||
+      sha256Bytes(retained.manifestBytes) !== retained.descriptor.carrierManifest.digest ||
+      closure.rootTree !== retained.descriptor.rejection.candidateTree) {
+    throw new FoundationError("lifecycle.projection.control-invalid", "Builder repair context differs from exact current and rejected subjects");
+  }
+  const currentEntries = await exactTreeEntries(options.input.currentRepository, controlString(
+    controlObject(retained.currentCandidate.payload.state, "Repair current Candidate state").tree, "Repair current Candidate tree"), closure.objectFormat);
+  if (canonicalJson(currentEntries) !== canonicalJson(options.input.currentEntries)) {
+    throw new FoundationError("lifecycle.projection.content-digest", "Repair comparison inventory differs from its exact current Candidate");
+  }
+  const rejectedEntries = await exactTreeEntries(repository, closure.rootTree, closure.objectFormat);
+  const before = new Map(currentEntries.map((entry) => [entry.path, entry]));
+  const after = new Map(rejectedEntries.map((entry) => [entry.path, entry]));
+  const paths = sortUniqueCodePoints([...before.keys(), ...after.keys()]).flatMap((path) => {
+    const prior = before.get(path) ?? null;
+    const next = after.get(path) ?? null;
+    return canonicalJson(prior) === canonicalJson(next) ? [] : [Object.freeze({ path, prior, next })];
+  });
+  const sourceReference = (path: string) => `candidate:builder-repair:${sha256Bytes(path).slice(7)}`;
+  const useLimit = "Read-only unselected Product output from a failed builder. These bytes and malformed Knowledge are repair material, not the current Candidate, governing Knowledge, or authority. The writable workspace starts from the exact current Candidate.";
+  const items: FoundationProjectionSourceItem[] = [];
+  const add = (key: string, bytes: Uint8Array, authority: FoundationProjectionSourceItem["authority"], presentation: Readonly<{
+    presentationHint: FoundationProjectionPresentationHint; mediaType: string; encoding: "utf-8" | "binary";
+  }>) => {
+    const stored = options.inventory.add({ tier: "mandatory", key: `source:builder-repair:${key}`, bytes,
+      mediaType: presentation.mediaType, encoding: presentation.encoding });
+    items.push(buildTierTwoItem({ id: stableId("source.builder-repair", { key, receipt: retained.receipt.digest, digest: stored.digest }),
+      reference: sourceReference(key), revision: retained.receipt.digest, digest: stored.digest, authority,
+      semantic: { class: authority === "runtime-authenticated-fact" ? "candidate" : "source", subjectId: stableId("builder-repair.source", { receipt: retained.receipt.digest, key }), subjectDigest: stored.digest, evidenceKind: null },
+      inclusionReasons: ["builder-failed-output-repair"], presentationHint: presentation.presentationHint, content: stored.content, useLimit }));
+  };
+  const index = Object.freeze({ schema: "lifecycle.builder-repair-projection.v1", receipt: controlRevisionReference(retained.receipt),
+    descriptor: retained.descriptor, currentCandidate: current, currentBoundary: controlRevisionReference(options.boundary),
+    completeChangedPaths: true, paths: paths.map((path) => ({ ...path, sourceReference: path.next === null ? null : sourceReference(`file:${path.path}`) })) });
+  add("inventory", projectionIndexBytes(index), "runtime-authenticated-fact", { presentationHint: "plain-text", mediaType: "application/json", encoding: "utf-8" });
+  for (const path of paths) {
+    if (path.next === null) continue;
+    if (path.next.type !== "blob") throw new FoundationError("lifecycle.projection.content-digest", "Repair output contains a non-regular Product entry");
+    const bytes = await mandatoryBlobBytes({ repository, profile: options.request.profile,
+      objectId: path.next.objectId, id: stableId("source.builder-repair", { path: path.path, objectId: path.next.objectId }),
+      locator: path.path, category: "source" });
+    add(`file:${path.path}`, bytes, "informational-source", gitMaterialPresentation(bytes, "source"));
+  }
+  return Object.freeze(items);
+}
+
 export async function compileExecution(options: {
   request: FoundationExecutionProjectionRequest;
   loaded: FoundationLoadedRepositorySnapshot;
@@ -1835,6 +1681,10 @@ export async function compileExecution(options: {
   workBoundary: ControlRecordRevision;
   inventory: ProjectionByteInventoryBuilder;
   candidateObservation?: FoundationReviewerProjectionObservation | null;
+  integrationParent?: FoundationIntegrationParentProjectionInput | null;
+  integrationRecords?: FoundationIntegrationProjectionRecords | null;
+  failedIntegration?: FoundationFailedIntegrationProjectionInput | null;
+  builderRepair?: FoundationBuilderRepairRepositoryV1 | null;
   /** Private scoped repository containing the verified Candidate Carrier and exact admitted base. */
   candidateObjectRepository?: string | null;
   checkReceipts?: readonly ControlRecordRevision[];
@@ -1862,6 +1712,27 @@ export async function compileExecution(options: {
     );
   }
   assertProjectionPropositionOrder(options.subject.core.propositions);
+  const disciplines = options.subject.core.disciplines;
+  const disciplineRoots = options.subject.knowledgeRoots.filter(({ id }) => id.startsWith("discipline."));
+  const exactDisciplines = disciplineRoots.map(({ id, revision, sourceDigest, semanticDigest }) => {
+    const record = options.knowledge.index.currentByIdentity.get(id);
+    return {
+      id, revision, sourceDigest, semanticDigest,
+      title: record?.frontMatter.title,
+      summary: record?.frontMatter.summary,
+      path: record?.path,
+    };
+  }).sort((left, right) => compareCodePoints(left.id, right.id));
+  const workTypes = new Set(options.knowledge.disciplineRegistry.workTypes.map(({ id }) => id));
+  if (disciplines.registryDigest !== options.knowledge.disciplineRegistry.digest ||
+      disciplines.workTypeIds.some((id, index) => !workTypes.has(id) ||
+        (index > 0 && compareCodePoints(disciplines.workTypeIds[index - 1]!, id) >= 0)) ||
+      canonicalJson(disciplines.records) !== canonicalJson(exactDisciplines)) {
+    throw new FoundationError(
+      "lifecycle.projection.discipline-invalid",
+      "Execution Discipline guidance must bind the admitted Registry and exact selected Knowledge roots",
+    );
+  }
   const candidateObjectRepository = options.candidateObjectRepository ?? null;
   if ((options.request.role === "reviewer") !== (candidateObjectRepository !== null)) {
     throw new FoundationError(
@@ -1870,6 +1741,55 @@ export async function compileExecution(options: {
         ? "Reviewer Projection requires one scoped verified Candidate object repository"
         : "Only reviewer Projection accepts a Candidate object repository",
     );
+  }
+  const parent = options.integrationParent ?? null;
+  const integration = options.request.subject.candidate?.integration ?? null;
+  if (options.request.role === "reviewer") {
+    if (parent === null || integration === null ||
+        !parent.knowledge.validation.complete || !parent.knowledge.validation.valid ||
+        parent.loaded.snapshot.digest !== integration.canonicalParent.digest ||
+        parent.loaded.snapshot.targetId !== options.loaded.snapshot.targetId ||
+        options.request.subject.candidate?.baseCommit !== integration.canonicalParent.commit) {
+      throw new FoundationError("lifecycle.projection.reviewer-seal", "Reviewer Projection requires the exact complete valid integration-parent context");
+    }
+  } else if (parent !== null) {
+    throw new FoundationError("lifecycle.projection.reviewer-seal", "Only reviewer Projection accepts integration-parent context");
+  }
+  const integrationSources: FoundationProjectionSourceItem[] = [];
+  const correctionSources = options.failedIntegration == null ? Object.freeze([]) : await failedIntegrationItems({
+    input: options.failedIntegration, request: options.request, boundary, inventory: options.inventory,
+  });
+  const repairSources = options.builderRepair == null ? Object.freeze([]) : await builderRepairItems({
+    input: options.builderRepair, request: options.request, boundary, inventory: options.inventory,
+  });
+  if (options.request.role === "reviewer") {
+    const records = options.integrationRecords;
+    if (records == null) throw new FoundationError("lifecycle.projection.reviewer-seal", "Reviewer requires exact integration Assessment and source Candidate records");
+    for (const [name, kind] of [["assessment", "integration-assessment"], ["sourceCandidate", "candidate-revision"]] as const) {
+      const record = exactControlRevision(records[name], kind, "Integration review record");
+      if (record.processId !== boundary.processId ||
+          !sameControlReference(controlRevisionReference(record), integration![name])) {
+        throw new FoundationError("lifecycle.projection.reviewer-seal", "Integration review record differs from its exact request binding");
+      }
+      const bytes = controlProjectionBytes(record);
+      const stored = options.inventory.add({ tier: "mandatory", key: `source:integration:${name}`, bytes,
+        mediaType: "text/markdown", encoding: "utf-8" });
+      integrationSources.push(buildTierTwoItem({
+        id: stableId("source.integration", { name, digest: record.digest }),
+        reference: `candidate:integration-${name}`, revision: record.digest, digest: record.digest,
+        authority: "runtime-authenticated-fact", semantic: { class: "candidate", subjectId: record.recordId,
+          subjectDigest: record.digest, evidenceKind: null },
+        inclusionReasons: ["reviewer-integration-applicability"], presentationHint: "markdown", content: stored.content,
+        useLimit: "Exact integration provenance is runtime-observed context; the reviewer independently judges mandate and baseline applicability.",
+      }));
+    }
+    if (!sameControlReference(exactRelationship(records.assessment, "integrates", "candidate-revision"),
+        controlRevisionReference(records.sourceCandidate)) ||
+        canonicalJson(records.assessment.payload.canonicalParent) !== canonicalJson(integration!.canonicalParent)) {
+      throw new FoundationError("lifecycle.projection.reviewer-seal", "Integration Assessment source and parent do not reproduce the exact request");
+    }
+  } else if (options.integrationRecords != null) {
+    throw new FoundationError("lifecycle.projection.reviewer-seal", "Only reviewer Projection accepts integration review records");
   }
   const objectRepository = candidateObjectRepository ?? options.loaded.repository;
   const reviewer = options.request.role === "reviewer"
@@ -1896,29 +1816,32 @@ export async function compileExecution(options: {
     subject: options.subject,
     boundary,
   });
-  const baseSeeds = [...seeded.seeds];
-  if (reviewer !== null) {
+  const closure = buildClosure({
+    knowledge: options.knowledge,
+    seeds: seeded.seeds,
+    role: options.request.role,
+    maximumDepth: options.request.profile.maximumRelationshipDepth,
+  });
+  const parentSeeded = parent === null ? null : seedSubject({
+    loaded: parent.loaded, knowledge: parent.knowledge, subject: options.subject, boundary, currentRoots: true,
+  });
+  const parentSeeds = [...(parentSeeded?.seeds ?? [])];
+  if (reviewer !== null && parent !== null) {
     for (const change of reviewer.changes) {
-      const prior = options.knowledge.currentRecords.find((entry) => entry.path === change.path);
-      if (prior !== undefined) {
-        baseSeeds.push({
-          id: prior.frontMatter.id,
-          reason: `candidate-prior-${prior.frontMatter.kind}:${change.path}`,
-        });
-      }
+      const prior = parent.knowledge.currentRecords.find((entry) => entry.path === change.path);
+      if (prior !== undefined) parentSeeds.push({ id: prior.frontMatter.id, reason: `integration-parent-prior:${change.path}` });
     }
   }
-  let closure = buildClosure({
-    knowledge: options.knowledge,
-    seeds: baseSeeds,
-    role: options.request.role,
+  const parentClosure = parent === null ? new Map<string, ClosureEntry>() : buildClosure({
+    knowledge: parent.knowledge, seeds: parentSeeds, role: "reviewer",
     maximumDepth: options.request.profile.maximumRelationshipDepth,
   });
 
   const implementationReasons = new Map(seeded.implementationReasons);
   let candidateClosure: ReadonlyMap<string, ClosureEntry> = new Map();
   if (reviewer !== null) {
-    const candidateSeeds: ClosureSeed[] = [];
+    const candidateSeeds: ClosureSeed[] = [...closure.keys()].filter((id) => reviewer.knowledge.index.currentByIdentity.has(id))
+      .map((id) => ({ id, reason: "candidate-governing-context" }));
     for (const change of reviewer.changes) {
       const record = reviewer.knowledge.currentRecords.find((entry) => entry.path === change.path);
       if (record !== undefined) {
@@ -1930,16 +1853,18 @@ export async function compileExecution(options: {
       const admittedArtifact = options.subject.core.requiredArtifacts.find((artifact) =>
         artifact.path === change.path || atOrBelow(change.path, artifact.path));
       if (
-        governedPath(options.loaded, change.path) ||
-        admittedArtifact !== undefined && ["code", "test", "documentation"].includes(admittedArtifact.role)
+        !knowledgeOrControlPath(change.path, options.loaded.contract) && (
+          governedPath(options.loaded, change.path) ||
+          admittedArtifact !== undefined && ["code", "test", "documentation"].includes(admittedArtifact.role)
+        )
       ) {
         const path = change.path;
         const values = new Set(implementationReasons.get(path) ?? []);
         values.add(`candidate-changed:${change.change}`);
         implementationReasons.set(path, Object.freeze([...values].sort(compareCodePoints)));
-        const knowledge = change.change === "deleted" ? options.knowledge : reviewer.knowledge;
+        const knowledge = change.change === "deleted" ? parent!.knowledge : reviewer.knowledge;
         const descriptionId = requireOneDescription(knowledge, path);
-        if (descriptionId !== "") candidateSeeds.push({ id: descriptionId, reason: `candidate-coverage:${path}` });
+        if (descriptionId !== "" && reviewer.knowledge.index.currentByIdentity.has(descriptionId)) candidateSeeds.push({ id: descriptionId, reason: `candidate-coverage:${path}` });
       }
     }
     candidateClosure = buildClosure({
@@ -1948,25 +1873,23 @@ export async function compileExecution(options: {
       role: "reviewer",
       maximumDepth: options.request.profile.maximumRelationshipDepth,
     });
-    const reconciled = reconcileReviewerKnowledgeClosures({
-      base: closure,
-      candidate: candidateClosure,
-    });
-    closure = reconciled.base;
-    candidateClosure = reconciled.candidate;
   }
 
   const conflicts = options.knowledge.conflicts.filter((entry) => closure.has(entry.leftId) || closure.has(entry.rightId));
   const candidateConflicts = reviewer === null ? [] : reviewer.knowledge.conflicts.filter((entry) => candidateClosure.has(entry.leftId) || candidateClosure.has(entry.rightId));
-  if (conflicts.length > 0 || candidateConflicts.length > 0) {
+  const parentConflicts = parent?.knowledge.conflicts.filter((entry) => parentClosure.has(entry.leftId) || parentClosure.has(entry.rightId)) ?? [];
+  if (conflicts.length > 0 || parentConflicts.length > 0 || candidateConflicts.length > 0) {
     throw new FoundationError("lifecycle.projection.authority-conflict", "Execution Projection closure contains an unresolved Knowledge conflict", {
-      observedFacts: { conflictDigests: [...conflicts, ...candidateConflicts].map((entry) => entry.digest).sort(compareCodePoints) },
+      observedFacts: { conflictDigests: [...conflicts, ...parentConflicts, ...candidateConflicts].map((entry) => entry.digest).sort(compareCodePoints) },
     });
   }
 
   const mandatory: FoundationProjectionMandatoryItem[] = [];
   for (const entry of [...closure.values()].sort((left, right) => recordOrder(left.record, right.record))) {
     mandatory.push(await mandatoryRecordItem({ record: entry.record, basis: "base", closure: entry, inventory: options.inventory }));
+  }
+  for (const entry of [...parentClosure.values()].sort((left, right) => recordOrder(left.record, right.record))) {
+    mandatory.push(await mandatoryRecordItem({ record: entry.record, basis: "integration-parent", closure: entry, inventory: options.inventory }));
   }
   for (const entry of [...candidateClosure.values()].sort((left, right) => recordOrder(left.record, right.record))) {
     mandatory.push(await mandatoryRecordItem({ record: entry.record, basis: "candidate", closure: entry, inventory: options.inventory }));
@@ -1986,14 +1909,15 @@ export async function compileExecution(options: {
     loaded: options.loaded,
     inputs: Object.freeze([
       Object.freeze({ knowledge: options.knowledge, closure }),
+      ...(parent === null ? [] : [Object.freeze({ knowledge: parent.knowledge, closure: parentClosure })]),
       ...(reviewer === null ? [] : [Object.freeze({ knowledge: reviewer.knowledge, closure: candidateClosure })]),
     ]),
     inventory: options.inventory,
   });
-  const includedIds = new Set([...closure.keys(), ...candidateClosure.keys()]);
+  const includedIds = new Set([...closure.keys(), ...parentClosure.keys(), ...candidateClosure.keys()]);
   const baseSources = await sourceItems({
     loaded: options.loaded,
-    objectRepository,
+    objectRepository: options.loaded.repository,
     profile: options.request.profile,
     knowledge: options.knowledge,
     basis: "base",
@@ -2007,6 +1931,12 @@ export async function compileExecution(options: {
       ),
       values: reviewer.productState.entries,
     }),
+    inventory: options.inventory,
+  });
+  const parentSources = parent === null ? null : await sourceItems({
+    loaded: parent.loaded, objectRepository: parent.loaded.repository,
+    profile: options.request.profile, knowledge: parent.knowledge, basis: "integration-parent",
+    includedIds: new Set(parentClosure.keys()), roots: options.subject.sourceRoots,
     inventory: options.inventory,
   });
   const candidateSources = reviewer === null ? null : await sourceItems({
@@ -2047,11 +1977,11 @@ export async function compileExecution(options: {
   });
   const reachable = await reachableItems({
     request: options.request,
-    loaded: options.loaded,
+    loaded: parent?.loaded ?? options.loaded,
     objectRepository,
     knowledge: options.knowledge,
     provenanceKnowledge: reviewer?.knowledge ?? options.knowledge,
-    mandatorySourceKeys: new Set([...(baseSources.selectedKeys), ...(candidateSources?.selectedKeys ?? [])]),
+    mandatorySourceKeys: new Set([...(baseSources.selectedKeys), ...(parentSources?.selectedKeys ?? []), ...(candidateSources?.selectedKeys ?? [])]),
     includedIds,
     implementationPaths: new Set(implementationReasons.keys()),
     inventory: options.inventory,
@@ -2060,11 +1990,11 @@ export async function compileExecution(options: {
     mandatory: Object.freeze(mandatory),
     implementation,
     bindings,
-    sources: Object.freeze([...(baseSources.items), ...(candidateSources?.items ?? []), ...candidateContext, ...candidateSealSource, ...receiptSources, ...workProductSources].sort((left, right) =>
+    sources: Object.freeze([...(baseSources.items), ...(parentSources?.items ?? []), ...(candidateSources?.items ?? []), ...integrationSources, ...correctionSources, ...repairSources, ...candidateContext, ...candidateSealSource, ...receiptSources, ...workProductSources].sort((left, right) =>
       compareCodePoints(`${left.reference}\0${left.revision ?? ""}\0${left.id}`, `${right.reference}\0${right.revision ?? ""}\0${right.id}`))),
     reachable: reachable.items,
     conflicts: Object.freeze([]),
-    unresolved: Object.freeze([...(baseSources.unresolved), ...(candidateSources?.unresolved ?? [])].sort((left, right) =>
+    unresolved: Object.freeze([...(baseSources.unresolved), ...(parentSources?.unresolved ?? []), ...(candidateSources?.unresolved ?? [])].sort((left, right) =>
       compareCodePoints(`${left.required ? "0" : "1"}\0${left.reference}\0${left.id}`, `${right.required ? "0" : "1"}\0${right.reference}\0${right.id}`))),
     omission: reachable.omission,
     inventory: options.inventory.entries(),

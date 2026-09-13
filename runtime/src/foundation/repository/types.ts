@@ -15,6 +15,8 @@ export type FoundationKnowledgeRoots = Readonly<{
   assurance: "records/assurance";
   blueprint: "records/blueprint";
   check: "records/checks";
+  discipline: "records/disciplines";
+  disciplineRegistry: "records/disciplines/registry.json";
   descriptionPattern: "**/_*.desc.md";
 }>;
 
@@ -49,19 +51,19 @@ export type FoundationSourcePolicy = Readonly<{
 export type FoundationRepositorySelections = Readonly<{
   schemas: readonly string[];
   profiles: readonly string[];
-  controlStore: "lifecycle.control-record-store.v1";
-  controlLifecycleProfile: "foundation-delivery-control-lifecycle-v4";
-  controlRecordRevision: "lifecycle.control-record-revision.v1";
-  controlRecordEvent: "lifecycle.control-record-event.v2";
+  controlStore: "lifecycle.control-record-store.v2";
+  controlLifecycleProfile: "foundation-delivery-control-lifecycle-v7";
+  controlRecordRevision: "lifecycle.control-record-revision.v2";
+  controlRecordEvent: "lifecycle.control-record-event.v6";
   controlReferencedFile: "lifecycle.control-record-file.v1";
   controlStoreSeal: "lifecycle.control-record-store-seal.v1";
   controlStoreArchive: "lifecycle.control-record-store-archive.v1";
-  deliveryReduction: "lifecycle.delivery-reduction.v2";
+  deliveryReduction: "lifecycle.delivery-reduction.v5";
   candidateRevisionCarrierManifest: "lifecycle.candidate-revision-carrier-manifest.v1";
   executionBackendProfile: "lifecycle.execution-backend-profile.docker-local.v1";
   executionCellRunner: "lifecycle.execution-cell-runner.v1";
   executionSpecification: "lifecycle.execution-specification.v1";
-  executionInputSet: "lifecycle.execution-input-set.v1";
+  executionInputSet: "lifecycle.execution-input-set.v2";
   executionImage: "lifecycle.execution-image.v1";
   executionObservation: "lifecycle.execution-observation.v1";
   executionOutputManifest: "lifecycle.execution-output-manifest.v1";
@@ -96,13 +98,13 @@ export type FoundationCapabilityProfile = Readonly<{
 }>;
 
 export type FoundationProviderDescriptor = Readonly<{
-  schema: "lifecycle.provider-descriptor.v6";
+  schema: "lifecycle.provider-descriptor.v7";
   id: string;
   adapter: Readonly<{
     id: string;
     version: string;
     implementationDigest: Sha256;
-    protocol: "lifecycle.provider-adapter.v6";
+    protocol: "lifecycle.provider-adapter.v7";
   }>;
   provider: Readonly<{
     product: string;
@@ -125,9 +127,9 @@ export type FoundationProviderDescriptor = Readonly<{
     workspaceFormat: "governed-body-only-semantic-markdown";
     workspaceFilename: "semantic.md";
     bodyProfileIds: readonly string[];
-    parserProfileId: "lifecycle.agent-work-product-parser.v2";
-    compilerProfileId: "lifecycle.agent-work-product-compiler.v2";
-    workProductPayloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v2";
+    parserProfileId: "lifecycle.agent-work-product-parser.v4";
+    compilerProfileId: "lifecycle.agent-work-product-compiler.v4";
+    workProductPayloadSchemaId: "urn:lifecycle:schema:agent-work-product-payload:v5";
     submissionTriggers: readonly ("clean-natural-completion" | "explicit")[];
     terminalOutputFallback: false;
     maximumBytes: number;
@@ -215,8 +217,8 @@ export type FoundationCommandCheckBindingInput = Readonly<
 >;
 
 export type FoundationRepositoryContract = Readonly<{
-  $schema: "lifecycle.repository.v15";
-  schemaVersion: 15;
+  $schema: "lifecycle.repository.v22";
+  schemaVersion: 22;
   targetId: string;
   generation: number;
   canonicalBranch: string;
@@ -227,13 +229,13 @@ export type FoundationRepositoryContract = Readonly<{
     status: "draft" | "accepted";
   }>;
   runtime: Readonly<{
-    compatible: "lifecycle.runtime.foundation.v10";
-    interface: "lifecycle.interface.foundation.v10";
+    compatible: "lifecycle.runtime.foundation.v17";
+    interface: "lifecycle.interface.foundation.v17";
   }>;
   provider: Readonly<{
     defaultDescriptorId: string;
     defaultDescriptorDigest: Sha256;
-    protocol: "lifecycle.provider-adapter.v6";
+    protocol: "lifecycle.provider-adapter.v7";
   }>;
   processes: readonly ["delivery"];
   atlas: Readonly<{

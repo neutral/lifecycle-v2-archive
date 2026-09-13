@@ -10,6 +10,7 @@ export const DELIVERY_OPERATIONS = Object.freeze([
   "delivery.prepare",
   "delivery.admit",
   "delivery.continue",
+  "delivery.integrate",
   "delivery.evaluate",
   "delivery.revise",
   "delivery.reaffirm",
@@ -20,13 +21,14 @@ export const DELIVERY_OPERATIONS = Object.freeze([
 
 export type DeliveryOperationDescriptor = Readonly<{
   operation: DeliveryOperation;
-  actor: "founder";
+  actor: "director";
   input: "none" | "semantic-markdown";
-  authority: "none" | "founder-authentication";
-  activity: "agent" | "transaction" | "recovery";
+  authority: "none" | "director-authentication";
+  activity: "agent" | "integration" | "transaction" | "recovery";
   role: "reconnaissance" | "builder" | "reviewer" | null;
   legalStandings: readonly DeliveryStanding[];
-  concurrency: "fresh-delivery" | "candidate-exclusive" | "process-exclusive" | "target-exclusive" | "exact-recovery";
+  concurrency: "fresh-delivery" | "process-exclusive" | "exact-recovery";
+  canonicalPublication: "none" | "short-target-lock" | "retained-operation";
   candidateRequirement: "absent" | "present" | "sealed-and-evidenced" | "any";
 }>;
 
@@ -37,86 +39,105 @@ function standings(...values: DeliveryStanding[]): readonly DeliveryStanding[] {
 const DESCRIPTORS = Object.freeze({
   "delivery.prepare": Object.freeze({
     operation: "delivery.prepare",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
     authority: "none",
     activity: "agent",
     role: "reconnaissance",
     legalStandings: standings("framing"),
     concurrency: "fresh-delivery",
+    canonicalPublication: "none",
     candidateRequirement: "absent",
   }),
   "delivery.admit": Object.freeze({
     operation: "delivery.admit",
-    actor: "founder",
+    actor: "director",
     input: "none",
-    authority: "founder-authentication",
+    authority: "director-authentication",
     activity: "transaction",
     role: null,
     legalStandings: standings("awaiting-admission", "awaiting-readmission"),
-    concurrency: "target-exclusive",
+    concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "any",
   }),
   "delivery.continue": Object.freeze({
     operation: "delivery.continue",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
     authority: "none",
     activity: "agent",
     role: "builder",
     legalStandings: standings("active"),
-    concurrency: "candidate-exclusive",
+    concurrency: "process-exclusive",
+    canonicalPublication: "none",
+    candidateRequirement: "present",
+  }),
+  "delivery.integrate": Object.freeze({
+    operation: "delivery.integrate",
+    actor: "director",
+    input: "none",
+    authority: "none",
+    activity: "integration",
+    role: null,
+    legalStandings: standings("active", "decision-ready"),
+    concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "present",
   }),
   "delivery.evaluate": Object.freeze({
     operation: "delivery.evaluate",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
     authority: "none",
     activity: "agent",
     role: "reviewer",
     legalStandings: standings("active"),
-    concurrency: "candidate-exclusive",
+    concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "present",
   }),
   "delivery.revise": Object.freeze({
     operation: "delivery.revise",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
     authority: "none",
     activity: "agent",
     role: "reconnaissance",
     legalStandings: standings("boundary-paused"),
     concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "present",
   }),
   "delivery.reaffirm": Object.freeze({
     operation: "delivery.reaffirm",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
     authority: "none",
     activity: "agent",
     role: "reconnaissance",
     legalStandings: standings("boundary-paused"),
     concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "present",
   }),
   "delivery.accept": Object.freeze({
     operation: "delivery.accept",
-    actor: "founder",
+    actor: "director",
     input: "none",
-    authority: "founder-authentication",
+    authority: "director-authentication",
     activity: "transaction",
     role: null,
     legalStandings: standings("decision-ready"),
-    concurrency: "target-exclusive",
+    concurrency: "process-exclusive",
+    canonicalPublication: "short-target-lock",
     candidateRequirement: "sealed-and-evidenced",
   }),
   "delivery.no-ship": Object.freeze({
     operation: "delivery.no-ship",
-    actor: "founder",
+    actor: "director",
     input: "semantic-markdown",
-    authority: "founder-authentication",
+    authority: "director-authentication",
     activity: "transaction",
     role: null,
     legalStandings: standings(
@@ -127,12 +148,13 @@ const DESCRIPTORS = Object.freeze({
       "awaiting-readmission",
       "decision-ready",
     ),
-    concurrency: "target-exclusive",
+    concurrency: "process-exclusive",
+    canonicalPublication: "none",
     candidateRequirement: "any",
   }),
   "delivery.recover": Object.freeze({
     operation: "delivery.recover",
-    actor: "founder",
+    actor: "director",
     input: "none",
     authority: "none",
     activity: "recovery",
@@ -147,6 +169,7 @@ const DESCRIPTORS = Object.freeze({
       "closed",
     ),
     concurrency: "exact-recovery",
+    canonicalPublication: "retained-operation",
     candidateRequirement: "any",
   }),
 } satisfies Readonly<Record<DeliveryOperation, DeliveryOperationDescriptor>>);
@@ -196,7 +219,10 @@ function concurrencyAllows(
   return active.length === 0;
 }
 
-export function eligibleDeliveryOperations(state: DeliveryState): readonly DeliveryOperation[] {
+export function eligibleDeliveryOperations(
+  state: DeliveryState,
+  facts: Readonly<{ candidateIntegrated: boolean }> = { candidateIntegrated: false },
+): readonly DeliveryOperation[] {
   if (state.standing === "closed") return Object.freeze([]);
   const active = unresolvedActivities(state);
   if (active.some((activity) => activity.recovery !== null)) {
@@ -206,6 +232,7 @@ export function eligibleDeliveryOperations(state: DeliveryState): readonly Deliv
   return Object.freeze(DELIVERY_OPERATIONS.filter((operation) => {
     const descriptor = DESCRIPTORS[operation];
     if (operation === "delivery.recover") return false;
+    if (operation === "delivery.evaluate" && !facts.candidateIntegrated) return false;
     if (operation === "delivery.prepare" && preparation !== undefined) return false;
     if (
       operation === "delivery.no-ship" &&

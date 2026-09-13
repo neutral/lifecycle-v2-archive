@@ -1,8 +1,8 @@
 import type { Sha256 } from "../validation/canonical.js";
 
-export const CONTROL_RECORD_STORE_SCHEMA = "lifecycle.control-record-store.v1" as const;
-export const CONTROL_RECORD_REVISION_SCHEMA = "lifecycle.control-record-revision.v1" as const;
-export const CONTROL_RECORD_EVENT_SCHEMA = "lifecycle.control-record-event.v2" as const;
+export const CONTROL_RECORD_STORE_SCHEMA = "lifecycle.control-record-store.v2" as const;
+export const CONTROL_RECORD_REVISION_SCHEMA = "lifecycle.control-record-revision.v2" as const;
+export const CONTROL_RECORD_EVENT_SCHEMA = "lifecycle.control-record-event.v6" as const;
 export const CONTROL_RECORD_FILE_SCHEMA = "lifecycle.control-record-file.v1" as const;
 export const CONTROL_RECORD_OPERATION_SUPPORT_SCHEMA =
   "lifecycle.control-record-operation-support.v1" as const;
@@ -31,7 +31,7 @@ export type ControlJsonValue =
 
 export type ControlJsonObject = Readonly<{ [key: string]: ControlJsonValue }>;
 
-export type ControlActorKind = "agent" | "founder" | "runtime";
+export type ControlActorKind = "agent" | "director" | "runtime";
 
 export type ControlActor = Readonly<{
   kind: ControlActorKind;
@@ -40,8 +40,8 @@ export type ControlActor = Readonly<{
 
 export type ControlSemanticAuthority =
   | "agent-proposed"
-  | "founder-supplied"
-  | "founder-authenticated"
+  | "director-supplied"
+  | "director-authenticated"
   | "runtime-observed"
   | "runtime-derived";
 

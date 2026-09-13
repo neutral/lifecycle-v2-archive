@@ -1,132 +1,132 @@
 {
   "schema": "lifecycle.publication-manifest.v1",
   "specificationId": "lifecycle",
-  "specificationRevision": "lifecycle.foundation.1.0.0-rc.10",
+  "specificationRevision": "lifecycle.foundation.1.0.0-rc.17",
   "status": "draft",
   "documents": [
     {
       "path": "GLOSSARY.md",
-      "digest": "sha256:7913e0a0f922561585415951769b973f2a1d947be1696695c82bf9af1653a795",
+      "digest": "sha256:3990ef8f8157227a56c7297879f086aa4f699e5e0bd099f4181f6875cb7c09fb",
       "role": "glossary",
       "normative": false
     },
     {
       "path": "IMPLEMENTATION.md",
-      "digest": "sha256:4b75f7c3742e2ce9ef7a7a010f0ce97f3add838db8f50715b0328c832b6abe60",
+      "digest": "sha256:7f400a369ccfa7fd81c2c266e60cd34f5cd5a580821df450cd369370bdfe49e8",
       "role": "implementation-plan",
       "normative": false
     },
     {
       "path": "README.md",
-      "digest": "sha256:403cddbda952031bc2a6e7298eca2e75bd40e850d46ef53e7083ad6c04f3ef9a",
+      "digest": "sha256:7a89a9d3f3c24df9678805bf17291859f90087537b13dd40b07f3d33f9bf5505",
       "role": "publication-guide",
       "normative": false
     },
     {
       "path": "SPEC.md",
-      "digest": "sha256:a5437a48976ada452c91ce6f9c325b821599c6d889dd92f729ddf4d0c57aa3d2",
+      "digest": "sha256:fe8d2015f9577745afa30bd9ac512f1984de56a7c3308befcd20e288d5bff538",
       "role": "conceptual-specification",
       "normative": false
     },
     {
       "path": "schemas/README.md",
-      "digest": "sha256:c1c724f7bfdfc47d3d3e1dcc097b58140d8cff9c9836d8596586969e834529f7",
+      "digest": "sha256:3bd03ccf0ab35675c3f976b741c3a15e591c5d19fe3b7ba2cafab6ee9bb35cd7",
       "role": "schema-guide",
       "normative": false
     },
     {
       "path": "spec/ATLAS.md",
-      "digest": "sha256:ba18b353f2229ef6e6e508bd35c9d9bc55fd66704b0e45c6276a8a084e262aa3",
+      "digest": "sha256:d3b38c9c98c92fd06ba28cbda9efeb41c03eefc0a1d309ac73bb13c9b3e5cfe3",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/ATTEMPTS.md",
-      "digest": "sha256:75a1d297e79e13e94a5346534d4933ae7cc40021e929304ef338cee0844ca129",
+      "digest": "sha256:eb1653ef8ef9c55b41c375e6a7ae27269e706dad9535a6536819cc4fb5060040",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/ATTEMPT_VIEW.md",
-      "digest": "sha256:9f4f16b2c461d1a05a3fa2ce885262c2e0a68f943c40eaa46bce970744691be1",
+      "digest": "sha256:9b516052ceda8e63e3e2dd294939b0610bbdafef0fc173d6376e6fabd0be87e7",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/AUTHORITY.md",
-      "digest": "sha256:0e2522ce588a8d059c54f26bd792be76e175cc33a37d4ab1a69e8bc761bb2d7e",
+      "digest": "sha256:1daae5a5cf36238d1d42f5b740c397669a78f7a07298de9c37dcfb99d9f4e086",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/CONFORMANCE.md",
-      "digest": "sha256:8282980891f65e63917aad1082e48408e2a51f8fe50abc8a7081cd819da301e3",
+      "digest": "sha256:cb9d260765da0da1043708aa76e01e60a66c2f4b091677730dc1ff2ae5f9a07c",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/CONTROL.md",
-      "digest": "sha256:4d2da4af512002f9a011342e353963565ce52e91e9a0acafdad429f8f33a927e",
+      "digest": "sha256:28188a9483cef6647381c90895ec8c37862864a3daa71fe88f373ee04fbd1878",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/DELIVERY.md",
-      "digest": "sha256:823e049cf076f50af9d50800eda0507b3a30b38209d00624e8874c97be8b339b",
+      "digest": "sha256:b52e22c1602f5b9bdf7ad8f6f1bd8e3dc57eb194f8f7e3ef3d30b2386a3860e0",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/EVIDENCE.md",
-      "digest": "sha256:98093374f603ffc1fcebf21536fb4c0e9450de39446526e19740aeaf19169c29",
+      "digest": "sha256:c344820aa4ba2c63c7e7f8eef29c466d47695c21d2354ddc83d4124b24e480e7",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/EVOLUTION.md",
-      "digest": "sha256:a9e114a277f1f8f9f1dbdc64c10afe5c3448e9baabab30b6b4194c61a80f4cc5",
+      "digest": "sha256:daa50b99acbf71f57fff3669361721b51b33583bf31450901d99d752328d833e",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/EXECUTION.md",
-      "digest": "sha256:2b12587fe054a4e62be50f33598d862bc4460f2ce822c910db515eff6117746e",
+      "digest": "sha256:63183aef060b36302eae7246f986e86bc391fac0c708750873f514b021eedb3e",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/KNOWLEDGE.md",
-      "digest": "sha256:d2b73011b943580fb14d9f952cdd7221d03b90b26d6ab93fabd41a0b9475efc0",
+      "digest": "sha256:64862e65a2a5c5e5fcbe1e335dfb342ab4655119125ea7e08e6ccc11c7843995",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/PROCESSING.md",
-      "digest": "sha256:8f447787ce654753cf3ca329ec3d6c8f7d8d6a0c02b00f79387ab9c2f79c0b30",
+      "digest": "sha256:69ee12ce57b13a153367cc10b63ddf3782cf5b83ae9c2eff48f01591dfbc1a4e",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/PROJECTION.md",
-      "digest": "sha256:ef5a3f894ebc443253648cff9ea314bc0479af5a50c045f7943c3b3eecfc900d",
+      "digest": "sha256:acdc2d26b678bb1746d2cad95a0f3b2e42df15b95fac6e6dffd050c6ab288105",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/RELATIONSHIPS.md",
-      "digest": "sha256:fad2fe8998373c600c17023b07e7ac378eb7913e074dd4e90d927597db91bf4b",
+      "digest": "sha256:1580edda5c2a6ab98aeb05a9653aa4fb8e9e7a39b70caacdddef4307d0a27d90",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/SECURITY.md",
-      "digest": "sha256:b95054fe8eaf213a96e645168b9dfd768d4d4c32b710c95d9f1e62f0f64f18bc",
+      "digest": "sha256:351266bf468beedd0ce57750283e69ad9e8f9828490cc2af37b65541a7eb2633",
       "role": "normative-specification",
       "normative": true
     },
     {
       "path": "spec/VALIDATION.md",
-      "digest": "sha256:2af1a27b6e24a22ec4a2fec32d7e9aa06b1d0bcebf092dc78078060a7f050e56",
+      "digest": "sha256:b3dd836861aa01ca662eef04131ae9e545c6afd478bdedd22f8c9323f24e4962",
       "role": "normative-specification",
       "normative": true
     }
@@ -134,271 +134,325 @@
   "schemas": [
     {
       "path": "schemas/agent-attempt-payload.schema.json",
-      "digest": "sha256:0a1138509613ddc7897718bba5abf33c8a2935ea25f7faf9e224705826ce257c",
+      "digest": "sha256:936b6f4ac702a4dd4ad6e3d71924d285269a83c4ee6088d6768e6ad092341b99",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/agent-work-product-payload.schema.json",
-      "digest": "sha256:4da9b4940d01842135493fd6dda22c00cba724fbb2d2891eafaec1591365f95c",
+      "digest": "sha256:1c2a7cdc38edda309c6a979ae046251b86f0822a302e57438df1cab7f5221c4b",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/agent-work-product-validation-basis.schema.json",
+      "digest": "sha256:7ebbc1e386d451fb58cb5651c253c14ba1fb8a99f31fbf8ce1b0a526dc52edc1",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/atlas-resolution.schema.json",
-      "digest": "sha256:1b031e1b15600fe8b3a6606dcde1ca2d8ebb330b082c78b3a0807a6fb67f44d8",
+      "digest": "sha256:4f263645764f42ce96099f5fadf87d750ac1de07a4f17c980f937f4913258710",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/atlas-state.schema.json",
-      "digest": "sha256:6296af47fd6620ad00fc6e8874776c9a96ebb88fc7184074863aa965c4ca9069",
+      "digest": "sha256:15b228be211681f41cdd7ac4fb63ab288b773c3f3b56abc2a4668a0673420081",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/authorization-review.schema.json",
+      "digest": "sha256:3343b3ae16062159aeb42e76f783d6a95b3e9338abf565b2d68cd0d760943368",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/builder-repair-output.schema.json",
+      "digest": "sha256:542ef48f3ef114cbfb4589575dcb4834788fb0146554b60c0a834c4872cf65bc",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/candidate-revision-carrier-manifest.schema.json",
-      "digest": "sha256:2e51eece863d00519bfa1b260f12103618a853c6db03a0895656f9ea77fa85b1",
+      "digest": "sha256:1e513cf09efc38ca7180e25c5d0f0e768faac2099089b0f28780952c28987691",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/candidate-revision-payload.schema.json",
-      "digest": "sha256:87e5c3ea902ac93b05d75e1b4f564ac1ad7df8c8c05062bcf5e7d938be5af3a3",
+      "digest": "sha256:7e6357bb812f31d7101aaa2d9959aa2f1d7429f2026992b5f5f084b2d6ae3b32",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/candidate-seal-payload.schema.json",
-      "digest": "sha256:1360c0acb1613cbf12867393b1a2221e83e067beca902ea374cb719e5e4ed6f6",
+      "digest": "sha256:37c3c9771c70ce5d6888919e019fa9fd54666c28f637c655bc7861a1f0ec8665",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/capability-profile.schema.json",
-      "digest": "sha256:1aec0859547c4fb45b39c3a6d02e94138fb6f7a25ae998e8155f86c7c1aafbde",
+      "digest": "sha256:9c58146ee82bf95a30e1bcbee2033cff6e90317a20e2997be66ca4b6bcbb91e7",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/check-receipt-payload.schema.json",
-      "digest": "sha256:c5f26c40d7f87c7fc8cc2bfc14eb3f07c68a9a45ef2595d6d16a6e4a0565c4df",
+      "digest": "sha256:237c42a3eba31e258a946fa078951849f96609c85ee00d88dbc69470f94c07b3",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/closure-payload.schema.json",
-      "digest": "sha256:868f0a5ce57dc25302615d811959576e97b5b3b810b6050911cb43d6e9342326",
+      "digest": "sha256:3267af58d9bf322b0ea90b4653c41aaae616c01cfcc00dc1270a97fc46b648c3",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/common.schema.json",
-      "digest": "sha256:f58a45cc718e4490db6e441cffc313eb1b71c5ac8e1b123e388fde88ce871105",
+      "digest": "sha256:76a1fa0a876a2e3a5fd533adc54487da14308e663d418e73c746502eb269b5da",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/conformance-claim.schema.json",
-      "digest": "sha256:cf9777281b4a8f7b4b463112d36466d39f1f17d54645b21ec3f122ba0d398268",
+      "digest": "sha256:938e85538741027ec3995cf71cbfaa3b5a3a3e4321d72b90e10ebc91125a8dfc",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/context-inspection-selector.schema.json",
+      "digest": "sha256:088425ff17ae2b3c66872e84567a979b1809074f33dd23f19947d04c2338e255",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-lifecycle-profile.schema.json",
-      "digest": "sha256:ce893dbccaa6ae05412ec5c76ef4a5f363aaf6a1a6d1904ea86eb93f6aabb77b",
+      "digest": "sha256:d452da02aba45f7855b0ec7a2db8632b3f04ad47d542c574276dff97f3306896",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-event.schema.json",
-      "digest": "sha256:8c50d47d8f4337e080d775cd605e727f81118371fa5edc43e5862045333f3f0f",
+      "digest": "sha256:f02d153dee73d618a50b65f88d8d6f3f155c376b25de2d6359966aca26387e32",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-file.schema.json",
-      "digest": "sha256:7538097abbd78e6218a5f69d2eeb73f007fc00a622822535f1f1b4ac89ce1eef",
+      "digest": "sha256:84fee9e932e368727a3327ba14c3d4e2f403ecdfff4795aa259ce02baaa00456",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-revision.schema.json",
-      "digest": "sha256:d540d628605e1547a38f8c1a1f66208d687229edf9d477372064bb9abfc338f8",
+      "digest": "sha256:d0a51459ab111b2d20a6df1cc8f70a895169757e467c1d12913858863251a281",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-store-archive.schema.json",
-      "digest": "sha256:72c35d14bc3f6e813bea96de13730d04f9929f766085b7e7ab9cd39bdc0a4ac8",
+      "digest": "sha256:42a152e60660c5c53f0073b6fb1ae6f6b909fc2dd8ca4d17a71fe4a267377eac",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-store-seal.schema.json",
-      "digest": "sha256:3b5a552c6e87311ff01bc9684993516e15e1a981a066b35053e486f1d363a60e",
+      "digest": "sha256:0b8075361f2a7fa0aaeee9fdd8edf1d621e5bc953ea1c26542b8373bb5b9a237",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/control-record-store.schema.json",
-      "digest": "sha256:7a3e3543ad3f3fe9fff27c2d418b5829b038df575442a221ba07b3b786d99aed",
+      "digest": "sha256:e9348a787f57896c063a63cce972ca76c78af1a909d2b5a403a4a6f32616c2b6",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/delivery-reduction.schema.json",
-      "digest": "sha256:3e80ce6b3fd515baac6ba2b296ffb292e62bd323102b7aa0a6a459bc6b099d1f",
+      "digest": "sha256:133c12342f4ab09d4ba21250a94185733dc27f19fb33903885ffac845d5f5a3c",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/director-brief-payload.schema.json",
+      "digest": "sha256:ac4bb664b6901ce75d09b3ce6cd5482ceb608eb7f49ebe89345c8c93610ff840",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/director-decision-payload.schema.json",
+      "digest": "sha256:2e9f823c8e4ee2df685f284a04c41c82dcf7875fc69ee0aaad9e00dca4009163",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/discipline-pack.schema.json",
+      "digest": "sha256:e7eb4ed58303ed0498be1908a97ce86d1b910891e886c4498504cd778af5504f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/discipline-registry.schema.json",
+      "digest": "sha256:668a722b51c74dfdac99a696a54771afb1c364273b140482c3e145b4a23001d0",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/evidence-packet-payload.schema.json",
-      "digest": "sha256:883580caf8abb0a44131cb8e27f9a39d9ad420c8ed9f3c4bd9c78e424cf85b81",
+      "digest": "sha256:d9a0b9f58c6db865c98600bfe14ddabb443facbade174f8efbd9b2aa964963c1",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-backend-profile.schema.json",
-      "digest": "sha256:7ccbe97383da7bdbc439ca886d60a797bfffe30ba88fe518d176c8aa4b35092c",
+      "digest": "sha256:5cf4602e697fbb4d06dc9dfe0dfc2c7b46a42335f869a38c94f62c3f008b4e6a",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-image.schema.json",
-      "digest": "sha256:d71687cade84ee243468131ac70cf948d2c8a973c2886085accd3b15dcc438de",
+      "digest": "sha256:44f4f2d34413830ce90efd86e534aeede1f742a5f7f6c0a24fea1acc8f8ed462",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-input-set.schema.json",
-      "digest": "sha256:07f57f64ad66619a7b21e1468a9ae240d81f7dc4e3c5c6da3354b565e82ad2f3",
+      "digest": "sha256:e2d68bd04c8a61a024d6c0c94421c846a4c7d3eb933418741233ecc0bc609b52",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-observation.schema.json",
-      "digest": "sha256:dcc9cd4510515e26e72d7373e723dd4ef3d51be8b3a540ab80ebbe7a8f594ed1",
+      "digest": "sha256:c9ea87cee02f06680b178b9fdc649daede30dd622a5aa8cf3115b5d1c4032c86",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-output-manifest.schema.json",
-      "digest": "sha256:eb702f5c2762095dff5f00e25a4e7563eb4cdab7860558a2daab385f16178348",
+      "digest": "sha256:e10894f4089aaddd82304bd509b8849c5dbcfb6894464c5ccd2720125d15dfdb",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-receipt-payload.schema.json",
-      "digest": "sha256:de77dcd57fa2263b2c7382974f79dde92a75afc4c500084650f7904df86c105b",
+      "digest": "sha256:03a4c8cdaed2304d06e309e871323cc6f625ee4b0e30dd4e55b9156fafdbbe00",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/execution-specification.schema.json",
-      "digest": "sha256:d27db29b4090ac724ee1c866984f1d1fe207e56c810777b92b2fabbe5be9980c",
+      "digest": "sha256:989f5c2f682ac97c1a60c6ecf75fea8b886a6460086fd0fde5473bccd5ac2cb1",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/fixture-manifest.schema.json",
-      "digest": "sha256:24135e7500100476cd900bc793421ad369aaf0387376d8f8f8015459b68420c3",
+      "digest": "sha256:662eb2262d8be1cba4a8efe24c3aadaf04641bfa7ed41e234bbfcbd932a7f798",
       "role": "json-schema",
       "normative": true
     },
     {
-      "path": "schemas/founder-brief-payload.schema.json",
-      "digest": "sha256:b9479f5671d7fbfc0eb99cc2776c48609b4044910910f16e04273053082214d0",
-      "role": "json-schema",
-      "normative": true
-    },
-    {
-      "path": "schemas/founder-decision-payload.schema.json",
-      "digest": "sha256:c9cc441bc5bfba5fc52c3a171ec51c2b92be4c0fdd2d326ffa908c36052aef0f",
+      "path": "schemas/integration-assessment-payload.schema.json",
+      "digest": "sha256:d55880cd783421a85bf3c73053400414a8ca207ecaf8cdfe39625b9549c6ef9e",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/investment-allocation.schema.json",
-      "digest": "sha256:b5d114032d330d15d96a486682443d98f03b093c20b1c2f5dae837fe18b346da",
+      "digest": "sha256:06c195e0feaa24127874b1c440c2d13cdb75202291837792eb7e1cd0eb41d40c",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/knowledge-projection.schema.json",
-      "digest": "sha256:8c3b7a72a93672c578e74a312aafb82a8ee23aee2e12fb3df00026f266b0193b",
+      "digest": "sha256:be029ee5fc94f6bf0d93f245f5e3a6d9af113cd4c9f54cb215183e4a5a795ffd",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/knowledge-record.schema.json",
-      "digest": "sha256:e91ec9e5407ee39f68d769608d6e0ad8b8943b4bb3524b6c64fee9f53e81c10b",
+      "digest": "sha256:b0d5d4b768af44e55d7f102a447d154690273c503e27605d21139c724ca368c3",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/material-condition-payload.schema.json",
-      "digest": "sha256:1ad84d5651743630375f8d351b02ed055386fa11a6dd1c48e10d1198e9c31b18",
+      "digest": "sha256:42a1ca2fc73369a9a9760706a0ce6ac60fc7eb1c23bda5db2c25d263f5dde074",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/product-state.schema.json",
-      "digest": "sha256:fd00b7fdf1ef32812a39103162e38392398836da6b232d1b17bd0b0fbf59312f",
+      "digest": "sha256:3f8f5e520230de4138d6b7ae68cf4cb5b80024425633cd76d60f96a6f746a963",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/productive-semantic-operation.schema.json",
+      "digest": "sha256:34f89f3462df0527c5244449d47b842f5ece6c04cd30f872221f7aeb7acc5ff9",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/projection-request.schema.json",
-      "digest": "sha256:752185153939faae017441f95e7077301e86b30949608c8da3f1ba2f628c5675",
+      "digest": "sha256:419a06913289152fae8ef52e338ead3cf29f6e8680902880219ef63be436b9c4",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/provider-descriptor.schema.json",
-      "digest": "sha256:3bf4785e7ff687dd8b175878fec599298a7868f5854854ae69d38fcd86981a7a",
+      "digest": "sha256:06b5731d4b5de7ff8060c960c54a10a9839452ad16c643597531d15527f246c7",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/publication-manifest.schema.json",
-      "digest": "sha256:8c278a9119969995180e78617671974da1c4188dbdfa266f7f16cac2da06c366",
+      "digest": "sha256:6e349177aabdd45af9e451f10f9348798cd988b955ba305f10e975d80a9c53ea",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/publication-statement.schema.json",
-      "digest": "sha256:9a0c9fc64550d9d529d1250e0f71242608bb080a194d151fa8a7627f9c4108dc",
+      "digest": "sha256:39c5c7ef729be6f9fc8d1fae608cc331acd50f15d6911958f8145544f2195712",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/release-notes.schema.json",
-      "digest": "sha256:f3df49e64b4dfd8df7f3b6e5d77b3359e5089cef3d51287671854f7c00a27608",
+      "digest": "sha256:da6d9b3143c2d7d657bcbec53f2d07453c2d42ef96a826febdab086145065627",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/repository-contract.schema.json",
-      "digest": "sha256:3920f5da1e40133cc9a2b8f86d37149a76018e7590ac9670b880ad615f0381c5",
+      "digest": "sha256:11dcaec7f132ef3ef6515f9f42b4a1bfe38e634712eedc026117093b43f5a8bc",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/repository-snapshot.schema.json",
-      "digest": "sha256:6b747835509b1ec4cf5b10be0b79c012df38b55ac8ff08550fcbd170236965a7",
+      "digest": "sha256:08bd6b50cdd92d370f4a03dc948daabaa214f4dfcf899437839371c8afc6d609",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/validation-result.schema.json",
-      "digest": "sha256:8270f433c8a55850b483eae58d8c3886d6eb43001538bea2bcaf218cf56c24ab",
+      "digest": "sha256:fc031d18415531c1baad5a7450b82d314ca077798b30a68f84eedb310c609e74",
       "role": "json-schema",
       "normative": true
     },
     {
       "path": "schemas/work-boundary-payload.schema.json",
-      "digest": "sha256:37ab5d95bf60442a220c298c47f6665d1d7140963c38f3eeb8531e683922e61e",
+      "digest": "sha256:9147bc9d5dc685d3e17ea52a6f8a1c53b4f2e87077f073ca7a1b4c1fdf959d7f",
+      "role": "json-schema",
+      "normative": true
+    },
+    {
+      "path": "schemas/work-delegation-payload.schema.json",
+      "digest": "sha256:29ba10a4a7bbe95ac5e7a2c9b223a8c14f181d66284d4f99e28d847e52394fa9",
       "role": "json-schema",
       "normative": true
     }
@@ -406,49 +460,79 @@
   "fixtures": [
     {
       "path": "examples/agent-attempt-payload-structural-valid/subject.json",
-      "digest": "sha256:5fc5133f1f9e0b43dc4c4d8f033534191ed13defc378119e9ec842b89d29ed74",
+      "digest": "sha256:7fe11b2c2b6de0b262b756c11a41f44f07f4b77f26fbedaa2d46ff2b9bfbade4",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/agent-work-product-payload-structural-valid/subject.json",
-      "digest": "sha256:ae552d5dcbec771fe93fb650dc3e353eca8deafff50aa527f9ac0e62f9bd45a3",
+      "digest": "sha256:55e44d483bb20b5fe3635cb697924cd0a4c0e8f07884354b26cfb6a27a72e798",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/agent-work-product-validation-basis-private-locator-invalid/subject.json",
+      "digest": "sha256:3a916d899a1d2be9c0ccf9cd3131ce417f58fc70ea4e280496a951b26d58b426",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/agent-work-product-validation-basis-structural-valid/subject.json",
+      "digest": "sha256:af73f4c4395bcfbbec8b22cf253dc88ef907905a5d78e97543bd2d6631fa00b7",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-partial-model-invalid/subject.json",
-      "digest": "sha256:44932a4dbb901b054633a63b3aae6748bc75ba7af158b73e4e128bd484c758c6",
+      "digest": "sha256:300592d94f783525f1ac8e979c18d79153a2a888f63a1562dd3cbf4cdb8924b8",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-processor-selection-invalid/subject.json",
-      "digest": "sha256:f99520da7dd7594baadcb030ad31831e7d778f18ba11ccc1efad35aec366c603",
+      "digest": "sha256:eabf6adec1527cd979d76680dbb4fbd19edf407ea412471586ae1125511b5285",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-resource-binding-duplicate-invalid/subject.json",
-      "digest": "sha256:793528e0d0c4a9276c187d2b86728a41721fe12650fc861778d5f91ca80c3c53",
+      "digest": "sha256:2e7b3c59ad1d2cd4973817838f10ecb852091a73d5e38fd1bed5e6470383ffd0",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-resource-disposition-invalid/subject.json",
-      "digest": "sha256:df69f4713de90ff643c651219b3ffa63eada346721f97329203315a0d41bd5d3",
+      "digest": "sha256:7ab0df7560762e8572310b504aa6e4c0ef5f15a2cc011d5449fa4d1d35bfd360",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-structural-valid/subject.json",
-      "digest": "sha256:0d5a83ccd65f17000d4931ee4b14df9a05b84c627b08cf01b641edc2ba8c4c69",
+      "digest": "sha256:c6c2509d1cfe2dba23f958ca79ac871638b995087dcdfa7d731b09e40aa8f99d",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/atlas-resolution-unsupported-selection-invalid/subject.json",
-      "digest": "sha256:3d9e65005ccb160f3ef08981484e3c986a2a312ec7ab4bedc23c9c87710b9c99",
+      "digest": "sha256:dfa9e1f76e7d90c4ee13c05370d29a689c04824d272bbc336ecbce4d75cdb688",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/authorization-review-structural-valid/subject.json",
+      "digest": "sha256:92789a7aa1c0e92ce934de1df081b1cdd9e8aaf8f7fe96ffd10c8972893f1866",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/builder-repair-output-media-invalid/subject.json",
+      "digest": "sha256:46168597cf9a7c1ae81f927cbe427a7272d988fd043a6b01694baacfa005c202",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/builder-repair-output-structural-valid/subject.json",
+      "digest": "sha256:00654f45f4d1245fd393e228c56fe81aa9335ca99cdd934520bc739f7353af89",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -460,7 +544,7 @@
     },
     {
       "path": "examples/candidate-revision-carrier-media-type-invalid/subject.json",
-      "digest": "sha256:7596cbf60e132cfc19743247102dd3dce422be183cc1d7eb5fffacd58de9567d",
+      "digest": "sha256:dc3db426288a7cb6591bbd21b4945d44e231bd98b9715e4c8722dd5a97e4fde2",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -478,7 +562,7 @@
     },
     {
       "path": "examples/candidate-revision-payload-structural-valid/subject.json",
-      "digest": "sha256:37078b7466f586e72c9b2c4d40bdcb642b9d0fa3ab6ef9d703b22bf476e89ae0",
+      "digest": "sha256:8f28ddc4cee7306ad42a4fe825f6bd7861ef5a9b1b42f49fbe6a57c7c4f67ed5",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -496,43 +580,139 @@
     },
     {
       "path": "examples/check-receipt-payload-structural-valid/subject.json",
-      "digest": "sha256:56dc40b1c204288dd3979561261a3229a9ec0af07cc954df27c41021aafac8b4",
+      "digest": "sha256:9635e4ab179263566e6b4ccbf10488e133f4a6698fbda6c7914fd009fa21cb0e",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/closure-payload-structural-valid/subject.json",
-      "digest": "sha256:8d72b4af93b0f6904167da119847b7a490e9a368e884befe9e149017f83805f8",
+      "digest": "sha256:bdd1d656f4cfd1188ec8e3810a1243d0ba22daf031629a9db8fda8dacb2ccab9",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-atlas-overview-structural-valid/subject.json",
+      "digest": "sha256:90ec7661215cfde8728807240b95fadc53a90ec3f5df092200d7c3a020b3f4a4",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-atlas-point-structural-valid/subject.json",
+      "digest": "sha256:bd42de7465778ea0b35a8e4fef26475421e8397f32d7a99f14befb053225f84a",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-atlas-resource-structural-valid/subject.json",
+      "digest": "sha256:0e22c189bff4aec7257d16380a00876086544c94acf1cea1517e08a445ef28af",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-authorization-review-structural-valid/subject.json",
+      "digest": "sha256:745f4335d26b2b845c62c7defb109773c92ff63d6c09c77868948c85fccc377c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-code-file-structural-valid/subject.json",
+      "digest": "sha256:f80dc9518025d8d70f391d3ce6e54ee11f34b96c8002e99015139e510b94c7e2",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-code-index-structural-valid/subject.json",
+      "digest": "sha256:fb988972a96ffb3b3848e01b380264e1ced5773a128580a2b4d01a887c44f001",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-knowledge-index-structural-valid/subject.json",
+      "digest": "sha256:70fc426808c7a5c29ea02d089ec3331447d54151c58758ac59f93f8f4a61cda7",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-knowledge-record-structural-valid/subject.json",
+      "digest": "sha256:f47f32f885678c91da89dbbd7c7c3b609a542e12ee194f545aa9b9adf5bfdfa1",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-limit-overflow-invalid/subject.json",
+      "digest": "sha256:ee3b8cea501d08bb6c4ad6227947da50738ed642ae0f109c72b6209a8423b2fe",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/context-inspection-source-structural-valid/subject.json",
+      "digest": "sha256:521810d42dea0f9e17156bbf7d04588206a62c13faea2202eb31c0856a6d8a3a",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-lifecycle-profile-structural-valid/subject.json",
-      "digest": "sha256:645ea778bb6039af1fbb4d11023e47fb8cdb9a0443fc228d1f269bcd1e68baef",
+      "digest": "sha256:dd516b83ca2020023289960abbaf4948f110900708d7a0dadd64dcde747dc7be",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-record-event-admission-observation-structural-valid/subject.json",
-      "digest": "sha256:e11a806503f4ccba0c60e34e27f9997fa64a19239057cf87404b1bef3cdc565b",
+      "digest": "sha256:921841a28961e5fb841cf07c728fc58cc7e37445efea14d81f5d7b01700a42cf",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-delegation-set-structural-valid/subject.json",
+      "digest": "sha256:07d58e3f663b9b5b794a1ce03069287a0bc52ea5470d8077dec596444259c5e1",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-delegation-stopped-structural-valid/subject.json",
+      "digest": "sha256:e6b8b43e4480f03efbd7559a937df56f51dc610c0ac358bc40b1b78e2744d346",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-mixed-brief-scope-invalid/subject.json",
+      "digest": "sha256:2ff56af66ca2f9ad1032a6faf39d3d863cf1a8e13190b10fc3d40c2204050eb0",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-null-reservation-invalid/subject.json",
+      "digest": "sha256:d5fe12257caefb62c8ff286ab36090dfda7d216d1b9d52058207fa445f9502c7",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-record-event-observation-facts-omitted-invalid/subject.json",
-      "digest": "sha256:56fdb3246f753ffcc3a352731acea8b3541deae71dc8ee5000fc5bdc6990f36a",
+      "digest": "sha256:414f764786cb5b033677b7de62fb849ef3fcb8af41f59cb0fbe915d0383edd8f",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-record-event-record-fact-invalid/subject.json",
-      "digest": "sha256:b41f819e38c2e35201b7e7a85483d7a2b525a9e83208c6a86cfb79b74f47ab81",
+      "digest": "sha256:0b38d91e014a5e4d33b37086fbfe823f29fa09ffd6ec76b49295637597aee69e",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-reserved-opening-structural-valid/subject.json",
+      "digest": "sha256:07b2c0d20cb117e3feb228d53d90a56a4b9a3ae1ba672f12d02c12510164ff24",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/control-record-event-standing-brief-structural-valid/subject.json",
+      "digest": "sha256:3fab02cf4d74c2a12e3427799f355d0854f21a6c9c891c2d8c89973313e110bf",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-record-event-structural-valid/subject.json",
-      "digest": "sha256:35c52ecda8da6b141ef0969390966c837d74de7ca92701da8614f74e248dd56a",
+      "digest": "sha256:67e5ae39c1929754fb1c960d94df961a00c03c00b6fa137e21a2fbff027cdf21",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -544,13 +724,13 @@
     },
     {
       "path": "examples/control-record-revision-structural-valid/subject.json",
-      "digest": "sha256:f9e93523fd322d997700aac0a314ea491a53b01e5e1d227d7fa1957605af5214",
+      "digest": "sha256:45c5cb9475d93ed79d6670a9907e650661ea59b8dc251551612d980f0c52d9f5",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/control-record-store-archive-structural-valid/subject.json",
-      "digest": "sha256:6bcef66b78146e67413ea421a00de110c1e9f68f3db59e1f66faf854e3628168",
+      "digest": "sha256:03a7a8689fcbc65825ba9522d7759949e3bc4ea1bc0f983d6b652b3691c52328",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -562,19 +742,103 @@
     },
     {
       "path": "examples/control-record-store-structural-valid/subject.json",
-      "digest": "sha256:ef7b2fce5ff4a6b1ae415ca8f9abbe3b4a86f231e1a973743f6973c6d30b5ec8",
+      "digest": "sha256:0ea24d7c38fb5a20268389840e34fdd380e79753cd90e3ab5ba4979d876be048",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/delivery-reduction-delegation-stopped-structural-valid/subject.json",
+      "digest": "sha256:17edc87cd5cdb9dd87aa31d9cdcb89a5e63aadeda46a5c3a9738b8038f8d49bd",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/delivery-reduction-negative-charge-invalid/subject.json",
+      "digest": "sha256:38f4eafb4970ad80e3a81aaff852716c254cb712d8797c811ee30e6909896010",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/delivery-reduction-structural-valid/subject.json",
-      "digest": "sha256:0bfe439d850e65a356af269069c2fbe5128b7ec1ddc07f408cd6eac8fef011f2",
+      "digest": "sha256:a902a72c3727426b01590dc3668dcfd8eb32347b89bf5ed4ecf6fc5b6cf79f87",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/director-brief-payload-structural-valid/subject.json",
+      "digest": "sha256:a03eb706e1aa6aa8c329728b0bc1d710694d9cedf237f67b8508c9d54a0f958b",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/director-brief-standing-operation-invalid/subject.json",
+      "digest": "sha256:3ac376649d203e171e7c943779aac66aca7ffaa68aa7487ad53fcf1de8c9de7e",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/director-brief-standing-structural-valid/subject.json",
+      "digest": "sha256:bb30614414f6f879c5c1b12bcf7f76aec5d40da92a640833a389762874c8a807",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/director-decision-payload-structural-valid/subject.json",
+      "digest": "sha256:ce1efb62a107d82c4473cfe1032091bb6d58b34950ef601688e715457ec33ea5",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/director-decision-signature-noncanonical-invalid/subject.json",
+      "digest": "sha256:9f4e71850cd30f17b9ebb44338a680751b5bac52ffee4337b392c6896c669262",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/discipline-pack-structural-valid/subject.json",
+      "digest": "sha256:3b435eca6a7990887d182d6e441cad317ea2549066cdfe26f0b442d795f04195",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/discipline-record-obligation-invalid/subject.json",
+      "digest": "sha256:1ab05d38f550a19f0141f541cad4bb05080e4cd7ca71c05b7ac38881ca0c5403",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/discipline-record-required-source-invalid/subject.json",
+      "digest": "sha256:4c241440ef7e935af8c74d69e370226f0998a485ce8685386db406270b5af209",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/discipline-record-structural-valid/subject.json",
+      "digest": "sha256:5c67b1809a66fcb9d26f70fa91fce3aa72d223add1c38b8d67affc2b2f15ec0f",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/discipline-registry-structural-valid/subject.json",
+      "digest": "sha256:cb43956e8368010159d0503365d2e387c7d1dbc62c2f27209fade1d428cdf31c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/evidence-packet-baseline-postcondition-receipt-missing-invalid/subject.json",
+      "digest": "sha256:7ec1bb21946e36b76cdf71b5dbb35d19a845f40c22243cb0bb52deb73e17e5db",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/evidence-packet-baseline-postcondition-structural-valid/subject.json",
+      "digest": "sha256:9d52549ec7fa9e99d1ac2da15e34cf3a34116cac649581607e4b91914217480d",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/evidence-packet-payload-structural-valid/subject.json",
-      "digest": "sha256:7516675ed8b48bb8484f1b1662cd014af89bb3a24342e94d498c9b2962238c9d",
+      "digest": "sha256:40b6482b591fa1ba62ae28e2efa3d99983c029f30c6183e6f015322021f5c60b",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -592,13 +856,13 @@
     },
     {
       "path": "examples/execution-image-structural-valid/subject.json",
-      "digest": "sha256:1d468fff136ecfc48616f076b3707f156713a2003d9e7db72b6d01c7087d514c",
+      "digest": "sha256:b03bb32f97aec845cdee6ff21ea9c8726d59d46d83b30706fe2c6310a107fdef",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/execution-input-set-structural-valid/subject.json",
-      "digest": "sha256:f66297ae2f1cd37d7c35e8f8ff71f4a1a86a21752924586e92a3058ffe7f99b6",
+      "digest": "sha256:76ccfa2bf0fc695a17061d7d676f41c5db324bd4c2908de042d5698c32773adb",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -634,73 +898,127 @@
     },
     {
       "path": "examples/execution-receipt-payload-structural-valid/subject.json",
-      "digest": "sha256:d9c035e903f381f01a10acf99a455db70d60fe8806184536115df87871ea75eb",
+      "digest": "sha256:b9ca0fbb6f732e68d7b66f3ed8c5aa12db95ffe40ca72d80096b1cf10add4da1",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/execution-specification-structural-valid/subject.json",
-      "digest": "sha256:3290cdbdaf08052b8ced4329d2a2f82527021afa0b970c4bc102619835c47a90",
+      "digest": "sha256:f1ccdfa23a81a8c64973f944d02defe3cb87d251c30bd897adce7e98e8fb786f",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/execution-specification-undeclared-output-invalid/subject.json",
-      "digest": "sha256:27ea5dcd59ae2f7097b5db0588d78f2e3a4b5074b14bd1ca8cfb290fd1d91345",
+      "digest": "sha256:a975624031e93ba664e29d649f334218ee3aef83ecefef8cc15974de5000d223",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/fixture-manifest.json",
-      "digest": "sha256:71000e02008077e05efed24d8d9a87aa0c71b945fa0f553aec452f1387b6c53c",
+      "digest": "sha256:9cd5225258b1a883e0b2e9ab111ee89d7c3c7f1f3787ce86f507243408e0d1da",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/founder-brief-payload-structural-valid/subject.json",
-      "digest": "sha256:3dec6aa1be28da7bbf2252cf1bac20535d6b20a5050ff08586227bf9cbf03624",
+      "path": "examples/integration-assessment-conflicted-construction-invalid/subject.json",
+      "digest": "sha256:3a965e338be4880d7c69467564628b3d27dfb823515e730e8c74b3df8a9775a3",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/founder-decision-payload-structural-valid/subject.json",
-      "digest": "sha256:336e55faee216cd6a504f146d2590ae08275eed5ad1feb744e62545255953eab",
+      "path": "examples/integration-assessment-conflicted-structural-valid/subject.json",
+      "digest": "sha256:4437d81185c39e9455637b1f57fb57d54af9efc2ecd15819a0649389d0d09bfe",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/founder-decision-signature-noncanonical-invalid/subject.json",
-      "digest": "sha256:cd448cf2a19503088ff5b18fa4d5bb716d607455c901804baf70112c0de50e19",
+      "path": "examples/integration-assessment-structural-valid/subject.json",
+      "digest": "sha256:23c6e75164e2b4c263501cd976ac6bd176e9eb513eebe6b4d3e350a4befd4248",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-integration-agent-source-invalid/subject.json",
+      "digest": "sha256:85e42434982021bfe879b68e71fa7c32b4088f417db77b1b0576810fa060ede2",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-integration-structural-valid/subject.json",
+      "digest": "sha256:94b894a09aa2469ac8694516c640cce82645da20597d0d299bf1eb2acc6f722c",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/material-condition-payload-structural-valid/subject.json",
-      "digest": "sha256:beac52582dbec87403d056c4e3deff6d14fb3c69d77fa159827e03731172c617",
+      "digest": "sha256:d81b144b790df376705f07b07d37700c8d7b2589f8837fdda4e46ad13d8e0817",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/material-condition-product-state-drift-invalid/subject.json",
-      "digest": "sha256:5e934a918d39b56bdbf7d038aed2b7363350f9c79b603aa0ad66bc57573affe6",
+      "digest": "sha256:06156554bacb9ab57fc1fa82d2e37fd2d24e32ff57ca50576f4732cb4670c11f",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-projection-closure-structural-valid/subject.json",
+      "digest": "sha256:73b5a911c569ba15d0021074394f50f43a9e60cdf8606784a4d0e628c7e31c3b",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-projection-item-structural-valid/subject.json",
+      "digest": "sha256:5b4845eeac9316e96a472a9276b2ce8adec7ec510de01507720d6a76277307de",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/material-condition-projection-source-invalid/subject.json",
+      "digest": "sha256:4ceff1f1dcae97d74aea19add7282cf5016cb851cb12bdf047d5e64345755b83",
       "role": "conformance-fixture",
       "normative": false
     },
     {
       "path": "examples/parser-fuzz-delivery.md",
-      "digest": "sha256:fcdc3225be93a391871fc53f1df2408ffbcf1852e1488aafa337c18187138c6f",
+      "digest": "sha256:38760df6a4aeec0fd54de74850cf7fd1be5abf47a2d476462d1d4f07b5d24d59",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/provider-descriptor-codex-exec-standard-v6.json",
-      "digest": "sha256:dc900554a83aac0e5b8727aba1ae4c6426dc754779471717e865c8c69db107b6",
+      "path": "examples/productive-semantic-operation-generation-missing-invalid/subject.json",
+      "digest": "sha256:57d320f44c60f5c43ab5b1f0e88f01da1a852d6653809c100e6517de36dff0cf",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/productive-semantic-operation-structural-valid/subject.json",
+      "digest": "sha256:7bbee8bd6328b2e160f517008425aaaf5ecc811aee7efc85330d11b9696a1f7e",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/projection-request-orientation-context-valid/subject.json",
+      "digest": "sha256:ddd76ef0d0d61a6a48607f4143585ab4ea22dddd83f88007fc098aba130e05e9",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/projection-request-orientation-objective-empty-invalid/subject.json",
+      "digest": "sha256:ab159a028441c1081b1d3a0d02737117a1a63914e5247eb620db128b4f1cce91",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/provider-descriptor-codex-exec-standard-v7.json",
+      "digest": "sha256:6aa7fc9e047af27188b7e542e77dc54c81b4cf96096c469df28673fd2111b328",
       "role": "provider-descriptor",
       "normative": true
     },
     {
       "path": "examples/provider-descriptor-structural-valid/subject.json",
-      "digest": "sha256:dc900554a83aac0e5b8727aba1ae4c6426dc754779471717e865c8c69db107b6",
+      "digest": "sha256:6aa7fc9e047af27188b7e542e77dc54c81b4cf96096c469df28673fd2111b328",
       "role": "conformance-fixture",
       "normative": false
     },
@@ -717,41 +1035,107 @@
       "normative": false
     },
     {
-      "path": "examples/repository-v15-environment-overflow-invalid/.lifecycle/repository.json",
-      "digest": "sha256:c0e692e158c69089159c43ac9afbe531320f2b40faf01bc97ed47c8c4cf8b409",
+      "path": "examples/repository-v15-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:08c00ddbcd46488c32be9cdecc9965b168dbfef127cb105a1fe6cefa925b1013",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/repository-v15-fresh-valid/.lifecycle/repository.json",
-      "digest": "sha256:36d4271ba384c2d702d2cc11d23e44b42398d27af4a9834e48b31afe7407ecd7",
+      "path": "examples/repository-v16-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:36857db15bf72f76e6134cc317aa0e07823d32c08a5dfa55ba219224585ad050",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/repository-v15-migration-invalid/.lifecycle/repository.json",
-      "digest": "sha256:cf6ad2820c114ab57cde7f8735e802d7e900deee3d30de057d8e93f53ee1bd49",
+      "path": "examples/repository-v18-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:78ca0885f4243480c9feff767a997aa939d602c28f6db674c364bc0a2bf1a6ab",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/repository-v15-mixed-state-invalid/.lifecycle/repository.json",
-      "digest": "sha256:b4d815c9e2d0ec415b00253121d8c6b14e44bf1a87f349a389d9910a20e515ce",
+      "path": "examples/repository-v19-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:3bbceac99d532c13b858962a57137aff930b9da29180e28baec3ce8555801745",
       "role": "conformance-fixture",
       "normative": false
     },
     {
-      "path": "examples/repository-v15-mixed-state-invalid/records/control/delivery/work-boundaries/wb.predecessor-attempt.json",
+      "path": "examples/repository-v20-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:c562423dbf3f8f169b0b6792480d40b8ff535ee733f62dc1ae5189fe02fe1d96",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v21-predecessor-invalid/.lifecycle/repository.json",
+      "digest": "sha256:3adbc35d1a9d151188c66c022a4670cf3662b8f3a96c423d872b9799e56657db",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-environment-overflow-invalid/.lifecycle/repository.json",
+      "digest": "sha256:5d5b746c5a97938a21372ef8d86f2a0f06d6063dcbd2d1d226854e4a5a61c3d7",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-fresh-valid/.lifecycle/repository.json",
+      "digest": "sha256:8b81a09fb05cac0a49b07ae068510bd9ba8ce0668c50e144f95cddc384ee99c1",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-migration-invalid/.lifecycle/repository.json",
+      "digest": "sha256:78744133cfc947c2f6b08a4b47ed9ec1358b8c03843bacc6514d831fa89db913",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-mixed-state-invalid/.lifecycle/repository.json",
+      "digest": "sha256:d29355d50d1e31c182c1418b78239d26521d9a88fe842147ec3acbd5c7bddd2e",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-mixed-state-invalid/records/control/delivery/work-boundaries/wb.predecessor-attempt.json",
       "digest": "sha256:9e3cec01de30a1dad97c045118b0a6d75955f28a890e6d37a048cd45aaca7937",
       "role": "conformance-fixture",
       "normative": false
     },
     {
+      "path": "examples/repository-v22-orientation-large-bounds-invalid/.lifecycle/repository.json",
+      "digest": "sha256:28a620d3de61eeb350de876dc4b93fe10df86ce814349d4be7f985e8be0d9ef1",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/repository-v22-orientation-large-valid/.lifecycle/repository.json",
+      "digest": "sha256:c01493bb6696a207e82ceb3750419981f37f175ef86fc4fb63dab12c7460c22c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
       "path": "examples/work-boundary-payload-structural-valid/subject.json",
-      "digest": "sha256:e180d21e869586c4fb453679c2332f5eee658a2a4bc99b720d6f11a3ac9acc32",
+      "digest": "sha256:91941e3a58e4378d22ee39ef050db669b25f00a6e93b4af9aa5ce8be7fab6c9c",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/work-delegation-implicit-direction-invalid/subject.json",
+      "digest": "sha256:40536d7a59633d4fc1d2487d6f77ebc093bec33ad4b2b54f33ef0d7c17b82d97",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/work-delegation-integrate-only-structural-valid/subject.json",
+      "digest": "sha256:85198a6994c74e19c03900e196d95109c9fa95f2f4ca6397983d4f41334eb98e",
+      "role": "conformance-fixture",
+      "normative": false
+    },
+    {
+      "path": "examples/work-delegation-payload-structural-valid/subject.json",
+      "digest": "sha256:85198a6994c74e19c03900e196d95109c9fa95f2f4ca6397983d4f41334eb98e",
       "role": "conformance-fixture",
       "normative": false
     }
   ],
-  "publicationDigest": "sha256:238bed4f1a0bd2d4ac759e4fd62f2f0f9ba0c7a81c9cd72ac1f4239f07dcb3c3"
+  "publicationDigest": "sha256:928eae667c58a5b5e234690c9ba3a709c4b9d68c59929e233da2ec992edeb646"
 }

@@ -6,7 +6,12 @@ import type { FoundationGitTreeEntry, FoundationRepositoryContract } from "../re
 import { sha256Bytes } from "../validation/canonical.js";
 import { compareCodePoints } from "../validation/ordering.js";
 import type { DiagnosticCollector } from "../validation/result.js";
-import type { FoundationKnowledgeRecord, FoundationKnowledgeSourceResolution, FoundationSourceBinding } from "./types.js";
+import type {
+  FoundationDisciplineRegistry,
+  FoundationKnowledgeRecord,
+  FoundationKnowledgeSourceResolution,
+  FoundationSourceBinding,
+} from "./types.js";
 
 const SOURCE_STAGE = "sources";
 
@@ -132,16 +137,21 @@ export async function validateKnowledgeSources(options: {
   contract: FoundationRepositoryContract;
   treeEntries: readonly FoundationGitTreeEntry[];
   records: readonly FoundationKnowledgeRecord[];
+  disciplineRegistry: FoundationDisciplineRegistry;
   collector: DiagnosticCollector;
 }): Promise<FoundationKnowledgeSourceValidation> {
   const owners = new Set(options.contract.knowledge.owners);
+  const adoptions = new Map(options.disciplineRegistry.adoptions.map((entry) => [entry.id, entry]));
+  const packs = new Map(options.disciplineRegistry.packs.map((entry) => [entry.id, entry]));
   const tree = new Map(options.treeEntries.map((entry) => [entry.path, entry]));
   const resolutions: FoundationKnowledgeSourceResolution[] = [];
   const records = [...options.records].sort((left, right) => compareCodePoints(
     `${left.frontMatter.id}\0${left.frontMatter.revision.toString().padStart(10, "0")}`,
     `${right.frontMatter.id}\0${right.frontMatter.revision.toString().padStart(10, "0")}`,
   ));
-  const declared = records.flatMap((record) => record.frontMatter.sources.map((source) => ({ record, source })));
+  const declared = records.flatMap((record) => record.frontMatter.sources
+    .filter((source) => record.frontMatter.kind !== "discipline" || !source.required)
+    .map((source) => ({ record, source })));
   let complete = true;
   let observedBytes = 0;
   if (declared.length > options.contract.knowledge.limits.maximumSources) {
@@ -155,6 +165,34 @@ export async function validateKnowledgeSources(options: {
   }
 
   for (const record of records) {
+    if (record.frontMatter.kind === "discipline") {
+      for (const source of record.frontMatter.sources) {
+        if (source.required) {
+          options.collector.add({
+            stage: "records",
+            code: "lifecycle.discipline.source-required",
+            message: `${record.frontMatter.id} cannot make advisory Discipline provenance required`,
+            path: record.path,
+            facts: { sourceId: source.id },
+          });
+        }
+      }
+      if (record.frontMatter.status !== "current") continue;
+      const adoption = adoptions.get(record.frontMatter.id);
+      const pack = adoption === undefined
+        ? undefined
+        : packs.get(adoption.packId);
+      if (pack === undefined || record.frontMatter.owners.length !== 1 || record.frontMatter.owners[0] !== pack.publisher) {
+        options.collector.add({
+          stage: "records",
+          code: "lifecycle.discipline.publisher-owner",
+          message: `${record.frontMatter.id} must retain the exact singleton owner published by its registered Pack`,
+          path: record.path,
+          facts: { actualOwners: record.frontMatter.owners, expectedPublisher: pack?.publisher ?? null },
+        });
+      }
+      continue;
+    }
     for (const owner of record.frontMatter.owners) {
       if (!owners.has(owner)) {
         options.collector.add({

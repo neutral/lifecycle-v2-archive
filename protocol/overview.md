@@ -1,78 +1,130 @@
-# Foundation interface protocol v10
+# Foundation interface protocol v17
 
-The top-level `protocol/` package is the shared, presentation-neutral
-Foundation contract imported independently by the runtime and its clients. It
-owns the strict, compact public Foundation v10 contract:
-`lifecycle.interface.foundation.v10`, `lifecycle.runtime.foundation.v10`, the
-matching facade, observation, and result schemas.
+A client needs to know which Delivery it is seeing, what the Runtime observed,
+and which exact read a later request relies on. This package supplies the shared
+contract for those relationships. The Runtime and canonical CLI use the
+same presentation-neutral schemas for `lifecycle.interface.foundation.v17` and
+`lifecycle.runtime.foundation.v17`. The CLI uses Runtime-derived state rather
+than a separate presentation state model.
 
-`src/foundation.ts` is the sole public barrel. Its internal modules separate
-the common protocol and Control vocabulary, requests, installed-version and
-CLI-error envelopes, Attempt View, and results. Internal helpers do not create
-additional package exports or public entry points. Canonical JSON and SHA-256
-validation use the same browser-and-Node implementation, so a browser client
-can validate the exact public contract without a Node compatibility shim or a
-second web-specific DTO protocol.
+Protocol v17 binds the rc.17 qualification, repository v22, and Provider Adapter
+v7 literals carried by repository observations, installed version, and Authorization Review. Predecessor values are refused. The local `lifecycle
+draft` command does not add a public Runtime operation.
 
-An observation contains runtime-derived repository facts and a nullable
-Delivery. A Delivery exposes its exact identity, standing, Candidate condition,
-activities, recovery, subject references, Journal head summary, Store
-disposition, and eligible operations. It contains no Role Result, Assessment,
-or Markdown Process Journal carrier.
+Read this overview before the public barrel,
+[`src/foundation.ts`](src/foundation.ts). That barrel is the sole package entry
+point. Internal modules separate common vocabulary, requests, installed-version
+and CLI-error envelopes, Attempt View, and results. Canonical JSON and SHA-256
+validation share one portable implementation that keeps public values independent
+of the transport.
 
-Those fields are orthogonal. A valid public state can be `active` with an
-admitted Boundary, no Candidate, and activity recovery at
-`candidate-revision-observed`. A valid terminal state remains `closed` with
-Candidate condition `accepted`, `abandoned`, or `absent` while a separate
-`store-disposition` recovery points to `store-seal` or `store-archive`.
-An existing Candidate can likewise be `in-progress` while a `started` or
-`prepared` Activity exposes its exact pre-effect recovery coordinate; recovery
-presence alone does not relabel that work `terminal-recovery`.
+## Observation, selection, and generation
 
-`delivery.inbox` returns a bounded target-scoped aggregate whose rows each bind
-one exact Store, Delivery, reduction, disposition, and read generation. One
-selected `delivery-view` joins all current founder-facing sections under one
-generation. `delivery.prepare` accepts semantic Markdown without a Delivery ID
-and, on completion, returns the newly created Delivery identity. Every status
-and later Delivery request carries an exact `deliveryId`; result/request
-binding rejects substitution. Non-authority semantic mutations additionally
-bind the expected read generation. The mutation vocabulary remains prepare,
-admit, continue, evaluate, revise, reaffirm, accept, no-ship, and recover.
-Inbox, status, inspection, diff, watch, and export are reads.
+An observation contains Runtime-derived repository facts and a nullable
+Delivery. The Delivery names its exact identity, Standing, Candidate condition,
+Activities, recovery, current subjects, Journal head, Store disposition, latest
+Integration Assessment, and eligible operations. Each field answers a different
+question. For example, an `active` Delivery can have an admitted Boundary and no
+Candidate while recovery remains at `candidate-revision-observed`. A `closed`
+Delivery can have an `accepted`, `abandoned`, or `absent` Candidate while separate
+`store-disposition` recovery still requires `store-seal` or `store-archive`.
+Recovery presence does not itself make every Candidate `terminal-recovery`.
 
-Inspection exposes selected Delivery, Attempt, Decision, and exact Control
-family and revision queries. Diff exposes the runtime-selected exact Candidate
-difference. Watch returns a changed coherent generation or an
-unchanged timeout. Typed semantic sections preserve their provenance and expose
-no SQL, Git arguments, support payloads, or authority material. Inspection and
-export are bounded result values. Other operation results retain
-the direct observation, exact change facts, Control references, diagnostics,
-and a self digest.
+`delivery.inbox` supplies a bounded target-scoped set of exact Delivery rows.
+Selecting a row gives the client a Delivery identity; a `delivery-view` then
+joins that Delivery's Director-facing sections under one generation. Its
+generation digest is an opaque Runtime-derived staleness token. It is not a
+self-digest that clients reproduce or a new Process, authority, or execution
+state. The token includes the digest or absence of private active-operation
+support, allowing watches to notice recovery progress without disclosing the
+private support or its physical mechanics.
 
-The Delivery generation digest is an opaque Runtime-derived staleness token,
-not a self-digest that clients can reproduce and not a Process, authority, or
-execution state. It binds the disclosed generation subject plus the digest or
-absence of private active-operation support, so watch and optimistic staleness
-checks observe private recovery progress without revealing its generation,
-payload digest, bytes, coordinate, or physical mechanics.
+When a Work Boundary is selected, the generation's repository coordinates
+describe its retained basis; before one exists they use repository observation.
+Direct repository observation describes the current target.
+Canonical work can move while a Delivery develops, so those values need not
+match. A client must preserve their different subjects when presenting them.
 
-An invalid final Agent submission can expose one retained diagnostic containing
-only stable code, stage, and failure-facts digest. The public protocol does not
-expose the semantic draft, physical workspace, provider output, or any live
-validation command, callback, endpoint, token, or response; Foundation rc.10
-defines no invocation-local validation exchange.
+## Requests that preserve the reviewed basis
 
-Execution Cells remain subordinate Runtime mechanics. Public Attempt and Check
-views may expose only stable identities and outcome facts needed to explain the
-Delivery: the selected Backend Profile and immutable Image, Specification and
-Input Set digests, runner and terminal-observation digests, Output Manifest
-availability and digest, Containment, and Runtime-owned Retirement. They do not
-expose a Cell, Handle, allocation key, Backend coordinate, container or Docker
-detail, private path, Reclamation state, or a second execution workflow.
+`delivery.prepare` accepts complete semantic Markdown without a Delivery ID and
+returns the new identity on completion. Every request for one selected Delivery
+names its exact `deliveryId`; result/request binding rejects a substituted
+Delivery. Inbox and Inbox watch remain target-scoped. Continue, integrate,
+evaluate, revise, and reaffirm also carry the expected read generation.
 
-Candidate continuity is the current logical Candidate Revision plus its
-immutable Carrier-manifest binding. Candidate materializations are not public
-identity, and terminal no-ship state is `abandoned`, not physical `disposed`.
-The public operation vocabulary remains the nine Delivery mutations; Cell
-allocation, dispatch, observation, retrieval, retirement, and reclamation are
-never public operations or interface-selected transitions.
+The ten Process operations are prepare, admit, continue, integrate, evaluate,
+revise, reaffirm, accept, no-ship, and recover. Next Pass exposes five bounded
+rows: continue, integrate, evaluate, revise, and reaffirm. The four Agent
+operations preview fresh Investment and semantic input. Integration has null
+Agent role and Investment and takes only the expected generation. The Runtime
+selects and retains the canonical parent and applies its fixed construction
+rule; clients supply no parent, strategy, semantic input, or authority credential.
+
+The separate `delivery.work` resource control has only `set`, `run`, and `stop`
+actions. Save and Run bind a reviewed generation; Run and Stop select the exact
+retained grant reference. Stop has no generation precondition. The selected
+Delivery View v2 exposes the retained grant, pending stop and current policy
+conclusion; lifetime charges remain in the Delivery reduction. Agent Investment
+is explicitly unavailable when installed choices cannot be observed. The
+[Control owner](../spec-source/spec/CONTROL.md#explicit-resource-controls)
+defines the semantics. Coordinates-only work results report a bounded summary
+and exact Journal heads without flattening every event into one response.
+
+A request is not proof of completion. Operation results retain direct
+observation, exact change facts, Control references, diagnostics, and a self
+digest. An unsuccessful provider outcome, invalid semantic submission, and
+Candidate advancement are separate facts. Where final submission is invalid,
+the retained public diagnostic contains only its stable code, stage, and
+failure-facts digest. It exposes no semantic draft, workspace, provider output,
+or live validation exchange.
+
+## Bounded inspection and currentness
+
+Inbox, status, inspection, diff, watch, and export are reads. Inspection opens a
+selected Delivery, Attempt, Decision, or exact Control family and revision;
+Candidate diff returns the Runtime-selected subject. Watch returns either a
+changed coherent generation or an unchanged timeout. A changed generation gives
+a client a reason to read fresh state, not permission to combine sections from
+different generations.
+
+The bounded context-inspection union covers Knowledge indexes and records,
+Code changed-path pages and file differences, Atlas overview, Points and
+Resources, ranged Source retrieval, and Authorization Review. Each
+artifact selector binds an exact retained inspection selection and its
+originating Journal prefix. Knowledge and Atlas select one proposed-or-active
+Work Boundary; Code selects an exact Candidate and, for decision inspection,
+its Seal. Their historical Context/Code bases and Source References use v2.
+Later checkpoints or subject changes do not silently replace that selection.
+Fresh Store custody, prefix integrity and artifact availability remain required.
+Authorization Review alone retains the full current Delivery generation.
+Runtime-issued Source References are basis-bound values, not paths or
+capabilities. A completed result must match its originating selector, limits,
+exact subject, and direct observation before the caller uses it. Cursor
+compilation remains an internal helper.
+
+Typed semantic sections preserve their provenance without exposing SQL, Git
+arguments, private support, or authority material. Authorization Review explains
+an exact proposed Director decision; it does not authenticate the decision.
+Its fixed consequence sentences are validated contract content and contribute
+to exact review identity, even though they are readable prose.
+
+## Useful facts without a second execution interface
+
+Candidate continuity is the logical Candidate Revision and its immutable
+Carrier-manifest binding. A disposable materialization is not public identity;
+terminal no-ship reports `abandoned`, not physical `disposed`.
+
+Attempt and Check views expose the execution facts needed to understand their
+Delivery operation: selected Backend Profile and Image, Specification and Input
+Set digests, runner and terminal-observation digests, Output Manifest availability,
+Containment, and Runtime-owned Retirement. They do not expose Cells, Handles,
+allocation keys, backend coordinates, container details, private paths, or
+Reclamation state. Allocation, dispatch, observation, retrieval, Retirement, and
+Reclamation remain subordinate Runtime mechanics, not new public operations.
+
+The [Runtime overview](../runtime/overview.md) explains the owners that produce
+these values. The [source setup guide](../docs/source-setup.md) explains how to
+build and invoke the CLI. Normative operation and read-model meaning stays
+in [Delivery](../spec-source/spec/DELIVERY.md); package tests establish schema
+and binding behavior, not an operated Delivery or a release claim.

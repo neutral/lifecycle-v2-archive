@@ -17,7 +17,7 @@
     "digest"
   ],
   "properties": {
-    "id": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/opaqueId" },
+    "id": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId" },
     "candidateWrites": { "type": "boolean" },
     "temporaryWrites": { "type": "boolean" },
     "subprocesses": {
@@ -39,6 +39,6 @@
       "uniqueItems": true,
       "items": { "type": "string", "minLength": 1, "maxLength": 512 }
     },
-    "digest": { "$ref": "urn:lifecycle:schema:common:v1#/$defs/sha256" }
+    "digest": { "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256" }
   }
 }

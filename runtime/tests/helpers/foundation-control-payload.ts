@@ -5,7 +5,9 @@ import type { ControlJsonObject } from "../../src/foundation/control/types.js";
 export function validDeliveryControlPayload(
   kind: DeliveryControlRecordKind,
 ): ControlJsonObject {
-  const relative = `spec-source/examples/${kind}-payload-structural-valid/subject.json`;
+  const relative = kind === "integration-assessment"
+    ? "spec-source/examples/integration-assessment-structural-valid/subject.json"
+    : `spec-source/examples/${kind}-payload-structural-valid/subject.json`;
   const fixture = [
     new URL(`../../../../${relative}`, import.meta.url),
     new URL(`../../../${relative}`, import.meta.url),

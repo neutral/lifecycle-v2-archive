@@ -1,5 +1,5 @@
 {
-  "schema": "lifecycle.closure-payload.v4",
+  "schema": "lifecycle.closure-payload.v6",
   "profileId": "lifecycle.delivery-closure.foundation-v1",
   "disposition": "no-ship",
   "transaction": {
@@ -30,11 +30,11 @@
     "obligationCount": 0
   },
   "runtime": {
-    "qualification": "lifecycle.foundation.1.0.0-rc.10",
-    "repository": "lifecycle.repository.v15",
-    "runtimeProtocol": "lifecycle.runtime.foundation.v10",
-    "interfaceProtocol": "lifecycle.interface.foundation.v10",
-    "provider": "lifecycle.provider-adapter.v6",
+    "qualification": "lifecycle.foundation.1.0.0-rc.17",
+    "repository": "lifecycle.repository.v22",
+    "runtimeProtocol": "lifecycle.runtime.foundation.v17",
+    "interfaceProtocol": "lifecycle.interface.foundation.v17",
+    "provider": "lifecycle.provider-adapter.v7",
     "implementationId": "runtime.delivery",
     "implementationDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
     "ruleSetId": "rules.delivery",

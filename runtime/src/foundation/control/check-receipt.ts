@@ -121,7 +121,7 @@ export type CheckReceiptObservation = Readonly<{
   environment: Readonly<{
     identityDigest: Sha256;
     runtimeEnforced: readonly string[];
-    founderManaged: readonly string[];
+    directorManaged: readonly string[];
   }>;
   disposition: CheckReceiptDisposition;
   resultFacts: readonly CheckReceiptResultFact[];
@@ -374,7 +374,7 @@ function checkSelection(
   expectedTargetId: string,
 ): CheckSelection {
   if (
-    boundary.payload.schema !== "lifecycle.work-boundary-payload.v4" ||
+    boundary.payload.schema !== "lifecycle.work-boundary-payload.v6" ||
     boundary.payload.targetId !== expectedTargetId
   ) {
     fail("boundary", "Check Receipt requires one Foundation Work Boundary for the exact Store target");
@@ -485,20 +485,20 @@ function normalizedEnvironment(
   requested: readonly string[],
 ): ControlJsonObject {
   const runtimeEnforced = exactStringSet(observation.runtimeEnforced, "Runtime-enforced conditions");
-  const founderManaged = exactStringSet(observation.founderManaged, "Founder-managed conditions");
+  const directorManaged = exactStringSet(observation.directorManaged, "Director-managed conditions");
   const runtimeSet = new Set(runtimeEnforced);
-  const founderSet = new Set(founderManaged);
-  if (runtimeEnforced.some((value) => founderSet.has(value))) {
-    fail("environment", "One environment condition cannot be both runtime-enforced and Founder-managed");
+  const directorSet = new Set(directorManaged);
+  if (runtimeEnforced.some((value) => directorSet.has(value))) {
+    fail("environment", "One environment condition cannot be both runtime-enforced and Director-managed");
   }
-  if (requested.some((value) => !runtimeSet.has(value) && !founderSet.has(value))) {
+  if (requested.some((value) => !runtimeSet.has(value) && !directorSet.has(value))) {
     fail("environment", "Every requested Work Boundary condition requires one observed custody class");
   }
   return Object.freeze({
     identityDigest: digest(observation.identityDigest, "Check environment identity digest"),
     requested,
     runtimeEnforced,
-    founderManaged,
+    directorManaged,
   });
 }
 
@@ -964,7 +964,7 @@ export function compileCheckReceiptAppend(
   );
   const limitations = exactStringSet(input.observation.limitations ?? [], "Check limitations");
   const payload: ControlJsonObject = Object.freeze({
-    schema: "lifecycle.check-receipt-payload.v2",
+    schema: "lifecycle.check-receipt-payload.v3",
     profileId: "lifecycle.check-receipt.foundation-v1",
     selectionId,
     definition: selection.definition,

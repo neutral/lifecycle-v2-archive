@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { deliveryGitContextFixture } from "../helpers/delivery-git-context-fixture.js";
+import { FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1 } from "../../src/foundation/repository/delivery-git-context-manifest.js";
 import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,6 +18,7 @@ import type {
 import {
   compileAgentAttemptAppend,
 } from "../../src/foundation/control/agent-attempt.js";
+import { recordDeliveryActivityRecovery } from "../../src/foundation/control/activity.js";
 import {
   retainCandidateRevision,
   type CandidateRevisionState,
@@ -42,15 +45,18 @@ import {
   type FoundationExecutionHandle,
   type FoundationRetrievedExecutionOutputV1,
 } from "../../src/foundation/execution/backend.js";
-import type {
-  FoundationExecutionOutputManifestEntryV1,
-  FoundationExecutionSpecificationV1,
+import {
+  parseFoundationExecutionBackendProfile,
+  type FoundationExecutionOutputManifestEntryV1,
+  type FoundationExecutionSpecificationV1,
 } from "../../src/foundation/execution/contracts.js";
-import type {
-  FoundationExecutionOperationCheckpointCoordinateV1,
-  FoundationExecutionOperationCheckpointPersistenceV1,
-  FoundationExecutionOperationCheckpointV1,
-  FoundationRetainedExecutionOperationCheckpointV1,
+import { foundationDockerExecutionBackendProfileV1 } from "../../src/foundation/execution/docker-profile-v1.js";
+import {
+  FoundationExecutionOperationHostV1,
+  type FoundationExecutionOperationCheckpointCoordinateV1,
+  type FoundationExecutionOperationCheckpointPersistenceV1,
+  type FoundationExecutionOperationCheckpointV1,
+  type FoundationRetainedExecutionOperationCheckpointV1,
 } from "../../src/foundation/execution/operation-host.js";
 import {
   createFoundationExecutionOutputStoreV1,
@@ -80,6 +86,7 @@ import {
   type FoundationAgentCellPersistenceBindingV1,
   type FoundationCompiledAgentCellInputV1,
 } from "../../src/foundation/attempt/execution-cell-v1.js";
+import { selectFoundationAgentAttemptPolicyV7 } from "../../src/foundation/attempt/investment-policy-v7.js";
 import {
   FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1,
   observeFoundationAgentProviderTerminalCompletionV1,
@@ -92,6 +99,7 @@ import {
 import {
   InMemoryExecutionBackendEngine,
 } from "../support/in-memory-execution-backend.js";
+import { preDispatchAbsenceBackend } from "../support/pre-dispatch-absence-backend.js";
 
 const RUNTIME = "foundation-runtime";
 const TARGET = "agent-cell-target";
@@ -116,21 +124,21 @@ function currentPayload(kind: RecordKind): ControlJsonObject {
 }
 
 type RecordKind =
-  | "founder-brief"
+  | "director-brief"
   | "agent-attempt"
   | "agent-work-product"
   | "execution-receipt"
   | "work-boundary"
-  | "founder-decision"
+  | "director-decision"
   | "check-receipt";
 
 const RECORD_SEMANTICS = Object.freeze({
-  "founder-brief": Object.freeze({ author: "founder", authority: "founder-supplied" }),
+  "director-brief": Object.freeze({ author: "director", authority: "director-supplied" }),
   "agent-attempt": Object.freeze({ author: "runtime", authority: "runtime-derived" }),
   "agent-work-product": Object.freeze({ author: "agent", authority: "agent-proposed" }),
   "execution-receipt": Object.freeze({ author: "runtime", authority: "runtime-observed" }),
   "work-boundary": Object.freeze({ author: "runtime", authority: "runtime-derived" }),
-  "founder-decision": Object.freeze({ author: "founder", authority: "founder-authenticated" }),
+  "director-decision": Object.freeze({ author: "director", authority: "director-authenticated" }),
   "check-receipt": Object.freeze({ author: "runtime", authority: "runtime-observed" }),
 } as const);
 
@@ -300,11 +308,12 @@ async function seedAdmittedStore(root: string): Promise<Readonly<{
     store,
     revision: revisionInput({
       id: "brief-prepare-agent-cell",
-      kind: "founder-brief",
+      kind: "director-brief",
       createdAt: now(),
+      payload: { ...currentPayload("director-brief"), scope: { kind: "activity", activityId: prepareId } },
     }),
     eventId: "event-brief-prepare-agent-cell",
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     activityId: prepareId,
   });
   appendEvent({
@@ -440,13 +449,13 @@ async function seedAdmittedStore(root: string): Promise<Readonly<{
     activityId: admitId,
     payload: Object.freeze({ operation: "delivery.admit" }),
   });
-  const rawDecision = currentPayload("founder-decision");
+  const rawDecision = currentPayload("director-decision");
   const rawDecisionSubject = rawDecision.subject as ControlJsonObject;
   const decision = appendRevision({
     store,
     revision: revisionInput({
       id: "decision-admit-agent-cell",
-      kind: "founder-decision",
+      kind: "director-decision",
       createdAt: now(),
       payload: Object.freeze({
         ...rawDecision,
@@ -464,7 +473,7 @@ async function seedAdmittedStore(root: string): Promise<Readonly<{
       ]),
     }),
     eventId: "event-decision-admit-agent-cell",
-    eventKind: "founder-decision-authenticated",
+    eventKind: "director-decision-authenticated",
     activityId: admitId,
   });
   const admissionEffect = digest("agent-cell-admission-effect");
@@ -665,11 +674,12 @@ function openBuilderActivity(input: Readonly<{
     store: input.store,
     revision: revisionInput({
       id: `brief-continue-agent-cell-${input.salt}`,
-      kind: "founder-brief",
+      kind: "director-brief",
       createdAt: now(),
+      payload: { ...currentPayload("director-brief"), scope: { kind: "activity", activityId } },
     }),
     eventId: `event-brief-continue-agent-cell-${input.salt}`,
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     activityId,
   });
   appendEvent({
@@ -755,12 +765,16 @@ async function compileBuilderInput(input: Readonly<{
   carrierArtifactBytes: Uint8Array;
   selection: BuilderSelection;
   selectedImage: FoundationAgentCellImageV1;
+  role?: "builder" | "reconnaissance";
+  gitContextIdentity?: Readonly<{ targetId?: string; storeId?: string }>;
   transformSubject?: (
     subject: FoundationAgentCellImmutableSubjectV1,
   ) => FoundationAgentCellImmutableSubjectV1;
 }>): Promise<FoundationCompiledAgentCellInputV1> {
   const manifestDigest = sha256Bytes(input.carrierManifestBytes);
   const candidateStateValue = input.candidate.payload.state as ControlJsonObject;
+  const gitContext = deliveryGitContextFixture({ candidate: input.candidate, rootTree: String(candidateStateValue.tree),
+    targetId: input.store.identity.targetId, storeId: input.store.identity.storeId, ...input.gitContextIdentity });
   const subjects = Object.freeze([
     immutableSubject({
       kind: "projection",
@@ -775,7 +789,7 @@ async function compileBuilderInput(input: Readonly<{
       bytes: jsonBytes(input.selection.roleSubject),
     }),
     immutableSubject({
-      kind: "founder-direction",
+      kind: "director-direction",
       id: input.selection.brief.recordId,
       revision: input.selection.brief.revision,
       digest: input.selection.brief.digest,
@@ -831,6 +845,8 @@ async function compileBuilderInput(input: Readonly<{
         rootTree: String(candidateStateValue.tree),
       }),
     }),
+    immutableSubject({ kind: "delivery-git-context", id: `${input.candidate.recordId}-git-context`,
+      digest: gitContext.subjectDigest, bytes: gitContext.manifestBytes }),
     immutableSubject({
       kind: "candidate-revision-carrier-manifest",
       id: `${input.candidate.recordId}-carrier-manifest`,
@@ -839,6 +855,10 @@ async function compileBuilderInput(input: Readonly<{
     }),
   ]);
   const entries = Object.freeze([
+    immutableEntry({ path: FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.manifest, purpose: "operation-input",
+      mediaType: "application/json", modeClass: "regular", sourceSubjectDigest: gitContext.subjectDigest, bytes: gitContext.manifestBytes }),
+    immutableEntry({ path: FOUNDATION_DELIVERY_GIT_CONTEXT_PATHS_V1.artifact, purpose: "operation-input",
+      mediaType: "application/octet-stream", modeClass: "regular", sourceSubjectDigest: gitContext.subjectDigest, bytes: gitContext.artifactBytes }),
     immutableEntry({
       path: FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateManifestPath,
       purpose: "operation-input",
@@ -864,6 +884,15 @@ async function compileBuilderInput(input: Readonly<{
       bytes: input.selection.roleBrief.bytes,
     }),
     immutableEntry({
+      path: "semantic-basis.json",
+      purpose: "operation-input",
+      mediaType: "application/json",
+      modeClass: "regular",
+      sourceSubjectDigest: input.selection.roleSubjectDigest,
+      // This direct Cell-owner fixture isolates transport, not semantic compilation.
+      bytes: Uint8Array.from(Buffer.from('{"fixture":"semantic-basis-transport"}', "utf8")),
+    }),
+    immutableEntry({
       path: FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.semanticTemplatePath,
       purpose: "semantic-template",
       mediaType: "text/markdown; charset=utf-8",
@@ -875,7 +904,7 @@ async function compileBuilderInput(input: Readonly<{
   return await compileFoundationAgentCellInputV1({
     store: input.store,
     activityId: input.selection.activityId,
-    role: "builder",
+    role: input.role ?? "builder",
     ownerSubjectDigest: input.selection.roleSubjectDigest,
     inputMaterialDigest: digest(`agent-cell-input-material-${input.selection.activityId}`),
     subjects: input.transformSubject === undefined
@@ -928,12 +957,14 @@ function compileAttempt(input: Readonly<{
   selection: BuilderSelection;
   compiledInput: FoundationCompiledAgentCellInputV1;
   installed: FoundationAgentCellInstalledInputsV1;
+  operation?: "delivery.continue" | "delivery.prepare" | "delivery.revise" | "delivery.reaffirm";
 }>): FoundationAgentCellAttemptPreparationV1 {
+  const operation = input.operation ?? "delivery.continue";
   return compileAgentAttemptAppend({
     store: input.store,
     activityId: input.selection.activityId,
-    operation: "delivery.continue",
-    role: "builder",
+    operation,
+    role: operation === "delivery.continue" ? "builder" : "reconnaissance",
     createdAt: "2026-08-31T22:00:03.000Z",
     runtimeId: RUNTIME,
     projection: input.selection.projection,
@@ -952,7 +983,7 @@ function compileAttempt(input: Readonly<{
         imageDigest: input.installed.image.imageDigest,
       }),
       inputSet: Object.freeze({
-        profileId: "lifecycle.execution-input-set.v1" as const,
+        profileId: "lifecycle.execution-input-set.v2" as const,
         digest: input.compiledInput.inputSet.digest,
       }),
     }),
@@ -970,23 +1001,23 @@ function compileAttempt(input: Readonly<{
       contentInventoryDigest: input.compiledInput.inputSet.contentInventoryDigest,
       inputMaterialDigest: input.compiledInput.inputSet.inputMaterialDigest,
       citationRegistryDigest: digest("agent-cell-citation-registry"),
-      evidenceSetDigest: digest("agent-cell-evidence-set"),
+      evidenceSetDigest: operation === "delivery.continue" ? digest("agent-cell-evidence-set") : null,
       propositionSetDigest: null,
     }),
     executionPolicy: input.selection.policies,
     brief: Object.freeze({
-      kind: "founder-brief" as const,
+      kind: "director-brief" as const,
       id: input.selection.brief.recordId,
       revision: input.selection.brief.revision,
       digest: input.selection.brief.digest,
     }),
-    boundary: Object.freeze({
+    boundary: operation === "delivery.prepare" ? null : Object.freeze({
       kind: "work-boundary" as const,
       id: input.boundary.recordId,
       revision: input.boundary.revision,
       digest: input.boundary.digest,
     }),
-    candidate: Object.freeze({
+    candidate: operation === "delivery.prepare" ? null : Object.freeze({
       kind: "candidate-revision" as const,
       id: input.candidate.recordId,
       revision: input.candidate.revision,
@@ -1189,6 +1220,7 @@ function providerTerminalObservationBytes(input: Readonly<{
   attemptDigest: Sha256;
   executableIdentity: Sha256;
   runnerImplementationDigest: Sha256;
+  outcome?: "natural-return" | "timeout" | "provider-failure";
 }>): Uint8Array {
   if (input.specification.operation.kind !== "agent-attempt") {
     return testFailure("specification", "Agent terminal observation received a Check Specification");
@@ -1206,11 +1238,11 @@ function providerTerminalObservationBytes(input: Readonly<{
     startedAt: "2026-09-01T00:00:00.020Z",
     finishedAt: "2026-09-01T00:00:00.030Z",
     executableIdentity: input.executableIdentity,
-    outcome: "natural-return" as const,
-    stage: "evaluated" as const,
+    outcome: input.outcome ?? "natural-return" as const,
+    stage: input.outcome === "timeout" ? "running" as const : "evaluated" as const,
     productiveStarted: true,
-    firstTrigger: "natural-return" as const,
-    exitCode: 0,
+    firstTrigger: input.outcome ?? "natural-return" as const,
+    exitCode: input.outcome === "timeout" ? null : input.outcome === "provider-failure" ? 1 : 0,
     signal: null,
     sessionId: "agent-cell-test-session",
   });
@@ -1261,6 +1293,7 @@ function executionOutput(input: Readonly<{
   executableIdentity: Sha256;
   runnerImplementationDigest: Sha256;
   providerResultOverride?: Uint8Array | null;
+  providerFailureDiagnostic?: Uint8Array;
   providerTerminalOverride?: Uint8Array | null;
   terminalOnly?: boolean;
 }>): FoundationRetrievedExecutionOutputV1 {
@@ -1293,6 +1326,13 @@ function executionOutput(input: Readonly<{
       mediaType: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerResultMediaType,
       modeClass: "regular" as const,
       bytes: input.providerResultOverride ?? providerResultBytes(input),
+    })]),
+    ...(input.providerFailureDiagnostic === undefined ? [] : [Object.freeze({
+      path: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerFailureDiagnosticPath,
+      purpose: "raw-provider-output" as const,
+      mediaType: FOUNDATION_AGENT_EXECUTION_CELL_OPERATION_V1.providerFailureDiagnosticMediaType,
+      modeClass: "regular" as const,
+      bytes: input.providerFailureDiagnostic,
     })]),
   ].sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   const entries: readonly FoundationExecutionOutputManifestEntryV1[] = Object.freeze(
@@ -1343,6 +1383,7 @@ function backendProvidingOutput(input: Readonly<{
   installed: FoundationAgentCellInstalledInputsV1;
   attempt: FoundationAgentCellAttemptPreparationV1;
   providerResultOverride?: Uint8Array | null;
+  providerFailureDiagnostic?: Uint8Array;
   providerTerminalOverride?: Uint8Array | null;
   terminalOnly?: boolean;
 }>): FoundationExecutionBackend {
@@ -1367,6 +1408,7 @@ function backendProvidingOutput(input: Readonly<{
           executableIdentity: input.installed.provider.installedIdentityDigest,
           runnerImplementationDigest: input.installed.image.runnerImplementationDigest,
           providerResultOverride: input.providerResultOverride,
+          providerFailureDiagnostic: input.providerFailureDiagnostic,
           providerTerminalOverride: input.providerTerminalOverride,
           terminalOnly: input.terminalOnly,
         }));
@@ -1512,6 +1554,121 @@ function activityEvents(store: ControlRecordStore, activityId: string) {
   return store.listEvents(0, 10_000).filter((event) => event.payload.activityId === activityId);
 }
 
+test("Agent Specifications preserve retained process and Output allocations and refuse insufficient Backend bounds", async (t) => {
+  const selected = await fixture(t, "retained-output-allocation");
+  const manifest = selected.compiledInput.transportEntries.find(
+    ({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateManifestPath,
+  );
+  const artifact = selected.compiledInput.transportEntries.find(
+    ({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateArtifactPath,
+  );
+  assert(manifest !== undefined && artifact !== undefined);
+  const freshSubject = {
+    id: "investment-fresh-builder-output",
+    ...selectFoundationAgentAttemptPolicyV7({
+      operation: "delivery.continue",
+      configuration: { model: "gpt-5.6-sol", reasoning: "high" },
+    }),
+  };
+  const fresh = Object.freeze({ ...freshSubject, digest: digestCanonical(freshSubject) });
+  const profile = foundationDockerExecutionBackendProfileV1();
+  const compile = async (
+    investment: BuilderSelection["investment"],
+    backendProfile = profile,
+  ) => {
+    const selection = Object.freeze({ ...selected.selection, investment });
+    const installed = Object.freeze({ ...selected.installed, profile: backendProfile });
+    const compiledInput = await compileBuilderInput({
+      store: selected.store,
+      boundary: selected.boundary,
+      candidate: selected.candidate,
+      carrierManifestBytes: manifest.bytes,
+      carrierArtifactBytes: artifact.bytes,
+      selection,
+      selectedImage: installed.image,
+    });
+    const attempt = compileAttempt({ ...selected, selection, compiledInput, installed });
+    const specification = compileFoundationAgentCellSpecificationV1({
+      store: selected.store,
+      activityId: selection.activityId,
+      attempt,
+      compiledInput,
+      installed,
+    });
+    return { selection, installed, compiledInput, attempt, specification };
+  };
+  // Compile values already bound into Attempt/Input Set; never replace a retained
+  // smaller allocation with today's fresh default.
+  for (const investment of [fresh, selected.selection.investment]) {
+    const { specification } = await compile(investment);
+    assert.equal(specification.limits.processes, investment.limits.processes);
+    assert.equal(specification.limits.outputBytes, investment.limits.outputBytes);
+    assert.equal(specification.limits.outputEntryBytes,
+      Math.min(investment.limits.outputBytes, profile.limits.maximumOutputEntryBytes));
+    assert.equal(specification.outputContract.declaredOutputRoots.find(
+      ({ path }) => path === "candidate-output",
+    )!.maximumBytes, investment.limits.outputBytes);
+    assert(specification.limits.outputBytes <= specification.limits.storageBytes);
+  }
+  assert.equal(fresh.limits.outputBytes, 268_435_456);
+  assert.equal(fresh.limits.processes, 128);
+  assert.equal(selected.selection.investment.limits.outputBytes, 65_536);
+  const insufficientSubject = {
+    ...profile,
+    limits: { ...profile.limits,
+      maximumOutputBytes: fresh.limits.outputBytes - 1,
+      maximumOutputEntryBytes: fresh.limits.outputBytes - 1 },
+  };
+  const insufficient = parseFoundationExecutionBackendProfile({
+    ...insufficientSubject, digest: selfDigest(insufficientSubject),
+  });
+  await assert.rejects(compile(fresh, insufficient), (error: unknown) =>
+    error instanceof FoundationError && error.code === "lifecycle.agent-execution-cell-v1.limit");
+
+  const priorSubject = { ...freshSubject, limits: { ...fresh.limits, processes: 64 } };
+  const prior = Object.freeze({ ...priorSubject, digest: digestCanonical(priorSubject) });
+  const processBoundSubject = { ...profile, limits: { ...profile.limits, maximumProcesses: 127 } };
+  const processBound = parseFoundationExecutionBackendProfile({
+    ...processBoundSubject, digest: selfDigest(processBoundSubject),
+  });
+  await assert.rejects(compile(fresh, processBound), (error: unknown) =>
+    error instanceof FoundationError && error.code === "lifecycle.agent-execution-cell-v1.limit");
+  assert.equal((await compile(prior, processBound)).specification.limits.processes, 64);
+
+  // The normal Cell owner must retain the exact fresh Investment before dispatch;
+  // compiling again from the reopened Store must produce the same Specification.
+  // Model those same finite limits with the test-only Backend for the operated
+  // retention exercise; the production profile above remains a compilation subject.
+  const operatedProfileSubject = { ...selected.installed.profile, limits: profile.limits };
+  const operatedProfile = parseFoundationExecutionBackendProfile({
+    ...operatedProfileSubject, digest: selfDigest(operatedProfileSubject),
+  });
+  const prepared = await compile(fresh, operatedProfile);
+  const engine = new InMemoryExecutionBackendEngine();
+  const result = await operateFoundationAgentCellV1(operationInput({
+    selected: { ...selected, ...prepared },
+    backend: backendProvidingOutput({ engine, installed: prepared.installed, attempt: prepared.attempt }),
+    semantic: "valid",
+  }));
+  assert.equal(result.specification.limits.processes, 128);
+  assert.equal(engine.productiveStartCount(result.specification.digest), 1);
+  const identity = selected.store.identity;
+  selected.store.close();
+  selected.store = await openControlRecordStore({ root: selected.storeRoot, identity, create: false });
+  const retained = selected.store.getRevision(prepared.attempt.revision.recordId, prepared.attempt.revision.revision);
+  assert(retained !== null);
+  assert.deepEqual(retained.payload.investment, fresh);
+  const reopenedSpecification = compileFoundationAgentCellSpecificationV1({
+    store: selected.store,
+    activityId: prepared.selection.activityId,
+    attempt: { ...prepared.attempt, revision: retained },
+    compiledInput: prepared.compiledInput,
+    installed: prepared.installed,
+  });
+  assert.equal(reopenedSpecification.limits.processes, 128);
+  assert.equal(reopenedSpecification.digest, result.specification.digest);
+});
+
 test("Agent Input Set compilation is deterministic and pre-copy bounded", async (t) => {
   const selected = await fixture(t, "deterministic");
   const manifest = selected.compiledInput.transportEntries.find(
@@ -1588,6 +1745,41 @@ test("Agent Input Set compilation is deterministic and pre-copy bounded", async 
     toolInventoryDigest: selected.installed.image.toolInventoryDigest,
   }), (error: unknown) => error instanceof FoundationError &&
     error.code === "lifecycle.agent-execution-cell-v1.input-bound");
+});
+
+test("resolution reconnaissance binds its frozen Candidate read-only while initial preparation rejects it", async (t) => {
+  const selected = await fixture(t, "resolution-candidate-input");
+  const manifest = selected.compiledInput.transportEntries.find(
+    ({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateManifestPath,
+  )!;
+  const artifact = selected.compiledInput.transportEntries.find(
+    ({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateArtifactPath,
+  )!;
+  const compiledInput = await compileBuilderInput({
+    ...selected,
+    carrierManifestBytes: manifest.bytes,
+    carrierArtifactBytes: artifact.bytes,
+    selectedImage: selected.installed.image,
+    role: "reconnaissance",
+  });
+  for (const operation of ["delivery.revise", "delivery.reaffirm"] as const) {
+    const attempt = compileAttempt({ ...selected, compiledInput, operation });
+    const specification = compileFoundationAgentCellSpecificationV1({
+      store: selected.store, activityId: selected.selection.activityId,
+      attempt, compiledInput, installed: selected.installed,
+    });
+    assert.equal(specification.operation.kind === "agent-attempt" && specification.operation.role, "reconnaissance");
+    assert.equal(specification.capabilities.candidateWrites, false);
+    assert.equal(specification.outputContract.declaredOutputRoots.some(({ purpose }) => purpose === "candidate-output"), false);
+    assert.deepEqual(attempt.revision.relationships.find(({ relation }) => relation === "uses-candidate")?.target,
+      { kind: "candidate-revision", id: selected.candidate.recordId, revision: selected.candidate.revision, digest: selected.candidate.digest });
+  }
+  const preparation = compileAttempt({ ...selected, compiledInput, operation: "delivery.prepare" });
+  assert.throws(() => compileFoundationAgentCellSpecificationV1({
+    store: selected.store, activityId: selected.selection.activityId,
+    attempt: preparation, compiledInput, installed: selected.installed,
+  }), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.agent-execution-cell-v1.candidate-input");
 });
 
 test("semantic invalidity does not suppress a valid builder successor Carrier", async (t) => {
@@ -1675,6 +1867,162 @@ test("malformed provider result does not suppress semantic or Candidate validati
   assert.equal(publications, 1);
   assert.equal(engine.productiveStartCount(result.specification.digest), 1);
 });
+
+for (const variation of ["failed-valid", "failed-malformed", "natural-unexpected", "failed-absent"] as const) {
+  test(`provider diagnostic ${variation} preserves independent terminal, semantic, and Candidate facts`, async (t) => {
+    const selected = await fixture(t, `diagnostic-${variation}`);
+    const engine = new InMemoryExecutionBackendEngine();
+    const specification = compileFoundationAgentCellSpecificationV1({
+      store: selected.store, activityId: selected.selection.activityId,
+      attempt: selected.attempt, compiledInput: selected.compiledInput, installed: selected.installed,
+    });
+    const outcome = variation === "natural-unexpected" ? "natural-return" : "provider-failure";
+    const diagnosticBytes = Uint8Array.from(Buffer.from(canonicalJsonLine({
+      schema: "lifecycle.agent-provider-failure-diagnostic.private.v1", source: "provider-reported",
+      observation: "untrusted-operational-material", truncated: false,
+      entries: [{ stream: "stdout-json", eventType: "turn.failed", message: "Selected provider model is unavailable." }],
+    }), "utf8"));
+    const result = await operateFoundationAgentCellV1(operationInput({
+      selected, semantic: "valid", publishCandidateOutput: async () => publishedCarrier(),
+      backend: backendProvidingOutput({
+        engine, installed: selected.installed, attempt: selected.attempt, providerResultOverride: null,
+        providerTerminalOverride: providerTerminalObservationBytes({ specification,
+          attemptDigest: selected.attempt.revision.digest,
+          executableIdentity: selected.installed.provider.installedIdentityDigest,
+          runnerImplementationDigest: selected.installed.image.runnerImplementationDigest, outcome }),
+        providerFailureDiagnostic: variation === "failed-absent" ? undefined :
+          variation === "failed-malformed" ? jsonBytes({ message: "not the declared report" }) : diagnosticBytes,
+      }),
+    }));
+    assert.equal(result.terminal.outputValidation, "valid");
+    assert.equal(result.receiptFacts.provider?.outcome, outcome);
+    assert.equal(result.semantic.disposition, "valid");
+    assert.equal(result.candidate.disposition, "valid");
+    assert.equal(result.providerFailureDiagnostic.disposition,
+      variation === "failed-valid" ? "available" : variation === "failed-absent" ? "not-produced" : "invalid");
+    assert.deepEqual(result.providerFailureDiagnostic.bytes, variation === "failed-valid" ? diagnosticBytes : null);
+    assert.equal(engine.productiveStartCount(result.specification.digest), 1);
+    assert.equal(selected.reclamation.list().length, 1);
+  });
+}
+
+for (const semantic of ["valid", "invalid"] as const) {
+  test(`timeout preserves ${semantic} semantic facts and useful Candidate output after interrupted publication`, async (t) => {
+    const selected = await fixture(t, `timeout-${semantic}-publication-recovery`);
+    let engine = new InMemoryExecutionBackendEngine();
+    const specification = compileFoundationAgentCellSpecificationV1({
+      store: selected.store,
+      activityId: selected.selection.activityId,
+      attempt: selected.attempt,
+      compiledInput: selected.compiledInput,
+      installed: selected.installed,
+    });
+    const terminal = providerTerminalObservationBytes({
+      specification,
+      attemptDigest: selected.attempt.revision.digest,
+      executableIdentity: selected.installed.provider.installedIdentityDigest,
+      runnerImplementationDigest: selected.installed.image.runnerImplementationDigest,
+      outcome: "timeout",
+    });
+    let publications = 0;
+    const published = publishedCarrier();
+    await assert.rejects(operateFoundationAgentCellV1(operationInput({
+      selected,
+      backend: backendProvidingOutput({
+        engine,
+        installed: selected.installed,
+        attempt: selected.attempt,
+        providerResultOverride: null,
+        providerTerminalOverride: terminal,
+      }),
+      semantic,
+      publishCandidateOutput: async () => {
+        publications += 1;
+        throw new Error("simulated loss after Candidate Carrier publication");
+      },
+    })), /simulated loss after Candidate Carrier publication/u);
+    const interruptedSupport = selected.store.getOperationSupport(selected.selection.activityId);
+    assert(interruptedSupport !== null);
+    const interrupted = interruptedSupport.payload.checkpoint as unknown as
+      FoundationExecutionOperationCheckpointV1;
+    assert.notEqual(interrupted.containment, null);
+    assert.equal(interrupted.retirement, null);
+    assert.equal(selected.reclamation.list().length, 0);
+    assert.equal(engine.productiveStartCount(specification.digest), 1);
+
+    const identity = selected.store.identity;
+    selected.store.close();
+    selected.store = await openControlRecordStore({ root: selected.storeRoot, identity, create: false });
+    engine = InMemoryExecutionBackendEngine.reload(engine.snapshot(), selected.installed.profile);
+    const input = operationInput({
+      selected,
+      // The retained output is sufficient; recovery must not request fresh provider output.
+      backend: engine.facade(selected.installed.profile),
+      semantic,
+      revalidateBeforeIntent: async () => { throw new Error("Recovery selected a fresh Attempt"); },
+      publishCandidateOutput: async () => { publications += 1; return published; },
+    });
+    const result = await operateFoundationAgentCellV1(input);
+    assert.equal(result.preIntentRefused, false);
+    assert.equal(result.receiptFacts.provider.outcome, "timeout");
+    assert.equal(result.providerResult, null);
+    assert.equal(result.semantic.disposition, semantic);
+    assert.notEqual(result.semantic.artifact, null);
+    assert.equal(result.candidate.disposition, "valid");
+    assert.deepEqual(result.candidate.carrier, published);
+    assert.equal(result.terminal.outputValidation, "valid");
+    assert.equal(result.specification.digest, specification.digest);
+    assert.equal(result.terminal.containmentDigest, interrupted.containment?.digest);
+    assert.equal(engine.productiveStartCount(specification.digest), 1);
+    assert.equal(publications, 2);
+    assert.equal(selected.reclamation.list().length, 1);
+    assert.equal(engine.snapshot().allocations.length, 1);
+
+    const replayed = await operateFoundationAgentCellV1(input);
+    assert.deepEqual(replayed.receiptFacts, result.receiptFacts);
+    assert.deepEqual(replayed.terminal, result.terminal);
+    assert.equal(replayed.candidate.disposition, "valid");
+    assert.equal(engine.productiveStartCount(specification.digest), 1);
+    const reclaimed = await selected.reclamation.runNext({
+      reclaim: async (handoff) => await engine.facade(selected.installed.profile).reclaim(
+        handoff.specification,
+        handoff.reclamationBinding,
+        handoff.obligation,
+      ),
+    });
+    assert.equal(reclaimed?.standing.state, "reclaimed");
+    assert.equal(selected.reclamation.summarizeProcess({
+      storeId: selected.store.identity.storeId,
+      processId: selected.store.identity.processId,
+    }).reclaimedCount, 1);
+    // Installed maintenance may remove the Cell before Process finalization.
+    // Reopening the owner still finalizes from the independently retained Output.
+    selected.store.close();
+    selected.store = await openControlRecordStore({ root: selected.storeRoot, identity, create: false });
+    engine = InMemoryExecutionBackendEngine.reload(engine.snapshot(), selected.installed.profile);
+    const afterReclamation = await operateFoundationAgentCellV1(operationInput({
+      selected,
+      backend: engine.facade(selected.installed.profile),
+      semantic,
+      revalidateBeforeIntent: async () => { throw new Error("Reclamation replay selected a fresh Attempt"); },
+      publishCandidateOutput: async () => published,
+    }));
+    assert.deepEqual(afterReclamation.receiptFacts, result.receiptFacts);
+    assert.deepEqual(afterReclamation.terminal, result.terminal);
+    assert.deepEqual(afterReclamation.candidate, result.candidate);
+    assert.equal(afterReclamation.semantic.disposition, result.semantic.disposition);
+    assert(afterReclamation.semantic.artifact !== null && result.semantic.artifact !== null);
+    const { read: _afterRead, ...afterArtifact } = afterReclamation.semantic.artifact;
+    const { read: _originalRead, ...originalArtifact } = result.semantic.artifact;
+    assert.deepEqual(afterArtifact, originalArtifact);
+    const afterSemantic = await readFoundationAgentSemanticWorkspaceV1({
+      artifact: afterReclamation.semantic.artifact,
+      maximumBytes: specification.limits.outputEntryBytes,
+    });
+    assert.deepEqual(afterSemantic.bytes, SEMANTIC_BYTES);
+    assert.equal(engine.productiveStartCount(specification.digest), 1);
+  });
+}
 
 test("missing raw provider result preserves trusted terminal Receipt facts", async (t) => {
   const selected = await fixture(t, "provider-missing-terminal-retained");
@@ -2276,6 +2624,201 @@ test("lost pre-intent refusal response recovers the same inert Cell through Reti
   assert.equal(selected.reclamation.list().length, 1);
 });
 
+for (const scenario of ["allocated", "absent", "substituted-facts"] as const) {
+  const allocation = scenario === "absent" ? "absent" : "allocated";
+  const name = scenario === "substituted-facts"
+    ? "contained refusal diagnostic cannot substitute exact facts on replay"
+    : `${allocation === "allocated" ? "delayed recovery" : "direct pre-dispatch absence"} refuses an undispatched Cell without Provider facts`;
+  test(name, async (t) => {
+    const selected = await fixture(t, `delayed-pre-intent-${scenario}`);
+    const engine = new InMemoryExecutionBackendEngine();
+    const absent = preDispatchAbsenceBackend({
+      delegate: engine.facade(selected.installed.profile),
+      remove: (handle) => engine.removePhysicalAllocationWithoutObservation(handle),
+    });
+    const backend = absent.backend;
+    const delegate = storeActivityOwner(selected.store);
+    let interrupted = false;
+    const owner: FoundationAgentCellActivityOwnerV1 = Object.freeze({
+      ...delegate,
+      async commitSupport(mutation) {
+        const retained = await delegate.commitSupport(mutation);
+        if (!interrupted && mutation.checkpoint.handle !== null) {
+          interrupted = true;
+          throw new Error("Interrupted after inert allocation before dispatch");
+        }
+        return retained;
+      },
+      async ownerCommitPreIntentRefusal(mutation) {
+        if (scenario !== "substituted-facts") return await delegate.ownerCommitPreIntentRefusal(mutation);
+        await delegate.ownerCommitPreIntentRefusal({
+          ...mutation,
+          append: {
+            ...mutation.append,
+            event: {
+              ...mutation.append.event,
+              payload: { ...mutation.append.event.payload, refusalFactsDigest: digest("substituted-refusal-facts") },
+            },
+          },
+        });
+        throw new Error("Lost response after substituted refusal facts");
+      },
+    });
+    const operation = () => operationInput({
+      selected, backend, owner, semantic: "valid",
+      revalidateBeforeIntent: async () => assert.fail("Expired Cell must not reach dispatch revalidation"),
+    });
+    await assert.rejects(operateFoundationAgentCellV1(operation()), (error: unknown) =>
+      error instanceof FoundationError && error.code === "lifecycle.execution.operation-host.persistence");
+    const prior = selected.store.getOperationSupport(selected.selection.activityId)!;
+    const checkpoint = prior.payload.checkpoint as unknown as FoundationExecutionOperationCheckpointV1;
+    assert.notEqual(checkpoint.handle, null);
+    assert.equal(checkpoint.dispatchAuthorityConsumedAt, null);
+    if (allocation === "absent") absent.markAbsent();
+    if (allocation === "allocated") selected.clock = operationClock("2026-09-01T01:00:00.000Z");
+
+    if (scenario === "substituted-facts") {
+      await assert.rejects(operateFoundationAgentCellV1(operation()), /Lost response after substituted refusal facts/u);
+      const beforeReplay = selected.store.getOperationSupport(selected.selection.activityId);
+      const eventsBeforeReplay = activityEvents(selected.store, selected.selection.activityId);
+      assert.equal(eventsBeforeReplay.at(-1)!.payload.diagnosticCode, "lifecycle.agent-execution-cell-v1.pre-intent-contained");
+      await assert.rejects(operateFoundationAgentCellV1(operation()), (error: unknown) =>
+        error instanceof FoundationError && error.code === "lifecycle.execution.operation-host.persistence");
+      assert.deepEqual(selected.store.getOperationSupport(selected.selection.activityId), beforeReplay);
+      assert.deepEqual(activityEvents(selected.store, selected.selection.activityId), eventsBeforeReplay);
+      assert.equal(selected.reclamation.list().length, 0);
+      assert.equal(engine.productiveStartCount(checkpoint.specificationDigest), 0);
+      return;
+    }
+
+    const result = await operateFoundationAgentCellV1(operation());
+    assert.equal(result.preIntentRefused, true);
+    assert.equal(result.receiptFacts.provider, null);
+    assert.equal(result.providerResult, null);
+    assert.equal(result.validatedOutput, null);
+    assert.equal(result.terminal.outputValidation, "not-applicable");
+    const retained = selected.store.getOperationSupport(selected.selection.activityId)!;
+    const final = retained.payload.checkpoint as unknown as FoundationExecutionOperationCheckpointV1;
+    assert.equal(final.handle, checkpoint.handle);
+    assert.equal(final.observation?.allocationState, allocation);
+    if (allocation === "absent") assert.equal(final.containmentRequestedAt, null);
+    assert.equal(final.dispatchAuthorityConsumedAt, null);
+    assert.equal(final.retirement?.dispatchAuthorityConsumed, false);
+    assert.equal(engine.productiveStartCount(result.specification.digest), 0);
+    const events = activityEvents(selected.store, selected.selection.activityId);
+    const refused = events.filter(({ eventKind }) => eventKind === "agent-pre-intent-refused");
+    assert.equal(refused.length, 1);
+    assert.equal(refused[0]!.subject, null);
+    assert.equal(refused[0]!.payload.diagnosticCode, "lifecycle.agent-execution-cell-v1.pre-intent-contained");
+    assert.equal(events.filter(({ eventKind }) => [
+      "agent-attempt-prepared", "provider-effect-intended", "execution-receipt-recorded",
+    ].includes(eventKind)).length, 0);
+    assert.equal(selected.store.getRevision(selected.attempt.revision.recordId, selected.attempt.revision.revision), null);
+    assert.equal(selected.reclamation.list().length, 1);
+  });
+}
+
+test("already retired undispatched Cell records one refusal across a lost owner response", async (t) => {
+  const selected = await fixture(t, "retired-pre-intent-recovery");
+  let engine = new InMemoryExecutionBackendEngine();
+  const backend = engine.facade(selected.installed.profile);
+  const delegate = storeActivityOwner(selected.store);
+  const registration: {
+    value: Parameters<NonNullable<Parameters<typeof operationInput>[0]["registerOperation"]>>[0] | null;
+  } = { value: null };
+  await assert.rejects(operateFoundationAgentCellV1(operationInput({
+    selected, backend, semantic: "valid",
+    registerOperation(value) { registration.value = value; },
+    owner: Object.freeze({
+      ...delegate,
+      async commitSupport(mutation) {
+        const retained = await delegate.commitSupport(mutation);
+        if (mutation.checkpoint.handle === null) throw new Error("Interrupted after opening");
+        return retained;
+      },
+    }),
+  })), (error: unknown) => error instanceof FoundationError &&
+    error.code === "lifecycle.execution.operation-host.persistence");
+  assert(registration.value !== null);
+  const registered = registration.value;
+  selected.clock = operationClock("2026-09-01T01:00:00.000Z");
+  // Reproduce the former owner gap with the real physical host: it retires an
+  // unused Cell while no Attempt, intent, or refusal milestone is retained.
+  const host = new FoundationExecutionOperationHostV1({
+    backend, checkpoints: registered.persistence, clock: selected.clock,
+    outputStore: createFoundationExecutionOutputStoreV1({ machineHome: selected.machineHome }),
+  });
+  for (let step = 0; step < 10; step += 1) {
+    const advanced = await host.advance({
+      specification: registered.specification,
+      runnerDigest: selected.installed.image.runnerContractDigest,
+      requestContainment: true,
+    });
+    if (advanced.retained.checkpoint.output !== null) break;
+  }
+  const retired = await host.retire(registered.specification);
+  assert.notEqual(retired.checkpoint.retirement, null);
+  assert.equal(retired.checkpoint.dispatchAuthorityConsumedAt, null);
+  assert.equal(activityEvents(selected.store, selected.selection.activityId)
+    .filter(({ eventKind }) => eventKind === "agent-pre-intent-refused").length, 0);
+  const retirement = retired.checkpoint.retirement!;
+  selected.reclamation.accept({
+    owner: {
+      storeId: selected.store.identity.storeId, processId: selected.store.identity.processId,
+      activityId: selected.selection.activityId, kind: "agent-attempt",
+      subjectDigest: selected.attempt.revision.digest,
+    },
+    specification: registered.specification, handle: retired.checkpoint.handle!,
+    reclamationBinding: retirement.reclamationBinding, obligation: retirement.reclamationObligation,
+    retirementDigest: retirement.digest, dispatchAuthorityConsumed: false,
+  });
+  const handoffs = selected.reclamation.list();
+  const identity = selected.store.identity;
+  selected.store.close();
+  selected.store = await openControlRecordStore({ root: selected.storeRoot, identity, create: false });
+  engine = InMemoryExecutionBackendEngine.reload(engine.snapshot(), selected.installed.profile);
+  const recovery = recordDeliveryActivityRecovery({
+    store: selected.store, activityId: selected.selection.activityId,
+    runtimeId: RUNTIME, recordedAt: "2026-09-01T02:00:00.500Z",
+  });
+  // Control clocks may omit milliseconds. The later Journal head wins by
+  // instant even though the sampled whole-second string sorts after it.
+  selected.clock = Object.freeze({ now: () => "2026-09-01T02:00:00Z" });
+  const reopenedOwner = storeActivityOwner(selected.store);
+  let lostResponse = false;
+  const owner: FoundationAgentCellActivityOwnerV1 = Object.freeze({
+    ...reopenedOwner,
+    async ownerCommitPreIntentRefusal(mutation) {
+      const retained = await reopenedOwner.ownerCommitPreIntentRefusal(mutation);
+      if (!lostResponse) {
+        lostResponse = true;
+        throw new Error("Lost contained-refusal owner response");
+      }
+      return retained;
+    },
+  });
+  const operation = operationInput({
+    selected, backend: engine.facade(selected.installed.profile), owner, semantic: "valid",
+    revalidateBeforeIntent: async () => assert.fail("Retired Cell cannot select fresh dispatch"),
+  });
+  await assert.rejects(operateFoundationAgentCellV1(operation), /Lost contained-refusal owner response/u);
+  const result = await operateFoundationAgentCellV1(operation);
+  assert.equal(result.preIntentRefused, true);
+  assert.equal(result.receiptFacts.provider, null);
+  assert.equal(result.providerResult, null);
+  assert.equal(engine.productiveStartCount(result.specification.digest), 0);
+  assert.equal(engine.snapshot().allocations.length, 1);
+  const final = selected.store.getOperationSupport(selected.selection.activityId)!;
+  assert.deepEqual(final.payload.checkpoint, retired.checkpoint);
+  assert.deepEqual(selected.reclamation.list(), handoffs);
+  const events = activityEvents(selected.store, selected.selection.activityId);
+  const refusals = events.filter(({ eventKind }) => eventKind === "agent-pre-intent-refused");
+  assert.equal(refusals.length, 1);
+  assert(Date.parse(refusals[0]!.occurredAt) >= Date.parse(recovery.occurredAt));
+  assert(Date.parse(refusals[0]!.occurredAt) > Date.parse(retired.checkpoint.containmentRequestedAt!));
+  assert.equal(events.filter(({ eventKind }) => ["agent-attempt-prepared", "provider-effect-intended"].includes(eventKind)).length, 0);
+});
+
 test("atomic ownerCommit is mandatory and retained support refuses an alternate Specification", async (t) => {
   const selected = await fixture(t, "atomic-owner");
   const engine = new InMemoryExecutionBackendEngine();
@@ -2484,6 +3027,7 @@ test("interruption after intent but before Backend entry finalizes the exact not
     semantic: "valid",
   }));
   assert.equal(result.providerResult, null);
+  assert.equal(result.preIntentRefused, false);
   assert.equal(result.receiptFacts.provider?.outcome, "runtime-failure");
   assert.equal(result.receiptFacts.provider?.stage, "dispatch");
   assert.equal(result.receiptFacts.provider?.productiveStarted, false);
@@ -2671,4 +3215,19 @@ test("parent loss is contained, retired, reclaimed, and never redispatched", asy
     storeId: selected.store.identity.storeId,
     processId: selected.store.identity.processId,
   }).reclaimedCount, 1);
+});
+
+
+test("Agent Cell refuses a self-consistent Git context belonging to another Store or Target", async (t) => {
+  const selected = await fixture(t, "git-custody");
+  const manifest = selected.compiledInput.transportEntries.find(({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateManifestPath)!;
+  const artifact = selected.compiledInput.transportEntries.find(({ path }) => path === FOUNDATION_AGENT_EXECUTION_CELL_INPUT_V1.candidateArtifactPath)!;
+  for (const gitContextIdentity of [{ storeId: "another-store" }, { targetId: "another-target" }]) {
+    await assert.rejects(compileBuilderInput({
+      store: selected.store, boundary: selected.boundary, candidate: selected.candidate,
+      carrierManifestBytes: manifest.bytes, carrierArtifactBytes: artifact.bytes,
+      selection: selected.selection, selectedImage: selected.installed.image, gitContextIdentity,
+    }), (error: unknown) => error instanceof FoundationError &&
+      error.code === "lifecycle.agent-execution-cell-v1.input-binding" && error.message.includes("another Target, Store, or Delivery"));
+  }
 });

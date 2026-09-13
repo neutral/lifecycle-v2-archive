@@ -28,6 +28,7 @@ export async function resolveAtlas(options: {
       model: processed.model,
       atlasState: options.atlasState,
       treeEntries: options.treeEntries,
+      materialization,
     });
     const subject = {
       schema: "lifecycle.atlas-resolution.v2" as const,

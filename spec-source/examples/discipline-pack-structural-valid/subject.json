@@ -1,0 +1,29 @@
+{
+  "schema": "lifecycle.discipline-pack.v1",
+  "id": "neutral.go",
+  "title": "Neutral Go",
+  "version": "1.0.0",
+  "publisher": "neutral-lifecycle-disciplines",
+  "contract": {
+    "specificationRevision": "lifecycle.foundation.1.0.0-rc.9",
+    "knowledgeRecordSchema": "urn:lifecycle:schema:knowledge-record:v2"
+  },
+  "records": [
+    {
+      "id": "discipline.go.context-cancellation",
+      "path": "records/go/context-cancellation.md",
+      "revision": 1,
+      "sourceDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "semanticDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "sets": [
+    {
+      "id": "go.concurrent-service",
+      "title": "Concurrent Go service",
+      "description": "A curated starting selection for concurrent Go services.",
+      "recordIds": ["discipline.go.context-cancellation"]
+    }
+  ],
+  "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+}

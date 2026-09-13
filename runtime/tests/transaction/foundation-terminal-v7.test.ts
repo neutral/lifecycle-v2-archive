@@ -1,3 +1,14 @@
+import { resolveCandidateIntegrationProvenanceV1 } from "../../src/foundation/control/integration-assessment.js";
+import { compileFoundationReviewActivityOpeningV7, openFoundationReviewAgentActivityV7, settleFoundationUnallocatedReviewV7 } from "../../src/foundation/process/agent-operation-v7.js";
+import { operateFoundationCandidateAgentRuntimeV7 } from "../../src/foundation/process/candidate-agent-runtime-v7.js";
+import { FOUNDATION_SPECIFICATION_REVISION } from "../../src/foundation/constants.js";
+import { installedHarness, type AgentCellFixtureOutputEntry } from "../support/agent-cell-runtime-fixture.js";
+import { executionContractFixture } from "../support/execution-contract-fixture.js";
+import { selectFoundationBuilderRepairOutputV1 } from "../../src/foundation/candidate/repair-output.js";
+import { compileKnowledgeProjection } from "../../src/foundation/projection/compiler.js";
+import { compileFoundationAgentInvestmentV7, compileFoundationExecutionProjectionRequestV7, compileFoundationFreshAgentOperationContextV7 } from "../../src/foundation/process/operation-context-v7.js";
+import { mandatoryProjectionItemSizeErrorV1, bindFoundationMandatoryProjectionRefusalV1 } from "../../src/foundation/projection/mandatory-refusal.js";
+import { receiveFoundationAuthorityCredential } from "../../src/foundation/repository/authority.js";
 import assert from "node:assert/strict";
 import {
   chmod,
@@ -10,10 +21,12 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { withTargetOperationLock } from "../../src/foundation/repository/operation-lock.js";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import {
   createFoundationRuntimeOperationRequest,
+  FoundationControlEventSchema,
   type FoundationRuntimeStatusRequest,
 } from "@neutral/lifecycle-protocol";
 import {
@@ -32,12 +45,19 @@ import {
 } from "../../src/foundation/candidate/carrier-observation-context.js";
 import type { CandidateRevisionState } from "../../src/foundation/control/candidate-revision.js";
 import { validateKnowledgeSet } from "../../src/foundation/knowledge/knowledge-set.js";
+import { operateFoundationIntegrationRuntimeV1, recoverFoundationIntegrationRuntimeV1 } from "../../src/foundation/process/integration-runtime-v1.js";
 import { retainCandidateRevision } from "../../src/foundation/control/candidate-revision.js";
 import {
   createDeliveryControlRecordStore,
   openDeliveryControlRecordStore,
 } from "../../src/foundation/control/delivery-custody.js";
 import { compileControlRecordRevision } from "../../src/foundation/control/model.js";
+import { compileDeliveryGeneration } from "../../src/foundation/control/delivery-view.js";
+import { retainEvidencePacket } from "../../src/foundation/control/evidence-packet.js";
+import { retainWorkBoundary, resolveWorkBoundaryResolutionSnapshotV1, workBoundaryRepositoryBasisFromSnapshot, type WorkBoundaryCompilerFact } from "../../src/foundation/control/work-boundary.js";
+import { admitDeliveryV7 } from "../../src/foundation/transaction/admission-v7.js";
+import { observeFoundationEvaluationEvidenceV7 } from "../../src/foundation/evidence/physical-observation-v7.js";
+import { FOUNDATION_EVIDENCE_RULE_SET_V7, FOUNDATION_EVIDENCE_VALIDATOR_V7 } from "../../src/foundation/evidence/coordinates-v7.js";
 import type { ControlRecordStore } from "../../src/foundation/control/store.js";
 import type {
   ControlJsonObject,
@@ -48,7 +68,7 @@ import type {
 } from "../../src/foundation/control/types.js";
 import { FoundationError } from "../../src/foundation/error.js";
 import { git } from "../../src/foundation/repository/git.js";
-import { initializeRepository } from "../../src/foundation/repository/initialize.js";
+import { commandCheckBinding, initializeRepository } from "../../src/foundation/repository/initialize.js";
 import { createFoundationRuntimeReadSurface } from "../../src/foundation/runtime-read.js";
 import {
   bindRepositorySnapshot,
@@ -68,15 +88,18 @@ import {
 } from "../../src/foundation/transaction/terminal-v7.js";
 import {
   digestCanonical,
+  canonicalJson,
   sha256Bytes,
   type Sha256,
 } from "../../src/foundation/validation/canonical.js";
+import { FOUNDATION_GENERATED_PUBLICATION_DIGEST } from "../../src/foundation/validation/generated-schemas.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
 import { writeMinimalAtlas } from "../helpers/atlas-fixture.js";
+import { reviewerEvidenceWorkProductPayloadV7, reviewerEvidenceReceiptPayloadV7 } from "../helpers/evidence-fixture-v7.js";
 
 const RUNTIME = "foundation-runtime";
 const SECRET = "terminal-v7-authority-secret-with-sufficient-entropy";
-const PUBLICATION = sha256Bytes("terminal-v7-publication");
+const PUBLICATION = FOUNDATION_GENERATED_PUBLICATION_DIGEST;
 
 function digest(value: string): Sha256 {
   return sha256Bytes(value);
@@ -89,7 +112,7 @@ async function write(root: string, path: string, contents: string): Promise<void
 
 function sourceDescription(): string {
   const frontMatter = {
-    schema: "lifecycle.knowledge-record.v1",
+    schema: "lifecycle.knowledge-record.v2",
     kind: "description",
     id: "description.terminal-v7-source",
     title: "Terminal v7 source",
@@ -97,7 +120,7 @@ function sourceDescription(): string {
     revision: 1,
     supersedes: null,
     summary: "Own the governed source used by the terminal transaction fixture.",
-    owners: ["founder:terminal-v7"],
+    owners: ["director:terminal-v7"],
     sources: [],
     relationships: [],
     conflicts: [],
@@ -116,6 +139,21 @@ function sourceDescription(): string {
   return `---\n${JSON.stringify(frontMatter, null, 2)}\n---\n\n# Terminal v7 source\n\n## Responsibility\n\nOwn the terminal fixture source.\n\n## Behavior\n\nExpose the accepted value.\n\n## Boundaries\n\nNo Delivery Control or Atlas authorship.\n\n## Rationale\n\nKeep the fixture bounded.\n`;
 }
 
+function sourceCheck(): string {
+  const frontMatter = {
+    schema: "lifecycle.knowledge-record.v2", kind: "check", id: "check.demo", title: "Terminal result Check",
+    status: "current", revision: 1, supersedes: null, summary: "Observe the exact bounded terminal result.",
+    owners: ["director:terminal-v7"], sources: [], relationships: [], conflicts: [], tags: [],
+    spec: { proposition: "The exact source exposes the bounded result.", subjects: [{ kind: "candidate", selector: "src/demo.ts" }],
+      evidenceKinds: ["command"], requiredBindings: ["binding.check.demo"],
+      evaluation: { pass: "Expected result observed", fail: "Different result observed", indeterminate: "Observation unavailable", notRun: "Not executed" },
+      limits: ["A fixture observation does not establish operated qualification"],
+      freshness: { subjectBinding: "exact", maximumAgeMs: null, environmentBinding: "exact" }, falsifiers: ["Different result"] },
+  };
+  return `---\n${JSON.stringify(frontMatter, null, 2)}\n---\n\n# Terminal result Check\n\n` +
+    ["Proposition", "Evaluation", "Evidence", "Limits"].map((section) => `## ${section}\n\n${section} for the bounded fixture.`).join("\n\n") + "\n";
+}
+
 function timeOwner(start = "2026-08-29T20:00:00.000Z"): () => string {
   let value = Date.parse(start);
   return () => new Date(value += 1_000).toISOString();
@@ -128,6 +166,7 @@ type RepositoryFixture = Readonly<{
   machineHome: string;
   contract: FoundationRepositoryContract;
   observation: FoundationTerminalRepositoryObservationV7;
+  check: Readonly<{ id: string; revision: number; sourceDigest: Sha256; semanticDigest: Sha256 }>;
 }>;
 
 async function terminalObservation(
@@ -179,21 +218,29 @@ async function repositoryFixture(suffix: string): Promise<RepositoryFixture> {
   await writeMinimalAtlas(target);
   await git(target, ["add", "--", "atlas"]);
   await git(target, ["commit", "-m", "Initialize terminal target"]);
+  const binding = commandCheckBinding({ id: "binding.check.demo", checkIds: ["check.demo"],
+    subjectSelectors: [{ kind: "candidate", selector: "src/demo.ts" }],
+    executable: { relativeTo: "execution-image", path: "usr/bin/true" } });
   const contract = await initializeRepository(target, {
     targetId: `terminal-v7-target-${suffix}`,
-    founderPrincipal: "founder:terminal-v7",
+    directorPrincipal: "director:terminal-v7",
     home: authorityHome,
-    authoritySecret: SECRET,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "initialize"),
     publicationDigest: PUBLICATION,
     implementationRoots: ["src"],
+    checkBindings: { [binding.id]: binding },
     stage: true,
   });
   await write(target, "src/demo.ts", "export const terminal = 'base';\n");
   await write(target, "src/_source.desc.md", sourceDescription());
+  await write(target, "records/checks/demo.md", sourceCheck());
   await git(target, ["add", "--", "."]);
   await git(target, ["commit", "-m", "Create terminal base"]);
   const observation = await terminalObservation(target);
   assert.equal(observation.contract.digest, contract.digest);
+  const knowledge = await validateKnowledgeSet(await loadRepositoryEpoch(target));
+  const check = knowledge.knowledgeSet?.currentRecords.find(({ frontMatter }) => frontMatter.id === "check.demo");
+  assert(check !== undefined);
   return Object.freeze({
     workspace,
     target,
@@ -201,6 +248,7 @@ async function repositoryFixture(suffix: string): Promise<RepositoryFixture> {
     machineHome,
     contract,
     observation,
+    check: { id: check.frontMatter.id, revision: check.frontMatter.revision, sourceDigest: check.sourceDigest, semanticDigest: check.semanticDigest },
   });
 }
 
@@ -220,22 +268,22 @@ function relationship(
 }
 
 type SemanticAuthority = Readonly<{
-  author: "founder" | "agent" | "runtime";
+  author: "director" | "agent" | "runtime";
   authority:
-    | "founder-supplied"
-    | "founder-authenticated"
+    | "director-supplied"
+    | "director-authenticated"
     | "agent-proposed"
     | "runtime-derived"
     | "runtime-observed";
 }>;
 
 const SEMANTICS = Object.freeze({
-  "founder-brief": Object.freeze({ author: "founder", authority: "founder-supplied" }),
+  "director-brief": Object.freeze({ author: "director", authority: "director-supplied" }),
   "agent-attempt": Object.freeze({ author: "runtime", authority: "runtime-derived" }),
   "agent-work-product": Object.freeze({ author: "agent", authority: "agent-proposed" }),
   "execution-receipt": Object.freeze({ author: "runtime", authority: "runtime-observed" }),
   "work-boundary": Object.freeze({ author: "runtime", authority: "runtime-derived" }),
-  "founder-decision": Object.freeze({ author: "founder", authority: "founder-authenticated" }),
+  "director-decision": Object.freeze({ author: "director", authority: "director-authenticated" }),
   "candidate-seal": Object.freeze({ author: "runtime", authority: "runtime-observed" }),
   "check-receipt": Object.freeze({ author: "runtime", authority: "runtime-observed" }),
   "evidence-packet": Object.freeze({ author: "runtime", authority: "runtime-derived" }),
@@ -250,6 +298,21 @@ function recordInput(input: Readonly<{
   relationships?: readonly ControlRecordRelationship[];
 }>): ControlRecordRevisionInput {
   const semantics = SEMANTICS[input.kind]!;
+  const selectedPayload = input.payload ?? validDeliveryControlPayload(input.kind);
+  const retirement = selectedPayload.retirement as ControlJsonObject | undefined;
+  // Each seeded Receipt represents a distinct physical execution, even when
+  // its structural template or proof subject is shared with another Receipt.
+  const payload = (input.kind === "execution-receipt" || input.kind === "check-receipt") &&
+    retirement?.classification === "retired"
+    ? Object.freeze({
+        ...selectedPayload,
+        containment: Object.freeze({
+          ...(selectedPayload.containment as ControlJsonObject),
+          factsDigest: digest(`containment:${input.id}`),
+        }),
+        retirement: Object.freeze({ ...retirement, factsDigest: digest(`retirement:${input.id}`) }),
+      })
+    : selectedPayload;
   return Object.freeze({
     recordId: input.id,
     recordKind: input.kind,
@@ -259,7 +322,7 @@ function recordInput(input: Readonly<{
     semanticAuthority: semantics.authority,
     createdAt: input.createdAt,
     semanticMarkdown: `# ${input.kind}\n\nTerminal v7 focused fixture.\n`,
-    payload: input.payload ?? validDeliveryControlPayload(input.kind),
+    payload,
     relationships: Object.freeze([...(input.relationships ?? [])]),
   });
 }
@@ -338,11 +401,11 @@ type DecisionFixture = Readonly<{
   candidateState: CandidateRevisionState;
 }>;
 
-async function seedDecisionReady(
+async function seedCandidateReady(
   fixture: RepositoryFixture,
   suffix: string,
-  options: Readonly<{ preIntentRefusal?: boolean }> = {},
-): Promise<DecisionFixture> {
+  options: Readonly<{ preIntentRefusal?: boolean; projectionRefusal?: boolean }> = {},
+) {
   const deliveryId = `terminal-v7-delivery-${suffix}`;
   const store = await createStore(fixture, deliveryId);
   const nextTime = fixtureClock();
@@ -352,10 +415,11 @@ async function seedDecisionReady(
     revision: recordInput({
       store,
       id: `brief-${suffix}`,
-      kind: "founder-brief",
+      kind: "director-brief",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: prepareId } },
       createdAt: nextTime(),
     }),
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     eventId: `event-brief-${suffix}`,
     occurredAt: nextTime(),
     activityId: prepareId,
@@ -444,16 +508,27 @@ async function seedDecisionReady(
   const boundaryPayload = validDeliveryControlPayload("work-boundary");
   const boundaryBasis = boundaryPayload.basis as ControlJsonObject;
   const observedBasis = fixture.observation.basis;
+  const mandate = boundaryPayload.mandate as ControlJsonObject;
+  const selectedBinding = fixture.contract.checkBindings["binding.check.demo"]!;
+  const capability = fixture.contract.capabilityProfiles[fixture.contract.defaults.capabilityProfileId]!;
+  const projection = fixture.contract.projectionProfiles[fixture.contract.defaults.executionProjectionProfileId]!;
   const boundary = appendRecord({
     store,
     revision: recordInput({
       store,
-      id: `boundary-${suffix}`,
+      id: options.projectionRefusal ? `work-boundary-${digestCanonical({ recordKind: "work-boundary", storeId: store.identity.storeId, processId: store.identity.processId }).slice("sha256:".length)}` : `boundary-${suffix}`,
       kind: "work-boundary",
       createdAt: nextTime(),
       payload: Object.freeze({
         ...boundaryPayload,
         targetId: fixture.contract.targetId,
+        knowledge: [{ ...fixture.check }],
+        disciplines: { registryDigest: (await validateKnowledgeSet(await loadRepositoryEpoch(fixture.target))).knowledgeSet!.disciplineRegistry.digest, workTypeIds: [], records: [] },
+        capabilityProfile: { id: capability.id, digest: capability.digest },
+        projectionProfile: { id: projection.id, digest: projection.digest },
+        mandate: { ...mandate, checks: (mandate.checks as readonly ControlJsonObject[]).map((check) => ({ ...check,
+          definition: { ...fixture.check }, bindings: [{ id: selectedBinding.id, digest: selectedBinding.digest,
+            implementationDigest: selectedBinding.implementationDigest }] })) },
         basis: Object.freeze({
           ...boundaryBasis,
           productBaseCommit: observedBasis.canonicalCommit,
@@ -478,7 +553,12 @@ async function seedDecisionReady(
     occurredAt: nextTime(),
     activityId: prepareId,
   });
-  const checkPayload = validDeliveryControlPayload("check-receipt");
+  const selectedCheck = ((boundary.payload.mandate as ControlJsonObject).checks as readonly ControlJsonObject[])[0]!;
+  const checkPayload = Object.freeze({
+    ...validDeliveryControlPayload("check-receipt"),
+    definition: selectedCheck.definition!,
+    binding: (selectedCheck.bindings as readonly ControlJsonObject[])[0]!,
+  });
   const baseline = appendRecord({
     store,
     revision: recordInput({
@@ -512,14 +592,14 @@ async function seedDecisionReady(
     activityId: admitId,
     payload: Object.freeze({ operation: "delivery.admit" }),
   });
-  const manualDecisionPayload = validDeliveryControlPayload("founder-decision");
+  const manualDecisionPayload = validDeliveryControlPayload("director-decision");
   const manualDecisionSubject = manualDecisionPayload.subject as ControlJsonObject;
   const decision = appendRecord({
     store,
     revision: recordInput({
       store,
       id: `decision-admit-${suffix}`,
-      kind: "founder-decision",
+      kind: "director-decision",
       createdAt: nextTime(),
       payload: Object.freeze({
         ...manualDecisionPayload,
@@ -536,7 +616,7 @@ async function seedDecisionReady(
         relationship("selects-baseline-receipt", baseline),
       ]),
     }),
-    eventKind: "founder-decision-authenticated",
+    eventKind: "director-decision-authenticated",
     eventId: `event-decision-admit-${suffix}`,
     occurredAt: nextTime(),
     activityId: admitId,
@@ -622,10 +702,11 @@ async function seedDecisionReady(
       revision: recordInput({
         store,
         id: `brief-continue-refused-${suffix}`,
-        kind: "founder-brief",
+        kind: "director-brief",
+        payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: refusedId } },
         createdAt: nextTime(),
       }),
-      eventKind: "founder-brief-submitted",
+      eventKind: "director-brief-submitted",
       eventId: `event-brief-continue-refused-${suffix}`,
       occurredAt: nextTime(),
       activityId: refusedId,
@@ -646,6 +727,7 @@ async function seedDecisionReady(
       activityId: refusedId,
       payload: Object.freeze({
         diagnosticCode: "agent-input-changed",
+        resolution: "none",
         refusalFactsDigest: digest(`pre-intent-refusal-${suffix}`),
       }),
     });
@@ -665,10 +747,11 @@ async function seedDecisionReady(
     revision: recordInput({
       store,
       id: `brief-continue-${suffix}`,
-      kind: "founder-brief",
+      kind: "director-brief",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: continueId } },
       createdAt: nextTime(),
     }),
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     eventId: `event-brief-continue-${suffix}`,
     occurredAt: nextTime(),
     activityId: continueId,
@@ -835,16 +918,50 @@ async function seedDecisionReady(
     payload: Object.freeze({ outcome: "completed" }),
   });
 
+  return Object.freeze({ store, deliveryId, candidateRevision, candidateState, boundary, baseline, nextTime, attemptPayload, checkPayload });
+}
+
+async function seedDecisionReady(
+  fixture: RepositoryFixture,
+  suffix: string,
+  options: Readonly<{ preIntentRefusal?: boolean; advanceParent?: boolean; projectionRefusal?: boolean }> = {},
+): Promise<DecisionFixture> {
+  const selected = await seedCandidateReady(fixture, suffix, options);
+  const { store, deliveryId, boundary, baseline, nextTime, attemptPayload, checkPayload } = selected;
+  if (options.advanceParent) {
+    await write(fixture.target, "upstream.txt", "Independent canonical work before this Delivery integrates.\n");
+    await git(fixture.target, ["add", "--", "upstream.txt"]);
+    await git(fixture.target, ["commit", "-m", "Advance selected integration parent"]);
+  }
+  const integrated = await operateFoundationIntegrationRuntimeV1({ target: fixture.target, machineHome: fixture.machineHome,
+    store, activityId: `integrate-${suffix}`, runtimeId: RUNTIME }, { now: nextTime });
+  assert.equal(integrated.outcome, "constructed");
+  const candidateRevision = store.getRevision(integrated.candidate.id, integrated.candidate.revision);
+  if (candidateRevision === null) throw new Error("Integration fixture lost its retained Candidate");
+  const candidateState = candidateRevision.payload.state as unknown as CandidateRevisionState;
+
   const evaluateId = `evaluate-${suffix}`;
-  const reviewBrief = appendRecord({
+  let reviewBrief: ControlRecordRevision;
+  if (options.projectionRefusal) {
+    const opening = compileFoundationReviewActivityOpeningV7({
+      store, activityId: evaluateId, runtimeId: RUNTIME, agentId: "agent:projection-review",
+      opening: { semanticMarkdown: "# Review exact Candidate\n", submittedAt: nextTime(), startedAt: nextTime(), directorId: fixture.contract.authority.principalId },
+      boundary, candidate: candidateRevision,
+      investment: compileFoundationAgentInvestmentV7({ store, activityId: evaluateId, operation: "delivery.evaluate", configuration: { model: "test-reviewer", reasoning: "high" } }),
+    });
+    openFoundationReviewAgentActivityV7(store, evaluateId, opening);
+    reviewBrief = opening.opening.revision;
+  } else {
+  reviewBrief = appendRecord({
     store,
     revision: recordInput({
       store,
       id: `brief-evaluate-${suffix}`,
-      kind: "founder-brief",
+      kind: "director-brief",
+      payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId: evaluateId } },
       createdAt: nextTime(),
     }),
-    eventKind: "founder-brief-submitted",
+    eventKind: "director-brief-submitted",
     eventId: `event-brief-evaluate-${suffix}`,
     occurredAt: nextTime(),
     activityId: evaluateId,
@@ -857,6 +974,7 @@ async function seedDecisionReady(
     activityId: evaluateId,
     payload: Object.freeze({ operation: "delivery.evaluate" }),
   });
+  }
   const seal = appendRecord({
     store,
     revision: recordInput({
@@ -893,6 +1011,39 @@ async function seedDecisionReady(
     occurredAt: nextTime(),
     activityId: evaluateId,
   });
+  if (options.projectionRefusal) {
+    const loaded = await loadRepositoryEpoch(fixture.target);
+    const knowledge = (await validateKnowledgeSet(loaded)).knowledgeSet;
+    assert(knowledge !== null);
+    const snapshot = await bindRepositorySnapshot(loaded, knowledge);
+    const request = compileFoundationExecutionProjectionRequestV7({ snapshot,
+      repositoryValidation: { complete: true, valid: true, digest: digest("fixture-validation") } as never,
+      knowledge, boundary, candidate: candidateRevision, seal, role: "reviewer",
+      integration: resolveCandidateIntegrationProvenanceV1({ store, candidate: candidateRevision }),
+    });
+    const witness = mandatoryProjectionItemSizeErrorV1({ profile: request.profile, category: "implementation",
+      id: "source.too-large", locator: "src/too-large.ts", objectId: "a".repeat(40), observedBytes: request.profile.maximumItemBytes + 1 });
+    const refusal = bindFoundationMandatoryProjectionRefusalV1(witness, request);
+    assert(refusal !== null);
+    const appendBatch = store.appendBatch.bind(store);
+    let refusedBatches = 0;
+    store.appendBatch = (appends) => {
+      const retained = appendBatch(appends);
+      if (appends.some(({ event }) => event.eventKind === "agent-pre-intent-refused")) {
+        refusedBatches += 1;
+        throw new Error("lost return after refusal and Condition commit");
+      }
+      return retained;
+    };
+    assert.throws(() => settleFoundationUnallocatedReviewV7({ store, activityId: evaluateId, runtimeId: RUNTIME, refusal, now: nextTime }), /lost return/);
+    assert.equal(store.state().activities.find(({ id }) => id === evaluateId)?.recovery?.resumesAt, "activity-completed");
+    store.appendBatch = appendBatch;
+    assert.throws(() => settleFoundationUnallocatedReviewV7({ store, activityId: evaluateId, runtimeId: RUNTIME, refusal: null, now: nextTime }), /requires boundary resolution/);
+    assert.equal(refusedBatches, 1);
+    assert.equal(store.getOperationSupport(evaluateId), null);
+    assert.equal(store.state().standing, "boundary-paused");
+    return Object.freeze({ store, deliveryId, candidateRevision, candidateState });
+  }
   const reviewAttempt = appendRecord({
     store,
     revision: recordInput({
@@ -949,6 +1100,7 @@ async function seedDecisionReady(
       id: `work-product-evaluate-${suffix}`,
       kind: "agent-work-product",
       createdAt: nextTime(),
+      payload: reviewerEvidenceWorkProductPayloadV7({ finalCheck: final, baselineChecks: [baseline], propositionId: "proposition.1" }),
       relationships: Object.freeze([relationship("result-of", reviewAttempt)]),
     }),
     eventKind: "agent-work-product-submitted",
@@ -956,14 +1108,14 @@ async function seedDecisionReady(
     occurredAt: nextTime(),
     activityId: evaluateId,
   });
-  const reviewReceipt = appendRecord({
+  appendRecord({
     store,
     revision: recordInput({
       store,
       id: `receipt-evaluate-${suffix}`,
       kind: "execution-receipt",
       createdAt: nextTime(),
-      payload: Object.freeze({ ...receiptPayload, activityId: evaluateId }),
+      payload: reviewerEvidenceReceiptPayloadV7({ activityId: evaluateId, attempt: reviewAttempt, candidate: candidateRevision, workProduct: reviewProduct, effectDigest: reviewEffect }),
       relationships: Object.freeze([
         relationship("observes-attempt", reviewAttempt),
         relationship("observes-work-product", reviewProduct),
@@ -974,30 +1126,27 @@ async function seedDecisionReady(
     occurredAt: nextTime(),
     activityId: evaluateId,
   });
-  const evidencePayload = validDeliveryControlPayload("evidence-packet");
-  appendRecord({
+  const physical = await observeFoundationEvaluationEvidenceV7({
     store,
-    revision: recordInput({
-      store,
-      id: `evidence-${suffix}`,
-      kind: "evidence-packet",
-      createdAt: nextTime(),
-      payload: Object.freeze({ ...evidencePayload, readiness: "acceptance-ready" }),
-      relationships: Object.freeze([
-        relationship("governed-by", boundary),
-        relationship("evaluates", candidateRevision),
-        relationship("uses-seal", seal),
-        relationship("uses-check", baseline),
-        relationship("uses-check", final),
-        relationship("uses-review", reviewProduct),
-        relationship("uses-review-receipt", reviewReceipt),
-      ]),
-    }),
-    eventKind: "evidence-packet-finalized",
-    eventId: `event-evidence-${suffix}`,
-    occurredAt: nextTime(),
-    activityId: evaluateId,
+    boundary,
+    candidate: candidateRevision,
+    seal,
+    machineHome: fixture.machineHome,
+    targetRepository: fixture.target,
+    contract: fixture.contract,
   });
+  const evidence = retainEvidencePacket({
+    store,
+    activityId: evaluateId,
+    runtimeId: RUNTIME,
+    observation: {
+      ...physical,
+      evaluatedAt: nextTime(),
+      ruleSet: FOUNDATION_EVIDENCE_RULE_SET_V7,
+      validator: FOUNDATION_EVIDENCE_VALIDATOR_V7,
+    },
+  });
+  assert.equal(evidence.revision.payload.readiness, "acceptance-ready");
   appendEvent({
     store,
     eventId: `event-complete-evaluate-${suffix}`,
@@ -1090,6 +1239,22 @@ test("acceptance imports its retained Carrier without Candidate custody and clos
   let seeded: DecisionFixture | null = null;
   try {
     seeded = await seedDecisionReady(fixture, "accept");
+    const generationInput = {
+      store: seeded.store,
+      physical: { disposition: "active" as const, archiveManifestDigest: null },
+      repository: {
+        headCommit: fixture.observation.basis.canonicalCommit,
+        headTree: fixture.observation.basis.canonicalTree,
+        repositoryContractDigest: fixture.observation.basis.repositoryContractDigest,
+      },
+    };
+    const admittedGeneration = compileDeliveryGeneration(generationInput);
+    const movedGeneration = compileDeliveryGeneration({
+      ...generationInput,
+      repository: { ...generationInput.repository, headCommit: "c".repeat(40), headTree: "d".repeat(40) },
+    });
+    assert.deepEqual(movedGeneration, admittedGeneration,
+      "Unrelated canonical movement must not stale the exact admitted Delivery's semantic draft");
     const firstCarrierVerification = await verifyCandidateCarriersForStoreArchive({
       machineHome: fixture.machineHome,
       store: seeded.store,
@@ -1099,7 +1264,7 @@ test("acceptance imports its retained Carrier without Candidate custody and clos
       store: seeded.store,
     });
     assert.deepEqual(secondCarrierVerification, firstCarrierVerification);
-    assert.equal(firstCarrierVerification.candidateRevisionCount, 2);
+    assert.equal(firstCarrierVerification.candidateRevisionCount, 3);
     await git(fixture.target, ["prune", "--expire=now"]);
     assert.notEqual((await git(fixture.target, [
       "rev-parse", "--verify", "--end-of-options", `${seeded.candidateState.tree}^{tree}`,
@@ -1109,15 +1274,15 @@ test("acceptance imports its retained Carrier without Candidate custody and clos
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState, {
       onStage: (stage) => {
-        if (stage === "transaction-effect-intended") {
-          throw new Error("terminal intent committed fault");
+        if (stage === "opening-committed") {
+          throw new Error("terminal opening committed fault");
         }
       },
-    })), /terminal intent committed fault/u);
+    })), /terminal opening committed fault/u);
 
     const activity = seeded.store.state().activities.find((value) =>
       value.operation === "delivery.accept" && value.stage !== "completed");
@@ -1245,7 +1410,7 @@ test("acceptance imports its retained Carrier without Candidate custody and clos
     assert.equal(archived.store.getOperationSupport(activity.id), null);
     const events = archived.store.listEvents(0, 10_000);
     assert.equal(events.at(-1)?.eventKind, "closure-recorded");
-    assert.equal(events.filter(({ eventKind }) => eventKind === "founder-decision-authenticated")
+    assert.equal(events.filter(({ eventKind }) => eventKind === "director-decision-authenticated")
       .filter(({ payload }) => payload.activityId === activity.id).length, 1);
     assert.equal(events.filter(({ eventKind }) => eventKind === "transaction-effect-intended")
       .filter(({ payload }) => payload.activityId === activity.id).length, 1);
@@ -1290,7 +1455,7 @@ test("acceptance imports its retained Carrier without Candidate custody and clos
   }
 });
 
-async function assertTerminalBranchLeaseRead(input: Readonly<{
+async function assertTerminalReadAfterCanonicalMovement(input: Readonly<{
   fixture: RepositoryFixture;
   deliveryId: string;
   expectedCommit: string;
@@ -1318,8 +1483,6 @@ async function assertTerminalBranchLeaseRead(input: Readonly<{
   assert.equal(result.observation.delivery?.candidateCondition, input.candidateCondition);
   assert.equal(result.observation.delivery?.storeDisposition.stage, input.storeStage);
   assert.equal(result.observation.delivery?.recovery?.scope, "store-disposition");
-  assert.equal(result.diagnostics.some(({ code }) =>
-    code === "lifecycle.delivery.branch-lease-violation"), false);
 
   const path = `src/post-terminal-movement-${input.movementSuffix}.ts`;
   await write(
@@ -1340,16 +1503,11 @@ async function assertTerminalBranchLeaseRead(input: Readonly<{
   assert.equal(moved.status, "completed");
   assert.equal(moved.observation.repository.headCommit, movedCommit);
   assert.equal(moved.observation.repository.headTree, movedTree);
-  const leaseDiagnostic = moved.diagnostics.find(({ code }) =>
-    code === "lifecycle.delivery.branch-lease-violation");
-  assert.notEqual(leaseDiagnostic, undefined);
-  assert.equal(leaseDiagnostic?.facts?.expectedCommit, input.expectedCommit);
-  assert.equal(leaseDiagnostic?.facts?.expectedTree, input.expectedTree);
-  assert.equal(leaseDiagnostic?.facts?.observedCommit, movedCommit);
-  assert.equal(leaseDiagnostic?.facts?.observedTree, movedTree);
+  assert.deepEqual(moved.diagnostics, result.diagnostics);
+  assert.deepEqual(moved.observation.delivery, result.observation.delivery);
 }
 
-test("accepted Closure retains its canonical result as the branch lease until Store disposition", async () => {
+test("accepted Closure remains exact after canonical movement before Store disposition", async () => {
   const fixture = await repositoryFixture("accepted-closed-read");
   let seeded: DecisionFixture | null = null;
   try {
@@ -1359,7 +1517,7 @@ test("accepted Closure retains its canonical result as the branch lease until St
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState, {
       onStage: (stage) => {
@@ -1402,8 +1560,6 @@ test("accepted Closure retains its canonical result as the branch lease until St
     assert.equal(result.observation.delivery?.candidateCondition, "accepted");
     assert.equal(result.observation.delivery?.storeDisposition.stage, "closure-recorded");
     assert.equal(result.observation.delivery?.recovery?.scope, "store-disposition");
-    assert.equal(result.diagnostics.some(({ code }) =>
-      code === "lifecycle.delivery.branch-lease-violation"), false);
 
     await write(
       fixture.target,
@@ -1417,18 +1573,15 @@ test("accepted Closure retains its canonical result as the branch lease until St
     const moved = await surface.execute(statusRequest);
     assert.equal(moved.status, "completed");
     assert.equal(moved.observation.repository.headCommit, movedCommit);
-    const leaseDiagnostic = moved.diagnostics.find(({ code }) =>
-      code === "lifecycle.delivery.branch-lease-violation");
-    assert.notEqual(leaseDiagnostic, undefined);
-    assert.equal(leaseDiagnostic?.facts?.expectedCommit, acceptedCommit);
-    assert.equal(leaseDiagnostic?.facts?.observedCommit, movedCommit);
+    assert.deepEqual(moved.diagnostics, result.diagnostics);
+    assert.deepEqual(moved.observation.delivery, result.observation.delivery);
   } finally {
     try { seeded?.store.close(); } catch { /* terminal interruption retains Store custody */ }
     await rm(fixture.workspace, { recursive: true, force: true });
   }
 });
 
-test("no-ship Closure retains the admitted basis as the branch lease until Store disposition", async () => {
+test("no-ship Closure remains exact after canonical movement before Store disposition", async () => {
   const fixture = await repositoryFixture("no-ship-closed-read");
   let seeded: DecisionFixture | null = null;
   try {
@@ -1438,8 +1591,8 @@ test("no-ship Closure retains the admitted basis as the branch lease until Store
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, undefined, {
       onStage: (stage) => {
@@ -1461,7 +1614,7 @@ test("no-ship Closure retains the admitted basis as the branch lease until Store
     );
     seeded.store.close();
 
-    await assertTerminalBranchLeaseRead({
+    await assertTerminalReadAfterCanonicalMovement({
       fixture,
       deliveryId: seeded.deliveryId,
       expectedCommit: fixture.observation.basis.canonicalCommit,
@@ -1477,7 +1630,7 @@ test("no-ship Closure retains the admitted basis as the branch lease until Store
 });
 
 for (const disposition of ["accepted", "no-ship"] as const) {
-  test(`${disposition} sealed Store retains its terminal branch lease until archive`, async () => {
+  test(`${disposition} sealed Store remains exact after canonical movement before archive`, async () => {
     const fixture = await repositoryFixture(`${disposition}-sealed-read`);
     let seeded: DecisionFixture | null = null;
     try {
@@ -1495,7 +1648,7 @@ for (const disposition of ["accepted", "no-ship"] as const) {
           machineHome: fixture.machineHome,
           store: seeded.store,
           authorityHome: fixture.authorityHome,
-          authoritySecret: SECRET,
+          authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
           runtimeId: RUNTIME,
         }, terminalOptions(fixture, seeded.candidateState, interruptAtSeal)),
         /accepted Store retained before archive/u);
@@ -1505,8 +1658,8 @@ for (const disposition of ["accepted", "no-ship"] as const) {
           machineHome: fixture.machineHome,
           store: seeded.store,
           authorityHome: fixture.authorityHome,
-          authoritySecret: SECRET,
-          semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
+          authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+          semanticMarkdown: "# Director No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
           runtimeId: RUNTIME,
         }, terminalOptions(fixture, undefined, interruptAtSeal)),
         /no-ship Store retained before archive/u);
@@ -1530,7 +1683,7 @@ for (const disposition of ["accepted", "no-ship"] as const) {
       );
       seeded.store.close();
 
-      await assertTerminalBranchLeaseRead({
+      await assertTerminalReadAfterCanonicalMovement({
         fixture,
         deliveryId: seeded.deliveryId,
         expectedCommit,
@@ -1556,8 +1709,8 @@ test("terminal rejects a same-count Reclamation substitution before Closure", as
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integration.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integration.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, undefined, {
       observeReclamationHandoff: async ({
@@ -1604,7 +1757,7 @@ test("terminal rejects a same-count Reclamation substitution before Closure", as
   }
 });
 
-test("acceptance refuses Atlas branch movement made after admission", async () => {
+test("acceptance refuses Atlas movement after selection of the exact evaluated parent", async () => {
   const fixture = await repositoryFixture("accept-atlas-advance");
   let seeded: DecisionFixture | null = null;
   try {
@@ -1612,7 +1765,7 @@ test("acceptance refuses Atlas branch movement made after admission", async () =
     const atlasPath = join(fixture.target, "atlas/maps/project/points/project-scope.md");
     await writeFile(
       atlasPath,
-      `${await readFile(atlasPath, "utf8")}\nAtlas maintenance belongs after Closure.\n`,
+      `${await readFile(atlasPath, "utf8")}\nSeparately Director-directed Atlas maintenance advances canonical state.\n`,
       "utf8",
     );
     await git(fixture.target, ["add", "--", "atlas"]);
@@ -1624,7 +1777,7 @@ test("acceptance refuses Atlas branch movement made after admission", async () =
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState));
     assert.equal(refused.status, "failed");
@@ -1664,7 +1817,7 @@ test("acceptance refuses untracked non-authoritative checkout content", async ()
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState));
     assert.equal(refused.status, "failed");
@@ -1696,7 +1849,7 @@ test("acceptance refuses an Atlas-only compare-and-swap race", async () => {
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState, {
       onStage: (stage) => {
@@ -1737,6 +1890,71 @@ test("acceptance refuses an Atlas-only compare-and-swap race", async () => {
   }
 });
 
+test("acceptance independently rechecks retained semantics and physical Carrier facts after intent before import", async () => {
+  for (const changed of ["packet", "carrier"] as const) {
+    const fixture = await repositoryFixture(`accept-reverify-${changed}`);
+    let seeded: DecisionFixture | null = null;
+    try {
+      seeded = await seedDecisionReady(fixture, `accept-reverify-${changed}`);
+      const originalStore = seeded.store;
+      let intentRetained = false;
+      let importCalls = 0;
+      const store = new Proxy(originalStore, {
+        get(target, key) {
+          if (key === "getRevision") return (recordId: string, revision: number) => {
+            const selected = target.getRevision(recordId, revision);
+            if (changed !== "packet" || !intentRetained || selected?.recordKind !== "evidence-packet") return selected;
+            return Object.freeze({
+              ...selected,
+              payload: Object.freeze({
+                ...selected.payload,
+                uncertainty: Object.freeze({
+                  ...(selected.payload.uncertainty as ControlJsonObject),
+                  level: "unknown",
+                }),
+              }),
+            });
+          };
+          const value = Reflect.get(target, key, target) as unknown;
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const artifactPath = await carrierArtifactPath(fixture, originalStore, seeded.candidateRevision);
+      const refused = await acceptDeliveryV7({
+        target: fixture.target,
+        machineHome: fixture.machineHome,
+        store,
+        authorityHome: fixture.authorityHome,
+        authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+        runtimeId: RUNTIME,
+      }, terminalOptions(fixture, seeded.candidateState, {
+        onStage: async (stage) => {
+          if (stage !== "transaction-effect-intended") return;
+          intentRetained = true;
+          if (changed === "carrier") await rm(artifactPath);
+        },
+        importCandidateCarrier: async (input) => {
+          importCalls += 1;
+          return await importCandidateRevisionCarrierIntoRepository(input);
+        },
+      }));
+      assert.equal(intentRetained, true, changed);
+      assert.equal(refused.status, "failed", changed);
+      assert.equal(refused.transactionOutcome, "not-applied", changed);
+      assert.equal(importCalls, 0, `${changed} changed before any Candidate import`);
+      assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), fixture.observation.basis.canonicalCommit);
+      assert.equal(originalStore.state().subjects.closure, null);
+      const terminalEvents = originalStore.listEvents(0, 10_000).filter(({ payload }) => payload.activityId === refused.activityId);
+      for (const kind of ["director-decision-authenticated", "transaction-effect-intended", "transaction-effect-observed"]) {
+        assert.equal(terminalEvents.filter(({ eventKind }) => eventKind === kind).length, 1, `${changed}: ${kind}`);
+      }
+    } finally {
+      seeded?.store.close();
+      await rm(fixture.workspace, { recursive: true, force: true });
+    }
+  }
+});
+
 test("acceptance refuses non-Atlas canonical movement made after retained intent", async () => {
   const fixture = await repositoryFixture("accept-product-after-intent");
   let seeded: DecisionFixture | null = null;
@@ -1748,7 +1966,7 @@ test("acceptance refuses non-Atlas canonical movement made after retained intent
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState, {
       onStage: async (stage) => {
@@ -1764,7 +1982,7 @@ test("acceptance refuses non-Atlas canonical movement made after retained intent
     assert.equal(seeded.store.state().subjects.closure, null);
     assert.equal(
       seeded.store.listEvents(0, 10_000).filter(({ eventKind }) =>
-        eventKind === "founder-decision-authenticated").filter(({ payload }) =>
+        eventKind === "director-decision-authenticated").filter(({ payload }) =>
         payload.activityId === refused.activityId).length,
       1,
     );
@@ -1788,7 +2006,7 @@ test("acceptance treats an invalid-Atlas compare-and-swap race as branch movemen
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState, {
       onStage: (stage) => {
@@ -1821,7 +2039,7 @@ test("acceptance treats an invalid-Atlas compare-and-swap race as branch movemen
       objectFormat: "sha1",
     }));
     assert.equal(seeded.store.listEvents(0, 10_000).filter(({ eventKind }) =>
-      eventKind === "founder-decision-authenticated").filter(({ payload }) =>
+      eventKind === "director-decision-authenticated").filter(({ payload }) =>
       payload.activityId === refused.activityId).length, 1);
   } finally {
     seeded?.store.close();
@@ -1845,7 +2063,7 @@ test("acceptance authenticates its historical subject then refuses current non-A
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, seeded.candidateState));
     assert.equal(refused.status, "failed");
@@ -1853,7 +2071,7 @@ test("acceptance authenticates its historical subject then refuses current non-A
     assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), movedCommit);
     assert(seeded.store.listEvents(0, 10_000).length > beforeEvents);
     assert.equal(seeded.store.listEvents(0, 10_000).filter(({ eventKind, payload }) =>
-      eventKind === "founder-decision-authenticated" &&
+      eventKind === "director-decision-authenticated" &&
       payload.activityId === refused.activityId).length, 1);
     assert.equal(seeded.store.state().subjects.closure, null);
     assert.equal(seeded.store.state().standing, "decision-ready");
@@ -1878,8 +2096,8 @@ test("no-ship observes exact non-integration and archives with Closure as the fi
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture));
     assert.equal(closed.status, "completed");
@@ -1897,7 +2115,7 @@ test("no-ship observes exact non-integration and archives with Closure as the fi
       store: archived.store,
     });
     assert.deepEqual(reopenedCarrierSet, retainedCarrierSet);
-    assert.equal(reopenedCarrierSet.candidateRevisionCount, 2);
+    assert.equal(reopenedCarrierSet.candidateRevisionCount, 3);
     const events = archived.store.listEvents(0, 10_000);
     assert.equal(events.at(-1)?.eventKind, "closure-recorded");
     assert.equal(events.some(({ eventKind, payload }) =>
@@ -1939,8 +2157,8 @@ test("terminal recovery reconciles an undispatched pre-intent allocation without
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose after pre-intent refusal.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose after pre-intent refusal.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, undefined, {
       now: terminalClock,
@@ -2006,7 +2224,7 @@ test("terminal recovery reconciles an undispatched pre-intent allocation without
         eventKind === "provider-effect-intended" ||
         eventKind === "execution-receipt-recorded")), false);
     assert.equal(events.filter(({ eventKind, payload }) =>
-      eventKind === "founder-decision-authenticated" &&
+      eventKind === "director-decision-authenticated" &&
       payload.activityId === terminalActivityId).length, 1);
     assert.equal(events.filter(({ eventKind, payload }) =>
       eventKind === "transaction-effect-intended" &&
@@ -2046,8 +2264,8 @@ test("no-ship refuses a missing historical Candidate Revision Carrier before Clo
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integration.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integration.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture)), (error: unknown) =>
       error instanceof FoundationError &&
@@ -2074,8 +2292,8 @@ test("post-Closure recovery refuses a corrupt Candidate Carrier before Store sea
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integration.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integration.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, undefined, {
       onStage: async (stage) => {
@@ -2114,8 +2332,8 @@ test("no-ship remains applied across external movement and recovers terminal fin
       machineHome: fixture.machineHome,
       store: seeded.store,
       authorityHome: fixture.authorityHome,
-      authoritySecret: SECRET,
-      semanticMarkdown: "# Founder No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# Director No-Ship Decision\n\nClose without integrating Candidate bytes.\n",
       runtimeId: RUNTIME,
     }, terminalOptions(fixture, undefined, {
       onStage: async (stage) => {
@@ -2156,4 +2374,841 @@ test("no-ship remains applied across external movement and recovers terminal fin
     try { seeded?.store.close(); } catch { /* Store may already be closed */ }
     await rm(fixture.workspace, { recursive: true, force: true });
   }
+});
+
+test("acceptance recovery preserves exact success after forward movement and uncertainty after lost history", async () => {
+  for (const scenario of ["forward", "rewritten", "pruned", "intent-only"] as const) {
+    const fixture = await repositoryFixture(`history-${scenario}`);
+    let seeded: DecisionFixture | null = null;
+    let reopened: ControlRecordStore | null = null;
+    try {
+      seeded = await seedDecisionReady(fixture, `history-${scenario}`);
+      await assert.rejects(acceptDeliveryV7({
+        target: fixture.target, machineHome: fixture.machineHome, store: seeded.store,
+        authorityHome: fixture.authorityHome,
+        authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME,
+      }, terminalOptions(fixture, seeded.candidateState, {
+        onStage: (stage) => {
+          if (stage === (scenario === "intent-only" ? "transaction-effect-intended" : "canonical-effect-applied")) {
+            throw new Error("interrupt before retaining effect observation");
+          }
+        },
+      })), /interrupt before retaining effect observation/u);
+      const activity = seeded.store.state().activities.find((item) => item.operation === "delivery.accept");
+      assert(activity !== undefined);
+      assert.equal(seeded.store.listEvents(0, 10_000).some((event) =>
+        event.eventKind === "transaction-effect-observed" && event.payload.activityId === activity.id), false);
+      const acceptedCommit = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+      if (scenario === "forward") {
+        await write(fixture.target, "later.txt", "A later independent canonical commit.\n");
+        await git(fixture.target, ["add", "--", "later.txt"]);
+        await git(fixture.target, ["commit", "-m", "Advance after unobserved acceptance"]);
+      } else if (scenario !== "intent-only") {
+        assert.notEqual(acceptedCommit, fixture.observation.basis.canonicalCommit);
+        await git(fixture.target, ["reset", "--hard", fixture.observation.basis.canonicalCommit]);
+        if (scenario === "pruned") {
+          await git(fixture.target, ["reflog", "expire", "--expire=now", "--all"]);
+          await git(fixture.target, ["prune", "--expire=now"]);
+          assert.notEqual((await git(fixture.target, ["cat-file", "-e", acceptedCommit], { allowFailure: true })).exitCode, 0);
+        } else {
+          assert.equal((await git(fixture.target, ["cat-file", "-e", acceptedCommit], { allowFailure: true })).exitCode, 0,
+            "Object existence alone cannot prove canonical application");
+        }
+      }
+      const tip = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+      const tipTree = (await git(fixture.target, ["rev-parse", "HEAD^{tree}"])).stdout.trim();
+      seeded.store.close();
+      reopened = (await openDeliveryControlRecordStore({ machineHome: fixture.machineHome,
+        targetId: fixture.contract.targetId, deliveryId: seeded.deliveryId })).store;
+      const recovered = await recoverTerminalDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome,
+        store: reopened, runtimeId: RUNTIME, activityId: activity.id }, terminalOptions(fixture, seeded.candidateState, {
+        now: timeOwner("2026-08-29T21:00:00.000Z"),
+      }));
+      assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), tip, scenario);
+      if (scenario === "forward") {
+        assert.equal(recovered.status, "completed");
+        assert.equal(recovered.canonicalCommit, acceptedCommit);
+        assert.equal(recovered.transactionOutcome, "applied");
+        reopened = (await openDeliveryControlRecordStore({ machineHome: fixture.machineHome,
+          targetId: fixture.contract.targetId, deliveryId: seeded.deliveryId })).store;
+        const observed = reopened.listEvents(0, 10_000).find((event) =>
+          event.eventKind === "transaction-effect-observed" && event.payload.activityId === activity.id);
+        const facts = observed?.payload.facts as ControlJsonObject;
+        assert.equal(facts.commit, acceptedCommit);
+        assert.equal(facts.recognition, "ancestor");
+        assert.deepEqual(facts.observedTip, { commit: tip, tree: tipTree });
+      } else {
+        assert.equal(recovered.status, "recovery-required", scenario);
+        assert.equal(recovered.transactionOutcome, "indeterminate", scenario);
+        assert.equal(recovered.closure, null, scenario);
+        assert.equal(reopened.state().subjects.closure, null, scenario);
+        assert.equal(tip, fixture.observation.basis.canonicalCommit, scenario);
+      }
+    } finally {
+      try { reopened?.close(); } catch { /* completed acceptance transfers Store custody */ }
+      try { seeded?.store.close(); } catch { /* reopened or archived above */ }
+      await rm(fixture.workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test("Director acceptance binds the integrated parent while preserving the original governing Boundary", async () => {
+  const fixture = await repositoryFixture("integrated-parent");
+  let seeded: DecisionFixture | null = null;
+  let archived: ControlRecordStore | null = null;
+  try {
+    seeded = await seedDecisionReady(fixture, "integrated-parent", { advanceParent: true });
+    const parent = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+    assert.notEqual(parent, fixture.observation.basis.canonicalCommit);
+    assert.equal(seeded.candidateRevision.payload.candidateBaseCommit, parent);
+    let reviewedParent: string | null = null;
+    const accepted = await acceptDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome,
+      store: seeded.store, authorityHome: fixture.authorityHome,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME,
+    }, terminalOptions(fixture, seeded.candidateState, {
+      beforeAuthenticate: (review) => { reviewedParent = review.repository.canonicalCommit; },
+    }));
+    assert.equal(accepted.status, "completed");
+    assert.equal(reviewedParent, parent);
+    assert.equal((await git(fixture.target, ["rev-parse", "HEAD^"])).stdout.trim(), parent);
+    assert.equal(await readFile(join(fixture.target, "upstream.txt"), "utf8"),
+      "Independent canonical work before this Delivery integrates.\n");
+    archived = (await openDeliveryControlRecordStore({ machineHome: fixture.machineHome,
+      targetId: fixture.contract.targetId, deliveryId: seeded.deliveryId })).store;
+    const closure = archived.getRevision(accepted.closure!.id, accepted.closure!.revision)!;
+    assert.equal((closure.payload.canonicalResult as ControlJsonObject).parentCommit, parent);
+    const governed = seeded.candidateRevision.relationships.find((item) => item.relation === "governed-by")!;
+    const boundary = archived.getRevision(governed.target.id, governed.target.revision)!;
+    assert.equal((boundary.payload.basis as ControlJsonObject).productBaseCommit, fixture.observation.basis.canonicalCommit);
+    const acceptance = archived.getRevision(accepted.decision.id, accepted.decision.revision)!;
+    assert.equal(((acceptance.payload.subject as ControlJsonObject).repository as ControlJsonObject).canonicalCommit, parent);
+  } finally {
+    try { archived?.close(); } catch { /* terminal success transfers Store custody */ }
+    try { seeded?.store.close(); } catch { /* terminal success transfers Store custody */ }
+    await rm(fixture.workspace, { recursive: true, force: true });
+  }
+});
+
+async function advanceIntegrationParent(fixture: RepositoryFixture, kind: "clean" | "conflict" | "context" | "discovery"): Promise<string> {
+  if (kind === "discovery") {
+    const path = "atlas/atlas.md";
+    const original = await readFile(join(fixture.target, path), "utf8");
+    const close = original.indexOf("\n---", 4);
+    const header = JSON.parse(original.slice(4, close));
+    await write(fixture.target, path, `---\n${JSON.stringify({ ...header,
+      resources: [{ id: "unselected", uri: "sources/unselected.md", title: "Unselected discovery Resource" }],
+    }, null, 2)}${original.slice(close)}`);
+    await write(fixture.target, "atlas/sources/unselected.md", "Independent unselected Resource bytes.\n");
+    const point = "atlas/maps/project/points/project-scope.md";
+    await write(fixture.target, point, `${await readFile(join(fixture.target, point), "utf8")}\nUnselected Point maintenance.\n`);
+    await git(fixture.target, ["add", "--", "atlas"]);
+  }
+  const path = kind === "conflict" ? "src/demo.ts" : kind === "context"
+    ? "atlas/atlas.md" : "upstream.txt";
+  const content = kind === "context" ? `${await readFile(join(fixture.target, path), "utf8")}\nIndependent Director context maintenance.\n`
+    : kind === "conflict" ? "export const terminal = 'canonical-conflict';\n" : "Independent canonical contribution.\n";
+  await write(fixture.target, path, content);
+  await git(fixture.target, ["add", "--", path]);
+  await git(fixture.target, ["commit", "-m", `Select ${kind} integration parent`]);
+  return (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+}
+
+async function inspectIntegratedFiles(fixture: RepositoryFixture, store: ControlRecordStore, candidate: ControlRecordRevision) {
+  const inspection = join(fixture.workspace, "integration-inspection");
+  await mkdir(inspection);
+  await git(inspection, ["init", "-b", "inspect"]);
+  const descriptor = candidate.payload.carrierManifest as ControlJsonObject;
+  const manifest = await store.readRetainedFile(descriptor.digest as Sha256);
+  assert(manifest !== null);
+  const state = candidate.payload.state as ControlJsonObject;
+  await importCandidateRevisionCarrierIntoRepository({ machineHome: fixture.machineHome, repository: inspection,
+    manifestBytes: manifest.bytes, expectedRootTree: String(state.tree) });
+  return {
+    contribution: (await git(inspection, ["show", `${String(state.tree)}:src/demo.ts`])).stdout,
+    upstream: await git(inspection, ["show", `${String(state.tree)}:upstream.txt`], { allowFailure: true }),
+    later: await git(inspection, ["show", `${String(state.tree)}:later.txt`], { allowFailure: true }),
+    unselectedResource: await git(inspection, ["show", `${String(state.tree)}:atlas/sources/unselected.md`], { allowFailure: true }),
+  };
+}
+
+for (const scenario of ["clean", "conflict", "context", "discovery"] as const) {
+  test(`integration owner retains the exact ${scenario} result against current P without moving canonical`, async () => {
+    const fixture = await repositoryFixture(`integration-${scenario}`);
+    let selected: Awaited<ReturnType<typeof seedCandidateReady>> | null = null;
+    try {
+      selected = await seedCandidateReady(fixture, `integration-${scenario}`);
+      const source = selected.candidateRevision;
+      const parent = await advanceIntegrationParent(fixture, scenario);
+      assert.notEqual(parent, fixture.observation.basis.canonicalCommit);
+      const result = await operateFoundationIntegrationRuntimeV1({ target: fixture.target, machineHome: fixture.machineHome,
+        store: selected.store, activityId: `integration-real-${scenario}`, runtimeId: RUNTIME }, { now: selected.nextTime });
+      assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), parent);
+      assert.equal(result.outcome, scenario === "conflict" ? "conflicted" : "constructed");
+      const assessment = selected.store.getRevision(result.assessment.id, result.assessment.revision)!;
+      assert.equal((assessment.payload.canonicalParent as ControlJsonObject).commit, parent);
+      assert.deepEqual(assessment.relationships.find(({ relation }) => relation === "integrates")?.target,
+        relationship("integrates", source).target);
+      assert.equal(selected.store.state().subjects.activeBoundary?.digest, selected.boundary.digest);
+      if (scenario === "conflict") {
+        assert.equal(result.candidate.digest, source.digest);
+        assert.equal(selected.store.state().subjects.materialCondition, null);
+        assert((assessment.payload.conflicts as readonly ControlJsonValue[]).length > 0);
+        assert.equal(selected.store.state().eligibleOperations.includes("delivery.continue"), true);
+        assert.equal(selected.store.state().eligibleOperations.includes("delivery.integrate"), true);
+        // Continue from the retained C/W and actually consume the failed P bytes
+        // supplied by the installed correction Projection before constructing C'.
+        const activityId = "continue-after-conflict";
+        const context = await compileFoundationFreshAgentOperationContextV7({target:fixture.target,store:selected.store,activityId,
+          operation:"delivery.continue",semanticMarkdown:"# Continue\n\nResolve the retained integration conflict and preserve the local contribution.\n",
+          configuration:{machineHome:fixture.machineHome,installationId:"test-installation",model:"test",reasoning:"high",
+            specificationRevision:FOUNDATION_SPECIFICATION_REVISION,publicationDigest:fixture.contract.specification.publicationDigest}}, {
+          compileKnowledgeProjection: async (input) => {
+            const compiled = await compileKnowledgeProjection(input);
+            assert.equal(compiled.validation.valid, true, JSON.stringify(compiled.validation.diagnostics));
+            return compiled;
+          },
+        });
+        assert.equal(context.role,"builder");
+        assert.equal(context.request.repository.commit,fixture.observation.basis.canonicalCommit);
+        const correctionSources = context.projection.manifest.sources.filter(({reference}) => reference.startsWith("candidate:integration-correction:"));
+        const correctionBytes = (reference:string) => {
+          const content = correctionSources.find((item) => item.reference === reference)!.content;
+          if (content.mode !== "mounted") assert.fail("Correction context must supply exact mounted inputs");
+          const entry = context.projection.inventory.find(({path}) => path === content.path)!;
+          return Buffer.from(entry.bytes,"base64").toString("utf8");
+        };
+        const pathFacts = JSON.parse(correctionBytes("candidate:integration-correction:parent-paths")) as {
+          completeConflictPaths:boolean; entries:{path:string;sourceReference:string}[];
+        };
+        assert.equal(pathFacts.completeConflictPaths,true);
+        const conflictedPath = pathFacts.entries.find(({path}) => path === "src/demo.ts")!;
+        const parentBytes = correctionBytes(conflictedPath.sourceReference);
+        assert.equal(parentBytes,"export const terminal = 'canonical-conflict';\n");
+        const store = selected.store;
+        const nextTime = selected.nextTime;
+        const reference = (value: ControlRecordRevision) => ({id:value.recordId,revision:value.revision,digest:value.digest});
+        const brief = appendRecord({store,activityId,eventId:"brief-after-conflict",eventKind:"director-brief-submitted",occurredAt:nextTime(),
+          revision:recordInput({store,id:"brief-after-conflict",kind:"director-brief",createdAt:nextTime(),
+            payload:{...validDeliveryControlPayload("director-brief"),scope:{kind:"activity",activityId}}})});
+        appendEvent({store,activityId,eventId:"started-after-conflict",eventKind:"activity-started",occurredAt:nextTime(),payload:{operation:"delivery.continue"}});
+        const attempt = appendRecord({store,activityId,eventId:"attempt-after-conflict",eventKind:"agent-attempt-prepared",occurredAt:nextTime(),
+          revision:recordInput({store,id:"attempt-after-conflict",kind:"agent-attempt",createdAt:nextTime(),
+            payload:{...selected.attemptPayload,activityId,operation:"delivery.continue",role:"builder",
+              input:{...selected.attemptPayload.input as ControlJsonObject,evidenceSetDigest:context.evidenceSet.digest}},
+            relationships:[relationship("uses-brief",brief),relationship("uses-boundary",selected.boundary),relationship("uses-candidate",source)]})});
+        const effectDigest = digest("correction-effect");
+        appendEvent({store,activityId,eventId:"intended-after-conflict",eventKind:"provider-effect-intended",occurredAt:nextTime(),subject:attempt,payload:{effectDigest}});
+        const correctionRepository = join(fixture.workspace,"integration-correction");
+        await mkdir(correctionRepository);
+        await git(correctionRepository,["init","-b","correction"]);
+        const sourceManifest = await store.readRetainedFile((source.payload.carrierManifest as ControlJsonObject).digest as Sha256);
+        assert(sourceManifest !== null);
+        const sourceState = source.payload.state as unknown as CandidateRevisionState;
+        await importCandidateRevisionCarrierIntoRepository({machineHome:fixture.machineHome,repository:correctionRepository,
+          manifestBytes:sourceManifest.bytes,expectedRootTree:sourceState.tree});
+        await git(correctionRepository,["read-tree","--reset","-u",sourceState.tree]);
+        await write(correctionRepository,"src/demo.ts",parentBytes);
+        await write(correctionRepository,"src/conflict-correction.ts","export const preservedContribution = 'accepted';\n");
+        await git(correctionRepository,["add","-A","--","."]);
+        appendEvent({store,activityId,eventId:"observed-after-conflict",eventKind:"provider-effect-observed",occurredAt:nextTime(),subject:attempt,payload:{effectDigest,outcome:"completed"}});
+        const productTemplate = validDeliveryControlPayload("agent-work-product");
+        const workProduct = appendRecord({store,activityId,eventId:"product-after-conflict",eventKind:"agent-work-product-submitted",occurredAt:nextTime(),
+          revision:recordInput({store,id:"product-after-conflict",kind:"agent-work-product",createdAt:nextTime(),
+            payload:{...productTemplate,disposition:"partial",roleSemantics:{...productTemplate.roleSemantics as ControlJsonObject,proposal:"progress",conditions:[]}},
+            relationships:[relationship("result-of",attempt)]})});
+        const tree = (await git(correctionRepository,["write-tree"])).stdout.trim();
+        const carrier = await publishCandidateRevisionCarrierFromGitTree({machineHome:fixture.machineHome,repository:correctionRepository,rootTree:tree});
+        const admitted = await deriveCandidateRevisionCarrierAdmittedContext({machineHome:fixture.machineHome,repository:fixture.target,
+          store,boundary:selected.boundary,candidate:source});
+        const corrected = (await retainCandidateRevision({store,activityId,observation:"builder-successor",
+          candidateBaseCommit:String(source.payload.candidateBaseCommit),carrierManifestBytes:carrier.manifestBytes,
+          verifyCarrier:candidateRevisionCarrierVerifier({machineHome:fixture.machineHome,admitted,predecessor:{candidateDigest:sourceState.candidateDigest}}),
+          boundary:{kind:"work-boundary",...reference(selected.boundary)},predecessor:{kind:"candidate-revision",...reference(source)},
+          builderAttempt:{kind:"agent-attempt",...reference(attempt)},observedAt:nextTime(),runtimeId:RUNTIME})).revision;
+        appendRecord({store,activityId,eventId:"receipt-after-conflict",eventKind:"execution-receipt-recorded",occurredAt:nextTime(),
+          revision:recordInput({store,id:"receipt-after-conflict",kind:"execution-receipt",createdAt:nextTime(),
+            payload:{...validDeliveryControlPayload("execution-receipt"),activityId},
+            relationships:[relationship("observes-attempt",attempt),relationship("observes-work-product",workProduct),relationship("observes-candidate",corrected)]})});
+        appendEvent({store,activityId,eventId:"completed-after-conflict",eventKind:"activity-completed",occurredAt:nextTime(),payload:{outcome:"completed"}});
+        assert.equal(corrected.recordId,source.recordId);
+        assert.equal(corrected.revision,source.revision+1);
+        assert.equal(corrected.payload.candidateBaseCommit,source.payload.candidateBaseCommit);
+        const reintegrated = await operateFoundationIntegrationRuntimeV1({target:fixture.target,machineHome:fixture.machineHome,store,
+          activityId:"integrate-after-correction",runtimeId:RUNTIME},{now:nextTime});
+        assert.equal(reintegrated.outcome,"constructed");
+        const integrated = store.getRevision(reintegrated.candidate.id,reintegrated.candidate.revision)!;
+        assert.equal(integrated.payload.candidateBaseCommit,parent);
+        assert.deepEqual(integrated.relationships.find(({relation}) => relation === "revises")!.target,relationship("revises",corrected).target);
+        assert.equal(store.state().subjects.activeBoundary!.digest,selected.boundary.digest);
+        assert.equal(store.state().subjects.materialCondition,null);
+        const integratedState = integrated.payload.state as ControlJsonObject;
+        const integratedManifest = await store.readRetainedFile((integrated.payload.carrierManifest as ControlJsonObject).digest as Sha256);
+        assert(integratedManifest !== null);
+        await importCandidateRevisionCarrierIntoRepository({machineHome:fixture.machineHome,repository:correctionRepository,
+          manifestBytes:integratedManifest.bytes,expectedRootTree:String(integratedState.tree)});
+        assert.equal((await git(correctionRepository,["show",`${String(integratedState.tree)}:src/demo.ts`])).stdout,parentBytes);
+        assert.equal((await git(correctionRepository,["show",`${String(integratedState.tree)}:src/conflict-correction.ts`])).stdout,
+          "export const preservedContribution = 'accepted';\n");
+        assert.equal((await git(fixture.target,["rev-parse","HEAD"])).stdout.trim(),parent);
+      } else {
+        const candidate = selected.store.getRevision(result.candidate.id, result.candidate.revision)!;
+        assert.equal(candidate.recordId, source.recordId);
+        assert.equal(candidate.revision, source.revision + 1);
+        assert.equal(candidate.payload.observation, "integration-successor");
+        assert.equal(candidate.payload.candidateBaseCommit, parent);
+        assert.deepEqual(candidate.relationships.find(({ relation }) => relation === "revises")?.target,
+          relationship("revises", source).target);
+        if (scenario === "context") {
+          const conditionRef = selected.store.state().subjects.materialCondition;
+          assert(conditionRef !== null);
+          const condition = selected.store.getRevision(conditionRef.id, conditionRef.revision)!;
+          assert.equal(condition.payload.conditionClass, "integration-context-change");
+          assert.deepEqual(condition.payload.source, { kind: "integration-assessment" });
+          assert.deepEqual(condition.relationships.find(({ relation }) => relation === "freezes")?.target,
+            relationship("freezes", candidate).target);
+          assert.equal(selected.store.state().candidateCondition, "paused-for-boundary");
+          assert.equal(resolveWorkBoundaryResolutionSnapshotV1({ store: selected.store, boundary: selected.boundary,
+            materialCondition: condition }).commit, parent);
+        } else {
+          assert.deepEqual(assessment.payload.contextualApplicability, { disposition: "unchanged", changes: [] });
+          assert.equal(selected.store.state().subjects.materialCondition, null);
+          assert.equal(selected.store.state().eligibleOperations.includes("delivery.evaluate"), true);
+          const files = await inspectIntegratedFiles(fixture, selected.store, candidate);
+          assert.equal(files.contribution, "export const terminal = 'accepted';\n");
+          assert.equal(files.upstream.stdout, "Independent canonical contribution.\n");
+          if (scenario === "discovery") {
+            const canonicalContext = await loadRepositoryEpoch(fixture.target);
+            assert.notEqual(canonicalContext.atlasState.digest, fixture.observation.basis.atlasStateDigest);
+            assert.notEqual(canonicalContext.atlas.resolution.normalizedModelDigest, fixture.observation.basis.atlasNormalizedModelDigest);
+            assert.equal(canonicalContext.atlas.resolution.resourceBindings.find(({ resourceId }) => resourceId === "unselected")?.disposition, "resolved");
+            assert.equal(files.unselectedResource.stdout, "Independent unselected Resource bytes.\n");
+          }
+        }
+      }
+    } finally {
+      selected?.store.close();
+      await rm(fixture.workspace, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const checkpoint of ["opened", "assessed", "candidate-selected"] as const) {
+  test(`integration recovery after ${checkpoint} retains P and C despite later canonical movement`, async () => {
+    const fixture = await repositoryFixture(`integration-recover-${checkpoint}`);
+    let selected: Awaited<ReturnType<typeof seedCandidateReady>> | null = null;
+    let reopened: ControlRecordStore | null = null;
+    try {
+      selected = await seedCandidateReady(fixture, `integration-recover-${checkpoint}`);
+      const parent = await advanceIntegrationParent(fixture, checkpoint === "candidate-selected" ? "context" : "clean");
+      const activityId = `integration-recover-${checkpoint}`;
+      await assert.rejects(operateFoundationIntegrationRuntimeV1({ target: fixture.target, machineHome: fixture.machineHome,
+        store: selected.store, activityId, runtimeId: RUNTIME }, { now: selected.nextTime,
+        afterCheckpoint: (stage) => {
+          if (stage !== checkpoint) return;
+          if (stage === "candidate-selected") {
+            assert.equal(selected!.store.state().subjects.candidate?.revision, selected!.candidateRevision.revision + 1);
+            assert.notEqual(selected!.store.state().subjects.materialCondition, null,
+              "I and its required Material Condition must become observable atomically");
+          }
+          throw new Error(`interrupt ${checkpoint}`);
+        },
+      }), new RegExp(`interrupt ${checkpoint}`));
+      const retainedAssessment = selected.store.state().subjects.integrationAssessment;
+      const retainedCondition = selected.store.state().subjects.materialCondition;
+      await write(fixture.target, "later.txt", "Unrelated canonical movement after integration opening.\n");
+      await git(fixture.target, ["add", "--", "later.txt"]);
+      await git(fixture.target, ["commit", "-m", "Move canonical during interrupted integration"]);
+      const tip = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+      selected.store.close();
+      reopened = (await openDeliveryControlRecordStore({ machineHome: fixture.machineHome,
+        targetId: fixture.contract.targetId, deliveryId: selected.deliveryId })).store;
+      const result = await recoverFoundationIntegrationRuntimeV1({ target: fixture.target, machineHome: fixture.machineHome,
+        store: reopened, activityId, runtimeId: RUNTIME }, { now: selected.nextTime });
+      assert.equal(result.outcome, "constructed");
+      const assessment = reopened.getRevision(result.assessment.id, result.assessment.revision)!;
+      const candidate = reopened.getRevision(result.candidate.id, result.candidate.revision)!;
+      assert.equal((assessment.payload.canonicalParent as ControlJsonObject).commit, parent);
+      assert.equal(candidate.payload.candidateBaseCommit, parent);
+      assert.equal(candidate.revision, selected.candidateRevision.revision + 1);
+      assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), tip);
+      const events = reopened.listEvents(0, 10_000).filter((event) => event.payload.activityId === activityId);
+      assert.equal(events.filter((event) => event.eventKind === "integration-assessed").length, 1);
+      assert.equal(events.filter((event) => event.eventKind === "candidate-revision-observed").length, 1);
+      if (retainedAssessment !== null) assert.equal(assessment.digest, retainedAssessment.digest);
+      if (checkpoint === "candidate-selected") {
+        assert.deepEqual(reopened.state().subjects.materialCondition, retainedCondition);
+        assert.equal(events.filter((event) => event.eventKind === "material-condition-frozen").length, 1);
+      }
+      const files = await inspectIntegratedFiles(fixture, reopened, candidate);
+      assert.equal(files.contribution, "export const terminal = 'accepted';\n");
+      assert.notEqual(files.later.exitCode, 0, "Recovery must not import a later canonical contribution into retained I(P)");
+      if (checkpoint !== "candidate-selected") assert.equal(files.upstream.stdout, "Independent canonical contribution.\n");
+    } finally {
+      reopened?.close();
+      try { selected?.store.close(); } catch { /* reopened above */ }
+      await rm(fixture.workspace, { recursive: true, force: true });
+    }
+  });
+}
+
+test("a conclusive Git prepare refusal after the last parent observation permits fresh integration", async () => {
+  const fixture = await repositoryFixture("late-cas-refusal");
+  let seeded: DecisionFixture | null = null;
+  try {
+    seeded = await seedDecisionReady(fixture, "late-cas-refusal");
+    let raced = false;
+    let movedCommit: string | null = null;
+    const result = await acceptDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome,
+      store: seeded.store, authorityHome: fixture.authorityHome,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME,
+    }, terminalOptions(fixture, seeded.candidateState, { onStage: async (stage) => {
+      if (stage !== "canonical-effect-ready") return;
+      assert.equal(raced, false);
+      raced = true;
+      await write(fixture.target, "late-race.txt", "Canonical moved immediately before Git acquired its ref lock.\n");
+      await git(fixture.target, ["add", "--", "late-race.txt"]);
+      await git(fixture.target, ["commit", "-m", "Win the late acceptance CAS race"]);
+      movedCommit = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+    } }));
+    assert.equal(raced, true);
+    assert.equal(result.status, "failed");
+    assert.equal(result.transactionOutcome, "not-applied");
+    assert.equal(result.closure, null);
+    assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), movedCommit);
+    assert.equal(await readFile(join(fixture.target, "src/demo.ts"), "utf8"), "export const terminal = 'base';\n");
+    assert.equal(seeded.store.state().subjects.candidate?.digest, seeded.candidateRevision.digest);
+    assert.equal(seeded.store.state().eligibleOperations.includes("delivery.integrate"), true);
+  } finally {
+    seeded?.store.close();
+    await rm(fixture.workspace, { recursive: true, force: true });
+  }
+});
+
+test("acceptance prepares physical proof outside the target lock and rechecks a concurrent publication", async () => {
+  const fixture = await repositoryFixture("proof-lock-scope");
+  let seeded: DecisionFixture | null = null;
+  try {
+    seeded = await seedDecisionReady(fixture, "proof-lock-scope");
+    let targetLockHeld = false;
+    let retainedFileReads = 0;
+    let imported = false;
+    let competingCommit: string | null = null;
+    let reachedCas = false;
+    const readRetainedFile = seeded.store.readRetainedFile.bind(seeded.store);
+    seeded.store.readRetainedFile = async (digest) => {
+      assert.equal(targetLockHeld, false, "Retained Carrier and Evidence material must be read outside the target lock");
+      retainedFileReads += 1;
+      return readRetainedFile(digest);
+    };
+    const result = await acceptDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome,
+      store: seeded.store, authorityHome: fixture.authorityHome,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME,
+    }, terminalOptions(fixture, seeded.candidateState, {
+      withTargetLock: async (target, operation, action) => withTargetOperationLock(target, operation, async () => {
+        assert.equal(targetLockHeld, false);
+        targetLockHeld = true;
+        try { return await action(); } finally { targetLockHeld = false; }
+      }),
+      importCandidateCarrier: async (input) => {
+        assert.equal(targetLockHeld, false, "Immutable object import must not exclude another Delivery's publication");
+        assert.equal(imported, false);
+        imported = true;
+        await withTargetOperationLock(fixture.target, "competing-publication", async () => {
+          await write(fixture.target, "concurrent.txt", "Independent canonical work during acceptance preparation.\n");
+          await git(fixture.target, ["add", "--", "concurrent.txt"]);
+          await git(fixture.target, ["commit", "-m", "Publish while another Delivery prepares proof"]);
+          competingCommit = (await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim();
+        });
+        return importCandidateRevisionCarrierIntoRepository(input);
+      },
+      onStage: (stage) => { if (stage === "canonical-effect-ready") reachedCas = true; },
+    }));
+    assert.equal(imported, true);
+    assert(retainedFileReads > 0);
+    assert.notEqual(competingCommit, null);
+    assert.equal(reachedCas, false, "The fresh parent recheck must refuse before CAS");
+    assert.equal(result.status, "failed");
+    assert.equal(result.transactionOutcome, "not-applied");
+    assert.equal(result.closure, null);
+    assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), competingCommit);
+    assert.equal(seeded.store.state().eligibleOperations.includes("delivery.integrate"), true);
+  } finally {
+    try { seeded?.store.close(); } catch { /* terminal can transfer Store custody */ }
+    await rm(fixture.workspace, { recursive: true, force: true });
+  }
+});
+
+test("two admitted Deliveries retain separate Stores while one publishes and the other reintegrates", async () => {
+  const fixture = await repositoryFixture("two-deliveries");
+  let first: DecisionFixture | null = null;
+  let second: DecisionFixture | null = null;
+  try {
+    first = await seedDecisionReady(fixture, "two-deliveries-a");
+    second = await seedDecisionReady(fixture, "two-deliveries-b");
+    assert.notEqual(first.store.identity.storeId, second.store.identity.storeId);
+    assert.notEqual(first.deliveryId, second.deliveryId);
+    assert.equal(first.store.state().standing, "decision-ready");
+    assert.equal(second.store.state().standing, "decision-ready");
+    const originalBoundary = second.store.state().subjects.activeBoundary!;
+    const originalCandidate = second.store.state().subjects.candidate!;
+    const before = second.store.state().journal;
+    const accepted = await acceptDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome,
+      store: first.store, authorityHome: fixture.authorityHome,
+      authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME,
+    }, terminalOptions(fixture, first.candidateState));
+    assert.equal(accepted.status, "completed");
+    assert.notEqual(accepted.canonicalCommit, null);
+    assert.deepEqual(second.store.state().journal, before, "Another Delivery's publication must not advance this Journal");
+    assert.deepEqual(second.store.state().subjects.candidate, originalCandidate);
+    const integrated = await operateFoundationIntegrationRuntimeV1({ target: fixture.target,
+      machineHome: fixture.machineHome, store: second.store, activityId: "integration-after-other-delivery", runtimeId: RUNTIME,
+    }, { now: timeOwner("2026-08-30T00:00:00.000Z") });
+    assert.equal(integrated.outcome, "constructed");
+    const assessment = second.store.getRevision(integrated.assessment.id, integrated.assessment.revision)!;
+    const candidate = second.store.getRevision(integrated.candidate.id, integrated.candidate.revision)!;
+    assert.equal((assessment.payload.canonicalParent as ControlJsonObject).commit, accepted.canonicalCommit);
+    assert.equal(candidate.payload.candidateBaseCommit, accepted.canonicalCommit);
+    assert.equal(candidate.recordId, originalCandidate.id);
+    assert.equal(candidate.revision, originalCandidate.revision + 1);
+    assert.deepEqual(second.store.state().subjects.activeBoundary, originalBoundary);
+    const boundary = second.store.getRevision(originalBoundary.id, originalBoundary.revision)!;
+    assert.equal((boundary.payload.basis as ControlJsonObject).productBaseCommit, fixture.observation.basis.canonicalCommit);
+    assert.equal((await git(fixture.target, ["rev-parse", "HEAD"])).stdout.trim(), accepted.canonicalCommit);
+  } finally {
+    try { first?.store.close(); } catch { /* acceptance transfers first Store custody */ }
+    try { second?.store.close(); } catch { /* retained second Store remains local */ }
+    await rm(fixture.workspace, { recursive: true, force: true });
+  }
+});
+
+
+// Agent output and Check observations are supplied fixtures. Context compilation,
+// Boundary retention, authenticated readmission, Carrier verification, integration,
+// reducer progression, and terminal accounting use their actual owners.
+async function resolveMeasuredConditionAndIntegrate(fixture: RepositoryFixture, store: ControlRecordStore, suffix: string): Promise<void> {
+  const nextTime = timeOwner("2026-08-30T12:00:00.000Z");
+  const boundaryRef = store.state().subjects.activeBoundary!;
+  const conditionRef = store.state().subjects.materialCondition!;
+  const candidateRef = store.state().subjects.candidate!;
+  const boundary = store.getRevision(boundaryRef.id, boundaryRef.revision)!;
+  const condition = store.getRevision(conditionRef.id, conditionRef.revision)!;
+  const refusalEvents = store.listEvents(0, 1000).filter((event) => event.eventKind === "agent-pre-intent-refused" && event.payload.resolution === "projection-condition-required");
+  assert.equal(refusalEvents.length, 1);
+  assert.deepEqual(FoundationControlEventSchema.parse(refusalEvents[0]), refusalEvents[0], "The public read contract accepts the actual durable refusal");
+  const conditionEvents = store.listEvents(0, 1000).filter((event) => event.eventKind === "material-condition-frozen" && event.subject?.digest === condition.digest);
+  assert.equal(conditionEvents.length, 1);
+  assert.equal(conditionEvents[0]!.payload.sourceKind, "projection-compilation");
+  assert.deepEqual(FoundationControlEventSchema.parse(conditionEvents[0]), conditionEvents[0], "The public read contract accepts the actual frozen Projection Condition");
+  const candidate = store.getRevision(candidateRef.id, candidateRef.revision)!;
+  const activityId = `resolution-after-${suffix}`;
+  const semanticMarkdown = "# Reaffirm the mandate\n\nSelect the permitted larger Projection capacity and preserve the product mandate.\n";
+  const configuration = { machineHome: fixture.machineHome, installationId: "test-installation", model: "test", reasoning: "high",
+    specificationRevision: FOUNDATION_SPECIFICATION_REVISION, publicationDigest: fixture.contract.specification.publicationDigest };
+  const context = await compileFoundationFreshAgentOperationContextV7({ target: fixture.target, store, activityId,
+    operation: "delivery.reaffirm", semanticMarkdown, configuration });
+  assert.equal(context.operation, "delivery.reaffirm");
+  if (context.role !== "reconnaissance") throw new Error("Expected exact Boundary-resolution context");
+  assert.equal(context.request.class, "orientation");
+  assert.equal("snapshot" in context.epoch, false, "Resolution compiles an Epoch-based Orientation");
+  assert.equal(context.providerCapability.candidateWrites, false);
+  assert.equal(context.materialCondition.digest, condition.digest);
+  assert.equal(context.candidate.digest, candidate.digest);
+  assert.match(context.request.subject.objective, /projection-compilation/);
+  assert(context.knowledge !== null);
+  const basis = { snapshot: await bindRepositorySnapshot(context.epoch, context.knowledge), knowledge: context.knowledge };
+  assert.equal(basis.snapshot.snapshot.digest, (boundary.payload.basis as ControlJsonObject).repositorySnapshotDigest);
+  const large = basis.snapshot.contract.projectionProfiles["execution-large-v1"]!;
+  assert(large !== undefined);
+  const oldProfile = basis.snapshot.contract.projectionProfiles[String((boundary.payload.projectionProfile as ControlJsonObject).id)]!;
+  assert(large.maximumItemBytes > oldProfile.maximumItemBytes);
+  const brief = appendRecord({ store, revision: { ...recordInput({ store, id: `brief-${activityId}`, kind: "director-brief", createdAt: nextTime() }),
+    semanticMarkdown, payload: { ...validDeliveryControlPayload("director-brief"), scope: { kind: "activity", activityId }, inputProfile: "delivery.reaffirm",
+      templateProfileId: "director-brief.resolution-v1", semanticMarkdownDigest: sha256Bytes(semanticMarkdown) } },
+    eventKind: "director-brief-submitted", eventId: `brief-event-${activityId}`, occurredAt: nextTime(), activityId });
+  appendEvent({ store, activityId, eventId: `start-${activityId}`, eventKind: "activity-started", occurredAt: nextTime(), payload: { operation: "delivery.reaffirm" } });
+  const attempt = appendRecord({ store, revision: recordInput({ store, id: `attempt-${activityId}`, kind: "agent-attempt", createdAt: nextTime(),
+    payload: { ...validDeliveryControlPayload("agent-attempt"), activityId, operation: "delivery.reaffirm", role: "reconnaissance" },
+    relationships: [relationship("uses-brief", brief), relationship("uses-boundary", boundary), relationship("uses-candidate", candidate)] }),
+    eventKind: "agent-attempt-prepared", eventId: `prepared-${activityId}`, occurredAt: nextTime(), activityId });
+  const effectDigest = digest(`effect-${activityId}`);
+  appendEvent({ store, activityId, eventId: `intended-${activityId}`, eventKind: "provider-effect-intended", occurredAt: nextTime(), subject: attempt, payload: { effectDigest } });
+  appendEvent({ store, activityId, eventId: `observed-${activityId}`, eventKind: "provider-effect-observed", occurredAt: nextTime(), subject: attempt, payload: { effectDigest, outcome: "completed" } });
+  const mandate = boundary.payload.mandate as ControlJsonObject;
+  const baseProduct = validDeliveryControlPayload("agent-work-product");
+  const workProduct = appendRecord({ store, revision: recordInput({ store, id: `product-${activityId}`, kind: "agent-work-product", createdAt: nextTime(),
+    payload: { ...baseProduct, profileId: "lifecycle.agent-work-product-body.reconnaissance.v4", role: "reconnaissance", disposition: "complete",
+      claims: [{ id: "claim.same-mandate", category: "route", state: "proposed", statement: "The unchanged mandate can use the registered larger Projection profile.",
+        knowledgeIds: [fixture.check.id], evidenceIds: [], paths: [], uncertainty: "none", fragmentDigest: digest("resolution-claim") }],
+      citations: [{ id: "citation.selected-check", subjectId: fixture.check.id, subjectKind: "knowledge", subjectDigest: fixture.check.sourceDigest,
+        locator: `knowledge://${fixture.check.id}`, authorityClass: "repository-authored", claimIds: ["claim.same-mandate"], fragmentDigest: digest("resolution-citation") }],
+      body: { profileId: "lifecycle.agent-work-product-body.reconnaissance.v4", digest: digest("resolution-body"), fragments: [] },
+      roleSemantics: { role: "reconnaissance", proposal: "work-boundary", conditionIds: [condition.recordId], decisionIds: ["proposition.1"], effectIds: [],
+        workBoundary: { selectedKnowledgeIds: [fixture.check.id], selectedWorkTypeIds: [], selectedSourceIds: [],
+          capabilityProfileId: (boundary.payload.capabilityProfile as ControlJsonObject).id!, projectionProfile: "execution-large-v1",
+          objective: mandate.objective!, mandate: mandate.direction!, effects: mandate.effects!, risks: mandate.risks!, obligations: mandate.obligations!, artifacts: mandate.artifacts!,
+          checks: (mandate.checks as readonly ControlJsonObject[]).map(({ definition, bindings, ...check }) => ({ ...check,
+            checkKnowledgeId: (definition as ControlJsonObject).id!, bindingIds: (bindings as readonly ControlJsonObject[]).map(({ id }) => id!) })),
+          propositions: mandate.acceptancePropositions! } } }, relationships: [relationship("result-of", attempt)] }),
+    eventKind: "agent-work-product-submitted", eventId: `submitted-${activityId}`, occurredAt: nextTime(), activityId });
+  const baseReceipt = validDeliveryControlPayload("execution-receipt");
+  const receipt = appendRecord({ store, revision: recordInput({ store, id: `receipt-${activityId}`, kind: "execution-receipt", createdAt: nextTime(),
+    payload: { ...baseReceipt, activityId, role: "reconnaissance", providerEffect: { effectDigest, outcome: "completed" },
+      productiveExecutionStarted: true,
+      inputBindings: { roleBriefDigest: digest("resolution-role"), contentInventoryDigest: digest("resolution-inventory"), inputMaterialDigest: digest("resolution-input") },
+      provider: { ...(baseReceipt.provider as ControlJsonObject), firstTrigger: "submission", terminalReason: "valid-submission", stage: "evaluated", startedAt: nextTime(), finishedAt: nextTime(), exitCode: 0 },
+      execution: { ...(baseReceipt.execution as ControlJsonObject), output: { availability: "retrieved", carrierByteLength: 512,
+        carrierDigest: digest("resolution-output"), manifestDigest: digest("resolution-output-manifest") } },
+      candidate: { ...(baseReceipt.candidate as ControlJsonObject), successorDisposition: null },
+      workspace: { availability: "available", rawByteLength: 512, workspaceRawDigest: digest("resolution-workspace"),
+        semanticMarkdownDigest: digest("resolution-semantic"), failureFactsDigest: null, submissionDiagnostic: null,
+        parserDisposition: "valid", compilerDisposition: "retained", parseResultDigest: workProduct.payload.parseResultDigest!,
+        fixedBindingSubjectDigest: workProduct.payload.fixedBindingSubjectDigest! },
+      workProduct: { disposition: "submitted", reference: relationship("observes-work-product", workProduct).target } },
+    relationships: [relationship("observes-attempt", attempt), relationship("observes-work-product", workProduct)] }),
+    eventKind: "execution-receipt-recorded", eventId: `received-${activityId}`, occurredAt: nextTime(), activityId });
+  const ref = <Kind extends "director-brief" | "agent-work-product" | "execution-receipt" | "work-boundary" | "material-condition">(kind: Kind, record: ControlRecordRevision) =>
+    ({ kind, id: record.recordId, revision: record.revision, digest: record.digest });
+  const selectedBinding = fixture.contract.checkBindings["binding.check.demo"]!;
+  const successor = retainWorkBoundary({ store, activityId, operation: "delivery.reaffirm",
+    directorBrief: ref("director-brief", brief), workProduct: ref("agent-work-product", workProduct), executionReceipt: ref("execution-receipt", receipt),
+    repository: workBoundaryRepositoryBasisFromSnapshot(basis.snapshot.snapshot), knowledge: [fixture.check],
+    disciplineRegistry: { digest: basis.knowledge.disciplineRegistry.digest, adoptions: [], workTypes: [] }, externalSources: [],
+    capabilityProfile: boundary.payload.capabilityProfile as { id: string; digest: Sha256 },
+    projectionProfile: { id: large.id, digest: large.digest, semanticProfile: "execution-large-v1" },
+    checkBindings: [{ id: selectedBinding.id, checkKnowledgeId: fixture.check.id, digest: selectedBinding.digest, implementationDigest: selectedBinding.implementationDigest }],
+    compiler: boundary.payload.compiler as WorkBoundaryCompilerFact, activeBoundary: ref("work-boundary", boundary), materialCondition: ref("material-condition", condition),
+    finalizedAt: nextTime(), runtimeId: RUNTIME }).revision;
+  assert.deepEqual(successor.payload.mandate, boundary.payload.mandate);
+  assert.deepEqual((successor.payload.resolution as ControlJsonObject).changedMandateFields, []);
+  assert.deepEqual(successor.payload.projectionProfile, { id: large.id, digest: large.digest });
+  const priorBaseline = store.listEvents(0, 1000).find((event) => event.eventKind === "check-receipt-recorded")!.subject!;
+  const baselinePayload = store.getRevision(priorBaseline.recordId, priorBaseline.revision)!.payload;
+  appendRecord({ store, revision: recordInput({ store, id: `baseline-${activityId}`, kind: "check-receipt", createdAt: nextTime(), payload: baselinePayload,
+    relationships: [relationship("checks-boundary", successor)] }), eventKind: "check-receipt-recorded", eventId: `checked-${activityId}`, occurredAt: nextTime(), activityId });
+  appendEvent({ store, activityId, eventId: `completed-${activityId}`, eventKind: "activity-completed", occurredAt: nextTime(), payload: { outcome: "completed" } });
+  assert.equal(store.state().standing, "awaiting-readmission");
+  const readmitted = await admitDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome, store, authorityHome: fixture.authorityHome,
+    authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"), runtimeId: RUNTIME }, { now: nextTime });
+  assert.equal(readmitted.status, "completed");
+  assert.equal(readmitted.decisionKind, "readmit");
+  const rebound = store.getRevision(readmitted.candidate!.id, readmitted.candidate!.revision)!;
+  assert.equal(rebound.payload.observation, "readmission-rebind");
+  assert.deepEqual(rebound.payload.state, candidate.payload.state);
+  assert.deepEqual(rebound.payload.carrierManifest, candidate.payload.carrierManifest);
+  assert.equal(store.state().subjects.materialCondition, null);
+  const nextContext = await compileFoundationFreshAgentOperationContextV7({ target: fixture.target, store,
+    activityId: `next-builder-${suffix}`, operation: "delivery.continue", semanticMarkdown: "# Continue the admitted work\n", configuration });
+  assert.equal(nextContext.request.profile.id, "execution-large-v1");
+  assert.equal(nextContext.boundary.digest, successor.digest);
+  const integrated = await operateFoundationIntegrationRuntimeV1({ target: fixture.target, machineHome: fixture.machineHome, store,
+    activityId: `integration-after-resolution-${suffix}`, runtimeId: RUNTIME }, { now: nextTime });
+  assert.equal(integrated.outcome, "constructed");
+  assert.equal(integrated.candidate.revision, rebound.revision + 1);
+  assert.equal(store.state().activities.find(({ id }) => id === `integration-after-resolution-${suffix}`)?.stage, "completed");
+  const integrationEvents = store.listEvents(0, 1000).filter((event) => event.eventKind === "integration-assessed" && event.payload.activityId === `integration-after-resolution-${suffix}`);
+  assert.equal(integrationEvents.length, 1);
+  assert.equal(integrationEvents[0]!.subject?.digest, integrated.assessment.digest);
+  assert.deepEqual(FoundationControlEventSchema.parse(integrationEvents[0]), integrationEvents[0], "The public read contract accepts the actual subsequent integration");
+}
+
+test("an unallocated reviewer Condition resolves, readmits and progresses before truthful no-ship", async () => {
+  const fixture = await repositoryFixture("no-ship-unallocated-projection");
+  let seeded: DecisionFixture | null = null;
+  try {
+    seeded = await seedDecisionReady(fixture, "no-ship-unallocated-projection", { projectionRefusal: true });
+    await resolveMeasuredConditionAndIntegrate(fixture, seeded.store, "reviewer");
+    const selected = terminalOptions(fixture, undefined, { now: timeOwner("2026-08-31T12:00:00.000Z") });
+    const observe = selected.observeReclamationHandoff!;
+    const closed = await noShipDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome, store: seeded.store,
+      authorityHome: fixture.authorityHome, authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# No ship\n\nClose this frozen Candidate.\n", runtimeId: RUNTIME,
+    }, { ...selected, observeReclamationHandoff: async (input) => {
+      assert.equal(input.preIntentRefusals.length, 0);
+      assert.equal(input.subjects.length, 6);
+      return await observe(input);
+    } });
+    assert.equal(closed.status, "completed");
+    const archived = await openDeliveryControlRecordStore({ machineHome: fixture.machineHome, targetId: fixture.contract.targetId, deliveryId: seeded.deliveryId });
+    try {
+      const ref = archived.store.state().subjects.closure!;
+      const closure = archived.store.getRevision(ref.id, ref.revision)!;
+      assert.equal((closure.payload.terminalExecutions as ControlJsonObject).executionCount, 6);
+      assert.equal((closure.payload.reclamationHandoff as ControlJsonObject).obligationCount, 6);
+    } finally { archived.store.close(); }
+  } finally { seeded?.store.close(); await rm(fixture.workspace, { recursive: true, force: true }); }
+});
+
+for (const lostReturn of [false, true]) test(`an unallocated builder Condition is atomic and closes without a fabricated handoff (lost return ${lostReturn})`, async () => {
+  const fixture = await repositoryFixture(`builder-refusal-${lostReturn}`);
+  let seeded: Awaited<ReturnType<typeof seedCandidateReady>> | null = null;
+  try {
+    seeded = await seedCandidateReady(fixture, `builder-refusal-${lostReturn}`, { projectionRefusal: true });
+    const { store, boundary, candidateRevision, nextTime } = seeded;
+    const loaded = await loadRepositoryEpoch(fixture.target);
+    const knowledge = (await validateKnowledgeSet(loaded)).knowledgeSet;
+    assert(knowledge !== null);
+    const snapshot = await bindRepositorySnapshot(loaded, knowledge);
+    const request = compileFoundationExecutionProjectionRequestV7({ snapshot,
+      repositoryValidation: { complete: true, valid: true, digest: digest("builder-fixture-validation") } as never,
+      knowledge, boundary, candidate: candidateRevision, seal: null, role: "builder", integration: null });
+    const error = mandatoryProjectionItemSizeErrorV1({ profile: request.profile, category: "source", id: "conflict.parent.file",
+      locator: "src/demo.ts", objectId: "a".repeat(40), observedBytes: request.profile.maximumItemBytes + 1 });
+    assert(bindFoundationMandatoryProjectionRefusalV1(error, request) !== null);
+    const before = store.state().journal.eventCount;
+    const appendBatch = store.appendBatch.bind(store);
+    let batches = 0;
+    store.appendBatch = (appends) => {
+      batches += 1;
+      assert.deepEqual(appends.map(({ event }) => event.eventKind), ["director-brief-submitted", "activity-started", "agent-pre-intent-refused", "material-condition-frozen", "activity-completed"]);
+      const result = appendBatch(appends);
+      if (lostReturn) throw new Error("lost builder refusal commit return");
+      return result;
+    };
+    const activityId = `builder-refused-${lostReturn}`;
+    await assert.rejects(operateFoundationCandidateAgentRuntimeV7({ target: fixture.target, store, activityId,
+      operation: "delivery.continue", runtimeId: RUNTIME, agentId: "unallocated-builder",
+      configuration: { machineHome: fixture.machineHome, installationId: "test-installation", model: "test", reasoning: "high",
+        specificationRevision: FOUNDATION_SPECIFICATION_REVISION, publicationDigest: fixture.contract.specification.publicationDigest },
+      opening: { directorId: fixture.contract.authority.principalId, semanticMarkdown: "# Correct the failed integration\n",
+        submittedAt: nextTime(), startedAt: nextTime(), attemptCreatedAt: nextTime() },
+    }, { compileFreshContext: async () => { throw error; }, operateAgent: async () => assert.fail("Refused context cannot allocate an Agent"),
+      agentOperation: { now: nextTime } }), lostReturn ? /lost builder refusal/ : /requires boundary resolution/);
+    store.appendBatch = appendBatch;
+    assert.equal(batches, 1);
+    assert.equal(store.state().journal.eventCount, before + 5);
+    assert.equal(store.state().activities.find(({ id }) => id === activityId)?.stage, "completed");
+    assert.equal(store.hasRetainedOperationSupport(activityId), false);
+    assert.equal(store.state().standing, "boundary-paused");
+    assert.equal(store.state().eligibleOperations.includes("delivery.revise"), true);
+    assert.equal(store.state().eligibleOperations.includes("delivery.reaffirm"), true);
+    const conditionRef = store.state().subjects.materialCondition!;
+    const condition = store.getRevision(conditionRef.id, conditionRef.revision)!;
+    assert.deepEqual(condition.relationships.map(({ relation }) => relation).sort(), ["freezes", "governed-by"]);
+    await resolveMeasuredConditionAndIntegrate(fixture, store, `builder-${lostReturn}`);
+    const selected = terminalOptions(fixture, undefined, { now: timeOwner("2026-08-31T12:00:00.000Z") });
+    const observe = selected.observeReclamationHandoff!;
+    const closed = await noShipDeliveryV7({ target: fixture.target, machineHome: fixture.machineHome, store,
+      authorityHome: fixture.authorityHome, authorityCredential: receiveFoundationAuthorityCredential(SECRET, "director-decision"),
+      semanticMarkdown: "# No ship\n\nClose the frozen Candidate.\n", runtimeId: RUNTIME }, {
+      ...selected, observeReclamationHandoff: async (input) => {
+        assert.equal(input.preIntentRefusals.length, 0);
+        assert.equal(input.subjects.length, 5);
+        return await observe(input);
+      },
+    });
+    assert.equal(closed.status, "completed");
+  } finally { seeded?.store.close(); await rm(fixture.workspace, { recursive: true, force: true }); }
+});
+
+test("a contained invalid builder Output supplies read-only repair context and the next Attempt promotes corrected Candidate bytes", async () => {
+  const fixture = await repositoryFixture("builder-output-repair");
+  let seeded: Awaited<ReturnType<typeof seedCandidateReady>> | null = null;
+  try {
+    seeded = await seedCandidateReady(fixture, "builder-output-repair");
+    const { store, boundary, candidateRevision } = seeded;
+    const original = store.state().subjects.candidate!;
+    const originalState = candidateRevision.payload.state as unknown as CandidateRevisionState;
+    const originalManifest = (candidateRevision.payload.carrierManifest as ControlJsonObject).digest as Sha256;
+    const rawManifest = await store.readRetainedFile(originalManifest);
+    assert(rawManifest !== null);
+    const work = join(fixture.workspace, "builder-output");
+    await git(fixture.workspace, ["clone", "--no-local", "--no-hardlinks", fixture.target, work]);
+    await importCandidateRevisionCarrierIntoRepository({ machineHome: fixture.machineHome, manifestBytes: rawManifest.bytes,
+      repository: work, expectedRootTree: originalState.tree });
+    await git(work, ["read-tree", originalState.tree]);
+    await git(work, ["checkout-index", "-a", "-f"]);
+    const malformed = "---\n{malformed-description\n---\n\n# Preserve this repairable partial output\n";
+    await write(work, "src/_source.desc.md", malformed);
+    await write(work, "src/demo.ts", "export const terminal = 'partial-repair';\n");
+    await git(work, ["add", "-A", "--", "."]);
+    const failedTree = (await git(work, ["write-tree"])).stdout.trim();
+    const output = async (): Promise<readonly AgentCellFixtureOutputEntry[]> => {
+      const entries = (await git(work, ["ls-files", "--stage", "-z"])).stdout.split("\0").filter(Boolean);
+      return Promise.all(entries.map(async (entry) => {
+        const [metadata, path] = entry.split("\t");
+        assert(path !== undefined);
+        const mode = metadata!.split(" ")[0];
+        assert(mode === "100644" || mode === "100755");
+        return { path: `candidate-output/${path}`, purpose: "candidate-output" as const, mediaType: "application/octet-stream",
+          modeClass: mode === "100755" ? "executable" as const : "regular" as const, bytes: Uint8Array.from(await readFile(join(work, path))) };
+      }));
+    };
+    const now = timeOwner("2026-09-01T00:00:00.000Z");
+    const installedImage = executionContractFixture("agent-operation-v7").image;
+    const cellDigest = (label: string) => sha256Bytes(`foundation-agent-operation-v7:${label}`);
+    const configuration = { machineHome: fixture.machineHome, installationId: "installation-agent-operation-v7", model: "test-builder", reasoning: "high",
+      specificationRevision: FOUNDATION_SPECIFICATION_REVISION, publicationDigest: fixture.contract.specification.publicationDigest,
+      execution: { image: { ...installedImage, immutableReference: `${installedImage.imageId}@${installedImage.imageDigest}`,
+        configurationDigest: cellDigest("image-configuration"), platform: { os: "linux" as const, architecture: "amd64" as const, variant: null },
+        nonRootUser: "65532:65532", runnerContractId: "lifecycle.execution-cell-runner.v1" as const,
+        runnerContractDigest: cellDigest("runner-contract"), runnerImplementationDigest: cellDigest("runner-implementation"), toolInventoryDigest: cellDigest("tool-inventory"),
+        agentProvider: { codexVersion: "0.153.4", executableIdentity: cellDigest("agent-executable"), adapterImplementationDigest: cellDigest("runner-implementation") } } } };
+    const invoke = async (activityId: string, entries: readonly AgentCellFixtureOutputEntry[]) => {
+      const harness = installedHarness({ machineHome: fixture.machineHome, now, outputEntries: entries,
+        backendLimits: { maximumWallTimeMilliseconds: 30 * 60 * 1000, maximumProcesses: 128, maximumStorageBytes: 256 * 1024 * 1024,
+          maximumOutputEntries: 10000, maximumOutputBytes: 256 * 1024 * 1024, maximumOutputEntryBytes: 1024 * 1024, maximumEvents: 10000 } });
+      const result = await operateFoundationCandidateAgentRuntimeV7({ target: fixture.target, store, configuration, activityId,
+        operation: "delivery.continue", runtimeId: RUNTIME, agentId: "agent:builder-repair", opening: {
+          directorId: fixture.contract.authority.principalId, semanticMarkdown: "# Continue\n\nRepair the exact Candidate within the admitted mandate.\n",
+          submittedAt: now(), startedAt: now(), attemptCreatedAt: now() } }, { agentOperation: harness.options });
+      assert.equal(harness.dispatchCount(), 1);
+      assert.equal(store.state().activities.find(({ id }) => id === activityId)?.stage, "completed");
+      const receipt = store.getRevision(result.receipt.id, result.receipt.revision)!;
+      assert.equal((receipt.payload.providerEffect as ControlJsonObject).outcome, "completed");
+      assert.equal((receipt.payload.containment as ControlJsonObject).classification, "contained");
+      assert.equal((receipt.payload.retirement as ControlJsonObject).classification, "retired");
+      return { result, receipt };
+    };
+    const firstEntries = await output();
+    assert(firstEntries.some(({ bytes }) => bytes.byteLength === 0), "Complete Candidate output preserves empty tracked files");
+    const first = await invoke("invalid-builder-output", firstEntries);
+    assert.equal(first.result.outcome, "failed");
+    assert.equal((first.receipt.payload.candidate as ControlJsonObject).successorDisposition, "invalid");
+    assert.equal((first.receipt.payload.candidate as ControlJsonObject).successor, null);
+    assert.deepEqual(store.state().subjects.candidate, original);
+    assert.equal(store.state().subjects.materialCondition, null);
+    const repair = await selectFoundationBuilderRepairOutputV1({ store, boundary, candidate: candidateRevision });
+    assert(repair !== null);
+    assert.equal(repair.receipt.digest, first.receipt.digest);
+    assert.equal(repair.descriptor.rejection.candidateTree, failedTree);
+    const nextContext = await compileFoundationFreshAgentOperationContextV7({ target: fixture.target, store, configuration,
+      activityId: "corrected-builder-output", operation: "delivery.continue", semanticMarkdown: "# Correct retained output\n" });
+    const repairSources = nextContext.projection.manifest.sources.filter(({ reference }) => reference.startsWith("candidate:builder-repair:"));
+    assert.equal(repairSources.length, 3, "Only the exact repair inventory and two changed Product files are supplied");
+    assert.equal(repairSources.filter(({ authority }) => authority === "runtime-authenticated-fact").length, 1);
+    const bytes = repairSources.map((source) => {
+      assert.equal(source.semantic.class, source.authority === "runtime-authenticated-fact" ? "candidate" : "source");
+      if (source.semantic.class === "source") assert.equal(source.authority, "informational-source");
+      assert.match(source.useLimit!, /Read-only unselected Product output/);
+      assert.equal(source.content.mode, "mounted");
+      if (source.content.mode !== "mounted") throw new Error("Expected mounted exact repair bytes");
+      assert.equal(source.content.readOnly, true);
+      const path = source.content.path;
+      return Buffer.from(nextContext.projection.inventory.find((entry) => entry.path === path)!.bytes, "base64").toString("utf8");
+    });
+    assert(bytes.includes(malformed));
+    assert(bytes.includes("export const terminal = 'partial-repair';\n"));
+    assert.equal(nextContext.candidate.digest, candidateRevision.digest, "Failed output never becomes the writable Candidate basis");
+    assert.equal(nextContext.boundary.digest, boundary.digest);
+    assert.equal(canonicalJson(nextContext.capabilityProfile), canonicalJson(boundary.payload.capabilityProfile));
+    await write(work, "src/_source.desc.md", sourceDescription());
+    await write(work, "src/demo.ts", "export const terminal = 'corrected-repair';\n");
+    await git(work, ["add", "-A", "--", "."]);
+    const correctedTree = (await git(work, ["write-tree"])).stdout.trim();
+    const second = await invoke("corrected-builder-output", await output());
+    // Missing semantic Markdown remains failed, independently of useful validated progress.
+    assert.equal(second.result.outcome, "failed");
+    assert.equal((second.receipt.payload.candidate as ControlJsonObject).successorDisposition, "promoted");
+    const current = store.state().subjects.candidate!;
+    assert.equal(current.id, original.id);
+    assert.equal(current.revision, original.revision + 1);
+    const promoted = store.getRevision(current.id, current.revision)!;
+    assert.equal((promoted.payload.state as ControlJsonObject).tree, correctedTree);
+    assert.notEqual(correctedTree, failedTree);
+    assert.equal(await selectFoundationBuilderRepairOutputV1({ store, boundary, candidate: promoted }), null);
+    const retainedManifest = await store.readRetainedFile((promoted.payload.carrierManifest as ControlJsonObject).digest as Sha256);
+    assert(retainedManifest !== null);
+    const reopened = await openCandidateRevisionCarrier({ machineHome: fixture.machineHome, manifestBytes: retainedManifest.bytes });
+    assert.equal(reopened.manifest.rootTree, correctedTree);
+  } finally { seeded?.store.close(); await rm(fixture.workspace, { recursive: true, force: true }); }
 });

@@ -1,24 +1,7 @@
 import { FOUNDATION_RUNTIME_PROTOCOL } from "../constants.js";
 import { digestCanonical } from "../validation/canonical.js";
 
-export const FOUNDATION_EVIDENCE_RULE_SET_V7 = Object.freeze({
-  id: "lifecycle.evidence-packet-rule-set.foundation-v1",
-  digest: digestCanonical(Object.freeze({
-    id: "lifecycle.evidence-packet-rule-set.foundation-v1",
-    runtimeProtocol: FOUNDATION_RUNTIME_PROTOCOL,
-    evidenceProfile: "lifecycle.evidence-packet.foundation-v1",
-    controlStore: "lifecycle.control-record-store.v1",
-  })),
-});
-
-export const FOUNDATION_EVIDENCE_VALIDATOR_V7 = Object.freeze({
-  id: "lifecycle-runtime-evidence-validator-v7",
-  digest: digestCanonical(Object.freeze({
-    id: "lifecycle-runtime-evidence-validator-v7",
-    runtimeProtocol: FOUNDATION_RUNTIME_PROTOCOL,
-    ruleSetDigest: FOUNDATION_EVIDENCE_RULE_SET_V7.digest,
-  })),
-});
+export { FOUNDATION_EVIDENCE_RULE_SET_V7, FOUNDATION_EVIDENCE_VALIDATOR_V7 } from "../evidence/coordinates-v7.js";
 
 export const FOUNDATION_MATERIAL_CONDITION_RUNTIME_V7 = Object.freeze({
   implementationId: "lifecycle-runtime-material-condition-v7",

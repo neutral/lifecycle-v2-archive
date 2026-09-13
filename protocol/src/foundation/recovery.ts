@@ -2,6 +2,7 @@ import { z } from "zod/v4";
 
 export const FOUNDATION_DELIVERY_RECOVERY_STEPS = Object.freeze([
   "candidate-sealed",
+  "integration-assessed",
   "agent-attempt-prepared",
   "provider-effect-intended",
   "provider-effect-observed",
@@ -13,7 +14,7 @@ export const FOUNDATION_DELIVERY_RECOVERY_STEPS = Object.freeze([
   "evaluation-checks",
   "activity-finalization",
   "activity-completed",
-  "founder-decision-authenticated",
+  "director-decision-authenticated",
   "transaction-effect-intended",
   "transaction-effect-observed",
   "transaction-finalization",
@@ -31,6 +32,7 @@ export type FoundationRecoveryPair = Readonly<{
 
 const FOUNDATION_RECOVERY_KIND_BY_STEP = Object.freeze({
   "candidate-sealed": "finalization",
+  "integration-assessed": "finalization",
   "agent-attempt-prepared": "finalization",
   "provider-effect-intended": "finalization",
   "provider-effect-observed": "provider",
@@ -42,7 +44,7 @@ const FOUNDATION_RECOVERY_KIND_BY_STEP = Object.freeze({
   "evaluation-checks": "finalization",
   "activity-finalization": "finalization",
   "activity-completed": "finalization",
-  "founder-decision-authenticated": "finalization",
+  "director-decision-authenticated": "finalization",
   "transaction-effect-intended": "finalization",
   "transaction-effect-observed": "transaction",
   "transaction-finalization": "finalization",

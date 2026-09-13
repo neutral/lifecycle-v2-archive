@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lifecycle:schema:agent-work-product-validation-basis:v1",
+  "title": "Lifecycle compact semantic authoring basis v1",
+  "description": "Exact immutable inputs for scoped local semantic draft inspection and independent final Runtime validation. A supplied value or passing local result grants no currentness or authority.",
+  "$comment": "Semantic ownership requires canonical self-digest, sorted unique citation facts by id, sorted unique proposition identities, exact installed template/parser/compiler digests, and matching role/body profile. Runtime construction verifies complete frozen registry and proposition inputs; the compact file omits locators and full subjects. Null propositionSetDigest requires an empty propositionIds array. Canonical UTF-8 bytes are limited to 8 MiB.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "role",
+    "bodyProfileId",
+    "templateDigest",
+    "parserProfileId",
+    "parserProfileDigest",
+    "compilerProfileId",
+    "compilerProfileDigest",
+    "citationRegistryDigest",
+    "citationFacts",
+    "propositionSetDigest",
+    "propositionIds",
+    "digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lifecycle.agent-work-product-validation-basis.v1"
+    },
+    "role": {
+      "enum": [
+        "reconnaissance",
+        "builder",
+        "reviewer"
+      ]
+    },
+    "bodyProfileId": {
+      "enum": [
+        "lifecycle.agent-work-product-body.reconnaissance.v4",
+        "lifecycle.agent-work-product-body.builder.v4",
+        "lifecycle.agent-work-product-body.reviewer.v4"
+      ]
+    },
+    "templateDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "parserProfileId": {
+      "const": "lifecycle.agent-work-product-parser.v4"
+    },
+    "parserProfileDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "compilerProfileId": {
+      "const": "lifecycle.agent-work-product-compiler.v4"
+    },
+    "compilerProfileDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "citationRegistryDigest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    },
+    "citationFacts": {
+      "type": "array",
+      "maxItems": 16384,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "knowledgeIdentity"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+          },
+          "kind": {
+            "enum": [
+              "knowledge",
+              "projection",
+              "source",
+              "candidate",
+              "evidence",
+              "boundary"
+            ]
+          },
+          "knowledgeIdentity": {
+            "oneOf": [
+              {
+                "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "knowledge"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "knowledgeIdentity": {
+                  "$ref": "urn:lifecycle:schema:common:v2#/$defs/knowledgeId"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "knowledgeIdentity": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "propositionSetDigest": {
+      "oneOf": [
+        {
+          "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "propositionIds": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "urn:lifecycle:schema:common:v2#/$defs/opaqueId"
+      }
+    },
+    "digest": {
+      "$ref": "urn:lifecycle:schema:common:v2#/$defs/sha256"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "reconnaissance"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bodyProfileId": {
+            "const": "lifecycle.agent-work-product-body.reconnaissance.v4"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "builder"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bodyProfileId": {
+            "const": "lifecycle.agent-work-product-body.builder.v4"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "reviewer"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bodyProfileId": {
+            "const": "lifecycle.agent-work-product-body.reviewer.v4"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "propositionSetDigest": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "propositionIds": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

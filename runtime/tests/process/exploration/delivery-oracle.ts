@@ -8,9 +8,11 @@ import { deliveryProperties } from "./delivery-properties.js";
 const RECOVER_ONLY = Object.freeze(["delivery.recover"]);
 const ACTIVE_OPERATIONS = Object.freeze([
   "delivery.continue",
+  "delivery.integrate",
   "delivery.evaluate",
   "delivery.no-ship",
 ]);
+const UNINTEGRATED_ACTIVE_OPERATIONS = Object.freeze(["delivery.continue", "delivery.integrate", "delivery.no-ship"]);
 const AWAITING_ADMISSION_OPERATIONS = Object.freeze([
   "delivery.admit",
   "delivery.no-ship",
@@ -25,6 +27,7 @@ const AWAITING_READMISSION_OPERATIONS = Object.freeze([
   "delivery.no-ship",
 ]);
 const DECISION_READY_OPERATIONS = Object.freeze([
+  "delivery.integrate",
   "delivery.accept",
   "delivery.no-ship",
 ]);
@@ -37,6 +40,7 @@ const NO_OPERATIONS = Object.freeze([]) as readonly string[];
 type SubjectName =
   | "proposedBoundary"
   | "activeBoundary"
+  | "integrationAssessment"
   | "candidate"
   | "materialCondition"
   | "seal"
@@ -59,7 +63,7 @@ export type DeliveryExpectedProfile = Readonly<{
   recovery: string | null;
   activeActivityCount: number;
   activeOperation?: string;
-  activeFamily?: "agent" | "transaction";
+  activeFamily?: "agent" | "integration" | "transaction";
   activeStage?: ExpectedActivityStage;
   recoveryEffectBinding?: RecoveryEffectBinding;
   subjects: Readonly<Partial<Record<SubjectName, boolean>>>;
@@ -67,9 +71,10 @@ export type DeliveryExpectedProfile = Readonly<{
 }>;
 
 export type DeliveryOracleModel = Readonly<{
-  kind: "preparation" | "admission" | "no-ship" | "route-opening" | "progression";
+  kind: "preparation" | "admission" | "no-ship" | "route-opening" | "progression" | "integration" | "pre-intent-refusal";
   phase: string;
   candidatePresent: boolean;
+  candidateIntegrated?: boolean;
   originStanding?:
     | "framing"
     | "awaiting-admission"
@@ -377,7 +382,7 @@ function expectedEligibility(model: DeliveryOracleModel): readonly string[] {
   }
   if (model.kind === "preparation") return RECOVER_ONLY;
   if (model.kind === "admission") {
-    if (model.phase === "active") return ACTIVE_OPERATIONS;
+    if (model.phase === "active") return UNINTEGRATED_ACTIVE_OPERATIONS;
     if (model.phase === "retryable") return AWAITING_ADMISSION_OPERATIONS;
     return RECOVER_ONLY;
   }
@@ -385,7 +390,7 @@ function expectedEligibility(model: DeliveryOracleModel): readonly string[] {
   if (model.phase === "retryable") {
     switch (model.originStanding) {
       case "awaiting-admission": return AWAITING_ADMISSION_OPERATIONS;
-      case "active": return ACTIVE_OPERATIONS;
+      case "active": return model.candidateIntegrated ? ACTIVE_OPERATIONS : UNINTEGRATED_ACTIVE_OPERATIONS;
       case "boundary-paused": return BOUNDARY_PAUSED_OPERATIONS;
       case "awaiting-readmission": return AWAITING_READMISSION_OPERATIONS;
       case "decision-ready": return DECISION_READY_OPERATIONS;
@@ -441,7 +446,7 @@ function expectedProfile(model: DeliveryOracleModel): DeliveryExpectedProfile | 
       started: [
         "awaiting-admission",
         "absent",
-        recovery("finalization", "founder-decision-authenticated"),
+        recovery("finalization", "director-decision-authenticated"),
         "started",
         "none",
         true,
@@ -531,7 +536,7 @@ function expectedProfile(model: DeliveryOracleModel): DeliveryExpectedProfile | 
   const terminal = model.phase === "closed";
   const retryable = model.phase === "retryable";
   const recoveryByPhase: Readonly<Record<string, string | null>> = {
-    started: recovery("finalization", "founder-decision-authenticated"),
+    started: recovery("finalization", "director-decision-authenticated"),
     authorized: recovery("finalization", "transaction-effect-intended"),
     uncertain: recovery("transaction", "transaction-effect-observed"),
     applied: recovery("finalization", "transaction-finalization"),
@@ -579,6 +584,7 @@ function expectedProfile(model: DeliveryOracleModel): DeliveryExpectedProfile | 
       ? undefined
       : model.phase === "uncertain" ? "model-effect" : "none",
     subjects: Object.freeze({
+      integrationAssessment: model.candidateIntegrated ?? false,
       proposedBoundary: model.boundaryKind === "proposed" ||
         model.boundaryKind === "active-and-proposed",
       activeBoundary: model.boundaryKind === "active" ||
@@ -631,6 +637,30 @@ export function deliveryInvariants(input: Readonly<{
     ? null
     : recovery(unresolvedRecovery.kind, unresolvedRecovery.resumesAt);
   const profile = expectedProfile(model);
+
+  if (model.kind === "pre-intent-refusal") {
+    const expected = {
+      "agent-pre-intent-refused": model.phase === "refused" || model.phase === "abandoned" ? 1 : 0,
+      "agent-attempt-prepared": model.phase === "prepared" || model.phase === "intended" ? 1 : 0,
+      "provider-effect-intended": model.phase === "intended" ? 1 : 0,
+      "provider-effect-observed": 0,
+      "execution-receipt-recorded": 0,
+      "activity-completed": model.phase === "abandoned" ? 1 : 0,
+    };
+    for (const [eventKind, count] of Object.entries(expected)) {
+      const observed = observation.eventKinds.filter((kind) => kind === eventKind).length;
+      if (observed !== count) {
+        findings.push(finding(
+          "pre-intent.milestone-count-differs-from-phase",
+          deliveryProperties.activityTopology,
+          "confirmed-normative-violation",
+          "Subjectless refusal and abandonment retain no Attempt, provider intent or Receipt.",
+          { phase: model.phase, eventKind, expected: count, observed },
+          `pre-intent.milestone-count/${model.phase}/${eventKind}`,
+        ));
+      }
+    }
+  }
 
   if (
     profile?.activeActivityCount !== undefined &&
@@ -990,6 +1020,7 @@ type RoutePhase =
   | "closed";
 
 type RouteOperation =
+  | "delivery.integrate"
   | "delivery.prepare"
   | "delivery.admit"
   | "delivery.continue"
@@ -1015,6 +1046,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "absent",
     candidatePresent: false,
     subjects: Object.freeze({
+      integrationAssessment: false,
       proposedBoundary: false,
       activeBoundary: false,
       candidate: false,
@@ -1030,6 +1062,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "absent",
     candidatePresent: false,
     subjects: Object.freeze({
+      integrationAssessment: false,
       proposedBoundary: false,
       activeBoundary: false,
       candidate: false,
@@ -1045,6 +1078,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "absent",
     candidatePresent: false,
     subjects: Object.freeze({
+      integrationAssessment: false,
       proposedBoundary: true,
       activeBoundary: false,
       candidate: false,
@@ -1060,6 +1094,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "ready-for-work",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1075,6 +1110,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "needs-correction",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1090,6 +1126,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "sealed-under-evaluation",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1105,6 +1142,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "paused-for-boundary",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1120,6 +1158,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "paused-for-boundary",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: true,
       activeBoundary: true,
       candidate: true,
@@ -1135,6 +1174,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "ready-for-decision",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1150,6 +1190,7 @@ const ROUTE_PHASES = Object.freeze({
     candidateCondition: "accepted",
     candidatePresent: true,
     subjects: Object.freeze({
+      integrationAssessment: true,
       proposedBoundary: false,
       activeBoundary: true,
       candidate: true,
@@ -1208,7 +1249,7 @@ const ROUTE_OPENINGS = Object.freeze([
     id: "start-admit",
     operation: "delivery.admit",
     family: "transaction",
-    recovery: recovery("finalization", "founder-decision-authenticated"),
+    recovery: recovery("finalization", "director-decision-authenticated"),
     phases: routePhases("awaiting-admission", "awaiting-readmission"),
   }),
   Object.freeze({
@@ -1221,6 +1262,11 @@ const ROUTE_OPENINGS = Object.freeze([
       "active-needs-correction",
       "active-sealed-after-failed-evaluation",
     ),
+  }),
+  Object.freeze({
+    id: "start-integrate", operation: "delivery.integrate", family: "integration",
+    recovery: recovery("finalization", "integration-assessed"),
+    phases: routePhases("active", "active-needs-correction", "active-sealed-after-failed-evaluation", "decision-ready"),
   }),
   Object.freeze({
     id: "start-evaluate",
@@ -1251,14 +1297,14 @@ const ROUTE_OPENINGS = Object.freeze([
     id: "start-accept",
     operation: "delivery.accept",
     family: "transaction",
-    recovery: recovery("finalization", "founder-decision-authenticated"),
+    recovery: recovery("finalization", "director-decision-authenticated"),
     phases: routePhases("decision-ready"),
   }),
   Object.freeze({
     id: "start-no-ship",
     operation: "delivery.no-ship",
     family: "transaction",
-    recovery: recovery("finalization", "founder-decision-authenticated"),
+    recovery: recovery("finalization", "director-decision-authenticated"),
     phases: routePhases(
       "framing-after-preparation",
       "awaiting-admission",
@@ -1273,7 +1319,7 @@ const ROUTE_OPENINGS = Object.freeze([
 ] as const satisfies readonly Readonly<{
   id: string;
   operation: RouteOperation;
-  family: "agent" | "transaction";
+  family: "agent" | "integration" | "transaction";
   recovery: string;
   phases: readonly RoutePhase[];
 }>[]);
@@ -1287,6 +1333,7 @@ function routeOpeningCandidateCondition(
     model.phase === "boundary-paused" ||
     model.phase === "awaiting-readmission"
   ) return "paused-for-boundary";
+  if (operation === "delivery.integrate") return "in-progress";
   if (model.phase === "decision-ready") return "ready-for-decision";
   if (operation === "delivery.evaluate" && model.profile?.subjects.seal === true) {
     return "sealed-under-evaluation";
@@ -1345,7 +1392,7 @@ export const routeOpeningOracle: DeliveryOracle = Object.freeze({
     deliveryProperties.terminalOrdering,
     deliveryProperties.journalCount,
   ]),
-  bounds: Object.freeze({ maxDepth: 1, maxNodes: 30, maxTransitions: 100 }),
+  bounds: Object.freeze({ maxDepth: 1, maxNodes: 45, maxTransitions: 120 }),
   requiredCoverage: Object.freeze({
     phases: Object.freeze(Object.keys(ROUTE_PHASES)),
     acceptedCommands: Object.freeze(ROUTE_OPENINGS.map(({ id }) => id)),
@@ -1355,7 +1402,7 @@ export const routeOpeningOracle: DeliveryOracle = Object.freeze({
     recoveryCoordinates: Object.freeze([
       "finalization/agent-attempt-prepared",
       "finalization/candidate-sealed",
-      "finalization/founder-decision-authenticated",
+      "finalization/director-decision-authenticated",
     ]),
   }),
   initialModel: routeOpeningModels["framing-fresh"],
@@ -1409,6 +1456,7 @@ function progressionModel(input: Readonly<{
       activeStage: input.activeStage,
       recoveryEffectBinding: input.recoveryEffectBinding ?? "none",
       subjects: Object.freeze({
+        integrationAssessment: input.candidatePresent,
         proposedBoundary: input.proposedBoundary ?? false,
         activeBoundary: input.activeBoundary ?? false,
         candidate: input.candidatePresent,
@@ -1681,12 +1729,12 @@ export const preparationOracle: DeliveryOracle = Object.freeze({
       "activity-recovery-recorded",
       "activity-started",
       "delivery-created",
-      "founder-brief-submitted",
+      "director-brief-submitted",
     ]),
     seedEventKinds: Object.freeze([
       "activity-started",
       "delivery-created",
-      "founder-brief-submitted",
+      "director-brief-submitted",
     ]),
     generatedEventKinds: Object.freeze(["activity-recovery-recorded"]),
     recoveryCoordinates: Object.freeze(["finalization/agent-attempt-prepared"]),
@@ -1736,8 +1784,8 @@ export const admissionOracle: DeliveryOracle = Object.freeze({
       "check-receipt-recorded",
       "delivery-created",
       "execution-receipt-recorded",
-      "founder-brief-submitted",
-      "founder-decision-authenticated",
+      "director-brief-submitted",
+      "director-decision-authenticated",
       "provider-effect-intended",
       "provider-effect-observed",
       "transaction-effect-intended",
@@ -1752,7 +1800,7 @@ export const admissionOracle: DeliveryOracle = Object.freeze({
       "check-receipt-recorded",
       "delivery-created",
       "execution-receipt-recorded",
-      "founder-brief-submitted",
+      "director-brief-submitted",
       "provider-effect-intended",
       "provider-effect-observed",
       "work-boundary-finalized",
@@ -1761,14 +1809,14 @@ export const admissionOracle: DeliveryOracle = Object.freeze({
       "activity-completed",
       "activity-recovery-recorded",
       "candidate-revision-observed",
-      "founder-decision-authenticated",
+      "director-decision-authenticated",
       "transaction-effect-intended",
       "transaction-effect-observed",
     ]),
     recoveryCoordinates: Object.freeze([
       "candidate-observation/candidate-revision-observed",
       "finalization/activity-completed",
-      "finalization/founder-decision-authenticated",
+      "finalization/director-decision-authenticated",
       "finalization/transaction-effect-intended",
       "transaction/transaction-effect-observed",
     ]),
@@ -1828,8 +1876,8 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "closure-recorded",
         "delivery-created",
         "execution-receipt-recorded",
-        "founder-brief-submitted",
-        "founder-decision-authenticated",
+        "director-brief-submitted",
+        "director-decision-authenticated",
         "provider-effect-intended",
         "provider-effect-observed",
         "transaction-effect-intended",
@@ -1846,8 +1894,8 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "closure-recorded",
         "delivery-created",
         "execution-receipt-recorded",
-        "founder-brief-submitted",
-        "founder-decision-authenticated",
+        "director-brief-submitted",
+        "director-decision-authenticated",
         "provider-effect-intended",
         "provider-effect-observed",
         "transaction-effect-intended",
@@ -1863,8 +1911,8 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "check-receipt-recorded",
         "delivery-created",
         "execution-receipt-recorded",
-        "founder-brief-submitted",
-        "founder-decision-authenticated",
+        "director-brief-submitted",
+        "director-decision-authenticated",
         "provider-effect-intended",
         "provider-effect-observed",
         "transaction-effect-intended",
@@ -1879,8 +1927,8 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "check-receipt-recorded",
         "delivery-created",
         "execution-receipt-recorded",
-        "founder-brief-submitted",
-        "founder-decision-authenticated",
+        "director-brief-submitted",
+        "director-decision-authenticated",
         "provider-effect-intended",
         "provider-effect-observed",
         "transaction-effect-intended",
@@ -1895,7 +1943,7 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "activity-completed",
         "activity-recovery-recorded",
         "closure-recorded",
-        "founder-decision-authenticated",
+        "director-decision-authenticated",
         "transaction-effect-intended",
         "transaction-effect-observed",
       ]),
@@ -1905,7 +1953,7 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
         "transaction/transaction-effect-observed",
       ] : [
         "finalization/activity-completed",
-        "finalization/founder-decision-authenticated",
+        "finalization/director-decision-authenticated",
         "finalization/transaction-effect-intended",
         "finalization/transaction-finalization",
         "transaction/transaction-effect-observed",
@@ -1921,3 +1969,225 @@ export function noShipOracle(candidatePresent: boolean): DeliveryOracle {
     commands: NO_SHIP_COMMANDS,
   });
 }
+
+// This table is product-free: exact allowed integration transitions are stated
+// independently of the reducer, with refused substitutions in the same alphabet.
+type IntegrationPhase = "fresh" | "started" | "assessed-clean" | "assessed-context" | "conflicted" | "invalid" | "selected" | "needs-condition" | "paused" | "done-clean" | "done-conflict" | "done-invalid" | "done-paused";
+function integrationModel(phase: IntegrationPhase): DeliveryOracleModel {
+  const done = phase.startsWith("done-");
+  const fresh = phase === "fresh";
+  const paused = phase === "paused" || phase === "done-paused";
+  const recoveryStep = phase === "started" ? "finalization/integration-assessed"
+    : phase === "assessed-clean" || phase === "assessed-context" ? "candidate-observation/candidate-revision-observed"
+      : phase === "needs-condition" ? "finalization/activity-finalization"
+        : fresh || done ? null : "finalization/activity-completed";
+  return Object.freeze({ kind: "integration", phase, candidatePresent: true,
+    profile: explicitProfile({ standing: paused ? "boundary-paused" : "active",
+      candidateCondition: fresh || done ? paused ? "paused-for-boundary" : "ready-for-work"
+        : phase === "started" ? "in-progress" : "terminal-recovery",
+      recovery: recoveryStep, activeActivityCount: fresh || done ? 0 : 1,
+      ...(fresh || done ? {} : { activeOperation: "delivery.integrate", activeFamily: "integration", activeStage: phase === "started" ? "started" : "finalizing", recoveryEffectBinding: "none" }),
+      subjects: { proposedBoundary: false, activeBoundary: true, candidate: true,
+        integrationAssessment: !fresh && phase !== "started", materialCondition: paused, seal: false, evidence: false, closure: false },
+      eligibleOperations: fresh || done ? paused ? BOUNDARY_PAUSED_OPERATIONS
+        : phase === "done-clean" ? ACTIVE_OPERATIONS : UNINTEGRATED_ACTIVE_OPERATIONS : RECOVER_ONLY,
+    }) });
+}
+const INTEGRATION_TRANSITIONS: Readonly<Record<string, Readonly<Partial<Record<IntegrationPhase, IntegrationPhase>>>>> = Object.freeze({
+  start: { fresh: "started" },
+  "assess-clean": { started: "assessed-clean" },
+  "assess-context": { started: "assessed-context" },
+  "assess-conflict": { started: "conflicted" },
+  "assess-invalid": { started: "invalid" },
+  "assess-wrong-source": {},
+  candidate: { "assessed-clean": "selected", "assessed-context": "needs-condition" },
+  "candidate-wrong-parent": {},
+  "candidate-wrong-source": {},
+  "candidate-wrong-boundary": {},
+  "candidate-wrong-observation": {},
+  condition: { "needs-condition": "paused" },
+  complete: { selected: "done-clean", paused: "done-paused", conflicted: "done-conflict", invalid: "done-invalid" },
+});
+function integrationRefusal(command: string, phase: IntegrationPhase): string {
+  if (command === "start") return REFUSAL.duplicate;
+  // The exact unresolved Condition remains retained after Activity completion.
+  if (command === "condition" && (phase === "paused" || phase === "done-paused")) return REFUSAL.duplicate;
+  if (phase === "fresh" || phase.startsWith("done-")) return REFUSAL.activity;
+  if (command.startsWith("assess-")) return phase === "started" ? REFUSAL.reference : REFUSAL.order;
+  if (command.startsWith("candidate")) {
+    if (["selected", "needs-condition", "paused"].includes(phase)) return REFUSAL.duplicate;
+    return phase === "assessed-clean" || phase === "assessed-context" ? REFUSAL.reference : REFUSAL.order;
+  }
+  return REFUSAL.order;
+}
+export const integrationOracle: DeliveryOracle = Object.freeze({
+  id: "delivery-exact-integration", clauses: Object.freeze([
+    deliveryProperties.integrationOrdering, deliveryProperties.candidateCondition, deliveryProperties.subjectTopology,
+    deliveryProperties.standingTopology, deliveryProperties.recoveryEligibility, deliveryProperties.activityTopology,
+    deliveryProperties.operationEligibility, deliveryProperties.nonterminalProgress, deliveryProperties.journalCount,
+  ]),
+  bounds: { maxDepth: 6, maxNodes: 100, maxTransitions: 1200 },
+  requiredCoverage: { phases: ["fresh", "started", "assessed-clean", "assessed-context", "conflicted", "invalid", "selected", "needs-condition", "paused", "done-clean", "done-conflict", "done-invalid", "done-paused"],
+    acceptedCommands: ["start", "assess-clean", "assess-context", "assess-conflict", "assess-invalid", "candidate", "condition", "complete"],
+    eventKinds: ["activity-started", "integration-assessed", "candidate-revision-observed", "material-condition-frozen", "activity-completed"], seedEventKinds: [], generatedEventKinds: ["activity-started", "integration-assessed", "candidate-revision-observed", "material-condition-frozen", "activity-completed"],
+    recoveryCoordinates: ["finalization/integration-assessed", "candidate-observation/candidate-revision-observed", "finalization/activity-finalization", "finalization/activity-completed"] },
+  initialModel: integrationModel("fresh"),
+  commands: Object.freeze(Object.entries(INTEGRATION_TRANSITIONS).map(([id, transitions]) => ({ id,
+    expectation(model: DeliveryOracleModel): TransitionExpectation<DeliveryOracleModel> {
+      if (model.kind !== "integration") throw new TypeError("Integration oracle received another scenario model");
+      const phase = model.phase as IntegrationPhase;
+      const next = transitions[phase];
+      return next === undefined ? { kind: "refused", classes: [integrationRefusal(id, phase)] }
+        : { kind: "accepted", next: integrationModel(next) };
+    },
+  }))),
+});
+
+type PreIntentRefusalPhase = "opened" | "refused" | "abandoned" | "prepared" | "intended";
+
+function preIntentRefusalModel(phase: PreIntentRefusalPhase): DeliveryOracleModel {
+  const done = phase === "abandoned";
+  const intended = phase === "intended";
+  return Object.freeze({
+    kind: "pre-intent-refusal",
+    phase,
+    candidatePresent: false,
+    profile: explicitProfile({
+      standing: "framing",
+      candidateCondition: "absent",
+      recovery: done ? null : recovery(intended ? "provider" : "finalization",
+        intended ? "provider-effect-observed" : phase === "prepared"
+          ? "provider-effect-intended" : phase === "refused"
+            ? "activity-completed" : "agent-attempt-prepared"),
+      activeActivityCount: done ? 0 : 1,
+      ...(done ? {} : {
+        activeOperation: "delivery.prepare",
+        activeFamily: "agent" as const,
+        activeStage: intended ? "effect-intended" as const : phase === "prepared"
+          ? "prepared" as const : phase === "refused" ? "finalizing" as const : "started" as const,
+        recoveryEffectBinding: intended ? "model-effect" as const : "none" as const,
+      }),
+      subjects: {
+        proposedBoundary: false, activeBoundary: false, candidate: false,
+        integrationAssessment: false, materialCondition: false, seal: false,
+        evidence: false, closure: false,
+      },
+      eligibleOperations: done ? NO_SHIP_ONLY : RECOVER_ONLY,
+    }),
+  });
+}
+
+const PRE_INTENT_REFUSAL_TRANSITIONS: Readonly<Record<string,
+  Readonly<Partial<Record<PreIntentRefusalPhase, PreIntentRefusalPhase>>>>> = Object.freeze({
+  recover: { opened: "opened", refused: "refused", prepared: "prepared", intended: "intended" },
+  "recover-wrong-step": {},
+  "refuse-none": { opened: "refused" },
+  "refuse-with-subject": {},
+  "prepare-attempt": { opened: "prepared" },
+  "intend-provider": { prepared: "intended" },
+  "complete-abandoned": { refused: "abandoned" },
+  "complete-failed": {},
+  "complete-success": {},
+});
+
+/** One opened preparation, exact no-resolution refusal, and competing intent.
+ * Depth four includes recover -> refuse -> recover -> abandoned. The oracle
+ * models Journal order only, excluding clocks, Cells, SQLite and provider effects. */
+export const preIntentRefusalOracle: DeliveryOracle = Object.freeze({
+  id: "delivery-pre-intent-refusal-recovery",
+  clauses: [deliveryProperties.preparationRecovery, deliveryProperties.activityTopology,
+    deliveryProperties.candidateAbsence, deliveryProperties.standingTopology,
+    deliveryProperties.subjectTopology, deliveryProperties.recoveryEligibility,
+    deliveryProperties.operationEligibility, deliveryProperties.nonterminalProgress,
+    deliveryProperties.journalCount],
+  bounds: { maxDepth: 4, maxNodes: 100, maxTransitions: 512 },
+  requiredCoverage: {
+    phases: ["opened", "refused", "abandoned", "prepared", "intended"],
+    acceptedCommands: ["recover", "refuse-none", "prepare-attempt", "intend-provider", "complete-abandoned"],
+    eventKinds: ["delivery-created", "director-brief-submitted", "activity-started", "activity-recovery-recorded", "agent-pre-intent-refused",
+      "agent-attempt-prepared", "provider-effect-intended", "activity-completed"],
+    seedEventKinds: ["delivery-created", "director-brief-submitted", "activity-started"],
+    generatedEventKinds: ["activity-recovery-recorded", "agent-pre-intent-refused",
+      "agent-attempt-prepared", "provider-effect-intended", "activity-completed"],
+    recoveryCoordinates: ["finalization/agent-attempt-prepared", "finalization/activity-completed",
+      "finalization/provider-effect-intended", "provider/provider-effect-observed"],
+  },
+  initialModel: preIntentRefusalModel("opened"),
+  commands: Object.entries(PRE_INTENT_REFUSAL_TRANSITIONS).map(([id, transitions]) => ({
+    id,
+    expectation(model: DeliveryOracleModel): TransitionExpectation<DeliveryOracleModel> {
+      if (model.kind !== "pre-intent-refusal") throw new TypeError("Pre-intent refusal oracle received another model");
+      const phase = model.phase as PreIntentRefusalPhase;
+      const next = transitions[phase];
+      if (next !== undefined) return {
+        kind: "accepted", next: Object.freeze({ ...preIntentRefusalModel(next), effectDigest: model.effectDigest }),
+      };
+      const code = id === "refuse-with-subject" ? "lifecycle.delivery-event.subject"
+        : phase === "abandoned" ? REFUSAL.activity
+        : id === "recover-wrong-step" ? REFUSAL.recovery
+        : id === "intend-provider" && (phase === "opened" || phase === "refused") ? REFUSAL.reference
+        : REFUSAL.order;
+      return { kind: "refused", classes: [code] };
+    },
+  })),
+});
+
+type ProjectionRefusalPhase = "ready" | "refused" | "frozen" | "resolution";
+function projectionRefusalModel(phase: ProjectionRefusalPhase, operation: "delivery.continue" | "delivery.evaluate"): DeliveryOracleModel {
+  const done = phase === "resolution";
+  const frozen = phase === "frozen" || done;
+  const reviewer = operation === "delivery.evaluate";
+  return Object.freeze({ kind: "progression", phase, candidatePresent: true,
+    profile: explicitProfile({
+      standing: frozen ? "boundary-paused" : "active",
+      candidateCondition: done ? "paused-for-boundary" : !reviewer && phase === "ready" ? "in-progress" : "terminal-recovery",
+      recovery: done ? null : recovery("finalization", phase === "ready" ? reviewer ? "evaluation-checks" : "agent-attempt-prepared" : phase === "refused" ? "activity-finalization" : "activity-completed"),
+      activeActivityCount: done ? 0 : 1,
+      ...(done ? {} : { activeOperation: operation, activeFamily: "agent" as const, activeStage: !reviewer && phase === "ready" ? "started" as const : "finalizing" as const, recoveryEffectBinding: "none" as const }),
+      subjects: { proposedBoundary: false, activeBoundary: true, candidate: true, integrationAssessment: true,
+        materialCondition: frozen, seal: reviewer, evidence: false, closure: false },
+      eligibleOperations: done ? BOUNDARY_PAUSED_OPERATIONS : RECOVER_ONLY,
+    }),
+  });
+}
+const PROJECTION_REFUSAL_TRANSITIONS: Readonly<Record<string, Readonly<Partial<Record<ProjectionRefusalPhase, ProjectionRefusalPhase>>>>> = {
+  refuse: { ready: "refused" },
+  freeze: { refused: "frozen" },
+  "freeze-wrong-candidate": {},
+  "freeze-wrong-facts": {},
+  complete: { frozen: "resolution" },
+  recover: { ready: "ready", refused: "refused", frozen: "frozen" },
+};
+function projectionRefusalOracleFor(operation: "delivery.continue" | "delivery.evaluate"): DeliveryOracle {
+  const reviewer = operation === "delivery.evaluate";
+  return Object.freeze({
+  id: reviewer ? "delivery-measured-projection-refusal" : "delivery-measured-builder-projection-refusal",
+  clauses: [deliveryProperties.candidateCondition, deliveryProperties.standingTopology, deliveryProperties.subjectTopology,
+    deliveryProperties.recoveryEligibility, deliveryProperties.activityTopology, deliveryProperties.operationEligibility,
+    deliveryProperties.nonterminalProgress, deliveryProperties.journalCount],
+  bounds: { maxDepth: 4, maxNodes: 100, maxTransitions: 600 },
+  requiredCoverage: {
+    phases: ["ready", "refused", "frozen", "resolution"], acceptedCommands: ["refuse", "freeze", "complete", "recover"],
+    eventKinds: [...(reviewer ? ["candidate-sealed", "check-receipt-recorded"] : ["activity-started"]), "agent-pre-intent-refused", "material-condition-frozen", "activity-completed", "activity-recovery-recorded"],
+    seedEventKinds: reviewer ? ["candidate-sealed", "check-receipt-recorded"] : ["activity-started"],
+    generatedEventKinds: ["agent-pre-intent-refused", "material-condition-frozen", "activity-completed", "activity-recovery-recorded"],
+    recoveryCoordinates: [reviewer ? "finalization/evaluation-checks" : "finalization/agent-attempt-prepared", "finalization/activity-finalization", "finalization/activity-completed"],
+  },
+  initialModel: projectionRefusalModel("ready", operation),
+  commands: Object.entries(PROJECTION_REFUSAL_TRANSITIONS).map(([id, transitions]) => ({ id,
+    expectation(model: DeliveryOracleModel): TransitionExpectation<DeliveryOracleModel> {
+      const phase = model.phase as ProjectionRefusalPhase;
+      const next = transitions[phase];
+      if (next !== undefined) return { kind: "accepted", next: projectionRefusalModel(next, operation) };
+      const code = id.startsWith("freeze") && (phase === "frozen" || phase === "resolution") ? REFUSAL.duplicate
+        : phase === "resolution" ? REFUSAL.activity
+        : id === "freeze-wrong-candidate" && phase === "refused" ? REFUSAL.reference
+        : id === "freeze-wrong-facts" && phase === "refused" ? "lifecycle.delivery-reducer.record-payload"
+        : REFUSAL.order;
+      return { kind: "refused", classes: [code] };
+    },
+  })),
+});
+}
+export const projectionRefusalOracle = projectionRefusalOracleFor("delivery.evaluate");
+export const builderProjectionRefusalOracle = projectionRefusalOracleFor("delivery.continue");

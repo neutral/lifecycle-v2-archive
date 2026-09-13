@@ -1,4 +1,8 @@
 import { FoundationError } from "../error.js";
+import {
+  foundationExecutionBackendInterruptionFacts,
+  type FoundationExecutionBackendOperation,
+} from "./backend-diagnostic.js";
 import type { ControlJsonObject } from "../control/types.js";
 import {
   canonicalJson,
@@ -27,6 +31,7 @@ import {
   parseFoundationExecutionObservation,
   parseFoundationExecutionSpecification,
   type FoundationExecutionBackendProfileReferenceV1,
+  type FoundationExecutionBackendProfileV1,
   type FoundationExecutionObservationV1,
   type FoundationExecutionSpecificationV1,
 } from "./contracts.js";
@@ -262,6 +267,18 @@ function fail(
   });
 }
 
+function backendInterrupted(
+  operation: FoundationExecutionBackendOperation,
+  message: string,
+  error: unknown,
+  observedFacts: Readonly<Record<string, unknown>> = {},
+): never {
+  return fail("backend-interrupted", message, {
+    ...observedFacts,
+    ...foundationExecutionBackendInterruptionFacts(operation, error),
+  });
+}
+
 /**
  * A non-retryable Backend diagnostic is a complete refusal fact, not an
  * interrupted allocation. Preserve that exact diagnostic so recovery cannot
@@ -272,7 +289,7 @@ function fail(
 function isDeterministicBackendRefusal(error: unknown): error is FoundationError {
   return error instanceof FoundationError &&
     !error.retryable &&
-    !error.operationalStateChanged;
+    error.repositoryChanged === false && error.operationalStateChanged === false;
 }
 
 function exactKeys(value: object, expected: readonly string[], label: string): void {
@@ -335,9 +352,9 @@ function backendReference(
 
 function validateSpecification(
   value: FoundationExecutionSpecificationV1,
-  backend: FoundationExecutionBackend,
+  backendProfile: FoundationExecutionBackendProfileV1,
 ): FoundationExecutionSpecificationV1 {
-  const profile = parseFoundationExecutionBackendProfile(backend.profile);
+  const profile = parseFoundationExecutionBackendProfile(backendProfile);
   const specification = parseFoundationExecutionSpecification({
     value,
     backendProfile: profile,
@@ -872,9 +889,9 @@ function parseRetirement(input: Readonly<{
 export function parseFoundationExecutionOperationCheckpoint(input: Readonly<{
   value: unknown;
   specification: FoundationExecutionSpecificationV1;
-  backend: FoundationExecutionBackend;
+  backendProfile: FoundationExecutionBackendProfileV1;
 }>): FoundationExecutionOperationCheckpointV1 {
-  const specification = validateSpecification(input.specification, input.backend);
+  const specification = validateSpecification(input.specification, input.backendProfile);
   if (input.value === null || typeof input.value !== "object" || Array.isArray(input.value)) {
     fail("checkpoint-shape", "Execution operation checkpoint is not one exact object");
   }
@@ -1024,7 +1041,7 @@ function parseRetained(input: Readonly<{
   const checkpoint = parseFoundationExecutionOperationCheckpoint({
     value: exact.checkpoint,
     specification: input.specification,
-    backend: input.backend,
+    backendProfile: input.backend.profile,
   });
   const coordinate = parseCoordinate(exact.coordinate);
   if (coordinate.checkpointDigest !== checkpoint.digest) {
@@ -1099,7 +1116,7 @@ export class FoundationExecutionOperationHostV1 {
   async read(
     specificationValue: FoundationExecutionSpecificationV1,
   ): Promise<FoundationRetainedExecutionOperationCheckpointV1 | null> {
-    const specification = validateSpecification(specificationValue, this.#backend);
+    const specification = validateSpecification(specificationValue, this.#backend.profile);
     let value: FoundationRetainedExecutionOperationCheckpointV1 | null;
     try {
       value = await this.#checkpoints.read(specification.digest);
@@ -1146,7 +1163,7 @@ export class FoundationExecutionOperationHostV1 {
   async open(
     specificationValue: FoundationExecutionSpecificationV1,
   ): Promise<FoundationRetainedExecutionOperationCheckpointV1> {
-    const specification = validateSpecification(specificationValue, this.#backend);
+    const specification = validateSpecification(specificationValue, this.#backend.profile);
     const existing = await this.read(specification);
     if (existing !== null) return existing;
     let allocationKey: FoundationExecutionAllocationKey;
@@ -1244,14 +1261,14 @@ export class FoundationExecutionOperationHostV1 {
       );
     } catch (error) {
       if (isDeterministicBackendRefusal(error)) throw error;
-      fail("backend-interrupted", "Execution allocation was interrupted; reopen its exact allocation key");
+      backendInterrupted("allocate", "Execution allocation was interrupted; reopen its exact allocation key", error);
     }
     const handle = privateFoundationExecutionHandle(String(rawHandle));
     let rawObservation: FoundationExecutionObservationV1;
     try {
       rawObservation = await this.#backend.observe(handle);
-    } catch {
-      fail("backend-interrupted", "Execution allocation could not be directly observed");
+    } catch (error) {
+      backendInterrupted("allocation-observe", "Execution allocation could not be directly observed", error);
     }
     const observation = parseFoundationExecutionObservation({
       value: rawObservation,
@@ -1299,8 +1316,8 @@ export class FoundationExecutionOperationHostV1 {
     let readinessValue: FoundationExecutionObservationV1;
     try {
       readinessValue = await this.#backend.observe(handle);
-    } catch {
-      fail("backend-interrupted", "Execution could not be directly observed before dispatch consumption");
+    } catch (error) {
+      backendInterrupted("pre-dispatch-observe", "Execution could not be directly observed before dispatch consumption", error);
     }
     const readiness = parseFoundationExecutionObservation({
       value: readinessValue,
@@ -1391,8 +1408,8 @@ export class FoundationExecutionOperationHostV1 {
     let observation: FoundationExecutionObservationV1;
     try {
       observation = await this.#backend.dispatch(handle);
-    } catch {
-      fail("backend-interrupted", "Execution dispatch result was lost; redispatch is permanently refused", {
+    } catch (error) {
+      backendInterrupted("dispatch", "Execution dispatch result was lost; redispatch is permanently refused", error, {
         checkpointDigest: consumed.checkpoint.digest,
       });
     }
@@ -1414,8 +1431,12 @@ export class FoundationExecutionOperationHostV1 {
       observation = input.current.checkpoint.containmentRequestedAt === null
         ? await this.#backend.observe(handle)
         : await this.#backend.cancel(handle);
-    } catch {
-      fail("backend-interrupted", "Execution observation or cancellation was interrupted");
+    } catch (error) {
+      backendInterrupted(
+        input.current.checkpoint.containmentRequestedAt === null ? "observe" : "cancel",
+        "Execution observation or cancellation was interrupted",
+        error,
+      );
     }
     return this.#recordObservation({
       specification: input.specification,
@@ -1447,10 +1468,11 @@ export class FoundationExecutionOperationHostV1 {
         specification: input.specification,
         handle,
       });
-    } catch {
-      fail(
-        "backend-interrupted",
+    } catch (error) {
+      backendInterrupted(
+        "terminal-retrieval",
         "Execution terminal-completion retrieval was interrupted",
+        error,
       );
     }
     if (retrieved.observationDigest !== observation.digest) {
@@ -1551,8 +1573,8 @@ export class FoundationExecutionOperationHostV1 {
           "Contained Execution Output retrieval did not bind its retained source observation",
         );
       }
-    } catch {
-      fail("backend-interrupted", "Contained Execution Output retrieval was interrupted");
+    } catch (error) {
+      backendInterrupted("output-retrieval", "Contained Execution Output retrieval was interrupted", error);
     }
     if (retrieved.disposition === "unavailable") {
       return Object.freeze({
@@ -1783,7 +1805,7 @@ export class FoundationExecutionOperationHostV1 {
     runnerDigest: Sha256;
     requestContainment?: boolean;
   }>): Promise<FoundationExecutionOperationAdvanceV1> {
-    const specification = validateSpecification(input.specification, this.#backend);
+    const specification = validateSpecification(input.specification, this.#backend.profile);
     digest(input.runnerDigest, "Execution runner digest");
     let current = await this.read(specification);
     if (current === null) {
@@ -1858,7 +1880,7 @@ export class FoundationExecutionOperationHostV1 {
   async retire(
     specificationValue: FoundationExecutionSpecificationV1,
   ): Promise<FoundationRetainedExecutionOperationCheckpointV1> {
-    const specification = validateSpecification(specificationValue, this.#backend);
+    const specification = validateSpecification(specificationValue, this.#backend.profile);
     const current = await this.read(specification);
     if (current === null) fail("checkpoint-order", "Execution cannot retire before opening");
     const checkpoint = current.checkpoint;
@@ -1901,10 +1923,11 @@ export class FoundationExecutionOperationHostV1 {
         retirementCheckpointDigest,
         dispatchAuthorityConsumed: checkpoint.dispatchAuthorityConsumedAt !== null,
       });
-    } catch {
-      fail(
-        "backend-interrupted",
+    } catch (error) {
+      backendInterrupted(
+        "reclamation-binding",
         "Execution Reclamation binding could not be recovered from the selected Backend",
+        error,
       );
     }
     let reclamationBinding: FoundationExecutionReclamationBindingV1;

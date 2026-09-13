@@ -1,5 +1,5 @@
 {
-  "schema": "lifecycle.execution-input-set.v1",
+  "schema": "lifecycle.execution-input-set.v2",
   "owner": {
     "kind": "agent-attempt",
     "activityId": "activity.prepare",

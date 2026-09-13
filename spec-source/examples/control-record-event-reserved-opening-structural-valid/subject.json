@@ -1,0 +1,46 @@
+{
+  "schema": "lifecycle.control-record-event.v6",
+  "storeId": "store.delivery.demo",
+  "processId": "delivery.demo",
+  "sequence": 2,
+  "eventId": "event.delegation.demo",
+  "eventKind": "activity-started",
+  "occurredAt": "2026-09-06T20:00:00.000Z",
+  "actor": {
+    "kind": "runtime",
+    "id": "runtime.foundation"
+  },
+  "subject": null,
+  "payload": {
+    "activityId": "activity.integration.demo",
+    "operation": "delivery.integrate",
+    "reservation": {
+      "schema": "lifecycle.work-delegation-reservation.v1",
+      "reservationId": "reservation.demo",
+      "delegation": {
+        "kind": "work-delegation",
+        "id": "delegation.demo",
+        "revision": 1,
+        "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "activityId": "activity.integration.demo",
+      "operation": "delivery.integrate",
+      "decision": {
+        "journalHead": {
+          "sequence": 1,
+          "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "basisDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "reason": "integrate-ready-candidate"
+      },
+      "charges": {
+        "operations": 1,
+        "agentAttempts": 0,
+        "reservedCellWallTimeMs": 0
+      },
+      "slots": []
+    }
+  },
+  "predecessorDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "digest": "sha256:2fff1292661ffb6305004ddc696e65e7a3b47c3ee9e59de3a5a33dc3590e548c"
+}

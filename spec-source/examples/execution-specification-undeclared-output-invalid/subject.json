@@ -20,7 +20,7 @@
     "imageDigest": "sha256:5353535353535353535353535353535353535353535353535353535353535353"
   },
   "inputSet": {
-    "profileId": "lifecycle.execution-input-set.v1",
+    "profileId": "lifecycle.execution-input-set.v2",
     "digest": "sha256:5454545454545454545454545454545454545454545454545454545454545454"
   },
   "operation": {

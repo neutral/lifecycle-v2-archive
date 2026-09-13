@@ -92,7 +92,7 @@ test("Candidate diff returns one exact retained subject and a safe bounded trunc
       digest: candidate.digest,
     };
     const state = FoundationDeliveryStateSchema.parse({
-      schema: "lifecycle.delivery-reduction.v2",
+      schema: "lifecycle.delivery-reduction.v5",
       storeId: "store-diff",
       processId: "delivery-diff",
       standing: "active",
@@ -100,6 +100,7 @@ test("Candidate diff returns one exact retained subject and a safe bounded trunc
       activities: [],
       recovery: null,
       subjects: {
+        integrationAssessment: null,
         proposedBoundary: null,
         activeBoundary: null,
         candidate: candidateReference,
@@ -108,6 +109,7 @@ test("Candidate diff returns one exact retained subject and a safe bounded trunc
         evidence: null,
         closure: null,
       },
+      delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
       journal: { eventCount: 0, headSequence: null, headDigest: null },
       storeDisposition: {
         stage: "active",

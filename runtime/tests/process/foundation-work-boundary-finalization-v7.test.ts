@@ -1,3 +1,4 @@
+import { createEmptyDisciplineRegistry } from "../../src/foundation/knowledge/discipline-registry.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -5,6 +6,7 @@ import {
   compileControlRecordRevision,
 } from "../../src/foundation/control/model.js";
 import type { ControlRecordStore } from "../../src/foundation/control/store.js";
+import { foundationIntegrationValidationFactsDigestV1 } from "../../src/foundation/control/integration-assessment.js";
 import {
   CONTROL_RECORD_STORE_SCHEMA,
   type ControlJsonObject,
@@ -31,6 +33,7 @@ import type { FoundationCheckBinding } from "../../src/foundation/repository/typ
 import {
   digestCanonical,
   sha256Bytes,
+  selfDigest,
   type Sha256,
 } from "../../src/foundation/validation/canonical.js";
 import { validDeliveryControlPayload } from "../helpers/foundation-control-payload.js";
@@ -41,7 +44,7 @@ const RECORDED = "2026-08-29T21:00:03.000Z";
 const TARGET = "target-work-boundary-finalization-v7";
 const DELIVERY = "delivery-work-boundary-finalization-v7";
 const RUNTIME = "foundation-runtime";
-const FOUNDER = "founder.fixture";
+const DIRECTOR = "director.fixture";
 const AGENT = "agent.fixture";
 const ACTIVITY = "activity-resolution-v7";
 const SELECTION = "selection.check.demo";
@@ -103,8 +106,8 @@ function revision(input: Readonly<{
   number?: number;
   payload: ControlJsonObject;
   relationships?: readonly ControlRecordRelationship[];
-  author?: "runtime" | "founder" | "agent";
-  authority?: "runtime-derived" | "runtime-observed" | "founder-supplied" | "agent-proposed";
+  author?: "runtime" | "director" | "agent";
+  authority?: "runtime-derived" | "runtime-observed" | "director-supplied" | "agent-proposed";
 }>): ControlRecordRevision {
   const author = input.author ?? "runtime";
   return compileControlRecordRevision(DELIVERY, {
@@ -112,7 +115,7 @@ function revision(input: Readonly<{
     recordKind: input.kind,
     revision: input.number ?? 1,
     producer: { kind: "runtime", id: RUNTIME },
-    semanticAuthor: { kind: author, id: author === "runtime" ? RUNTIME : author === "founder" ? FOUNDER : AGENT },
+    semanticAuthor: { kind: author, id: author === "runtime" ? RUNTIME : author === "director" ? DIRECTOR : AGENT },
     semanticAuthority: input.authority ?? "runtime-derived",
     createdAt: CREATED,
     semanticMarkdown: `# ${input.kind}\n`,
@@ -126,6 +129,9 @@ type Operation = "delivery.revise" | "delivery.reaffirm";
 function fixture(
   operation: Operation,
   options: Readonly<{
+    parentCapabilityId?: string;
+    proposedProjectionProfile?: string;
+    registerLargeProjection?: boolean;
     baselineBindingIds?: readonly string[];
     baselineModality?: "precondition" | "postcondition";
   }> = {},
@@ -147,6 +153,13 @@ function fixture(
     processId: DELIVERY,
     createdAt: CREATED,
   });
+  const contractDigest = digest("contract");
+  const knowledgeDigest = digest("knowledge-set");
+  const productDigest = digest("product-state");
+  const atlasDigest = digest("atlas-state");
+  const atlas = minimalResolvedAtlas(atlasDigest);
+  const snapshotDigest = digest("snapshot");
+  const executionProjectionDigest = digest("execution-projection");
   const boundaryPayload = validDeliveryControlPayload("work-boundary");
   const baselineModality = options.baselineModality ?? "postcondition";
   const boundaryMandate = boundaryPayload.mandate as ControlJsonObject;
@@ -156,6 +169,12 @@ function fixture(
     payload: Object.freeze({
       ...boundaryPayload,
       targetId: TARGET,
+      basis: Object.freeze({ ...(boundaryPayload.basis as ControlJsonObject), productBaseCommit: COMMIT,
+        productBaseTree: TREE, repositoryContractDigest: contractDigest, knowledgeSetDigest: knowledgeDigest,
+        productStateDigest: productDigest, atlasStateDigest: atlasDigest, repositorySnapshotDigest: snapshotDigest,
+        atlasResolutionDigest: atlas.resolution.digest, atlasNormalizedModelDigest: atlas.resolution.normalizedModelDigest,
+        atlasResourceBindingsDigest: atlas.resolution.resourceBindingsDigest }),
+      disciplines: Object.freeze({ registryDigest: createEmptyDisciplineRegistry().digest, workTypeIds: Object.freeze([]), records: Object.freeze([]) }),
       mandate: Object.freeze({
         ...boundaryMandate,
         checks: Object.freeze((boundaryMandate.checks as readonly ControlJsonObject[]).map(
@@ -164,29 +183,59 @@ function fixture(
       }),
     }),
   });
-  const candidate = revision({
+  const sourceCandidate = revision({
     id: "candidate-resolution-v7",
     kind: "candidate-revision",
-    payload: validDeliveryControlPayload("candidate-revision"),
+    payload: { ...validDeliveryControlPayload("candidate-revision"), candidateBaseCommit: COMMIT },
     relationships: Object.freeze([relationship("governed-by", activeBoundary)]),
     authority: "runtime-observed",
   });
-  const condition = revision({
-    id: "condition-resolution-v7",
-    kind: "material-condition",
-    payload: validDeliveryControlPayload("material-condition"),
-    relationships: Object.freeze([
-      relationship("freezes", candidate),
-      relationship("governed-by", activeBoundary),
-    ]),
+  const parentCommit = options.parentCapabilityId === undefined ? COMMIT : "d".repeat(40);
+  const parentTree = options.parentCapabilityId === undefined ? TREE : "e".repeat(40);
+  const parentContractDigest = options.parentCapabilityId === undefined ? contractDigest : digest("parent-contract");
+  const snapshotCore = {
+    targetId: TARGET, commit: parentCommit, tree: parentTree, objectFormat: "sha1" as const,
+    contractDigest: parentContractDigest, knowledgeSetDigest: knowledgeDigest, productStateDigest: productDigest,
+    atlasStateDigest: atlasDigest, atlasResolutionDigest: atlas.resolution.digest,
+    atlasNormalizedModelDigest: atlas.resolution.normalizedModelDigest,
+    atlasResourceBindingsDigest: atlas.resolution.resourceBindingsDigest,
+  };
+  const selectedSnapshot = { ...snapshotCore, digest: options.parentCapabilityId === undefined ? snapshotDigest : selfDigest(snapshotCore) };
+  const applicability = { disposition: "requires-readmission", changes: [{ subject: "repository-contract",
+    admittedDigest: contractDigest, parentDigest: parentContractDigest }] };
+  const assessment = options.parentCapabilityId === undefined ? null : revision({
+    id: "assessment-resolution-v7", kind: "integration-assessment", payload: {
+      schema: "lifecycle.integration-assessment-payload.v1", profileId: "lifecycle.integration-assessment.foundation-v1",
+      canonicalParent: selectedSnapshot, outcome: "constructed", conflicts: [],
+      mergeRule: { id: "lifecycle.integration.three-way.v2", implementationId: "fixture-merge", implementationDigest: digest("merge") },
+      validation: { complete: true, valid: true, diagnosticCodes: [],
+        factsDigest: foundationIntegrationValidationFactsDigestV1({
+          manifestFileDigest: (sourceCandidate.payload.carrierManifest as ControlJsonObject).digest as Sha256,
+          state: sourceCandidate.payload.state, observer: sourceCandidate.payload.observer,
+        }) },
+      contextualApplicability: applicability, assessedAt: CREATED, limitations: [],
+    }, relationships: [relationship("governed-by", activeBoundary), relationship("integrates", sourceCandidate)],
   });
-  const briefPayload = validDeliveryControlPayload("founder-brief");
+  const candidate = assessment === null ? sourceCandidate : revision({ id: sourceCandidate.recordId, kind: "candidate-revision", number: 2,
+    payload: { ...sourceCandidate.payload, observation: "integration-successor", candidateBaseCommit: parentCommit },
+    relationships: [relationship("governed-by", activeBoundary), relationship("revises", sourceCandidate), relationship("integrated-from", assessment)],
+    authority: "runtime-observed" });
+  const condition = revision({
+    id: "condition-resolution-v7", kind: "material-condition",
+    payload: assessment === null ? validDeliveryControlPayload("material-condition") : {
+      ...validDeliveryControlPayload("material-condition"), source: { kind: "integration-assessment" },
+      conditionClass: "integration-context-change", observedFactsDigest: digestCanonical(applicability),
+    },
+    relationships: [relationship("freezes", candidate), relationship("governed-by", activeBoundary),
+      ...(assessment === null ? [] : [relationship("reported-by", assessment)])],
+  });
+  const briefPayload = validDeliveryControlPayload("director-brief");
   const brief = revision({
     id: "brief-resolution-v7",
-    kind: "founder-brief",
-    payload: Object.freeze({ ...briefPayload, inputProfile: operation }),
-    author: "founder",
-    authority: "founder-supplied",
+    kind: "director-brief",
+    payload: Object.freeze({ ...briefPayload, scope: { kind: "activity", activityId: ACTIVITY }, inputProfile: operation }),
+    author: "director",
+    authority: "director-supplied",
   });
   const projectionDigest = digest("projection");
   const capabilityDigest = activeBoundary.payload.capabilityProfile as ControlJsonObject;
@@ -220,10 +269,11 @@ function fixture(
     id: "work-product-resolution-v7",
     kind: "agent-work-product",
     payload: Object.freeze({
-      schema: "lifecycle.agent-work-product-payload.v2",
+      schema: "lifecycle.agent-work-product-payload.v5",
       role: "reconnaissance",
       roleSemantics: Object.freeze({
         workBoundary: Object.freeze({
+          projectionProfile: options.proposedProjectionProfile ?? "execution-standard-v1",
           artifacts: Object.freeze([]),
           effects: Object.freeze([]),
           checks: Object.freeze([Object.freeze({
@@ -232,6 +282,7 @@ function fixture(
             bindingIds: Object.freeze([...(options.baselineBindingIds ?? [BINDING])]),
             modality: baselineModality,
             baselineRequired: true,
+            finalRequired: true,
           })]),
         }),
       }),
@@ -256,7 +307,7 @@ function fixture(
   });
 
   const revisions = new Map<string, ControlRecordRevision>();
-  for (const selected of [activeBoundary, candidate, condition, brief, attempt, workProduct, receipt]) {
+  for (const selected of [activeBoundary, sourceCandidate, ...(assessment === null ? [] : [assessment]), candidate, condition, brief, attempt, workProduct, receipt]) {
     revisions.set(`${selected.recordId}\0${selected.revision}`, selected);
   }
   const events: ControlRecordEvent[] = [];
@@ -295,6 +346,7 @@ function fixture(
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: stateReference(activeBoundary),
       candidate: stateReference(candidate),
@@ -303,6 +355,7 @@ function fixture(
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: events.length, headDigest: predecessorDigest }),
     eligibleOperations: Object.freeze([]),
   });
@@ -339,56 +392,42 @@ function fixture(
     },
   }) as unknown as FoundationAgentRoleCheckpointAdapterV7;
 
-  const contractDigest = digest("contract");
-  const knowledgeDigest = digest("knowledge-set");
-  const productDigest = digest("product-state");
-  const atlasDigest = digest("atlas-state");
-  const atlas = minimalResolvedAtlas(atlasDigest);
-  const snapshotDigest = digest("snapshot");
-  const executionProjectionDigest = digest("execution-projection");
   const basis = Object.freeze({
     snapshot: Object.freeze({
       repository: "/target",
       contract: Object.freeze({
         targetId: TARGET,
-        digest: contractDigest,
-        defaults: Object.freeze({ executionProjectionProfileId: "execution-standard-v1" }),
+        digest: parentContractDigest,
+        knowledge: Object.freeze({ roots: Object.freeze({ discipline: "records/disciplines" }) }),
+        defaults: Object.freeze({ executionProjectionProfileId: "execution-standard-v1", capabilityProfileId: options.parentCapabilityId ?? String(capabilityDigest.id) }),
         projectionProfiles: Object.freeze({
           "execution-standard-v1": Object.freeze({ id: "execution-standard-v1", digest: executionProjectionDigest }),
+          ...(options.registerLargeProjection ? {"execution-large-v1":Object.freeze({id:"execution-large-v1",digest:digest("large-execution-projection")})} : {}),
         }),
         capabilityProfiles: Object.freeze({
-          [String(capabilityDigest.id)]: Object.freeze({
-            id: String(capabilityDigest.id),
-            digest: capabilityDigest.digest,
+          [options.parentCapabilityId ?? String(capabilityDigest.id)]: Object.freeze({
+            id: options.parentCapabilityId ?? String(capabilityDigest.id),
+            digest: options.parentCapabilityId === undefined ? capabilityDigest.digest : digest("parent-capability"),
           }),
         }),
         checkBindings: Object.freeze({ [BINDING]: binding }),
       }),
-      snapshot: Object.freeze({
-        targetId: TARGET,
-        contractDigest,
-        knowledgeSetDigest: knowledgeDigest,
-        productStateDigest: productDigest,
-        atlasStateDigest: atlasDigest,
-        atlasResolutionDigest: atlas.resolution.digest,
-        atlasNormalizedModelDigest: atlas.resolution.normalizedModelDigest,
-        atlasResourceBindingsDigest: atlas.resolution.resourceBindingsDigest,
-        digest: snapshotDigest,
-      }),
-      epoch: Object.freeze({ commit: COMMIT, tree: TREE }),
+      snapshot: Object.freeze(selectedSnapshot),
+      epoch: Object.freeze({ commit: parentCommit, tree: parentTree }),
       productState: Object.freeze({ digest: productDigest }),
       atlasState: Object.freeze({ digest: atlasDigest }),
       atlas,
     }),
     knowledge: Object.freeze({
+      disciplineRegistry: createEmptyDisciplineRegistry(),
       repository: Object.freeze({
-        contract: Object.freeze({ targetId: TARGET, digest: contractDigest }),
-        commit: COMMIT,
-        tree: TREE,
+        contract: Object.freeze({ targetId: TARGET, digest: parentContractDigest }),
+        commit: parentCommit,
+        tree: parentTree,
       }),
       manifest: Object.freeze({
         digest: knowledgeDigest,
-        repository: Object.freeze({ contractDigest, commit: COMMIT, tree: TREE }),
+        repository: Object.freeze({ contractDigest: parentContractDigest, commit: parentCommit, tree: parentTree }),
         complete: true,
         valid: true,
       }),
@@ -408,10 +447,10 @@ function fixture(
         profile: "orientation-standard-v1",
         basis: Object.freeze({
           target: Object.freeze({ id: TARGET }),
-          commit: COMMIT,
-          tree: TREE,
+          commit: parentCommit,
+          tree: parentTree,
           productStateDigest: productDigest,
-          repositoryContractDigest: contractDigest,
+          repositoryContractDigest: parentContractDigest,
           knowledgeSetDigest: knowledgeDigest,
           atlas: Object.freeze({
             stateDigest: atlasDigest,
@@ -453,9 +492,11 @@ function fixture(
 
 function initialFixture(
   options: Readonly<{
+    requiredChecks?: Readonly<{ baseline: boolean; final: boolean }>;
     baselineBindingIds?: readonly string[];
     baselineModality?: "precondition" | "postcondition";
     effects?: readonly ControlJsonObject[];
+    artifacts?: readonly ControlJsonObject[];
     loseCheckReceiptReturnOnce?: boolean;
   }> = {},
 ): Readonly<{
@@ -476,13 +517,13 @@ function initialFixture(
     processId: DELIVERY,
     createdAt: CREATED,
   });
-  const briefPayload = validDeliveryControlPayload("founder-brief");
+  const briefPayload = validDeliveryControlPayload("director-brief");
   const brief = revision({
     id: "brief-initial-v7",
-    kind: "founder-brief",
-    payload: Object.freeze({ ...briefPayload, inputProfile: "delivery.prepare" }),
-    author: "founder",
-    authority: "founder-supplied",
+    kind: "director-brief",
+    payload: Object.freeze({ ...briefPayload, scope: { kind: "activity", activityId: ACTIVITY }, inputProfile: "delivery.prepare" }),
+    author: "director",
+    authority: "director-supplied",
   });
   const projectionDigest = digest("initial-projection");
   const boundaryPayload = validDeliveryControlPayload("work-boundary");
@@ -513,18 +554,20 @@ function initialFixture(
     id: "work-product-initial-v7",
     kind: "agent-work-product",
     payload: Object.freeze({
-      schema: "lifecycle.agent-work-product-payload.v2",
+      schema: "lifecycle.agent-work-product-payload.v5",
       role: "reconnaissance",
       roleSemantics: Object.freeze({
         workBoundary: Object.freeze({
-          artifacts: Object.freeze([]),
+          projectionProfile: "execution-standard-v1",
+          artifacts: Object.freeze([...(options.artifacts ?? [])]),
           effects: Object.freeze([...(options.effects ?? [])]),
           checks: Object.freeze([Object.freeze({
             id: SELECTION,
             checkKnowledgeId: CHECK_KNOWLEDGE,
             bindingIds: Object.freeze([...(options.baselineBindingIds ?? [BINDING])]),
             modality: options.baselineModality ?? "postcondition",
-            baselineRequired: true,
+            baselineRequired: options.requiredChecks?.baseline ?? true,
+            finalRequired: options.requiredChecks?.final ?? true,
           })]),
         }),
       }),
@@ -592,6 +635,7 @@ function initialFixture(
       }),
     })]),
     subjects: Object.freeze({
+      integrationAssessment: null,
       proposedBoundary: null,
       activeBoundary: null,
       candidate: null,
@@ -600,6 +644,7 @@ function initialFixture(
       evidence: null,
       closure: null,
     }),
+    delegation: { admission: null, current: null, charged: { operations: 0, agentAttempts: 0, reservedCellWallTimeMs: 0 } },
     journal: Object.freeze({ eventCount: events.length, headDigest: predecessorDigest }),
     eligibleOperations: Object.freeze([]),
   });
@@ -634,7 +679,7 @@ function initialFixture(
       }),
     }));
   };
-  journalRevision("founder-brief-submitted", brief);
+  journalRevision("director-brief-submitted", brief);
   journalRevision("activity-started", null);
   journalRevision("agent-attempt-prepared", attempt);
   journalRevision("agent-work-product-submitted", workProduct);
@@ -680,6 +725,7 @@ function initialFixture(
       contract: Object.freeze({
         targetId: TARGET,
         digest: contractDigest,
+        knowledge: Object.freeze({ roots: Object.freeze({ discipline: "records/disciplines" }) }),
         atlas: Object.freeze({ root: "atlas" }),
         defaults: Object.freeze({ executionProjectionProfileId: "execution-standard-v1" }),
         projectionProfiles: Object.freeze({
@@ -707,6 +753,7 @@ function initialFixture(
       atlas,
     }),
     knowledge: Object.freeze({
+      disciplineRegistry: createEmptyDisciplineRegistry(),
       repository: Object.freeze({
         contract: Object.freeze({ targetId: TARGET, digest: contractDigest }),
         commit: COMMIT,
@@ -788,24 +835,26 @@ function boundaryRetainer(
           ...priorMandate,
           objective: Object.freeze({
             ...(priorMandate.objective as ControlJsonObject),
-            interpretation: "Resolve the exact changed Founder mandate.",
+            interpretation: "Resolve the exact changed Director mandate.",
           }),
         })
       : priorMandate;
-    const changed = shouldChange ? Object.freeze(["/mandate/objective"]) : Object.freeze([]);
+    const capabilityChanged = digestCanonical(input.capabilityProfile) !== digestCanonical(selected.activeBoundary.payload.capabilityProfile);
+    const changed = Object.freeze([...(capabilityChanged ? ["/capabilityProfile"] : []), ...(shouldChange ? ["/mandate/objective"] : [])]);
     const payload: ControlJsonObject = Object.freeze({
       ...selected.activeBoundary.payload,
       proposalKind: input.operation === "delivery.revise" ? "revision" : "reaffirmation",
       basis: Object.freeze({
-        specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-        repositoryContract: "lifecycle.repository.v15",
-        providerAdapter: "lifecycle.provider-adapter.v6",
+        specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+        repositoryContract: "lifecycle.repository.v22",
+        providerAdapter: "lifecycle.provider-adapter.v7",
         ...input.repository,
       }),
       knowledge: selected.activeBoundary.payload.knowledge!,
       externalSources: selected.activeBoundary.payload.externalSources!,
       capabilityProfile: Object.freeze({ ...input.capabilityProfile }),
       projectionProfile: Object.freeze({ ...input.projectionProfile }),
+      disciplines: Object.freeze({ registryDigest: input.disciplineRegistry.digest, workTypeIds: Object.freeze([]), records: Object.freeze([]) }),
       mandate,
       resolution: Object.freeze({
         kind: input.operation === "delivery.revise" ? "revise" : "reaffirm",
@@ -825,7 +874,7 @@ function boundaryRetainer(
       semanticMarkdown: "# Resolved Work Boundary\n",
       payload,
       relationships: Object.freeze([
-        Object.freeze({ relation: "uses-brief", target: input.founderBrief }),
+        Object.freeze({ relation: "uses-brief", target: input.directorBrief }),
         Object.freeze({ relation: "proposed-from", target: input.workProduct }),
         Object.freeze({ relation: "revises", target: input.activeBoundary! }),
         Object.freeze({ relation: "resolves", target: input.materialCondition! }),
@@ -867,13 +916,14 @@ function initialBoundaryRetainer(
       targetId: TARGET,
       proposalKind: "initial",
       basis: Object.freeze({
-        specificationRevision: "lifecycle.foundation.1.0.0-rc.10",
-        repositoryContract: "lifecycle.repository.v15",
-        providerAdapter: "lifecycle.provider-adapter.v6",
+        specificationRevision: "lifecycle.foundation.1.0.0-rc.17",
+        repositoryContract: "lifecycle.repository.v22",
+        providerAdapter: "lifecycle.provider-adapter.v7",
         ...input.repository,
       }),
       capabilityProfile: Object.freeze({ ...input.capabilityProfile }),
       projectionProfile: Object.freeze({ ...input.projectionProfile }),
+      disciplines: Object.freeze({ registryDigest: input.disciplineRegistry.digest, workTypeIds: Object.freeze([]), records: Object.freeze([]) }),
       mandate: Object.freeze({
         ...mandate,
         checks: Object.freeze((mandate.checks as readonly ControlJsonObject[]).map(
@@ -894,7 +944,7 @@ function initialBoundaryRetainer(
       semanticMarkdown: "# Initial Work Boundary\n",
       payload,
       relationships: Object.freeze([
-        Object.freeze({ relation: "uses-brief", target: input.founderBrief }),
+        Object.freeze({ relation: "uses-brief", target: input.directorBrief }),
         Object.freeze({ relation: "proposed-from", target: input.workProduct }),
       ]),
     });
@@ -1028,8 +1078,7 @@ test("delivery.prepare preflights exact baseline Binding cardinality before Boun
   for (const baselineBindingIds of [[], [BINDING, BINDING]] as const) {
     const selected = initialFixture({ baselineBindingIds });
     let retainCalls = 0;
-    await assert.rejects(
-      finalizeFoundationInitialWorkBoundaryV7(
+    const result = await finalizeFoundationInitialWorkBoundaryV7(
         selected.context,
         selected.basis,
         sharedCheckOptions(
@@ -1038,11 +1087,27 @@ test("delivery.prepare preflights exact baseline Binding cardinality before Boun
             return initialBoundaryRetainer(selected)(input);
           },
         ),
-      ),
-      (error: unknown) => error instanceof FoundationError &&
-        error.code === "lifecycle.work-boundary-finalization-v7.check-binding",
-    );
+      );
+    assert.equal(result.outcome, "failed");
     assert.equal(retainCalls, 0);
+    assert.equal(selected.coordinate(), "work-boundary-finalized");
+  }
+});
+
+test("an already retained proposal without a required Check phase ends finalization without rewriting its records", async () => {
+  for (const requiredChecks of [{ baseline: false, final: true }, { baseline: true, final: false }]) {
+    const selected = initialFixture({ requiredChecks });
+    const workProduct = selected.context.workProduct;
+    const receipt = selected.context.receipt;
+    assert(workProduct !== null);
+    const before = JSON.stringify([workProduct, receipt]);
+    const eventsBefore = selected.store.listEvents(0, 100);
+    const result = await finalizeFoundationInitialWorkBoundaryV7(selected.context, selected.basis,
+      sharedCheckOptions(() => assert.fail("A conclusive semantic defect cannot retain a Boundary")));
+    assert.equal(result.outcome, "failed");
+    assert.equal(result.controls, undefined);
+    assert.equal(JSON.stringify([selected.context.workProduct, selected.context.receipt]), before);
+    assert.deepEqual(selected.store.listEvents(0, 100), eventsBefore);
     assert.equal(selected.coordinate(), "work-boundary-finalized");
   }
 });
@@ -1062,15 +1127,12 @@ test("delivery.prepare refuses local effect scopes that contain or enter Atlas a
       const selected = initialFixture({
         effects: Object.freeze([Object.freeze({ kind, target })]),
       });
-      await assert.rejects(
-        finalizeFoundationInitialWorkBoundaryV7(
+      const result = await finalizeFoundationInitialWorkBoundaryV7(
           selected.context,
           selected.basis,
           sharedCheckOptions(initialBoundaryRetainer(selected)),
-        ),
-        (error: unknown) => error instanceof FoundationError &&
-          error.code === "lifecycle.atlas.candidate-mutation",
-      );
+        );
+      assert.equal(result.outcome, "failed");
       assert.equal(selected.coordinate(), "work-boundary-finalized");
     }
   }
@@ -1129,6 +1191,36 @@ test("delivery.prepare refuses admitted subjects and a substituted reconnaissanc
     (error: unknown) => error instanceof FoundationError &&
       error.code === "lifecycle.work-boundary-finalization-v7.basis-substitution",
   );
+});
+
+test("resolution retains the exact proposed registered Projection profile and reuses it after finalization", async () => {
+  const selected = fixture("delivery.reaffirm", {proposedProjectionProfile:"execution-large-v1",registerLargeProjection:true});
+  let retainCalls = 0;
+  const retain = boundaryRetainer(selected,"exact");
+  const options = sharedCheckOptions((input) => {
+    retainCalls += 1;
+    assert.deepEqual(input.projectionProfile,{id:"execution-large-v1",digest:digest("large-execution-projection"),semanticProfile:"execution-large-v1"});
+    return retain(input);
+  });
+  const first = await finalizeFoundationWorkBoundaryResolutionV7(selected.context,selected.basis,options);
+  assert.equal(first.outcome,"completed");
+  const boundary = first.controls!.find(({recordKind}) => recordKind === "work-boundary")!;
+  assert.equal((boundary.payload.projectionProfile as ControlJsonObject).id,"execution-large-v1");
+  assert.deepEqual((boundary.payload.resolution as ControlJsonObject).changedMandateFields,[]);
+  const resumed = await finalizeFoundationWorkBoundaryResolutionV7(selected.context,selected.basis,options);
+  assert.equal(resumed.outcome,"completed");
+  assert.equal(resumed.controls![0]!.digest,first.controls![0]!.digest);
+  assert.equal(retainCalls,1);
+});
+
+test("resolution rejects an unregistered proposed Projection without retaining a default replacement", async () => {
+  const selected = fixture("delivery.reaffirm",{proposedProjectionProfile:"execution-large-v1"});
+  let retainCalls = 0;
+  const result = await finalizeFoundationWorkBoundaryResolutionV7(selected.context,selected.basis,
+    sharedCheckOptions(() => {retainCalls += 1;throw new Error("Unavailable proposed profile must not be replaced");}));
+  assert.deepEqual(result,{outcome:"failed"});
+  assert.equal(retainCalls,0);
+  assert.equal(selected.store.listEvents(0,1000).filter(({eventKind}) => eventKind === "work-boundary-finalized").length,0);
 });
 
 for (const operation of ["delivery.reaffirm", "delivery.revise"] as const) {
@@ -1210,8 +1302,7 @@ test("Boundary baseline Binding cardinality is refused before successor retentio
   for (const baselineBindingIds of [[], [BINDING, BINDING]] as const) {
     const selected = fixture("delivery.reaffirm", { baselineBindingIds });
     let retainCalls = 0;
-    await assert.rejects(
-      finalizeFoundationWorkBoundaryResolutionV7(
+    const result = await finalizeFoundationWorkBoundaryResolutionV7(
         selected.context,
         selected.basis,
         Object.freeze({
@@ -1221,11 +1312,48 @@ test("Boundary baseline Binding cardinality is refused before successor retentio
             return boundaryRetainer(selected, "exact")(input);
           },
         }),
-      ),
-      (error: unknown) => error instanceof FoundationError &&
-        error.code === "lifecycle.work-boundary-finalization-v7.check-binding",
-    );
+      );
+    assert.equal(result.outcome, "failed");
     assert.equal(retainCalls, 0);
     assert.equal(selected.coordinate(), "work-boundary-finalized");
   }
 });
+
+
+test("Boundary preflight refuses Discipline maintenance paths and containing scopes before retention", async () => {
+  const paths = ["records/disciplines", "records/disciplines/registry.json", "records/disciplines/go-review.md", "records"];
+  for (const path of paths) {
+    for (const options of [
+      { artifacts: [{ path, shape: "tree", changeRule: "Replace the selected tree." }] },
+      { effects: [{ kind: "local-write", target: path }] },
+      { effects: [{ kind: "local-write", target: `x/../${path}` }] },
+    ]) {
+      const selected = initialFixture(options);
+      let retained = false;
+      const result = await finalizeFoundationInitialWorkBoundaryV7(selected.context, selected.basis, sharedCheckOptions((input) => {
+        retained = true;
+        return initialBoundaryRetainer(selected)(input);
+      }));
+      assert.equal(result.outcome, "failed");
+      assert.equal(retained, false);
+      assert.equal(selected.coordinate(), "work-boundary-finalized");
+    }
+  }
+});
+
+for (const parentCapabilityId of ["capability.standard", "parent-development-v1"]) {
+  test(`integration resolution finalization proposes P default ${parentCapabilityId} independently of the Attempt grant`, async () => {
+    const selected = fixture("delivery.revise", { parentCapabilityId });
+    const grant = selected.context.attempt.payload.capability as ControlJsonObject;
+    const admitted = selected.activeBoundary.payload.capabilityProfile as ControlJsonObject;
+    assert.equal(grant.profileId, admitted.id);
+    assert.equal(grant.profileDigest, admitted.digest);
+    const result = await finalizeFoundationWorkBoundaryResolutionV7(selected.context, selected.basis, checkOptions(selected));
+    assert.equal(result.outcome, "completed");
+    const proposed = result.controls?.find(({ recordKind }) => recordKind === "work-boundary");
+    assert.deepEqual(proposed?.payload.capabilityProfile, { id: parentCapabilityId, digest: digest("parent-capability") });
+    assert.equal((proposed?.payload.basis as ControlJsonObject).productBaseCommit, "d".repeat(40));
+    assert.equal(selected.store.state().subjects.candidate?.digest, selected.candidate.digest);
+    assert.equal((selected.activeBoundary.payload.basis as ControlJsonObject).productBaseCommit, COMMIT);
+  });
+}

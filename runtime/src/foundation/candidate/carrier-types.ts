@@ -9,6 +9,7 @@ export const FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_MEDIA_TYPE =
   "application/vnd.lifecycle.candidate-revision-carrier-manifest+json" as const;
 export const FOUNDATION_CANDIDATE_REVISION_CARRIER_MANIFEST_PURPOSE =
   "candidate-revision-carrier-manifest" as const;
+export const FOUNDATION_BUILDER_REPAIR_OUTPUT_PURPOSE = "builder-repair-output" as const;
 export const FOUNDATION_CANDIDATE_REVISION_CARRIER_FORMAT = "git-pack-v2" as const;
 export const FOUNDATION_CANDIDATE_REVISION_CARRIER_TREE_MODES = Object.freeze([
   "040000",
